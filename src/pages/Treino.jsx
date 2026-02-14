@@ -471,13 +471,18 @@ export default function Treino() {
             </div>
 
             <div style={styles.summaryActions}>
-              <button
-                style={{ ...styles.finishBtn, opacity: viewingIsToday ? 1 : 0.55 }}
-                onClick={finishWorkout}
-                disabled={!viewingIsToday}
-                title=> nav("/dashboard")}>
-                Concluir treino
-              </button>
+             <button
+  style={{ ...styles.finishBtn, opacity: viewingIsToday ? 1 : 0.55 }}
+  onClick={() => {
+    if (!viewingIsToday) return;
+    finishWorkout?.(); // mantém sua lógica atual
+    nav("/dashboard"); // vai pra dashboard
+  }}
+  disabled={!viewingIsToday}
+  title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
+>
+  Concluir treino
+</button>
 
               <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")}>
                 Personalizar
@@ -989,5 +994,6 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
 
 
