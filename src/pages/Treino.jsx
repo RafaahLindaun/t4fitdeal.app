@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -170,7 +170,6 @@ function buildCustomPlan(email) {
   const rawDays = Number(custom.days || custom.dayGroups.length || 3);
   const days = clamp(rawDays, 2, 6);
 
-  // ✅ se dayGroups vier menor que days, repete padrão
   const dayGroups = [];
   for (let i = 0; i < days; i++) {
     dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
@@ -182,7 +181,6 @@ function buildCustomPlan(email) {
     const g = groupById(gid);
     const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
 
-    // ✅ pega mais exercícios e garante volume mínimo
     const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
 
     return baseList.map((ex) => ({
@@ -222,10 +220,8 @@ export default function Treino() {
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // ✅ 100%: se existir custom_split, ele manda em tudo
   const plan = useMemo(() => buildCustomPlan(email), [email]);
 
-  // fallback simples se não existir custom (para não quebrar)
   const fallbackSplit = useMemo(() => {
     const A = [
       { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
@@ -260,24 +256,26 @@ export default function Treino() {
   const base = plan?.base || fallbackSplit.base;
   const split = plan?.split || fallbackSplit.split;
 
-  // dia real (progresso)
-  const dayIndex = useMemo(() => calcDayIndex(email), [email]);
+  // ✅ mantém dayIndex em state pra não depender de reload
+  const [dayIndex, setDayIndex] = useState(() => calcDayIndex(email));
 
-  // ✅ dia exibido (clicável nos botões)
+  // ✅ dia exibido
   const [viewIdx, setViewIdx] = useState(dayIndex);
 
-  // ✅ sempre dentro do range do split (isso evita sumir exercícios)
+  // se dayIndex mudar (concluir), sincroniza a visualização
+  useEffect(() => {
+    setViewIdx(dayIndex);
+  }, [dayIndex]);
+
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
   const workout = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
 
-  // done por dia exibido (safe)
   const doneKey = `done_ex_${email}_${viewSafe}`;
   const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
   const [tapId, setTapId] = useState(null);
 
-  // ✅ cargas: por (dia + exercício)
   const [loads, setLoads] = useState(() => loadLoads(email));
 
   function toggleDone(i) {
@@ -291,14 +289,15 @@ export default function Treino() {
   function adjustLoad(exName, delta) {
     const k = keyForLoad(viewSafe, exName);
     const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2);
     const next = { ...loads, [k]: nextVal };
     setLoads(next);
     saveLoads(email, next);
   }
 
-  function finishWorkout() {
-    if (!viewingIsToday) return;
+  // ✅ núcleo do concluir: SEM reload
+  function finishWorkoutCore() {
+    if (!viewingIsToday) return false;
 
     bumpDayIndex(email, split.length);
     localStorage.removeItem(doneKey);
@@ -310,7 +309,17 @@ export default function Treino() {
     const arr = Array.isArray(list) ? list : [];
     if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
 
-    window.location.reload();
+    // atualiza state local
+    const nextDay = calcDayIndex(email);
+    setDayIndex(nextDay);
+
+    return true;
+  }
+
+  function finishAndGoDashboard() {
+    const ok = finishWorkoutCore();
+    if (!ok) return;
+    nav("/dashboard");
   }
 
   // não pagante: metade liberada + resto blur
@@ -318,7 +327,10 @@ export default function Treino() {
   const previewList = workout.slice(0, previewCount);
   const lockedList = workout.slice(previewCount);
 
-  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
+  const strip = useMemo(
+    () => getWeekdaysStrip(split.length, mod(dayIndex, split.length)),
+    [split.length, dayIndex]
+  );
 
   function openExercises() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
@@ -350,53 +362,46 @@ export default function Treino() {
           </div>
         </div>
 
-        {/* ✅ Engrenagem Apple-style */}
-        <button style={styles.settingsBtn} onClick={() => nav("/conta")} aria-label="Conta e configurações">
+        <button style={styles.settingsBtn} onClick={() => nav("/conta")} aria-label="Conta e configurações" type="button">
           <GearIcon />
         </button>
       </div>
 
-      {/* PRÓXIMOS DIAS (funcional) */}
-     {/* PRÓXIMOS DIAS (✅ abre detalhe somente clicando no pill ativo/laranja) */}
-<div style={styles.stripWrap}>
-  <div style={styles.stripTitle}>Próximos dias</div>
-  <div style={styles.stripRow}>
-    {strip.map((d) => {
-      const isActive = d.idx === viewSafe;
+      {/* PRÓXIMOS DIAS */}
+      <div style={styles.stripWrap}>
+        <div style={styles.stripTitle}>Próximos dias</div>
+        <div style={styles.stripRow}>
+          {strip.map((d) => {
+            const isActive = d.idx === viewSafe;
 
-      return (
-        <button
-          key={d.idx}
-          style={{
-            ...styles.stripPill,
-            ...(isActive ? styles.stripPillOn : styles.stripPillOff),
-          }}
-          onClick={() => {
-            // ✅ se clicar no pill que já está ativo (laranja), abre detalhe
-            if (isActive) {
-              openExercises();
-              return;
-            }
+            return (
+              <button
+                key={d.idx}
+                style={{
+                  ...styles.stripPill,
+                  ...(isActive ? styles.stripPillOn : styles.stripPillOff),
+                }}
+                type="button"
+                onClick={() => {
+                  if (isActive) {
+                    openExercises();
+                    return;
+                  }
+                  setViewIdx(d.idx);
+                  const nextKey = `done_ex_${email}_${d.idx}`;
+                  setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
+                }}
+              >
+                {d.label}
+                {d.isToday ? " • hoje" : ""}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-            // ✅ se clicar em um pill cinza, só muda o dia exibido
-            setViewIdx(d.idx);
-            const nextKey = `done_ex_${email}_${d.idx}`;
-            setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
-          }}
-        >
-          {d.label}
-          {d.isToday ? " • hoje" : ""}
-        </button>
-      );
-    })}
-  </div>
-</div>
-
-      {/* EXERCÍCIOS DO DIA (Apple: balões + gradiente + progress + animação) */}
-      <button
-        style={styles.bigGo}
-        onClick={() => openExercises()}
-      >
+      {/* EXERCÍCIOS DO DIA */}
+      <button style={styles.bigGo} onClick={() => openExercises()} type="button">
         <div style={styles.bigGoRow}>
           <div style={{ minWidth: 0 }}>
             <div style={styles.bigGoTop}>Exercícios do dia</div>
@@ -410,14 +415,14 @@ export default function Treino() {
           </div>
         </div>
 
-        {/* “balões” */}
         <div style={styles.bubbles}>
           <span style={styles.bubble}>{viewingIsToday ? "Hoje" : `Dia ${dayLetter(viewSafe)}`}</span>
-          <span style={styles.bubbleSoft}>{doneCount}/{workout.length} feitos</span>
+          <span style={styles.bubbleSoft}>
+            {doneCount}/{workout.length} feitos
+          </span>
           <span style={styles.bubbleSoft}>Toque pra abrir</span>
         </div>
 
-        {/* progresso */}
         <div style={styles.progressTrack}>
           <div style={{ ...styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
         </div>
@@ -427,14 +432,14 @@ export default function Treino() {
         </div>
       </button>
 
-      {/* CARD: METAS */}
+      {/* METAS */}
       <div style={styles.card}>
         <div style={styles.cardTop}>
           <div>
             <div style={styles.cardTitle}>METAS</div>
             <div style={styles.cardSub}>Pronto para conquistar seus objetivos?</div>
           </div>
-          <button style={styles.cardBtn} onClick={() => nav("/metas")}>
+          <button style={styles.cardBtn} onClick={() => nav("/metas")} type="button">
             Abrir
           </button>
         </div>
@@ -447,7 +452,7 @@ export default function Treino() {
             <div style={styles.cardTitle}>Hora do cardio</div>
             <div style={styles.cardSub}>Acelere seus ganhos.</div>
           </div>
-          <button style={styles.cardBtn} onClick={() => nav("/cardio")}>
+          <button style={styles.cardBtn} onClick={() => nav("/cardio")} type="button">
             Abrir
           </button>
         </div>
@@ -471,21 +476,12 @@ export default function Treino() {
             </div>
 
             <div style={styles.summaryActions}>
-             <button
-  style={{ ...styles.finishBtn, opacity: viewingIsToday ? 1 : 0.55 }}
-  onClick={() => {
-    if (!viewingIsToday) return;
-    finishWorkout?.(); // mantém sua lógica atual
-    nav("/dashboard"); // vai pra dashboard
-  }}
-  disabled={!viewingIsToday}
-  title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
->
-  Concluir treino
-</button>
-
-              <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")}>
+              {/* ✅ aqui NÃO tem mais “Concluir” (ele agora é flutuante) */}
+              <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button">
                 Personalizar
+              </button>
+              <button style={styles.secondaryBtn} onClick={() => openExercises()} type="button">
+                Abrir detalhes
               </button>
             </div>
 
@@ -497,9 +493,7 @@ export default function Treino() {
             ) : null}
           </>
         ) : (
-          <div style={styles.lockHint}>
-            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
-          </div>
+          <div style={styles.lockHint}>Você está no Modo Gratuito. Assine para liberar treino completo e personalização.</div>
         )}
       </div>
 
@@ -523,7 +517,6 @@ export default function Treino() {
                     {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
                   </div>
 
-                  {/* ✅ progressão de carga (bonitinho) */}
                   <div style={styles.loadRow}>
                     <span style={styles.loadLabel}>Carga</span>
                     <div style={styles.loadPill}>
@@ -570,8 +563,8 @@ export default function Treino() {
                   </div>
                 </div>
 
-                {/* Apple-check */}
                 <button
+                  type="button"
                   onClick={() => toggleDone(i)}
                   aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
                   style={{
@@ -580,7 +573,7 @@ export default function Treino() {
                     transform: tapId === i ? "scale(0.92)" : "scale(1)",
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path
                       d="M20 7L10 17l-5-5"
                       stroke={isDone ? "#111" : "#64748b"}
@@ -616,42 +609,54 @@ export default function Treino() {
             ))}
           </div>
 
-          <button style={styles.fab} onClick={() => nav("/planos")}>
-  <span style={styles.fabIcon} aria-hidden="true">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M5 12h12"
-        stroke="#111"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M13 6l6 6-6 6"
-        stroke="#111"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  </span>
-  <span style={styles.fabText}>Começar agora</span>
-</button>
-
+          <button style={styles.fab} onClick={() => nav("/planos")} type="button">
+            <span style={styles.fabIcon} aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h12" stroke="#111" strokeWidth="2.6" strokeLinecap="round" />
+                <path
+                  d="M13 6l6 6-6 6"
+                  stroke="#111"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span style={styles.fabText}>Começar agora</span>
+          </button>
         </>
+      ) : null}
+
+      {/* ✅ CONCLUIR TREINO: FLUTUANTE + ANIMADO + VAI PRA DASHBOARD */}
+      {paid ? (
+        <button
+          type="button"
+          style={{
+            ...styles.finishFab,
+            ...(viewingIsToday ? styles.finishFabOn : styles.finishFabOff),
+          }}
+          onClick={finishAndGoDashboard}
+          disabled={!viewingIsToday}
+          title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
+        >
+          <span style={styles.finishFabIcon} aria-hidden="true">
+            <FinishIcon />
+          </span>
+          <span style={styles.finishFabText}>Concluir treino</span>
+          <span style={styles.finishFabArrow} aria-hidden="true">
+            <ChevronIcon />
+          </span>
+        </button>
       ) : null}
     </div>
   );
 }
 
-/* ---------- icons (apple-like) ---------- */
+/* ---------- icons (premium, sem emoji) ---------- */
 function GearIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 15.35a3.35 3.35 0 1 0 0-6.7 3.35 3.35 0 0 0 0 6.7Z"
-        stroke="white"
-        strokeWidth="2.1"
-      />
+      <path d="M12 15.35a3.35 3.35 0 1 0 0-6.7 3.35 3.35 0 0 0 0 6.7Z" stroke="white" strokeWidth="2.1" />
       <path
         d="M19.4 13.2c.04-.4.06-.8.06-1.2s-.02-.8-.06-1.2l2-1.55a.6.6 0 0 0 .14-.76l-1.9-3.3a.6.6 0 0 0-.72-.26l-2.35.95a9.2 9.2 0 0 0-2.08-1.2l-.36-2.5A.6.6 0 0 0 11.5 1h-3a.6.6 0 0 0-.59.5l-.36 2.5c-.75.3-1.44.7-2.08 1.2l-2.35-.95a.6.6 0 0 0-.72.26l-1.9 3.3a.6.6 0 0 0 .14.76l2 1.55c-.04.4-.06.8-.06 1.2s.02.8.06 1.2l-2 1.55a.6.6 0 0 0-.14.76l1.9 3.3c.15.26.46.36.72.26l2.35-.95c.64.5 1.33.9 2.08 1.2l.36 2.5c.05.29.3.5.59.5h3c.29 0 .54-.21.59-.5l.36-2.5c.75-.3 1.44-.7 2.08-1.2l2.35.95c.26.1.57 0 .72-.26l1.9-3.3a.6.6 0 0 0-.14-.76l-2-1.55Z"
         stroke="white"
@@ -671,9 +676,31 @@ function ArrowIcon() {
   );
 }
 
+function ChevronIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 18l6-6-6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FinishIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 7L10.6 16.4 6 11.8"
+        stroke="#111"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /* ---------------- styles ---------------- */
 const styles = {
-  page: { padding: 18, paddingBottom: 170, background: BG },
+  page: { padding: 18, paddingBottom: 210, background: BG },
 
   header: {
     borderRadius: 24,
@@ -690,7 +717,6 @@ const styles = {
   headerTitle: { marginTop: 6, fontSize: 24, fontWeight: 950, letterSpacing: -0.6, lineHeight: 1.05 },
   headerSub: { marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.96, lineHeight: 1.3 },
 
-  // ✅ botão estilo Apple (igual aos “pill buttons” modernos)
   settingsBtn: {
     width: 44,
     height: 44,
@@ -718,7 +744,6 @@ const styles = {
   stripPillOn: { background: "rgba(255,106,0,.16)", color: TEXT, border: "1px solid rgba(255,106,0,.22)" },
   stripPillOff: { background: "rgba(15,23,42,.04)", color: "#334155", border: "1px solid rgba(15,23,42,.06)" },
 
-  // ✅ “Exercícios do dia” mais Apple
   bigGo: {
     marginTop: 12,
     width: "100%",
@@ -808,8 +833,8 @@ const styles = {
   summaryLine: { marginTop: 8, fontSize: 13, fontWeight: 850, color: MUTED },
   summaryActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
-  finishBtn: { padding: 14, borderRadius: 18, border: "none", background: TEXT, color: "#fff", fontWeight: 950 },
   customBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
+  secondaryBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,106,0,.10)", color: TEXT, fontWeight: 950 },
 
   viewHint: {
     marginTop: 10,
@@ -930,22 +955,18 @@ const styles = {
     transform: "translateX(-50%)",
     bottom: 160,
     zIndex: 999,
-  
     minHeight: 56,
     padding: "14px 18px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,.35)",
-  
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     color: "#111",
     fontWeight: 950,
     letterSpacing: -0.2,
-  
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-  
     boxShadow: "0 22px 70px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.28)",
     animation: "pulseGlow 1.8s ease-in-out infinite",
     willChange: "transform",
@@ -955,24 +976,72 @@ const styles = {
     height: 38,
     borderRadius: 999,
     flexShrink: 0,
-  
     background: "rgba(255,255,255,.88)",
     border: "1px solid rgba(255,255,255,.55)",
     display: "grid",
     placeItems: "center",
-  
     boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
   },
-  fabText: {
-  fontSize: 14,
-  lineHeight: 1,
-  whiteSpace: "nowrap",
-},
-fabText: {
-  fontSize: 14,
-  lineHeight: 1,
-  whiteSpace: "nowrap",
-},
+  fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
+
+  /* ✅ CONCLUIR (flutuante premium) */
+  finishFab: {
+    position: "fixed",
+    left: "50%",
+    transform: "translateX(-50%)",
+    bottom: 92,
+    zIndex: 1000,
+
+    minHeight: 58,
+    padding: "14px 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.38)",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontWeight: 950,
+    letterSpacing: -0.2,
+
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+
+    boxShadow: "0 26px 84px rgba(255,106,0,.36), inset 0 1px 0 rgba(255,255,255,.28)",
+    willChange: "transform",
+    animation: "finishFloat 3.2s ease-in-out infinite",
+  },
+  finishFabOn: {
+    opacity: 1,
+    pointerEvents: "auto",
+    filter: "none",
+  },
+  finishFabOff: {
+    opacity: 0.55,
+    pointerEvents: "none",
+    filter: "grayscale(0.15)",
+    animation: "none",
+  },
+  finishFabIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    flexShrink: 0,
+    background: "rgba(255,255,255,.90)",
+    border: "1px solid rgba(255,255,255,.55)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
+  },
+  finishFabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
+  finishFabArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    marginLeft: 2,
+    background: "rgba(255,255,255,.30)",
+    border: "1px solid rgba(255,255,255,.35)",
+    display: "grid",
+    placeItems: "center",
+  },
 };
 
 // animações CSS inline
@@ -990,10 +1059,12 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-2px); }
       }
+      @keyframes finishFloat {
+        0%, 100% { transform: translateX(-50%) translateY(0px); }
+        50% { transform: translateX(-50%) translateY(-3px); }
+      }
+      button:active { transform: scale(.99); }
     `;
     document.head.appendChild(style);
   }
 }
-
-
-
