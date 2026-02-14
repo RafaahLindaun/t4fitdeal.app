@@ -326,21 +326,70 @@ function suggestLoadRange(exName, pesoKg, objetivo) {
 function splitSteps(text) {
   const t = String(text || "").trim();
   if (!t) return [];
-  // quebra por pontos e também por " • " se aparecer
   const parts = t
     .replace(/\s*•\s*/g, ". ")
     .split(".")
     .map((s) => s.trim())
     .filter(Boolean);
-  // evita lista gigante
   return parts.slice(0, 6);
 }
 
-function InfoPill({ icon, label, value }) {
+/* --------- UNIQUE MINI-ICONS (premium, sem emoji) --------- */
+function MiniIcon({ name }) {
+  const common = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", "aria-hidden": true };
+  const stroke = "rgba(15,23,42,.85)";
+  const soft = "rgba(255,106,0,.18)";
+
+  if (name === "group") {
+    return (
+      <svg {...common}>
+        <path d="M7 20h10" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M9 20V8.8c0-.6.3-1.1.8-1.4l1.8-1a1.5 1.5 0 0 1 1.4 0l1.8 1c.5.3.8.8.8 1.4V20" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9 12h6" stroke={soft} strokeWidth="3.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "sets") {
+    return (
+      <svg {...common}>
+        <path d="M6.5 8.5h11" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M6.5 12h11" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M6.5 15.5h11" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M6.6 18.6h6.6" stroke={soft} strokeWidth="3.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "reps") {
+    return (
+      <svg {...common}>
+        <path d="M7.5 7.5h9" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M7.5 16.5h9" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M9.2 9.2c-2.1 2.1-2.1 5.5 0 7.6" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M14.8 9.2c2.1 2.1 2.1 5.5 0 7.6" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M12 12.2v2.2" stroke={soft} strokeWidth="3.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  // rest
+  return (
+    <svg {...common}>
+      <path d="M12 7.2v5l3.2 1.8" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 20.2a8.2 8.2 0 1 1 8.2-8.2" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M20.2 12a8.2 8.2 0 0 1-.9 3.7" stroke={soft} strokeWidth="3.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function InfoPill({ iconName, label, value }) {
   return (
     <div style={S.pillMini}>
       <div style={S.pillMiniTop}>
-        <span style={S.pillMiniIcon}>{icon}</span>
+        <span style={S.pillMiniIcon}>
+          <MiniIcon name={iconName} />
+        </span>
         <span style={S.pillMiniLabel}>{label}</span>
       </div>
       <div style={S.pillMiniValue}>{value}</div>
@@ -370,9 +419,9 @@ function HowToModal({ open, onClose, title, group, sets, reps, rest, area, cue }
         </div>
 
         <div style={S.modalPills}>
-          <InfoPill icon="🔁" label="Séries" value={String(sets)} />
-          <InfoPill icon="🎯" label="Reps" value={String(reps)} />
-          <InfoPill icon="⏱️" label="Descanso" value={String(rest)} />
+          <InfoPill iconName="sets" label="Séries" value={String(sets)} />
+          <InfoPill iconName="reps" label="Reps" value={String(reps)} />
+          <InfoPill iconName="rest" label="Descanso" value={String(rest)} />
         </div>
 
         <div style={S.modalBoxSoft}>
@@ -456,7 +505,7 @@ export default function TreinoDetalhe() {
   }, [viewSafe, split]);
 
   // ✅ Modal “Como fazer”
-  const [howTo, setHowTo] = useState(null); // { name, group, sets, reps, rest, area, cue }
+  const [howTo, setHowTo] = useState(null);
 
   if (!paid) {
     return (
@@ -542,16 +591,16 @@ export default function TreinoDetalhe() {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={S.name}>{ex.name}</div>
 
-                  {/* ✅ MAIS “APPLE”: info rápida em pills (séries, reps, descanso) */}
+                  {/* ✅ Premium pills (sem emoji) */}
                   <div style={S.quickRow}>
-                    <InfoPill icon="💪" label="Grupo" value={ex.group} />
-                    <InfoPill icon="🔁" label="Séries" value={String(sets)} />
-                    <InfoPill icon="🎯" label="Reps" value={String(reps)} />
-                    <InfoPill icon="⏱️" label="Descanso" value={String(rest)} />
+                    <InfoPill iconName="group" label="Grupo" value={ex.group} />
+                    <InfoPill iconName="sets" label="Séries" value={String(sets)} />
+                    <InfoPill iconName="reps" label="Reps" value={String(reps)} />
+                    <InfoPill iconName="rest" label="Descanso" value={String(rest)} />
                   </div>
                 </div>
 
-                {/* ✅ Botão por exercício: “Como fazer” */}
+                {/* ✅ Botão por exercício */}
                 <button
                   type="button"
                   style={S.howBtn}
@@ -572,7 +621,7 @@ export default function TreinoDetalhe() {
                 </button>
               </div>
 
-              {/* ✅ Linha de carga mais limpa */}
+              {/* ✅ Linha de carga */}
               <div style={S.loadRow}>
                 <div style={{ minWidth: 0 }}>
                   <div style={S.loadLabel}>Carga sugerida</div>
@@ -595,7 +644,7 @@ export default function TreinoDetalhe() {
         })}
       </div>
 
-      {/* ✅ BOTÃO FINAL: CARDIO (grande, laranja, “balão” apple) */}
+      {/* ✅ CTA CARDIO */}
       <button style={S.cardioGo} onClick={() => nav("/cardio")} type="button">
         <div style={S.cardioGoRow}>
           <div style={{ minWidth: 0 }}>
@@ -621,7 +670,7 @@ export default function TreinoDetalhe() {
 
       <div style={{ height: 140 }} />
 
-      {/* ✅ Modal “Como fazer” */}
+      {/* ✅ Modal */}
       <HowToModal
         open={!!howTo}
         onClose={() => setHowTo(null)}
@@ -746,7 +795,7 @@ const S = {
   },
   name: { fontSize: 17, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
 
-  // ✅ pills de entendimento rápido
+  // ✅ pills premium
   quickRow: {
     marginTop: 10,
     display: "grid",
@@ -762,11 +811,20 @@ const S = {
     minHeight: 64,
   },
   pillMiniTop: { display: "flex", alignItems: "center", gap: 8 },
-  pillMiniIcon: { fontSize: 14 },
+  pillMiniIcon: { width: 16, height: 16, display: "grid", placeItems: "center" },
   pillMiniLabel: { fontSize: 11, fontWeight: 900, color: MUTED },
-  pillMiniValue: { marginTop: 8, fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  pillMiniValue: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
 
-  // ✅ botão “Como fazer” apple
+  // ✅ botão “Como fazer”
   howBtn: {
     height: 44,
     alignSelf: "flex-start",
@@ -983,11 +1041,7 @@ if (typeof document !== "undefined") {
         from { transform: translateY(10px); opacity: 0.0; }
         to   { transform: translateY(0px); opacity: 1.0; }
       }
-      /* efeito de toque */
       button:active { transform: scale(.99); }
-      @media (max-width: 520px){
-        .fitdeal-hide-on-mobile { display: none; }
-      }
     `;
     document.head.appendChild(style);
   }
