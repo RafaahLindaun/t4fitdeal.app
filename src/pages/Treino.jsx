@@ -471,12 +471,7 @@ export default function Treino() {
             </div>
 
             <div style={styles.summaryActions}>
-              <button
-                style={{ ...styles.finishBtn, opacity: viewingIsToday ? 1 : 0.55 }}
-                onClick={finishWorkout}
-                disabled={!viewingIsToday}
-                title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
-              >
+              <button style={styles.customBtn} onClick={() => nav("/dashboard")}>
                 Concluir treino
               </button>
 
@@ -990,3 +985,4 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
