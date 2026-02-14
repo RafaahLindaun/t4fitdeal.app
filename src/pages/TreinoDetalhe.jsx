@@ -124,7 +124,6 @@ function groupById(id) {
 
 /**
  * ✅ garante volume: se vier pouco, completa com acessórios coerentes
- * (ainda pode inserir "Aquecimento" aqui, mas no TreinoDetalhe a gente filtra)
  */
 function ensureVolume(list, minCount = 7) {
   const base = Array.isArray(list) ? [...list] : [];
@@ -249,7 +248,10 @@ function detailFor(exName) {
   if (n.includes("puxada") || n.includes("pulldown"))
     return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Não puxe com pescoço." };
   if (n.includes("remada"))
-    return { area: "Costas médias/dorsal e estabilização.", cue: "Coluna firme. Puxe com cotovelos e segure 1s no final. Volte controlando." };
+    return {
+      area: "Costas médias/dorsal e estabilização.",
+      cue: "Coluna firme. Puxe com cotovelos e segure 1s no final. Volte controlando.",
+    };
   if (n.includes("face pull"))
     return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombro baixo, sem jogar tronco." };
 
@@ -287,7 +289,6 @@ function detailFor(exName) {
   if (n.includes("abdominal"))
     return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
 
-  // (removemos aquecimento do detalhe; se aparecer por algum motivo, cai aqui)
   if (n.includes("aquecimento"))
     return { area: "Preparação geral.", cue: "Aqueça leve por 5–8 min. O objetivo é preparar, não cansar." };
 
@@ -321,6 +322,88 @@ function suggestLoadRange(exName, pesoKg, objetivo) {
   return `${low}–${high}kg`;
 }
 
+/* ---------------- UI helpers ---------------- */
+function splitSteps(text) {
+  const t = String(text || "").trim();
+  if (!t) return [];
+  // quebra por pontos e também por " • " se aparecer
+  const parts = t
+    .replace(/\s*•\s*/g, ". ")
+    .split(".")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // evita lista gigante
+  return parts.slice(0, 6);
+}
+
+function InfoPill({ icon, label, value }) {
+  return (
+    <div style={S.pillMini}>
+      <div style={S.pillMiniTop}>
+        <span style={S.pillMiniIcon}>{icon}</span>
+        <span style={S.pillMiniLabel}>{label}</span>
+      </div>
+      <div style={S.pillMiniValue}>{value}</div>
+    </div>
+  );
+}
+
+function HowToModal({ open, onClose, title, group, sets, reps, rest, area, cue }) {
+  if (!open) return null;
+  const steps = splitSteps(cue);
+
+  return (
+    <div style={S.modalWrap} role="dialog" aria-modal="true">
+      <button style={S.modalBackdrop} onClick={onClose} aria-label="Fechar" type="button" />
+
+      <div style={S.modalCard}>
+        <div style={S.modalTop}>
+          <div style={{ minWidth: 0 }}>
+            <div style={S.modalKicker}>COMO FAZER</div>
+            <div style={S.modalTitle}>{title}</div>
+            <div style={S.modalSub}>{group}</div>
+          </div>
+
+          <button type="button" onClick={onClose} style={S.modalClose} aria-label="Fechar">
+            ✕
+          </button>
+        </div>
+
+        <div style={S.modalPills}>
+          <InfoPill icon="🔁" label="Séries" value={String(sets)} />
+          <InfoPill icon="🎯" label="Reps" value={String(reps)} />
+          <InfoPill icon="⏱️" label="Descanso" value={String(rest)} />
+        </div>
+
+        <div style={S.modalBoxSoft}>
+          <div style={S.modalBoxTitle}>Área trabalhada</div>
+          <div style={S.modalBoxText}>{area}</div>
+        </div>
+
+        <div style={S.modalBox}>
+          <div style={S.modalBoxTitle}>Execução (passo a passo)</div>
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            {steps.length ? (
+              steps.map((s, i) => (
+                <div key={i} style={S.stepRow}>
+                  <div style={S.stepDot}>{i + 1}</div>
+                  <div style={S.stepText}>{s}</div>
+                </div>
+              ))
+            ) : (
+              <div style={S.modalBoxText}>{cue}</div>
+            )}
+          </div>
+        </div>
+
+        <button type="button" onClick={onClose} style={S.modalDone}>
+          Entendi
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ----------------- Page (consistente com Treino) ----------------- */
 export default function TreinoDetalhe() {
   const nav = useNavigate();
@@ -339,7 +422,7 @@ export default function TreinoDetalhe() {
   // dia real do ciclo
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
 
-  // ✅ dia exibido: vem do ?d= (o mesmo que a aba Treino manda)
+  // ✅ dia exibido: vem do ?d=
   const dParam = Number(sp.get("d"));
   const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
@@ -372,13 +455,16 @@ export default function TreinoDetalhe() {
     return arr;
   }, [viewSafe, split]);
 
+  // ✅ Modal “Como fazer”
+  const [howTo, setHowTo] = useState(null); // { name, group, sets, reps, rest, area, cue }
+
   if (!paid) {
     return (
       <div style={S.page}>
         <div style={S.lockCard}>
           <div style={S.lockTitle}>Treino detalhado bloqueado</div>
           <div style={S.lockText}>Assine para liberar o detalhamento + cargas e execução.</div>
-          <button style={S.lockBtn} onClick={() => nav("/planos")}>
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button">
             Ver planos
           </button>
         </div>
@@ -390,15 +476,14 @@ export default function TreinoDetalhe() {
     <div style={S.page}>
       {/* header */}
       <div style={S.head}>
-        <button style={S.back} onClick={() => nav("/treino")} aria-label="Voltar">
+        <button style={S.back} onClick={() => nav("/treino")} aria-label="Voltar" type="button">
           ←
         </button>
 
         <div style={{ minWidth: 0 }}>
           <div style={S.hKicker}>Treino detalhado</div>
           <div style={S.hTitle}>
-            Exercícios do Treino {dayLetter(viewSafe)}
-            <span style={{ color: ORANGE }}>.</span>
+            Treino {dayLetter(viewSafe)} <span style={{ color: ORANGE }}>•</span> {exCount} exercícios
           </div>
 
           <div style={S.hSub}>
@@ -406,16 +491,14 @@ export default function TreinoDetalhe() {
               Método: <b>{base.style}</b>
             </span>
             <span style={S.chipSoft}>
-              Volume: <b>{exCount} exercícios</b>
+              Padrão do dia:{" "}
+              <b>
+                {workout[0]?.sets || base.sets} séries • {workout[0]?.reps || base.reps} • {workout[0]?.rest || base.rest}
+              </b>
             </span>
           </div>
 
-          <div style={S.hMeta}>
-            Séries/Reps/Descanso:{" "}
-            <b>
-              {workout[0]?.sets || base.sets} • {workout[0]?.reps || base.reps} • {workout[0]?.rest || base.rest}
-            </b>
-          </div>
+          <div style={S.hMeta}>Toque em “Como fazer” em qualquer exercício para ver a execução correta.</div>
         </div>
       </div>
 
@@ -423,7 +506,7 @@ export default function TreinoDetalhe() {
       <div style={S.nextCard}>
         <div style={S.nextTop}>
           <div style={S.nextTitle}>Próximos dias</div>
-          <div style={S.nextNote}>Prévia do seu ciclo (mesma lógica da aba Treino).</div>
+          <div style={S.nextNote}>Prévia do seu ciclo.</div>
         </div>
 
         <div style={S.nextRow}>
@@ -447,28 +530,49 @@ export default function TreinoDetalhe() {
           const k = keyForLoad(viewSafe, ex.name);
           const myLoad = loads[k] ?? "";
 
+          const sets = ex.sets ?? base.sets;
+          const reps = ex.reps ?? base.reps;
+          const rest = ex.rest ?? base.rest;
+
           return (
             <div key={i} style={S.card}>
               <div style={S.topRow}>
                 <div style={S.num}>{i + 1}</div>
-                <div style={{ minWidth: 0 }}>
+
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={S.name}>{ex.name}</div>
-                  <div style={S.group}>
-                    {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
+
+                  {/* ✅ MAIS “APPLE”: info rápida em pills (séries, reps, descanso) */}
+                  <div style={S.quickRow}>
+                    <InfoPill icon="💪" label="Grupo" value={ex.group} />
+                    <InfoPill icon="🔁" label="Séries" value={String(sets)} />
+                    <InfoPill icon="🎯" label="Reps" value={String(reps)} />
+                    <InfoPill icon="⏱️" label="Descanso" value={String(rest)} />
                   </div>
                 </div>
+
+                {/* ✅ Botão por exercício: “Como fazer” */}
+                <button
+                  type="button"
+                  style={S.howBtn}
+                  onClick={() =>
+                    setHowTo({
+                      name: ex.name,
+                      group: ex.group,
+                      sets,
+                      reps,
+                      rest,
+                      area: det.area,
+                      cue: det.cue,
+                    })
+                  }
+                >
+                  Como fazer
+                  <span style={S.howBtnArrow}>›</span>
+                </button>
               </div>
 
-              <div style={S.box}>
-                <div style={S.boxTitle}>Área trabalhada</div>
-                <div style={S.boxText}>{det.area}</div>
-              </div>
-
-              <div style={S.box2}>
-                <div style={S.boxTitle}>Execução</div>
-                <div style={S.boxText}>{det.cue}</div>
-              </div>
-
+              {/* ✅ Linha de carga mais limpa */}
               <div style={S.loadRow}>
                 <div style={{ minWidth: 0 }}>
                   <div style={S.loadLabel}>Carga sugerida</div>
@@ -482,6 +586,7 @@ export default function TreinoDetalhe() {
                     onChange={(e) => setLoad(ex.name, e.target.value)}
                     placeholder="ex: 40kg"
                     style={S.input}
+                    inputMode="text"
                   />
                 </div>
               </div>
@@ -491,7 +596,7 @@ export default function TreinoDetalhe() {
       </div>
 
       {/* ✅ BOTÃO FINAL: CARDIO (grande, laranja, “balão” apple) */}
-      <button style={S.cardioGo} onClick={() => nav("/cardio")}>
+      <button style={S.cardioGo} onClick={() => nav("/cardio")} type="button">
         <div style={S.cardioGoRow}>
           <div style={{ minWidth: 0 }}>
             <div style={S.cardioTop}>Hora do cardio</div>
@@ -515,6 +620,19 @@ export default function TreinoDetalhe() {
       </button>
 
       <div style={{ height: 140 }} />
+
+      {/* ✅ Modal “Como fazer” */}
+      <HowToModal
+        open={!!howTo}
+        onClose={() => setHowTo(null)}
+        title={howTo?.name}
+        group={howTo?.group}
+        sets={howTo?.sets}
+        reps={howTo?.reps}
+        rest={howTo?.rest}
+        area={howTo?.area}
+        cue={howTo?.cue}
+      />
     </div>
   );
 }
@@ -612,7 +730,7 @@ const S = {
     border: "1px solid rgba(15,23,42,.06)",
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
   },
-  topRow: { display: "flex", gap: 12, alignItems: "center" },
+  topRow: { display: "flex", gap: 12, alignItems: "flex-start" },
   num: {
     width: 46,
     height: 46,
@@ -627,26 +745,46 @@ const S = {
     boxShadow: "0 12px 28px rgba(255,106,0,.22)",
   },
   name: { fontSize: 17, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
-  group: { marginTop: 2, fontSize: 12, fontWeight: 900, color: MUTED },
 
-  box: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.22)",
-  },
-  box2: {
+  // ✅ pills de entendimento rápido
+  quickRow: {
     marginTop: 10,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(15,23,42,.03)",
-    border: "1px solid rgba(15,23,42,.06)",
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 8,
   },
-  boxTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.95 },
-  boxText: { marginTop: 6, fontSize: 13, fontWeight: 800, color: "#334155", lineHeight: 1.5 },
+  pillMini: {
+    borderRadius: 18,
+    padding: 12,
+    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 10px 24px rgba(15,23,42,.05)",
+    minHeight: 64,
+  },
+  pillMiniTop: { display: "flex", alignItems: "center", gap: 8 },
+  pillMiniIcon: { fontSize: 14 },
+  pillMiniLabel: { fontSize: 11, fontWeight: 900, color: MUTED },
+  pillMiniValue: { marginTop: 8, fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
 
-  loadRow: { marginTop: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "end" },
+  // ✅ botão “Como fazer” apple
+  howBtn: {
+    height: 44,
+    alignSelf: "flex-start",
+    padding: "0 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "rgba(255,106,0,.10)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    whiteSpace: "nowrap",
+    transition: "transform .12s ease",
+  },
+  howBtnArrow: { fontSize: 22, fontWeight: 900, opacity: 0.6, marginTop: -1 },
+
+  loadRow: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "end" },
   loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
   loadVal: { marginTop: 4, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
   input: {
@@ -708,7 +846,6 @@ const S = {
     fontSize: 12,
     color: "#334155",
   },
-
   progressTrack: {
     marginTop: 12,
     height: 10,
@@ -716,7 +853,6 @@ const S = {
     background: "rgba(15,23,42,.08)",
     overflow: "hidden",
   },
-  // preenchimento “fake” só pra dar estética de CTA (não depende de progresso)
   progressFill: {
     height: "100%",
     width: "78%",
@@ -745,11 +881,96 @@ const S = {
     fontWeight: 950,
     boxShadow: "0 16px 40px rgba(255,106,0,.22)",
   },
+
+  /* -------- MODAL “Como fazer” -------- */
+  modalWrap: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    display: "grid",
+    placeItems: "end center",
+    padding: 14,
+  },
+  modalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(2,6,23,.55)",
+    border: "none",
+  },
+  modalCard: {
+    position: "relative",
+    width: "min(720px, 100%)",
+    borderRadius: 26,
+    background: "linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.92))",
+    border: "1px solid rgba(255,255,255,.30)",
+    boxShadow: "0 30px 120px rgba(2,6,23,.38)",
+    padding: 16,
+    animation: "sheetUp .22s ease-out",
+  },
+  modalTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  modalKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7 },
+  modalTitle: { marginTop: 4, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
+  modalSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED },
+  modalClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(15,23,42,.04)",
+    fontWeight: 950,
+    color: TEXT,
+  },
+  modalPills: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 },
+
+  modalBoxSoft: {
+    marginTop: 12,
+    borderRadius: 18,
+    padding: 14,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.20)",
+  },
+  modalBox: {
+    marginTop: 10,
+    borderRadius: 18,
+    padding: 14,
+    background: "rgba(15,23,42,.03)",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  modalBoxTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.95 },
+  modalBoxText: { marginTop: 6, fontSize: 13, fontWeight: 800, color: "#334155", lineHeight: 1.5 },
+
+  stepRow: { display: "flex", gap: 10, alignItems: "flex-start" },
+  stepDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 12,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,106,0,.16)",
+    border: "1px solid rgba(255,106,0,.22)",
+    fontSize: 12,
+    fontWeight: 950,
+    color: TEXT,
+    flexShrink: 0,
+  },
+  stepText: { fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
+
+  modalDone: {
+    marginTop: 12,
+    width: "100%",
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 16px 45px rgba(255,106,0,.22)",
+  },
 };
 
-// animação CSS inline (Apple float suave)
+// animações CSS inline
 if (typeof document !== "undefined") {
-  const id = "fitdeal-treino-detalhe-cardio-keyframes";
+  const id = "fitdeal-treino-detalhe-ux-keyframes";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
@@ -757,6 +978,15 @@ if (typeof document !== "undefined") {
       @keyframes softFloatCardio {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-2px); }
+      }
+      @keyframes sheetUp {
+        from { transform: translateY(10px); opacity: 0.0; }
+        to   { transform: translateY(0px); opacity: 1.0; }
+      }
+      /* efeito de toque */
+      button:active { transform: scale(.99); }
+      @media (max-width: 520px){
+        .fitdeal-hide-on-mobile { display: none; }
       }
     `;
     document.head.appendChild(style);
