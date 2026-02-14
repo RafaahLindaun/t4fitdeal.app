@@ -257,7 +257,6 @@ export default function Treino() {
   const split = plan?.split || fallbackSplit.split;
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
-
   const [viewIdx, setViewIdx] = useState(dayIndex);
 
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
@@ -314,10 +313,7 @@ export default function Treino() {
   const previewList = workout.slice(0, previewCount);
   const lockedList = workout.slice(previewCount);
 
-  const strip = useMemo(
-    () => getWeekdaysStrip(split.length, mod(dayIndex, split.length)),
-    [split.length, dayIndex]
-  );
+  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
 
   function openExercises() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
@@ -349,7 +345,13 @@ export default function Treino() {
           </div>
         </div>
 
-        <button style={styles.settingsBtn} onClick={() => nav("/conta")} aria-label="Conta e configurações" type="button">
+        {/* ✅ MAIS APPLE + ÍCONE MELHOR */}
+        <button
+          style={styles.settingsBtn}
+          onClick={() => nav("/conta")}
+          aria-label="Conta e configurações"
+          type="button"
+        >
           <GearIcon />
         </button>
       </div>
@@ -481,7 +483,9 @@ export default function Treino() {
             ) : null}
           </>
         ) : (
-          <div style={styles.lockHint}>Você está no Modo Gratuito. Assine para liberar treino completo e personalização.</div>
+          <div style={styles.lockHint}>
+            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
+          </div>
         )}
       </div>
 
@@ -639,15 +643,23 @@ export default function Treino() {
 
 /* ---------- icons ---------- */
 function GearIcon() {
+  // ✅ ícone mais clean (Apple-like)
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 15.35a3.35 3.35 0 1 0 0-6.7 3.35 3.35 0 0 0 0 6.7Z" stroke="white" strokeWidth="2.1" />
       <path
-        d="M19.4 13.2c.04-.4.06-.8.06-1.2s-.02-.8-.06-1.2l2-1.55a.6.6 0 0 0 .14-.76l-1.9-3.3a.6.6 0 0 0-.72-.26l-2.35.95a9.2 9.2 0 0 0-2.08-1.2l-.36-2.5A.6.6 0 0 0 11.5 1h-3a.6.6 0 0 0-.59.5l-.36 2.5c-.75.3-1.44.7-2.08 1.2l-2.35-.95a.6.6 0 0 0-.72.26l-1.9 3.3a.6.6 0 0 0 .14.76l2 1.55c-.04.4-.06.8-.06 1.2s.02.8.06 1.2l-2 1.55a.6.6 0 0 0-.14.76l1.9 3.3c.15.26.46.36.72.26l2.35-.95c.64.5 1.33.9 2.08 1.2l.36 2.5c.05.29.3.5.59.5h3c.29 0 .54-.21.59-.5l.36-2.5c.75-.3 1.44-.7 2.08-1.2l2.35.95c.26.1.57 0 .72-.26l1.9-3.3a.6.6 0 0 0-.14-.76l-2-1.55Z"
+        d="M12 15.6a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Z"
         stroke="white"
-        strokeOpacity="0.92"
-        strokeWidth="1.6"
+        strokeWidth="2.2"
+        strokeLinecap="round"
         strokeLinejoin="round"
+        opacity="0.95"
+      />
+      <path
+        d="M19.8 12.8c.05-.27.07-.54.07-.8s-.02-.53-.07-.8l1.78-1.32a.7.7 0 0 0 .18-.9l-1.55-2.68a.7.7 0 0 0-.85-.3l-2.08.84c-.43-.34-.9-.62-1.4-.83l-.33-2.2a.7.7 0 0 0-.69-.58h-3.1a.7.7 0 0 0-.69.58l-.33 2.2c-.5.21-.97.49-1.4.83l-2.08-.84a.7.7 0 0 0-.85.3L2.3 8.96a.7.7 0 0 0 .18.9l1.78 1.32c-.05.27-.07.54-.07.8s.02.53.07.8L2.48 14.1a.7.7 0 0 0-.18.9l1.55 2.68c.18.3.55.42.85.3l2.08-.84c.43.34.9.62 1.4.83l.33 2.2c.05.34.35.58.69.58h3.1c.34 0 .64-.24.69-.58l.33-2.2c.5-.21.97-.49 1.4-.83l2.08.84c.3.12.67 0 .85-.3l1.55-2.68a.7.7 0 0 0-.18-.9l-1.78-1.32Z"
+        stroke="white"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+        opacity="0.92"
       />
     </svg>
   );
@@ -672,12 +684,7 @@ function ArrowMiniIcon() {
 function CheckRingIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z"
-        stroke="#111"
-        strokeWidth="2.2"
-        strokeOpacity="0.9"
-      />
+      <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="#111" strokeWidth="2.2" strokeOpacity="0.9" />
       <path
         d="M7.5 12.3l2.8 2.9L16.8 9"
         stroke="#111"
@@ -708,17 +715,19 @@ const styles = {
   headerTitle: { marginTop: 6, fontSize: 24, fontWeight: 950, letterSpacing: -0.6, lineHeight: 1.05 },
   headerSub: { marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.96, lineHeight: 1.3 },
 
+  // ✅ botão config mais Apple (glass + sombra + transição)
   settingsBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,.22)",
-    background: "rgba(255,255,255,.16)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,.28)",
+    background: "rgba(255,255,255,.18)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 14px 34px rgba(0,0,0,.10)",
+    boxShadow: "0 18px 46px rgba(0,0,0,.14)",
+    transition: "transform .14s ease, background .14s ease, border-color .14s ease",
   },
 
   stripWrap: { marginTop: 12 },
@@ -996,11 +1005,12 @@ const styles = {
   },
   fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
 
-  /* ✅ FINISH FLOATING (pago) */
+  /* ✅ FINISH FLOATING (pago) — SUBIDO pra não encostar no menu */
   finishFab: {
     position: "fixed",
     left: "50%",
-    bottom: 92,
+    // ✅ sobe um pouco + safe-area iOS
+    bottom: "calc(112px + env(safe-area-inset-bottom))",
     transform: "translateX(-50%)",
     zIndex: 1100,
 
@@ -1063,12 +1073,16 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-2px); }
       }
-      /* finish: mantém translateX central e adiciona y/scale */
       @keyframes finishFloat {
         0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
         50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
       }
-      button:active { transform: translateX(-50%) translateY(-1px) scale(.99); }
+
+      /* ✅ press apenas onde faz sentido (não quebra botões normais) */
+      .apple-press:active { transform: translateY(1px) scale(.98); }
+
+      /* ✅ press do botão de config (glass) */
+      .settings-press:active { transform: translateY(1px) scale(.97); }
     `;
     document.head.appendChild(style);
   }
