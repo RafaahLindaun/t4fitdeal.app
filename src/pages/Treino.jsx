@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -256,16 +256,8 @@ export default function Treino() {
   const base = plan?.base || fallbackSplit.base;
   const split = plan?.split || fallbackSplit.split;
 
-  // ✅ mantém dayIndex em state pra não depender de reload
-  const [dayIndex, setDayIndex] = useState(() => calcDayIndex(email));
-
-  // ✅ dia exibido
+  const dayIndex = useMemo(() => calcDayIndex(email), [email]);
   const [viewIdx, setViewIdx] = useState(dayIndex);
-
-  // se dayIndex mudar (concluir), sincroniza a visualização
-  useEffect(() => {
-    setViewIdx(dayIndex);
-  }, [dayIndex]);
 
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
@@ -289,15 +281,15 @@ export default function Treino() {
   function adjustLoad(exName, delta) {
     const k = keyForLoad(viewSafe, exName);
     const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2);
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg
     const next = { ...loads, [k]: nextVal };
     setLoads(next);
     saveLoads(email, next);
   }
 
-  // ✅ núcleo do concluir: SEM reload
-  function finishWorkoutCore() {
-    if (!viewingIsToday) return false;
+  // ✅ FIX: sem reload — conclui e navega para dashboard
+  function finishWorkout() {
+    if (!viewingIsToday) return;
 
     bumpDayIndex(email, split.length);
     localStorage.removeItem(doneKey);
@@ -309,28 +301,15 @@ export default function Treino() {
     const arr = Array.isArray(list) ? list : [];
     if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
 
-    // atualiza state local
-    const nextDay = calcDayIndex(email);
-    setDayIndex(nextDay);
-
-    return true;
+    // ✅ vai direto pra dashboard (instantâneo)
+    nav("/dashboard", { replace: true });
   }
 
-  function finishAndGoDashboard() {
-    const ok = finishWorkoutCore();
-    if (!ok) return;
-    nav("/dashboard");
-  }
-
-  // não pagante: metade liberada + resto blur
   const previewCount = Math.max(2, Math.ceil(workout.length / 2));
   const previewList = workout.slice(0, previewCount);
   const lockedList = workout.slice(previewCount);
 
-  const strip = useMemo(
-    () => getWeekdaysStrip(split.length, mod(dayIndex, split.length)),
-    [split.length, dayIndex]
-  );
+  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
 
   function openExercises() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
@@ -377,11 +356,11 @@ export default function Treino() {
             return (
               <button
                 key={d.idx}
+                type="button"
                 style={{
                   ...styles.stripPill,
                   ...(isActive ? styles.stripPillOn : styles.stripPillOff),
                 }}
-                type="button"
                 onClick={() => {
                   if (isActive) {
                     openExercises();
@@ -432,7 +411,7 @@ export default function Treino() {
         </div>
       </button>
 
-      {/* METAS */}
+      {/* CARD: METAS */}
       <div style={styles.card}>
         <div style={styles.cardTop}>
           <div>
@@ -476,12 +455,18 @@ export default function Treino() {
             </div>
 
             <div style={styles.summaryActions}>
-              {/* ✅ aqui NÃO tem mais “Concluir” (ele agora é flutuante) */}
+              <button
+                style={{ ...styles.finishBtn, opacity: viewingIsToday ? 1 : 0.55 }}
+                onClick={finishWorkout}
+                disabled={!viewingIsToday}
+                title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
+                type="button"
+              >
+                Concluir treino
+              </button>
+
               <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button">
                 Personalizar
-              </button>
-              <button style={styles.secondaryBtn} onClick={() => openExercises()} type="button">
-                Abrir detalhes
               </button>
             </div>
 
@@ -564,9 +549,9 @@ export default function Treino() {
                 </div>
 
                 <button
-                  type="button"
                   onClick={() => toggleDone(i)}
                   aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
+                  type="button"
                   style={{
                     ...styles.checkBtn,
                     ...(isDone ? styles.checkOn : styles.checkOff),
@@ -611,15 +596,9 @@ export default function Treino() {
 
           <button style={styles.fab} onClick={() => nav("/planos")} type="button">
             <span style={styles.fabIcon} aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M5 12h12" stroke="#111" strokeWidth="2.6" strokeLinecap="round" />
-                <path
-                  d="M13 6l6 6-6 6"
-                  stroke="#111"
-                  strokeWidth="2.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M13 6l6 6-6 6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <span style={styles.fabText}>Começar agora</span>
@@ -627,20 +606,21 @@ export default function Treino() {
         </>
       ) : null}
 
-      {/* ✅ CONCLUIR TREINO: FLUTUANTE + ANIMADO + VAI PRA DASHBOARD */}
+      {/* ✅ BOTÃO FLUTUANTE PREMIUM: Concluir treino → Dashboard */}
       {paid ? (
         <button
           type="button"
-          style={{
-            ...styles.finishFab,
-            ...(viewingIsToday ? styles.finishFabOn : styles.finishFabOff),
-          }}
-          onClick={finishAndGoDashboard}
+          onClick={finishWorkout}
           disabled={!viewingIsToday}
           title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
+          style={{
+            ...styles.finishFab,
+            opacity: viewingIsToday ? 1 : 0.55,
+            pointerEvents: viewingIsToday ? "auto" : "none",
+          }}
         >
           <span style={styles.finishFabIcon} aria-hidden="true">
-            <FinishIcon />
+            <CheckBadgeIcon />
           </span>
           <span style={styles.finishFabText}>Concluir treino</span>
           <span style={styles.finishFabArrow} aria-hidden="true">
@@ -652,7 +632,7 @@ export default function Treino() {
   );
 }
 
-/* ---------- icons (premium, sem emoji) ---------- */
+/* ---------- icons (premium / sem emoji) ---------- */
 function GearIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -679,16 +659,21 @@ function ArrowIcon() {
 function ChevronIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 18l6-6-6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 18l6-6-6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function FinishIcon() {
+function CheckBadgeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M20 7L10.6 16.4 6 11.8"
+        d="M12 2.8l2.2 1.2 2.5.2 1.6 1.9 2.2 1.2-.7 2.4.7 2.4-2.2 1.2-1.6 1.9-2.5.2L12 21.2l-2.2-1.2-2.5-.2-1.6-1.9-2.2-1.2.7-2.4-.7-2.4 2.2-1.2 1.6-1.9 2.5-.2L12 2.8Z"
+        fill="rgba(255,255,255,.92)"
+        stroke="rgba(255,255,255,.55)"
+      />
+      <path
+        d="M8.2 12.2l2.2 2.2 5.4-5.6"
         stroke="#111"
         strokeWidth="2.6"
         strokeLinecap="round"
@@ -833,8 +818,15 @@ const styles = {
   summaryLine: { marginTop: 8, fontSize: 13, fontWeight: 850, color: MUTED },
   summaryActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
-  customBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
-  secondaryBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,106,0,.10)", color: TEXT, fontWeight: 950 },
+  finishBtn: { padding: 14, borderRadius: 18, border: "none", background: TEXT, color: "#fff", fontWeight: 950 },
+  customBtn: {
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "#fff",
+    color: TEXT,
+    fontWeight: 950,
+  },
 
   viewHint: {
     marginTop: 10,
@@ -984,63 +976,54 @@ const styles = {
   },
   fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
 
-  /* ✅ CONCLUIR (flutuante premium) */
+  // ✅ NOVO: botão flutuante premium “Concluir treino”
   finishFab: {
     position: "fixed",
     left: "50%",
     transform: "translateX(-50%)",
-    bottom: 92,
-    zIndex: 1000,
+    bottom: 28,
+    zIndex: 1100,
 
-    minHeight: 58,
-    padding: "14px 16px",
+    height: 58,
+    padding: "0 16px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,.38)",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    border: "1px solid rgba(255,255,255,.42)",
+
+    background: "linear-gradient(135deg, rgba(255,106,0,.92), rgba(255,138,61,.78))",
     color: "#111",
-    fontWeight: 950,
-    letterSpacing: -0.2,
 
     display: "flex",
     alignItems: "center",
     gap: 12,
 
-    boxShadow: "0 26px 84px rgba(255,106,0,.36), inset 0 1px 0 rgba(255,255,255,.28)",
+    boxShadow: "0 26px 90px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.25)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+
+    animation: "finishFloat 3.0s ease-in-out infinite",
     willChange: "transform",
-    animation: "finishFloat 3.2s ease-in-out infinite",
-  },
-  finishFabOn: {
-    opacity: 1,
-    pointerEvents: "auto",
-    filter: "none",
-  },
-  finishFabOff: {
-    opacity: 0.55,
-    pointerEvents: "none",
-    filter: "grayscale(0.15)",
-    animation: "none",
   },
   finishFabIcon: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 999,
-    flexShrink: 0,
-    background: "rgba(255,255,255,.90)",
-    border: "1px solid rgba(255,255,255,.55)",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
+    background: "rgba(255,255,255,.20)",
+    border: "1px solid rgba(255,255,255,.32)",
+    boxShadow: "0 14px 34px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.22)",
   },
-  finishFabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
+  finishFabText: { fontSize: 14, fontWeight: 950, letterSpacing: -0.2, whiteSpace: "nowrap" },
   finishFabArrow: {
+    marginLeft: 4,
     width: 34,
     height: 34,
     borderRadius: 999,
-    marginLeft: 2,
-    background: "rgba(255,255,255,.30)",
-    border: "1px solid rgba(255,255,255,.35)",
     display: "grid",
     placeItems: "center",
+    background: "rgba(255,255,255,.78)",
+    border: "1px solid rgba(255,255,255,.55)",
+    boxShadow: "0 10px 24px rgba(0,0,0,.10)",
   },
 };
 
