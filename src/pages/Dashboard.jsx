@@ -1,7 +1,7 @@
-// ✅ ALTERAÇÃO ÚNICA: subir o bloco de METAS para ficar ao lado do “Bem-vindo”
-// - NÃO mexi na mensagem de motivação
-// - NÃO mudei o conteúdo das metas, só reposicionei
-// - O layout vira 2 colunas no desktop e 1 coluna no mobile
+// ✅ ALTERAÇÃO: removi COMPLETAMENTE o bloco “Hoje / Resumo rápido” (DataBubble)
+// - Mantive as metas ao lado do “Bem-vindo” (desktop 2 colunas / mobile 1 coluna)
+// - Mantive o CTA preto premium com leveza + movimento
+// - Hidratação: só Nutri+. Se não tiver, aparece “Acesso bloqueado”
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -102,37 +102,6 @@ function ProgressPill({ value, max, label }) {
         <div style={{ ...styles.pillFill, width: `${Math.round(pct * 100)}%` }} />
       </div>
     </div>
-  );
-}
-
-/* ----------------- “DADOS” ----------------- */
-function StatPill({ label, value, locked }) {
-  return (
-    <div style={{ ...styles.statPill, ...(locked ? styles.statPillLocked : null) }}>
-      <div style={styles.statLabel}>{label}</div>
-      <div style={styles.statValue}>{locked ? "—" : value}</div>
-    </div>
-  );
-}
-
-function DataBubble({ pesoAtual, pesoPerdido, refeicoes, lockedRefeicoes, onOpen }) {
-  return (
-    <button type="button" style={styles.dataBubble} onClick={onOpen}>
-      <div style={styles.dataBubbleTop}>
-        <div style={styles.dataBubbleTitle}>Hoje</div>
-        <div style={styles.dataBubbleHint}>Resumo rápido</div>
-      </div>
-
-      <div style={styles.dataRow}>
-        <StatPill label="Peso atual" value={`${pesoAtual} kg`} />
-        <StatPill label="Peso perdido" value={`${pesoPerdido} kg`} />
-        <StatPill label="Refeições ideais" value={`${refeicoes}`} locked={lockedRefeicoes} />
-      </div>
-
-      <div style={styles.dataFine}>
-        {lockedRefeicoes ? "🔒 Refeições ideais liberado no Nutri+" : "Toque para ajustar no perfil"}
-      </div>
-    </button>
   );
 }
 
@@ -263,7 +232,7 @@ export default function Dashboard() {
   const openKey = `open_${email}`;
   const today = useMemo(() => todayKey(), []);
 
-  const [workouts, setWorkouts] = useState(() => {
+  const [workouts] = useState(() => {
     const raw = localStorage.getItem(workoutKey);
     return raw ? JSON.parse(raw) : [];
   });
@@ -277,13 +246,6 @@ export default function Dashboard() {
   });
 
   const workoutSet = useMemo(() => new Set(workouts), [workouts]);
-
-  function markWorkout() {
-    if (workoutSet.has(today)) return;
-    const next = [...workouts, today];
-    setWorkouts(next);
-    localStorage.setItem(workoutKey, JSON.stringify(next));
-  }
 
   const weekGoal = Number(user?.frequencia || 4) || 4;
 
@@ -321,37 +283,6 @@ export default function Dashboard() {
     return Array.isArray(arr) ? arr : [];
   }, [goalsKey]);
 
-  /* ✅ PESO (dados) */
-  const pesoAtual = useMemo(() => {
-    const p = Number(user?.peso || 0);
-    return p ? Number(p.toFixed(1)) : 0;
-  }, [user?.peso]);
-
-  const weightStartKey = `weight_start_${email}`;
-  const pesoInicial = useMemo(() => {
-    const raw = localStorage.getItem(weightStartKey);
-    if (raw) return Number(raw || 0) || pesoAtual || 0;
-    if (pesoAtual) localStorage.setItem(weightStartKey, String(pesoAtual));
-    return pesoAtual || 0;
-  }, [weightStartKey, pesoAtual]);
-
-  const pesoPerdido = useMemo(() => {
-    const diff = (pesoInicial || 0) - (pesoAtual || 0);
-    return Number((diff > 0 ? diff : 0).toFixed(1));
-  }, [pesoInicial, pesoAtual]);
-
-  const refeicoesIdeais = useMemo(() => {
-    const objetivo = String(user?.objetivo || "").toLowerCase();
-    const freq = Number(user?.frequencia || 0) || 0;
-    let meals = 4;
-
-    if (objetivo.includes("hiper") || objetivo.includes("ganho") || objetivo.includes("massa")) meals = 5;
-    if (objetivo.includes("emagre") || objetivo.includes("defini") || objetivo.includes("cut")) meals = 4;
-    if (freq >= 5) meals = Math.min(6, meals + 1);
-
-    return meals;
-  }, [user?.objetivo, user?.frequencia]);
-
   /* ✅ Água */
   const peso = Number(user?.peso || 0) || 80;
   const goalMl = useMemo(() => clamp(Math.round(peso * 35), 1800, 5000), [peso]);
@@ -377,6 +308,21 @@ export default function Dashboard() {
         @media (min-width: 980px){
           .heroGrid{ grid-template-columns: 1.35fr .65fr; align-items: start; }
         }
+
+        @keyframes payFloat {
+          0%,100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes payGlowPulse {
+          0%,100% { opacity: .38; }
+          50% { opacity: .55; }
+        }
+        @keyframes payShimmer {
+          0% { transform: translateX(0) rotate(14deg); opacity: .0; }
+          20% { opacity: .55; }
+          55% { opacity: .25; }
+          100% { transform: translateX(280%) rotate(14deg); opacity: .0; }
+        }
       `}</style>
 
       <div style={styles.bgGlow} />
@@ -395,9 +341,9 @@ export default function Dashboard() {
         </div>
       ) : null}
 
-      {/* ✅ HERO: Esquerda = Bem-vindo | Direita = Metas (NOVIDADE) */}
+      {/* ✅ HERO: Esquerda = Bem-vindo | Direita = Metas */}
       <div className="heroGrid" style={styles.heroGrid}>
-        {/* BEM-VINDO (sem mudar conteúdo) */}
+        {/* BEM-VINDO */}
         <button
           onClick={nextTip}
           style={{
@@ -414,7 +360,7 @@ export default function Dashboard() {
           </div>
         </button>
 
-        {/* ✅ METAS AO LADO DO BEM-VINDO (só reposição) */}
+        {/* METAS AO LADO */}
         <div style={styles.sideStack}>
           {!paid ? (
             <button
@@ -435,7 +381,11 @@ export default function Dashboard() {
             </button>
           ) : (
             <>
-              <button style={{ ...styles.goalsHeader, marginTop: 6 }} onClick={() => nav("/metas")} type="button">
+              <button
+                style={{ ...styles.goalsHeader, marginTop: 6 }}
+                onClick={() => nav("/metas")}
+                type="button"
+              >
                 <div>
                   <div style={styles.goalsTitle}>Metas</div>
                   <div style={styles.goalsHint}>
@@ -465,15 +415,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ✅ DADOS (continua embaixo, sem mexer no bem-vindo) */}
-      <DataBubble
-        pesoAtual={pesoAtual || 0}
-        pesoPerdido={pesoPerdido || 0}
-        refeicoes={refeicoesIdeais}
-        lockedRefeicoes={!hasNutriPlus}
-        onOpen={() => nav(hasNutriPlus ? "/nutricao" : "/planos")}
-      />
-
       {/* ✅ CTA premium (preto) para não pagantes */}
       {!paid ? <PaywallCard onGoPlans={() => nav("/planos")} /> : null}
 
@@ -490,7 +431,7 @@ export default function Dashboard() {
         <WaterLocked onGoPlans={() => nav("/planos")} />
       )}
 
-      {/* ✅ resto do dashboard (igual) */}
+      {/* ✅ resto do dashboard */}
       <div style={styles.progressRow}>
         <ProgressPill value={weekly} max={Math.max(weekGoal, 1)} label="Semana" />
         <ProgressPill value={streak} max={7} label="Streak" />
@@ -532,7 +473,6 @@ export default function Dashboard() {
   );
 }
 
-/* ----------------- STYLES (mantive o que você já tinha, só adicionei 2 estilos) ----------------- */
 const styles = {
   page: {
     padding: 18,
@@ -551,7 +491,6 @@ const styles = {
     filter: "blur(0px)",
   },
 
-  // ✅ NOVO: grid que permite metas ao lado (desktop) e empilha (mobile)
   heroGrid: {
     position: "relative",
     zIndex: 2,
@@ -559,7 +498,6 @@ const styles = {
     gridTemplateColumns: "1fr",
     gap: 12,
   },
-  // ✅ NOVO: stack do lado direito (metas)
   sideStack: { display: "grid", gap: 10 },
 
   planCard: {
@@ -613,39 +551,6 @@ const styles = {
   },
   motTitle: { marginTop: 12, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.6 },
   motText: { marginTop: 8, fontSize: 14, fontWeight: 750, color: "#334155", lineHeight: 1.55 },
-
-  /* -------- DADOS bubble (igual ao seu) -------- */
-  dataBubble: {
-    position: "relative",
-    zIndex: 2,
-    marginTop: 12,
-    width: "100%",
-    borderRadius: 22,
-    padding: 14,
-    textAlign: "left",
-    background: "#fff",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
-  dataBubbleTop: { display: "flex", alignItems: "baseline", justifyContent: "space-between" },
-  dataBubbleTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  dataBubbleHint: { fontSize: 12, fontWeight: 800, color: MUTED },
-  dataRow: { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 },
-  dataFine: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
-  statPill: {
-    borderRadius: 18,
-    padding: 12,
-    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(255,255,255,.96))",
-    border: "1px solid rgba(255,106,0,.16)",
-    boxShadow: "0 10px 24px rgba(15,23,42,.05)",
-    minHeight: 62,
-  },
-  statPillLocked: {
-    background: "linear-gradient(135deg, rgba(15,23,42,.04), rgba(255,255,255,.96))",
-    border: "1px solid rgba(15,23,42,.08)",
-  },
-  statLabel: { fontSize: 11, fontWeight: 900, color: MUTED },
-  statValue: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
 
   paywallBtnWrap: {
     position: "relative",
@@ -835,6 +740,35 @@ const styles = {
   },
   waterNumNutri: { marginTop: 10, fontSize: 13, fontWeight: 800, color: MUTED },
 
+  /* -------- Water locked -------- */
+  lockCard: {
+    position: "relative",
+    zIndex: 1,
+    marginTop: 14,
+    width: "100%",
+    border: "1px solid rgba(15,23,42,.06)",
+    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.92))",
+    borderRadius: 22,
+    padding: 14,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    textAlign: "left",
+  },
+  lockTop: { display: "flex", alignItems: "center", gap: 12 },
+  lockIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(15,23,42,.06)",
+    border: "1px solid rgba(15,23,42,.10)",
+    flexShrink: 0,
+    fontSize: 18,
+  },
+  lockTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  lockSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
+  lockChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
+
   /* -------- Goals -------- */
   goalsHeader: {
     position: "relative",
@@ -958,6 +892,7 @@ const styles = {
     boxShadow: "0 10px 24px rgba(255,106,0,.18)",
     transition: "width .25s ease",
   },
+
   /* -------- Cards -------- */
   grid: { position: "relative", zIndex: 1, marginTop: 14, display: "grid", gap: 12 },
   card: {
