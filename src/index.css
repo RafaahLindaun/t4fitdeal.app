@@ -1,0 +1,302 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont;
+}
+
+:root {
+  --bg: #ffffff;
+  --card: #f8fafc;
+  --border: #e5e7eb;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #2563eb;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 28px 20px 100px;
+}
+
+.page {
+  animation: fade 0.25s ease-out;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+p {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.card {
+  display: flex;
+  gap: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 16px;
+  align-items: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:active {
+  transform: scale(0.97);
+}
+
+.card img {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+/* SPLASH ANIMATIONS */
+.splash-logo {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  display: grid;
+  place-items: center;
+}
+
+/* movimento principal do logo (leve e premium) */
+.splash-logo img {
+  animation: splashFloat 1.1s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+
+/* brilho por trás */
+.splash-glow {
+  position: absolute;
+  inset: 40px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(37, 99, 235, 0.16),
+    rgba(34, 197, 94, 0.14),
+    rgba(255, 255, 255, 0)
+  );
+  filter: blur(14px);
+  animation: splashGlow 1.4s ease-in-out infinite;
+  z-index: 1;
+  opacity: 0.9;
+}
+
+
+
+/* “passadas” (efeito simples de steps) */
+.splash-steps {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(34, 197, 94, 0.0),
+    rgba(34, 197, 94, 0.65),
+    rgba(37, 99, 235, 0.65),
+    rgba(37, 99, 235, 0.0)
+  );
+  opacity: 1;
+  mask-image: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 22px);
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 22px);
+  animation: splashSteps 0.45s steps(7) infinite;
+  z-index: 0;
+}
+
+
+/* dots loader */
+.splash-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  display: inline-block;
+  animation: dot 0.9s infinite;
+}
+.splash-dots span:nth-child(2) { animation-delay: 0.15s; }
+.splash-dots span:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes splashFloat {
+  0%   { transform: translateY(0px) rotate(-1deg) scale(1); }
+  50%  { transform: translateY(-6px) rotate(1deg) scale(1.02); }
+  100% { transform: translateY(0px) rotate(-1deg) scale(1); }
+}
+
+@keyframes splashGlow {
+  0%   { opacity: 0.65; transform: scale(0.98); }
+  50%  { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 0.65; transform: scale(0.98); }
+}
+
+@keyframes splashSteps {
+  from { background-position: 0 0; }
+  to   { background-position: 160px 0; }
+}
+
+@keyframes dot {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50%      { transform: translateY(-4px); opacity: 1; }
+}
+/* SPLASH (imagem + passada) */
+.splash-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+}
+
+.splash-stage {
+  width: min(520px, 92vw);
+  height: min(720px, 92vh);
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.splash-runner {
+  width: min(420px, 92vw);
+  height: auto;
+  display: block;
+  position: relative;
+  z-index: 3;
+
+  /* “troca de perna”: balanço + micro giro + micro deslocamento */
+  animation: runnerStep 0.55s ease-in-out infinite;
+  transform-origin: 50% 70%;
+
+  /* deixa a imagem bem evidente */
+  filter: saturate(1.1) contrast(1.08) drop-shadow(0 18px 30px rgba(15, 23, 42, 0.14));
+}
+
+/* faixa animada embaixo (sensação de passos/velocidade) */
+.splash-steps {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, 80vw);
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(34, 197, 94, 0.0),
+    rgba(34, 197, 94, 0.55),
+    rgba(37, 99, 235, 0.55),
+    rgba(37, 99, 235, 0.0)
+  );
+  opacity: 0.95;
+
+  /* “quadriculado” para parecer passos */
+  mask-image: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 22px);
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 22px);
+
+  animation: stepsMove 0.42s steps(7) infinite;
+  z-index: 1;
+}
+
+/* footprints alternando (parece troca de perna) */
+.splash-footprints {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(220px, 70vw);
+  height: 40px;
+  z-index: 2;
+}
+
+.fp {
+  position: absolute;
+  width: 18px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.10);
+  transform: rotate(-18deg);
+  opacity: 0;
+  animation: footprint 1.1s infinite;
+}
+
+.fp1 { left: 20px; top: 14px; animation-delay: 0s; }
+.fp2 { left: 70px; top: 6px;  animation-delay: 0.27s; }
+.fp3 { left: 120px; top: 14px; animation-delay: 0.54s; }
+.fp4 { left: 170px; top: 6px;  animation-delay: 0.81s; }
+
+@keyframes runnerStep {
+  0%   { transform: translateY(0px) translateX(-2px) rotate(-0.8deg) scale(1); }
+  50%  { transform: translateY(-6px) translateX(2px)  rotate(0.8deg)  scale(1.01); }
+  100% { transform: translateY(0px) translateX(-2px) rotate(-0.8deg) scale(1); }
+}
+
+@keyframes stepsMove {
+  from { background-position: 0 0; }
+  to   { background-position: 180px 0; }
+}
+
+@keyframes footprint {
+  0%   { opacity: 0; transform: translateY(8px) rotate(-18deg) scale(0.9); }
+  25%  { opacity: 0.9; transform: translateY(0px) rotate(-18deg) scale(1); }
+  55%  { opacity: 0.2; transform: translateY(-2px) rotate(-18deg) scale(1.02); }
+  100% { opacity: 0; transform: translateY(-6px) rotate(-18deg) scale(1.02); }
+}
+/* Transição suave entre telas */
+.page {
+  animation: pageIn 0.24s ease-out;
+  will-change: transform, opacity;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* toque suave nos cards/botões */
+button, .card {
+  transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+}
+
+button:active, .card:active {
+  transform: scale(0.98);
+}
+@keyframes nutriFloat {
+  0%   { transform: translateX(-50%) translateY(0) scale(1); }
+  50%  { transform: translateX(-50%) translateY(-6px) scale(1.01); }
+  100% { transform: translateX(-50%) translateY(0) scale(1); }
+}
