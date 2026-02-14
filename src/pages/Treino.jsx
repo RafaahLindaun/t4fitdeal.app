@@ -257,6 +257,7 @@ export default function Treino() {
   const split = plan?.split || fallbackSplit.split;
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
+
   const [viewIdx, setViewIdx] = useState(dayIndex);
 
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
@@ -281,19 +282,23 @@ export default function Treino() {
   function adjustLoad(exName, delta) {
     const k = keyForLoad(viewSafe, exName);
     const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
     const next = { ...loads, [k]: nextVal };
     setLoads(next);
     saveLoads(email, next);
   }
 
-  // ✅ FIX: sem reload — conclui e navega para dashboard
+  // ✅ CORRIGIDO: sem reload + navega para dashboard
   function finishWorkout() {
     if (!viewingIsToday) return;
 
     bumpDayIndex(email, split.length);
-    localStorage.removeItem(doneKey);
 
+    // limpa progresso do dia atual
+    localStorage.removeItem(doneKey);
+    setDone({});
+
+    // salva histórico (dias treinados)
     const wkKey = `workout_${email}`;
     const today = todayKey();
     const raw = localStorage.getItem(wkKey);
@@ -301,15 +306,18 @@ export default function Treino() {
     const arr = Array.isArray(list) ? list : [];
     if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
 
-    // ✅ vai direto pra dashboard (instantâneo)
-    nav("/dashboard", { replace: true });
+    // vai pro dashboard
+    nav("/dashboard");
   }
 
   const previewCount = Math.max(2, Math.ceil(workout.length / 2));
   const previewList = workout.slice(0, previewCount);
   const lockedList = workout.slice(previewCount);
 
-  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
+  const strip = useMemo(
+    () => getWeekdaysStrip(split.length, mod(dayIndex, split.length)),
+    [split.length, dayIndex]
+  );
 
   function openExercises() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
@@ -356,16 +364,17 @@ export default function Treino() {
             return (
               <button
                 key={d.idx}
-                type="button"
                 style={{
                   ...styles.stripPill,
                   ...(isActive ? styles.stripPillOn : styles.stripPillOff),
                 }}
+                type="button"
                 onClick={() => {
                   if (isActive) {
                     openExercises();
                     return;
                   }
+
                   setViewIdx(d.idx);
                   const nextKey = `done_ex_${email}_${d.idx}`;
                   setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
@@ -455,18 +464,12 @@ export default function Treino() {
             </div>
 
             <div style={styles.summaryActions}>
-              <button
-                style={{ ...styles.finishBtn, opacity: viewingIsToday ? 1 : 0.55 }}
-                onClick={finishWorkout}
-                disabled={!viewingIsToday}
-                title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
-                type="button"
-              >
-                Concluir treino
-              </button>
-
               <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button">
                 Personalizar
+              </button>
+
+              <button style={styles.cardBtnAlt} onClick={() => openExercises()} type="button">
+                Abrir detalhes
               </button>
             </div>
 
@@ -549,16 +552,16 @@ export default function Treino() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => toggleDone(i)}
                   aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
-                  type="button"
                   style={{
                     ...styles.checkBtn,
                     ...(isDone ? styles.checkOn : styles.checkOff),
                     transform: tapId === i ? "scale(0.92)" : "scale(1)",
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path
                       d="M20 7L10 17l-5-5"
                       stroke={isDone ? "#111" : "#64748b"}
@@ -606,33 +609,35 @@ export default function Treino() {
         </>
       ) : null}
 
-      {/* ✅ BOTÃO FLUTUANTE PREMIUM: Concluir treino → Dashboard */}
+      {/* ✅ BOTÃO FLUTUANTE “CONCLUIR TREINO” (premium + movimento) */}
       {paid ? (
         <button
           type="button"
-          onClick={finishWorkout}
-          disabled={!viewingIsToday}
-          title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
           style={{
             ...styles.finishFab,
             opacity: viewingIsToday ? 1 : 0.55,
             pointerEvents: viewingIsToday ? "auto" : "none",
           }}
+          onClick={finishWorkout}
+          disabled={!viewingIsToday}
+          title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
         >
           <span style={styles.finishFabIcon} aria-hidden="true">
-            <CheckBadgeIcon />
+            <CheckRingIcon />
           </span>
           <span style={styles.finishFabText}>Concluir treino</span>
           <span style={styles.finishFabArrow} aria-hidden="true">
-            <ChevronIcon />
+            <ArrowMiniIcon />
           </span>
         </button>
       ) : null}
+
+      <div style={{ height: 140 }} />
     </div>
   );
 }
 
-/* ---------- icons (premium / sem emoji) ---------- */
+/* ---------- icons ---------- */
 function GearIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -656,24 +661,25 @@ function ArrowIcon() {
   );
 }
 
-function ChevronIcon() {
+function ArrowMiniIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M10 18l6-6-6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M10 17l5-5-5-5" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function CheckBadgeIcon() {
+function CheckRingIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 2.8l2.2 1.2 2.5.2 1.6 1.9 2.2 1.2-.7 2.4.7 2.4-2.2 1.2-1.6 1.9-2.5.2L12 21.2l-2.2-1.2-2.5-.2-1.6-1.9-2.2-1.2.7-2.4-.7-2.4 2.2-1.2 1.6-1.9 2.5-.2L12 2.8Z"
-        fill="rgba(255,255,255,.92)"
-        stroke="rgba(255,255,255,.55)"
+        d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z"
+        stroke="#111"
+        strokeWidth="2.2"
+        strokeOpacity="0.9"
       />
       <path
-        d="M8.2 12.2l2.2 2.2 5.4-5.6"
+        d="M7.5 12.3l2.8 2.9L16.8 9"
         stroke="#111"
         strokeWidth="2.6"
         strokeLinecap="round"
@@ -685,7 +691,7 @@ function CheckBadgeIcon() {
 
 /* ---------------- styles ---------------- */
 const styles = {
-  page: { padding: 18, paddingBottom: 210, background: BG },
+  page: { padding: 18, paddingBottom: 190, background: BG },
 
   header: {
     borderRadius: 24,
@@ -805,9 +811,18 @@ const styles = {
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
   cardTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   cardSub: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.4 },
+
   cardBtn: {
     padding: "12px 14px",
     borderRadius: 16,
+    border: "1px solid rgba(255,106,0,.28)",
+    background: "rgba(255,106,0,.10)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+  cardBtnAlt: {
+    padding: 14,
+    borderRadius: 18,
     border: "1px solid rgba(255,106,0,.28)",
     background: "rgba(255,106,0,.10)",
     color: TEXT,
@@ -818,7 +833,6 @@ const styles = {
   summaryLine: { marginTop: 8, fontSize: 13, fontWeight: 850, color: MUTED },
   summaryActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
-  finishBtn: { padding: 14, borderRadius: 18, border: "none", background: TEXT, color: "#fff", fontWeight: 950 },
   customBtn: {
     padding: 14,
     borderRadius: 18,
@@ -947,18 +961,22 @@ const styles = {
     transform: "translateX(-50%)",
     bottom: 160,
     zIndex: 999,
+
     minHeight: 56,
     padding: "14px 18px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,.35)",
+
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     color: "#111",
     fontWeight: 950,
     letterSpacing: -0.2,
+
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
+
     boxShadow: "0 22px 70px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.28)",
     animation: "pulseGlow 1.8s ease-in-out infinite",
     willChange: "transform",
@@ -968,62 +986,65 @@ const styles = {
     height: 38,
     borderRadius: 999,
     flexShrink: 0,
+
     background: "rgba(255,255,255,.88)",
     border: "1px solid rgba(255,255,255,.55)",
     display: "grid",
     placeItems: "center",
+
     boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
   },
   fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
 
-  // ✅ NOVO: botão flutuante premium “Concluir treino”
+  /* ✅ FINISH FLOATING (pago) */
   finishFab: {
     position: "fixed",
     left: "50%",
+    bottom: 92,
     transform: "translateX(-50%)",
-    bottom: 28,
     zIndex: 1100,
 
-    height: 58,
-    padding: "0 16px",
+    minHeight: 58,
+    padding: "14px 16px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,.42)",
+    border: "1px solid rgba(255,255,255,.40)",
 
-    background: "linear-gradient(135deg, rgba(255,106,0,.92), rgba(255,138,61,.78))",
+    background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
     color: "#111",
+    fontWeight: 950,
+    letterSpacing: -0.2,
 
     display: "flex",
     alignItems: "center",
+    justifyContent: "center",
     gap: 12,
 
-    boxShadow: "0 26px 90px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.25)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-
-    animation: "finishFloat 3.0s ease-in-out infinite",
+    boxShadow: "0 26px 90px rgba(255,106,0,.38), inset 0 1px 0 rgba(255,255,255,.30)",
+    animation: "finishFloat 3.2s ease-in-out infinite",
     willChange: "transform",
   },
   finishFabIcon: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 999,
+    flexShrink: 0,
+
+    background: "rgba(255,255,255,.90)",
+    border: "1px solid rgba(255,255,255,.60)",
     display: "grid",
     placeItems: "center",
-    background: "rgba(255,255,255,.20)",
-    border: "1px solid rgba(255,255,255,.32)",
-    boxShadow: "0 14px 34px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.22)",
+
+    boxShadow: "0 14px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.55)",
   },
-  finishFabText: { fontSize: 14, fontWeight: 950, letterSpacing: -0.2, whiteSpace: "nowrap" },
+  finishFabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
   finishFabArrow: {
-    marginLeft: 4,
     width: 34,
     height: 34,
     borderRadius: 999,
     display: "grid",
     placeItems: "center",
-    background: "rgba(255,255,255,.78)",
-    border: "1px solid rgba(255,255,255,.55)",
-    boxShadow: "0 10px 24px rgba(0,0,0,.10)",
+    background: "rgba(255,255,255,.32)",
+    border: "1px solid rgba(255,255,255,.35)",
   },
 };
 
@@ -1042,11 +1063,12 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-2px); }
       }
+      /* finish: mantém translateX central e adiciona y/scale */
       @keyframes finishFloat {
-        0%, 100% { transform: translateX(-50%) translateY(0px); }
-        50% { transform: translateX(-50%) translateY(-3px); }
+        0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
+        50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
       }
-      button:active { transform: scale(.99); }
+      button:active { transform: translateX(-50%) translateY(-1px) scale(.99); }
     `;
     document.head.appendChild(style);
   }
