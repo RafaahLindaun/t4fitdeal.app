@@ -69,20 +69,10 @@ export default function BottomMenu() {
         }}
       >
         <div style={styles.centerIconWrap}>
-          {/* ✅ SVG (pesinho diagonal) */}
+          {/* ✅ SOMENTE SVG: evita “quadrado quebrado” de imagem/placeholder */}
           <div style={styles.centerIconSvg}>
-            <DumbbellIcon active />
+            <DumbbellIcon active={treinoActive} />
           </div>
-
-          {/* ✅ PNG (se carregar). Se falhar, some e fica só o SVG */}
-          <img
-            src="https://w7.pngwing.com/pngs/309/616/png-transparent-dumbbell-barbell-fitness-centre-weight-training-dumbbell-physical-fitness-hand-sport.png"
-            alt=""
-            style={styles.centerIconImg}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
         </div>
 
         <div style={styles.centerLabel}>Treino</div>
@@ -209,16 +199,6 @@ const styles: Record<string, any> = {
     inset: 0,
     display: "grid",
     placeItems: "center",
-    pointerEvents: "none",
-  },
-  centerIconImg: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    objectFit: "contain",
-    filter: "brightness(0) invert(1)",
-    opacity: 0.95,
-    pointerEvents: "none",
   },
 
   centerLabel: {
@@ -306,27 +286,98 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Pesinho diagonal (não quebra, centralizado e sempre visível) */
+/* ✅ Pesinho (diagonal, igual ao ícone do card) — sem PNG (não quebra) */
 function DumbbellIcon({ active }: { active: boolean }) {
+  // Mantém o mesmo “branco” do botão central.
+  // Se quiser futuramente variar por active, é só trocar o stroke abaixo.
   const stroke = "rgba(255,255,255,.95)";
+  const fillSoftA = "rgba(255,255,255,.10)";
+  const fillSoftB = "rgba(255,255,255,.06)";
 
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g transform="rotate(-32 12 12)" stroke={stroke} strokeLinecap="round" strokeLinejoin="round">
-        {/* barra */}
-        <path d="M9.2 12h5.6" strokeWidth="2.6" />
+      {/* Tudo gira junto pra ficar diagonal como no card */}
+      <g transform="rotate(-32 12 12)">
+        {/* Barra central (haste) */}
+        <path
+          d="M9.2 12h5.6"
+          stroke={stroke}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
-        {/* grips (marquinhas perto do meio) */}
-        <path d="M10.3 10.7v2.6" strokeWidth="2.2" />
-        <path d="M13.7 10.7v2.6" strokeWidth="2.2" />
+        {/* Colares/pegadores (perto da barra) */}
+        <path
+          d="M8.55 10.4v3.2"
+          stroke={stroke}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M15.45 10.4v3.2"
+          stroke={stroke}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
 
-        {/* placas externas */}
-        <path d="M5.5 9.1v5.8" strokeWidth="2.8" />
-        <path d="M18.5 9.1v5.8" strokeWidth="2.8" />
+        {/* Pesos externos (as “placas” maiores) */}
+        <rect
+          x="4.45"
+          y="8.9"
+          width="2.75"
+          height="6.2"
+          rx="1.25"
+          fill={fillSoftA}
+          stroke={stroke}
+          strokeWidth="2.2"
+        />
+        <rect
+          x="16.8"
+          y="8.9"
+          width="2.75"
+          height="6.2"
+          rx="1.25"
+          fill={fillSoftA}
+          stroke={stroke}
+          strokeWidth="2.2"
+        />
 
-        {/* placas internas (um pouco maiores que as marcas) */}
-        <path d="M7.4 10.1v3.8" strokeWidth="2.6" />
-        <path d="M16.6 10.1v3.8" strokeWidth="2.6" />
+        {/* Pesos internos (placas menores, coladas no meio) */}
+        <rect
+          x="7.45"
+          y="10.05"
+          width="1.55"
+          height="3.9"
+          rx="0.78"
+          fill={fillSoftB}
+          stroke={stroke}
+          strokeWidth="2.0"
+        />
+        <rect
+          x="15.0"
+          y="10.05"
+          width="1.55"
+          height="3.9"
+          rx="0.78"
+          fill={fillSoftB}
+          stroke={stroke}
+          strokeWidth="2.0"
+        />
+
+        {/* “Tampas” nas extremidades (toque do ícone do card) */}
+        <path
+          d="M3.9 10.1v3.8"
+          stroke={stroke}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M20.1 10.1v3.8"
+          stroke={stroke}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
       </g>
     </svg>
   );
