@@ -14,6 +14,7 @@ import Pagamentos from "./pages/Pagamentos";
 import Planos from "./pages/Planos";
 import TreinoPersonalize from "./pages/TreinoPersonalize.jsx";
 import Metas from "./pages/Metas.jsx";
+import Suplementacao from "./pages/Suplementacao.jsx";
 
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -74,6 +75,15 @@ function AppRoutes() {
   }
 />
 
+        <Route
+  path="/suplementacao"
+  element={
+    <ProtectedRoute>
+      <suplementacao />
+    </ProtectedRoute>
+  }
+/>
+        
         <Route
           path="/cardio"
           element={
@@ -149,3 +159,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
