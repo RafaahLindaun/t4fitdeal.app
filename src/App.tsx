@@ -79,7 +79,7 @@ function AppRoutes() {
   path="/suplementacao"
   element={
     <ProtectedRoute>
-      <suplementacao />
+      <Suplementacao />
     </ProtectedRoute>
   }
 />
@@ -159,4 +159,5 @@ export default function App() {
     </AuthProvider>
   );
 }
+
 
