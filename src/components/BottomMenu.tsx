@@ -69,7 +69,7 @@ export default function BottomMenu() {
         }}
       >
         <div style={styles.centerIconWrap}>
-          {/* ✅ SVG (desenho do pesinho igual ao do card) */}
+          {/* ✅ SVG (pesinho diagonal) */}
           <div style={styles.centerIconSvg}>
             <DumbbellIcon active />
           </div>
@@ -209,6 +209,7 @@ const styles: Record<string, any> = {
     inset: 0,
     display: "grid",
     placeItems: "center",
+    pointerEvents: "none",
   },
   centerIconImg: {
     position: "absolute",
@@ -305,62 +306,27 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Pesinho (diagonal, igual ao ícone do card) */
+/* ✅ Pesinho diagonal (não quebra, centralizado e sempre visível) */
 function DumbbellIcon({ active }: { active: boolean }) {
   const stroke = "rgba(255,255,255,.95)";
+
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g transform="rotate(-32 12 12)">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <g transform="rotate(-32 12 12)" stroke={stroke} strokeLinecap="round" strokeLinejoin="round">
         {/* barra */}
-        <path d="M8.9 12h6.2" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M9.2 12h5.6" strokeWidth="2.6" />
 
-        {/* colares (perto da barra) */}
-        <path d="M8.2 10.4v3.2" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
-        <path d="M15.8 10.4v3.2" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
+        {/* grips (marquinhas perto do meio) */}
+        <path d="M10.3 10.7v2.6" strokeWidth="2.2" />
+        <path d="M13.7 10.7v2.6" strokeWidth="2.2" />
 
-        {/* pesos externos */}
-        <rect
-          x="4.6"
-          y="9.2"
-          width="2.4"
-          height="5.6"
-          rx="1.2"
-          stroke={stroke}
-          strokeWidth="2.2"
-          fill="rgba(255,255,255,.10)"
-        />
-        <rect
-          x="17.0"
-          y="9.2"
-          width="2.4"
-          height="5.6"
-          rx="1.2"
-          stroke={stroke}
-          strokeWidth="2.2"
-          fill="rgba(255,255,255,.10)"
-        />
+        {/* placas externas */}
+        <path d="M5.5 9.1v5.8" strokeWidth="2.8" />
+        <path d="M18.5 9.1v5.8" strokeWidth="2.8" />
 
-        {/* pesos internos */}
-        <rect
-          x="6.9"
-          y="10.1"
-          width="1.6"
-          height="3.8"
-          rx="0.8"
-          stroke={stroke}
-          strokeWidth="2.0"
-          fill="rgba(255,255,255,.08)"
-        />
-        <rect
-          x="15.5"
-          y="10.1"
-          width="1.6"
-          height="3.8"
-          rx="0.8"
-          stroke={stroke}
-          strokeWidth="2.0"
-          fill="rgba(255,255,255,.08)"
-        />
+        {/* placas internas (um pouco maiores que as marcas) */}
+        <path d="M7.4 10.1v3.8" strokeWidth="2.6" />
+        <path d="M16.6 10.1v3.8" strokeWidth="2.6" />
       </g>
     </svg>
   );
