@@ -69,7 +69,7 @@ export default function BottomMenu() {
         }}
       >
         <div style={styles.centerIconWrap}>
-          {/* ✅ SVG elegante (principal) */}
+          {/* ✅ SVG (desenho do pesinho igual ao do card) */}
           <div style={styles.centerIconSvg}>
             <DumbbellIcon active />
           </div>
@@ -170,7 +170,7 @@ const styles: Record<string, any> = {
     letterSpacing: 0.1,
   },
 
-  // ✅ Botão central estilo Apple
+  // ✅ Botão central
   centerBtn: {
     position: "absolute",
     left: "50%",
@@ -192,7 +192,6 @@ const styles: Record<string, any> = {
     filter: "saturate(1.05) brightness(1.02)",
   },
 
-  // ✅ ícone central mais limpo
   centerIconWrap: {
     width: 44,
     height: 44,
@@ -306,55 +305,63 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Dumbbell corrigido (bonito, simétrico e limpo) */
+/* ✅ Pesinho (diagonal, igual ao ícone do card) */
 function DumbbellIcon({ active }: { active: boolean }) {
+  const stroke = "rgba(255,255,255,.95)";
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      {/* haste */}
-      <path
-        d="M9 12h6"
-        stroke="rgba(255,255,255,.95)"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
+      <g transform="rotate(-32 12 12)">
+        {/* barra */}
+        <path d="M8.9 12h6.2" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
 
-      {/* pegadores */}
-      <path
-        d="M8.2 10v4M15.8 10v4"
-        stroke="rgba(255,255,255,.95)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+        {/* colares (perto da barra) */}
+        <path d="M8.2 10.4v3.2" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M15.8 10.4v3.2" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
 
-      {/* pesos internos */}
-      <path
-        d="M6.9 9.2c0-.8.6-1.4 1.4-1.4h.6v8.4h-.6c-.8 0-1.4-.6-1.4-1.4V9.2Z"
-        fill="rgba(255,255,255,.14)"
-        stroke="rgba(255,255,255,.95)"
-        strokeWidth="1.9"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17.1 9.2c0-.8-.6-1.4-1.4-1.4h-.6v8.4h.6c.8 0 1.4-.6 1.4-1.4V9.2Z"
-        fill="rgba(255,255,255,.14)"
-        stroke="rgba(255,255,255,.95)"
-        strokeWidth="1.9"
-        strokeLinejoin="round"
-      />
+        {/* pesos externos */}
+        <rect
+          x="4.6"
+          y="9.2"
+          width="2.4"
+          height="5.6"
+          rx="1.2"
+          stroke={stroke}
+          strokeWidth="2.2"
+          fill="rgba(255,255,255,.10)"
+        />
+        <rect
+          x="17.0"
+          y="9.2"
+          width="2.4"
+          height="5.6"
+          rx="1.2"
+          stroke={stroke}
+          strokeWidth="2.2"
+          fill="rgba(255,255,255,.10)"
+        />
 
-      {/* pesos externos */}
-      <path
-        d="M5.4 10.2v3.6"
-        stroke="rgba(255,255,255,.95)"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M18.6 10.2v3.6"
-        stroke="rgba(255,255,255,.95)"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
+        {/* pesos internos */}
+        <rect
+          x="6.9"
+          y="10.1"
+          width="1.6"
+          height="3.8"
+          rx="0.8"
+          stroke={stroke}
+          strokeWidth="2.0"
+          fill="rgba(255,255,255,.08)"
+        />
+        <rect
+          x="15.5"
+          y="10.1"
+          width="1.6"
+          height="3.8"
+          rx="0.8"
+          stroke={stroke}
+          strokeWidth="2.0"
+          fill="rgba(255,255,255,.08)"
+        />
+      </g>
     </svg>
   );
 }
