@@ -1,5 +1,5 @@
 // ✅ COLE EM: src/pages/Nutricao.jsx
-// Nutri+ — com botão “Suplementação” (sem emojis, Jony Ive vibe)
+// Nutri+ — com botão “Suplementação” (gradiente preto + ponto laranja, Apple vibe)
 // - botão visível no topo (logo após o header) e também um “pill” pequeno no header
 // - leva para rota: /suplementacao  (ajuste se sua rota for diferente)
 
@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const ORANGE = "#FF6A00";
-const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
@@ -295,14 +294,10 @@ const RECIPE_BANK = {
       tips: ["Para reduzir açúcar: use leite sem açúcar e aveia."],
     },
   ],
-  almoco: [
-    // (mantém seu banco de almoço/janta como está no seu arquivo atual)
-    // ⬇️ COLE o conteúdo completo de almoco/janta exatamente como você já tem.
-    // (não alterei nada além de adicionar o botão de Suplementação na UI)
-  ],
-  janta: [
-    // (mantém seu banco de almoço/janta como está no seu arquivo atual)
-  ],
+
+  // ✅ pode colar seu banco completo depois (se estiver vazio, a tela não quebra)
+  almoco: [],
+  janta: [],
 };
 
 const PROTEIN_SWAPS = ["frango", "carne magra", "ovos", "atum", "queijo", "iogurte"];
@@ -337,6 +332,7 @@ function makeVariant(recipe, seedKey, objective = "hipertrofia") {
 
 function buildLotsOfOptions({ email, day, objective, mealKey, count = 48 }) {
   const baseList = RECIPE_BANK[mealKey] || [];
+  if (!baseList.length) return []; // ✅ evita crash se almoço/janta estiverem vazios
   const shuffled = seededShuffle(baseList, `${email}_${day}_${mealKey}_base`);
   const out = [];
   for (let i = 0; i < count; i++) {
@@ -400,13 +396,12 @@ export default function Nutricao() {
     localStorage.setItem(favKey, JSON.stringify(next));
   }
 
-  // ✅ “ver mais” incremental (melhora performance e sensação de leveza)
+  // ✅ “ver mais” incremental
   const [visibleCount, setVisibleCount] = useState(16);
   useEffect(() => setVisibleCount(16), [mealTab, showFavOnly, query]);
 
   // ✅ lista grande (combinações)
   const options = useMemo(() => {
-    // gera bastante, mas não renderiza tudo de cara
     const countPerMeal = 80;
     return buildLotsOfOptions({
       email,
@@ -433,7 +428,7 @@ export default function Nutricao() {
 
   const shown = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
-  // ✅ bloco novo: “Sugestão do dia”
+  // ✅ bloco: “Sugestão do dia”
   const suggestion = useMemo(() => {
     const base = buildLotsOfOptions({
       email,
@@ -442,6 +437,7 @@ export default function Nutricao() {
       mealKey: mealTab,
       count: 12,
     });
+    if (!base.length) return null;
     const pick = seededShuffle(base, `${email}_${day}_${mealTab}_suggest`)[0];
     return pick || null;
   }, [email, day, objetivo, mealTab]);
@@ -472,9 +468,11 @@ export default function Nutricao() {
           </div>
 
           <div style={S.headRight}>
-            {/* pill discreto (não polui) */}
+            {/* pill discreto (preto gradiente + ponto laranja) */}
             <button style={S.headPill} onClick={goSupp} type="button">
-              Suplementação
+              <span style={S.headPillText}>
+                Suplementação<span style={S.orangeDot}>.</span>
+              </span>
               <span style={S.headPillChev}>›</span>
             </button>
 
@@ -486,14 +484,19 @@ export default function Nutricao() {
 
         {/* botão principal (visível e bonito) */}
         <button style={S.suppHero} onClick={goSupp} type="button">
+          <div style={S.suppHeroGlow} />
+
           <div style={S.suppHeroTop}>
-            <div style={S.suppHeroLabel}>NOVO</div>
+            <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
             <div style={S.suppHeroChev}>›</div>
           </div>
-          <div style={S.suppHeroTitle}>Suplementação personalizada</div>
-          <div style={S.suppHeroSub}>
-            Doses por peso, rotina e objetivo — com foco em segurança e praticidade.
+
+          <div style={S.suppHeroTitle}>
+            Plano de suplementos<span style={S.orangeDot}>.</span>
           </div>
+
+          <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
+
           <div style={S.suppHeroTrack}>
             <div style={S.suppHeroFill} />
           </div>
@@ -545,9 +548,11 @@ export default function Nutricao() {
         </div>
 
         <div style={S.headRight}>
-          {/* pill discreto (sem emojis) */}
+          {/* pill discreto (preto gradiente + ponto laranja) */}
           <button style={S.headPill} onClick={goSupp} type="button">
-            Suplementação
+            <span style={S.headPillText}>
+              Suplementação<span style={S.orangeDot}>.</span>
+            </span>
             <span style={S.headPillChev}>›</span>
           </button>
 
@@ -557,16 +562,21 @@ export default function Nutricao() {
         </div>
       </div>
 
-      {/* Botão principal — bem visível e alinhado com o “Sugestão” */}
+      {/* Botão principal — bem visível */}
       <button style={S.suppHero} onClick={goSupp} type="button">
+        <div style={S.suppHeroGlow} />
+
         <div style={S.suppHeroTop}>
           <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
           <div style={S.suppHeroChev}>›</div>
         </div>
-        <div style={S.suppHeroTitle}>Plano de suplementos</div>
-        <div style={S.suppHeroSub}>
-          Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.
+
+        <div style={S.suppHeroTitle}>
+          Plano de suplementos<span style={S.orangeDot}>.</span>
         </div>
+
+        <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
+
         <div style={S.suppHeroTrack}>
           <div style={S.suppHeroFill} />
         </div>
@@ -866,73 +876,91 @@ const S = {
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
 
-  // pill pequeno no header (sem emoji)
+  orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
+  headPillText: { display: "inline-flex", alignItems: "baseline", gap: 0 },
+
+  // pill pequeno no header (preto gradiente, Apple-like)
   headPill: {
     padding: "12px 14px",
     borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
+    border: "1px solid rgba(255,255,255,.10)",
+    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 100%)",
+    color: "#fff",
     fontWeight: 950,
     whiteSpace: "nowrap",
-    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
+    boxShadow: "0 14px 34px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06)",
     display: "inline-flex",
     alignItems: "center",
     gap: 10,
+    WebkitTapHighlightColor: "transparent",
+    letterSpacing: -0.2,
   },
   headPillChev: {
     width: 22,
     height: 22,
     borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.10)",
+    border: "1px solid rgba(255,255,255,.10)",
     display: "grid",
     placeItems: "center",
     fontSize: 18,
     fontWeight: 950,
     lineHeight: 1,
+    color: "#fff",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.08)",
   },
 
-  // HERO suplementação (bem visível, sem emoji, “Apple card”)
+  // HERO suplementação (preto gradiente + ponto laranja, Apple card)
   suppHero: {
     position: "relative",
     zIndex: 1,
     marginTop: 14,
     width: "100%",
-    border: "1px solid rgba(15,23,42,.06)",
+    border: "1px solid rgba(255,255,255,.10)",
     borderRadius: 26,
     padding: 16,
     textAlign: "left",
-    background: "linear-gradient(135deg, rgba(15,23,42,.06), rgba(255,255,255,.92))",
-    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
+    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 55%, #0E0F13 100%)",
+    boxShadow: "0 20px 70px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06)",
     overflow: "hidden",
+    WebkitTapHighlightColor: "transparent",
+  },
+  suppHeroGlow: {
+    position: "absolute",
+    inset: -2,
+    pointerEvents: "none",
+    background:
+      "radial-gradient(520px 220px at 18% 0%, rgba(255,106,0,.18), rgba(255,255,255,0) 60%), radial-gradient(520px 220px at 92% 12%, rgba(255,255,255,.10), rgba(255,255,255,0) 55%)",
+    opacity: 0.9,
   },
   suppHeroTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   suppHeroLabel: {
     display: "inline-flex",
     padding: "7px 10px",
     borderRadius: 999,
-    background: "rgba(255,255,255,.75)",
-    border: "1px solid rgba(15,23,42,.10)",
-    color: TEXT,
+    background: "rgba(255,255,255,.06)",
+    border: "1px solid rgba(255,255,255,.10)",
+    color: "rgba(255,255,255,.92)",
     fontWeight: 950,
     fontSize: 11,
-    letterSpacing: 0.7,
+    letterSpacing: 0.8,
   },
-  suppHeroChev: { fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
-  suppHeroTitle: { marginTop: 12, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  suppHeroSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  suppHeroChev: { fontSize: 26, fontWeight: 900, opacity: 0.55, color: "rgba(255,255,255,.92)" },
+  suppHeroTitle: { marginTop: 12, fontSize: 16, fontWeight: 950, color: "#fff", letterSpacing: -0.2 },
+  suppHeroSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,.68)", lineHeight: 1.35 },
   suppHeroTrack: {
     marginTop: 12,
     height: 10,
     borderRadius: 999,
-    background: "rgba(15,23,42,.08)",
+    background: "rgba(255,255,255,.10)",
+    border: "1px solid rgba(255,255,255,.10)",
     overflow: "hidden",
   },
   suppHeroFill: {
     height: "100%",
     width: "72%",
     borderRadius: 999,
-    background: "linear-gradient(90deg, rgba(255,106,0,.92), rgba(255,178,107,.92))",
+    background: "linear-gradient(90deg, rgba(255,106,0,1), rgba(255,178,107,1))",
   },
 
   /* cards */
