@@ -36,7 +36,6 @@ function clamp(n, a, b) {
 }
 
 /**
- * Estimativa simples por minuto (kcal/min) usando MET:
  * kcal/min = MET * 3.5 * kg / 200
  */
 function calcKcalPerMin({ kg, met }) {
@@ -90,7 +89,7 @@ export default function Cardio() {
   // paywall cardio (mantido)
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // compatível com flags antigas e novas (sem quebrar)
+  // compatível com flags antigas e novas
   const nutriPlusNew = localStorage.getItem(`nutri_plus_${email}`) === "1";
   const nutriPlusOld = localStorage.getItem(`nutri_${email}`) === "1";
   const nutriPlus = nutriPlusNew || nutriPlusOld;
@@ -103,7 +102,6 @@ export default function Cardio() {
   const options = useMemo(() => getCardioOptions(goal, level), [goal, level]);
   const [picked, setPicked] = useState(options[0]?.id || "walk");
 
-  // micro animação quando troca a opção
   const [pulsePick, setPulsePick] = useState(false);
 
   const opt = useMemo(
@@ -123,7 +121,6 @@ export default function Cardio() {
 
   const tickRef = useRef(null);
 
-  // limpa interval ao desmontar
   useEffect(() => {
     return () => {
       if (tickRef.current) {
@@ -239,6 +236,11 @@ export default function Cardio() {
   const estKcal = Math.round(elapsedMin * kcalPerMin);
   const progress = minutes ? clamp(1 - remaining / (minutes * 60), 0, 1) : 0;
 
+  // ✅ garante que o CTA flutuante NÃO cubra o menu inferior
+  // Ajuste aqui se seu BottomMenu for maior/menor:
+  const BOTTOM_MENU_SAFE = 102; // px de “área segura” do menu + margem
+  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 18;
+
   if (!paid) {
     return (
       <div style={styles.page}>
@@ -253,7 +255,7 @@ export default function Cardio() {
         {!nutriPlus ? (
           <button
             onClick={() => nav("/planos")}
-            style={styles.floatingNutri}
+            style={{ ...styles.floatingNutri, bottom: FLOATING_BOTTOM }}
             type="button"
             aria-label="Abrir planos Nutri+"
           >
@@ -263,7 +265,7 @@ export default function Cardio() {
         ) : (
           <button
             onClick={() => nav("/nutricao")}
-            style={{ ...styles.floatingNutri, ...styles.floatingNutriPaid }}
+            style={{ ...styles.floatingNutri, ...styles.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
             type="button"
             aria-label="Ver minha refeição"
           >
@@ -410,40 +412,51 @@ export default function Cardio() {
       </div>
 
       {!nutriPlus ? (
-        <button onClick={() => nav("/planos")} style={styles.floatingNutri} type="button">
+        <button
+          onClick={() => nav("/planos")}
+          style={{ ...styles.floatingNutri, bottom: FLOATING_BOTTOM }}
+          type="button"
+        >
           <span style={styles.floatDot} />
           Liberar Nutri+
         </button>
       ) : (
         <button
           onClick={() => nav("/nutricao")}
-          style={{ ...styles.floatingNutri, ...styles.floatingNutriPaid }}
+          style={{ ...styles.floatingNutri, ...styles.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
           type="button"
         >
           Ver minha refeição
         </button>
       )}
 
-      <div style={{ height: 140 }} />
+      {/* Espaço extra pra scroll e pra não “encostar” no menu */}
+      <div style={{ height: 180 }} />
     </div>
   );
 }
 
 const styles = {
-  page: { padding: 18, paddingBottom: 140, background: BG },
+  page: {
+    padding: 18,
+    paddingBottom: 170, // mais respiro “iOS/Apple-like” e evita colisão visual com o BottomMenu
+    background: BG,
+  },
 
   /* LOCK */
   lockCard: {
-    borderRadius: 22,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))",
-    border: "1px solid rgba(255,106,0,.22)",
-    boxShadow: "0 18px 50px rgba(15,23,42,.10)",
+    borderRadius: 26,
+    padding: 18,
+    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 22px 70px rgba(15,23,42,.10)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
   },
-  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
+  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
   lockBtn: {
-    marginTop: 10,
+    marginTop: 12,
     width: "100%",
     padding: 14,
     borderRadius: 18,
@@ -451,56 +464,60 @@ const styles = {
     background: ORANGE,
     color: "#111",
     fontWeight: 950,
-    boxShadow: "0 14px 36px rgba(255,106,0,.22)",
+    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
     transition: "transform .12s ease, filter .12s ease",
   },
 
-  /* HEAD */
+  /* HEAD (mais “Jony Ive”: leve, ar e vidro) */
   head: {
-    borderRadius: 24,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,255,255,.86))",
+    borderRadius: 28,
+    padding: 18,
+    background: "linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.74))",
     border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
+    boxShadow: "0 26px 90px rgba(15,23,42,.08)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
   },
-  kicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.6, textTransform: "uppercase" },
-  title: { marginTop: 4, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.6, lineHeight: 1.05 },
+  kicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+  title: { marginTop: 4, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.8, lineHeight: 1.05 },
   sub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
   backBtn: {
     padding: "12px 14px",
-    borderRadius: 16,
+    borderRadius: 18,
     border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
+    background: "rgba(255,255,255,.92)",
     color: TEXT,
     fontWeight: 950,
+    boxShadow: "0 10px 30px rgba(15,23,42,.06)",
     transition: "transform .12s ease",
   },
 
   /* PICK */
   pickCard: {
     marginTop: 14,
-    borderRadius: 24,
-    padding: 16,
-    background: "#fff",
+    borderRadius: 28,
+    padding: 18,
+    background: "rgba(255,255,255,.92)",
     border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    boxShadow: "0 22px 75px rgba(15,23,42,.06)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
   },
   pickTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  pickTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  pickHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
+  pickTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.5 },
+  pickHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
   mapBtn: {
     padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,106,0,.28)",
-    background: "rgba(255,106,0,.10)",
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.85)",
     color: TEXT,
     fontWeight: 950,
+    boxShadow: "0 10px 26px rgba(15,23,42,.05)",
     transition: "transform .12s ease, filter .12s ease",
   },
 
@@ -508,10 +525,10 @@ const styles = {
   optBtn: {
     width: "100%",
     textAlign: "left",
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 14,
     border: "1px solid rgba(15,23,42,.06)",
-    background: "#fff",
+    background: "rgba(255,255,255,.90)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -519,14 +536,14 @@ const styles = {
     transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease",
   },
   optOn: {
-    background: "rgba(255,106,0,.10)",
-    borderColor: "rgba(255,106,0,.22)",
+    background: "linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,106,0,.06))",
+    borderColor: "rgba(255,106,0,.20)",
     transform: "scale(0.992)",
-    boxShadow: "0 14px 36px rgba(255,106,0,.12)",
+    boxShadow: "0 18px 55px rgba(255,106,0,.10)",
   },
-  optOff: { background: "#fff" },
-  optTitle: { fontSize: 15, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  optSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.3 },
+  optOff: { background: "rgba(255,255,255,.90)" },
+  optTitle: { fontSize: 15, fontWeight: 950, color: TEXT, letterSpacing: -0.25 },
+  optSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   pill: {
     padding: "8px 10px",
@@ -538,22 +555,24 @@ const styles = {
     whiteSpace: "nowrap",
     border: "1px solid rgba(15,23,42,.06)",
   },
-  pillOn: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.22)" },
+  pillOn: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.18)" },
 
   /* TIMER */
   timerCard: {
     marginTop: 14,
-    borderRadius: 24,
-    padding: 16,
-    background: "#fff",
+    borderRadius: 28,
+    padding: 18,
+    background: "rgba(255,255,255,.92)",
     border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    boxShadow: "0 22px 75px rgba(15,23,42,.06)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     transition: "transform .18s ease",
   },
   timerPulse: { transform: "scale(0.995)" },
   timerTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   timerLabel: { fontSize: 12, fontWeight: 950, color: MUTED },
-  timerBig: { marginTop: 6, fontSize: 44, fontWeight: 950, color: TEXT, letterSpacing: -1.2, lineHeight: 1 },
+  timerBig: { marginTop: 6, fontSize: 44, fontWeight: 950, color: TEXT, letterSpacing: -1.4, lineHeight: 1 },
   timerSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   timerSide: { display: "grid", gap: 8, justifyItems: "end" },
@@ -579,83 +598,100 @@ const styles = {
   presets: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 },
   presetBtn: {
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 18,
     border: "1px solid rgba(15,23,42,.08)",
     fontWeight: 950,
-    background: "#fff",
+    background: "rgba(255,255,255,.92)",
+    boxShadow: "0 10px 22px rgba(15,23,42,.04)",
     transition: "transform .12s ease, filter .12s ease",
   },
-  presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 14px 34px rgba(255,106,0,.18)" },
-  presetOff: { background: "#fff", color: TEXT },
+  presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
+  presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
   timerActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   startBtn: {
     padding: 16,
-    borderRadius: 18,
+    borderRadius: 20,
     border: "none",
     background: ORANGE,
     color: "#111",
     fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(255,106,0,.22)",
+    boxShadow: "0 18px 50px rgba(255,106,0,.18)",
     transition: "transform .12s ease, filter .12s ease",
   },
-  pauseBtn: { padding: 16, borderRadius: 18, border: "none", background: TEXT, color: "#fff", fontWeight: 950 },
-  resetBtn: { padding: 16, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
+  pauseBtn: {
+    padding: 16,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.12)",
+    background: "rgba(15,23,42,.92)",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 16px 46px rgba(15,23,42,.16)",
+  },
+  resetBtn: {
+    padding: 16,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+  },
 
-  // ✅ Melhor altura / presença visual do botão principal “Concluir”
   finishBtn: {
     marginTop: 12,
     width: "100%",
-    padding: 18,            // altura maior
-    borderRadius: 20,
-    border: "none",
-    background: TEXT,
+    padding: 18,
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,.10)",
+    background: "linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))",
     color: "#fff",
     fontWeight: 950,
     fontSize: 14,
     letterSpacing: 0.2,
-    boxShadow: "0 18px 50px rgba(2,6,23,.18)",
+    boxShadow: "0 22px 70px rgba(2,6,23,.22)",
     transition: "transform .12s ease, opacity .12s ease, filter .12s ease",
   },
   finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
   note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
-  /* FLOATING CTA */
+  /* FLOATING CTA — sofisticado e mais “discreto”, e NÃO cobre o menu */
   floatingNutri: {
     position: "fixed",
     left: "50%",
     transform: "translateX(-50%)",
-    bottom: 86,
+    // bottom é setado inline (FLOATING_BOTTOM) pra respeitar o menu
     zIndex: 999,
     padding: "14px 18px",
     borderRadius: 999,
-    border: "none",
-    background: ORANGE,
+    border: "1px solid rgba(255,255,255,.20)",
+    background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
     color: "#111",
     fontWeight: 950,
-    boxShadow: "0 18px 45px rgba(255,106,0,.28)",
+    boxShadow: "0 22px 70px rgba(255,106,0,.20)",
     display: "inline-flex",
     alignItems: "center",
     gap: 10,
-    animation: "nutriFloat 2.6s ease-in-out infinite",
+    animation: "nutriFloat 3.2s ease-in-out infinite",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
   },
   floatingNutriPaid: {
-    background: "#0B0B0C",
+    background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))",
     color: "#fff",
-    boxShadow: "0 18px 55px rgba(0,0,0,.22)",
-    border: "1px solid rgba(255,255,255,.08)",
-    animation: "nutriFloat 3s ease-in-out infinite",
+    boxShadow: "0 22px 80px rgba(0,0,0,.18)",
+    border: "1px solid rgba(255,255,255,.10)",
+    animation: "nutriFloat 3.6s ease-in-out infinite",
   },
   floatDot: {
-    width: 9,
-    height: 9,
+    width: 8,
+    height: 8,
     borderRadius: 999,
-    background: "rgba(255,255,255,.55)",
-    boxShadow: "0 0 0 6px rgba(255,255,255,.14)",
+    background: "rgba(255,255,255,.60)",
+    boxShadow: "0 0 0 7px rgba(255,255,255,.12)",
   },
 };
 
-// animações (mantém o efeito de flutuar do CTA)
 if (typeof document !== "undefined") {
   const id = "fitdeal-cardio-keyframes";
   if (!document.getElementById(id)) {
