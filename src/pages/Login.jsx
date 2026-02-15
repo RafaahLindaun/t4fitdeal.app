@@ -1,27 +1,18 @@
 // ✅ COLE EM: src/pages/Login.jsx
-// ✅ MUDA SÓ O DESTINO DO SIGNUP PARA /onboarding (antes era /conta)
-// ✅ Troque o "FD" pelo seu símbolo: coloque o PNG em /src/assets/fitdeal-mark.png
-// ✅ Mantém o estilo simples do seu código, só adiciona: logo imagem + CTAs discretos + "benefícios" + "desde quando" + social (placeholders) + remember me + show/hide senha
+// ✅ SIGNUP VAI PARA /onboarding
+// ✅ Troque o "FD" pelo seu símbolo: /src/assets/fitdeal-mark.png
+// ✅ Pedido: remover 3 CTAs (chips), remover “Seu coach digital • rotina inteligente”, remover “no onboarding”,
+// ✅ sem emojis, usar ícones com cara Apple (SVG), aumentar “fitdeal.”
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-// ✅ ajuste se o nome do arquivo for diferente
 import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
 const ORANGE_SOFT = "rgba(255,106,0,.12)";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
-
-function safeJsonParse(raw, fallback) {
-  try {
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function timeAgo(ts) {
   const d = ts ? new Date(ts) : null;
@@ -38,6 +29,76 @@ function timeAgo(ts) {
   const years = Math.floor(months / 12);
   if (years === 1) return "há 1 ano";
   return `há ${years} anos`;
+}
+
+function Icon({ name }) {
+  const stroke = "rgba(15,23,42,.78)";
+  const stroke2 = "rgba(15,23,42,.56)";
+
+  if (name === "eye") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M2.2 12s3.4-7 9.8-7 9.8 7 9.8 7-3.4 7-9.8 7S2.2 12 2.2 12Z"
+          stroke={stroke2}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
+          stroke={stroke}
+          strokeWidth="1.8"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "eyeOff") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 4l16 16" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M2.2 12s3.4-7 9.8-7c2 0 3.7.6 5.1 1.4M21.8 12s-3.4 7-9.8 7c-2.2 0-4.1-.7-5.6-1.7"
+          stroke={stroke2}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+        <path
+          d="M10.2 10.2a3.2 3.2 0 0 0 3.6 3.6"
+          stroke={stroke2}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "check") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M20 7L10.5 16.5 4 10"
+          stroke="rgba(17,24,39,.92)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  // arrow right (chevron)
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 6l6 6-6 6"
+        stroke={stroke2}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export default function Login() {
@@ -58,32 +119,33 @@ export default function Login() {
   const [erro, setErro] = useState("");
   const [showPass, setShowPass] = useState(false);
 
-  // extras de “apps premium”
+  // extras: remember + last email + createdAt
   const [remember, setRemember] = useState(() => localStorage.getItem("remember_login") === "1");
   const [lastEmail, setLastEmail] = useState(() => localStorage.getItem("last_login_email") || "");
   const [createdAt, setCreatedAt] = useState(() => localStorage.getItem("account_created_at") || "");
   const createdLabel = useMemo(() => timeAgo(createdAt), [createdAt]);
 
   useEffect(() => {
-    // pré-preencher email se usuário já usou antes (login UX)
     if (!form.email && lastEmail) setForm((p) => ({ ...p, email: lastEmail }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // micro animações leves (sem mudar o “jeito” do seu layout)
+  // micro animações leves
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "fitdeal-login-micro";
+    const id = "fitdeal-login-micro-v2";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
+      .tap { transition: transform .14s ease, filter .14s ease; }
       .tap:active { transform: scale(.99); }
+      .tapSoft { transition: transform .14s ease, filter .14s ease; }
       .tapSoft:active { transform: scale(.985); }
       @keyframes fadeUp { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
       .fadeUp { animation: fadeUp .18s ease both; }
-      @keyframes pop { from { transform: scale(.98); opacity: .9;} to { transform: scale(1); opacity: 1;} }
+      @keyframes pop { from { transform: scale(.985); opacity: .9;} to { transform: scale(1); opacity: 1;} }
       .pop { animation: pop .14s ease both; }
     `;
     document.head.appendChild(style);
@@ -93,18 +155,16 @@ export default function Login() {
     const { name, value } = e.target;
 
     if (name === "altura" || name === "peso") {
-      // só números
       const onlyDigits = value.replace(/[^\d]/g, "");
       setForm((p) => ({ ...p, [name]: onlyDigits }));
       return;
     }
-
     setForm((p) => ({ ...p, [name]: value }));
   }
 
   function toastSoon(msg) {
     setErro(msg);
-    setTimeout(() => setErro(""), 1800);
+    setTimeout(() => setErro(""), 1700);
   }
 
   function submit() {
@@ -121,7 +181,6 @@ export default function Login() {
     }
 
     if (isSignup) {
-      // marca “desde quando criou” (local)
       if (!localStorage.getItem("account_created_at")) {
         localStorage.setItem("account_created_at", new Date().toISOString());
         setCreatedAt(localStorage.getItem("account_created_at") || "");
@@ -137,9 +196,7 @@ export default function Login() {
     }
   }
 
-  // “continuar como” (extra premium)
   const quickEmail = lastEmail && lastEmail.includes("@") ? lastEmail : "";
-
   function continueAsLast() {
     if (!quickEmail) return;
     setMode("login");
@@ -155,7 +212,6 @@ export default function Login() {
     <div className="container page fadeUp" style={styles.page}>
       <div style={styles.logoWrap}>
         <div style={styles.logoBox} className="pop">
-          {/* ✅ troca FD por símbolo (com fallback se não achar o png) */}
           <img
             src={LogoMark}
             alt="fitdeal"
@@ -173,33 +229,32 @@ export default function Login() {
           fitdeal<span style={{ color: ORANGE }}>.</span>
         </div>
 
-        {/* micro “status / desde quando” */}
-        <div style={styles.metaRow}>
-          <span style={styles.metaPill}>
-            {createdLabel ? (
-              <>
-                Conta criada <b style={styles.metaBold}>{createdLabel}</b>
-              </>
-            ) : (
-              <>Seu coach digital • rotina inteligente</>
-            )}
-          </span>
-        </div>
+        {/* ✅ removido: "Seu coach digital • rotina inteligente"
+            ✅ mantido apenas se já tiver createdAt, senão some (fica clean) */}
+        {createdLabel ? (
+          <div style={styles.metaRow}>
+            <span style={styles.metaPill}>
+              Conta criada <b style={styles.metaBold}>{createdLabel}</b>
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <h1 style={styles.title}>{isSignup ? "Criar conta" : "Entrar"}</h1>
+
+      {/* ✅ removido “no onboarding” */}
       <p style={styles.subtitle}>
-        {isSignup
-          ? "Crie sua conta e personalize metas no onboarding."
-          : "Entre com seu email e senha para continuar."}
+        {isSignup ? "Crie sua conta e personalize suas metas." : "Entre com seu email e senha para continuar."}
       </p>
 
-      {/* CTA discreto: continuar como último email */}
+      {/* ✅ mantém (discreto e útil) */}
       {quickEmail && (
         <button onClick={continueAsLast} style={styles.lastUser} className="tap" type="button">
           <span style={styles.lastDot} />
           Continuar como <b style={{ color: TEXT }}>{quickEmail}</b>
-          <span style={styles.lastChev}>›</span>
+          <span style={styles.lastChev} aria-hidden="true">
+            <Icon name="chev" />
+          </span>
         </button>
       )}
 
@@ -222,32 +277,11 @@ export default function Login() {
         </button>
       </div>
 
-      {/* “benefícios” (leve, igual app premium) */}
-      <div style={styles.benefits}>
-        <div style={styles.benefitPill}>
-          <span style={styles.benefitDot} />
-          Treino + nutrição em 1 lugar
-        </div>
-        <div style={styles.benefitPill}>
-          <span style={styles.benefitDot} />
-          Metas por objetivo e peso
-        </div>
-        <div style={styles.benefitPill}>
-          <span style={styles.benefitDot} />
-          Visual clean, rápido
-        </div>
-      </div>
+      {/* ✅ removidas as 3 CTAs (chips/benefícios) */}
 
       {isSignup && (
         <>
-          <input
-            name="nome"
-            value={form.nome}
-            onChange={onChange}
-            placeholder="Nome"
-            style={styles.input}
-            autoComplete="name"
-          />
+          <input name="nome" value={form.nome} onChange={onChange} placeholder="Nome" style={styles.input} autoComplete="name" />
           <div style={styles.row}>
             <input
               name="altura"
@@ -285,7 +319,7 @@ export default function Login() {
           onChange={onChange}
           placeholder="Senha"
           type={showPass ? "text" : "password"}
-          style={{ ...styles.input, marginTop: 0, paddingRight: 44 }}
+          style={{ ...styles.input, marginTop: 0, paddingRight: 52 }}
           autoComplete={isSignup ? "new-password" : "current-password"}
         />
         <button
@@ -296,43 +330,27 @@ export default function Login() {
           aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}
           title={showPass ? "Ocultar senha" : "Mostrar senha"}
         >
-          {showPass ? "🙈" : "👁️"}
+          <Icon name={showPass ? "eyeOff" : "eye"} />
         </button>
       </div>
 
-      {/* remember + recuperar (discreto) */}
       <div style={styles.auxRow}>
         <button
           type="button"
           className="tapSoft"
           onClick={() => setRemember((p) => !p)}
           style={{ ...styles.auxBtn, ...(remember ? styles.auxOn : null) }}
+          aria-pressed={remember}
         >
-          <span style={{ ...styles.checkbox, ...(remember ? styles.checkboxOn : null) }}>
-            {remember ? "✓" : ""}
+          <span style={{ ...styles.checkbox, ...(remember ? styles.checkboxOn : null) }} aria-hidden="true">
+            {remember ? <Icon name="check" /> : null}
           </span>
           Lembrar
         </button>
 
-        {!isSignup ? (
-          <button
-            type="button"
-            className="tapSoft"
-            style={styles.linkBtn}
-            onClick={() => toastSoon("Recuperar senha — em breve.")}
-          >
-            Esqueci a senha
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="tapSoft"
-            style={styles.linkBtn}
-            onClick={() => toastSoon("Ao criar conta você ajusta tudo no onboarding.")}
-          >
-            Como funciona?
-          </button>
-        )}
+        <button type="button" className="tapSoft" style={styles.linkBtn} onClick={() => toastSoon("Em breve.")}>
+          {isSignup ? "Como funciona?" : "Esqueci a senha"}
+        </button>
       </div>
 
       {erro && <div style={styles.error}>{erro}</div>}
@@ -341,43 +359,8 @@ export default function Login() {
         {isSignup ? "Continuar" : "Entrar"}
       </button>
 
-      {/* CTAs “premium” discretos (placeholders) */}
-      <div style={styles.socialWrap}>
-        <button
-          type="button"
-          className="tap"
-          style={styles.socialBtn}
-          onClick={() => toastSoon("Continuar com Apple — em breve.")}
-        >
-          <span style={styles.socialIcon}></span>
-          Continuar com Apple
-        </button>
-
-        <button
-          type="button"
-          className="tap"
-          style={styles.socialBtn}
-          onClick={() => toastSoon("Continuar com Google — em breve.")}
-        >
-          <span style={styles.socialIcon}>G</span>
-          Continuar com Google
-        </button>
-      </div>
-
-      {/* links finais estilo “apps” */}
-      <div style={styles.footerRow}>
-        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
-          Ver planos
-        </button>
-        <span style={styles.footerDot} />
-        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => toastSoon("Suporte — em breve.")}>
-          Suporte
-        </button>
-        <span style={styles.footerDot} />
-        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => toastSoon("Políticas — em breve.")}>
-          Políticas
-        </button>
-      </div>
+      {/* ✅ CTAs removidos (Apple/Google) */}
+      {/* ✅ footer removido para ficar clean (se quiser depois eu coloco minimal de volta) */}
     </div>
   );
 }
@@ -385,35 +368,32 @@ export default function Login() {
 const styles = {
   page: { paddingTop: 40 },
 
-  logoWrap: { display: "grid", placeItems: "center", marginBottom: 16 },
+  logoWrap: { display: "grid", placeItems: "center", marginBottom: 18 },
+
   logoBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
+    width: 68,
+    height: 68,
+    borderRadius: 20,
     background: ORANGE_SOFT,
-    color: ORANGE,
+    border: "1px solid rgba(255,106,0,.14)",
     display: "grid",
     placeItems: "center",
-    fontWeight: 950,
-    fontSize: 22,
-    marginBottom: 6,
-    letterSpacing: -0.5,
+    marginBottom: 8,
     overflow: "hidden",
     position: "relative",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  logoImg: {
-    width: 46,
-    height: 46,
-    objectFit: "contain",
-    display: "block",
+  logoImg: { width: 50, height: 50, objectFit: "contain", display: "block" },
+  logoFallback: { display: "none", width: "100%", height: "100%", placeItems: "center", fontWeight: 950, color: ORANGE, fontSize: 22 },
+
+  // ✅ aumenta fitdeal.
+  logoText: {
+    fontSize: 26,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.6,
+    lineHeight: 1.05,
   },
-  logoFallback: {
-    display: "none",
-    width: "100%",
-    height: "100%",
-    placeItems: "center",
-  },
-  logoText: { fontSize: 20, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
 
   metaRow: { marginTop: 10 },
   metaPill: {
@@ -453,14 +433,14 @@ const styles = {
     boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
     flexShrink: 0,
   },
-  lastChev: { marginLeft: "auto", fontSize: 18, fontWeight: 950, color: TEXT, opacity: 0.5 },
+  lastChev: { marginLeft: "auto", display: "grid", placeItems: "center", opacity: 0.55 },
 
   switchRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
     marginTop: 18,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   switchBtn: {
     padding: 12,
@@ -471,28 +451,6 @@ const styles = {
     color: MUTED,
   },
   switchActive: { border: `1px solid ${ORANGE}`, background: ORANGE_SOFT, color: ORANGE },
-
-  benefits: { marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" },
-  benefitPill: {
-    padding: "9px 12px",
-    borderRadius: 999,
-    background: "#fff",
-    border: "1px solid rgba(15,23,42,.08)",
-    fontSize: 12,
-    fontWeight: 850,
-    color: TEXT,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    boxShadow: "0 12px 30px rgba(15,23,42,.06)",
-  },
-  benefitDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
-  },
 
   input: {
     width: "100%",
@@ -509,16 +467,16 @@ const styles = {
   eyeBtn: {
     position: "absolute",
     right: 10,
-    top: 10,
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    top: 9,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     border: "1px solid rgba(15,23,42,.10)",
     background: "#fff",
     cursor: "pointer",
-    fontSize: 14,
     display: "grid",
     placeItems: "center",
+    boxShadow: "0 10px 24px rgba(15,23,42,.06)",
   },
 
   auxRow: { marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
@@ -534,19 +492,18 @@ const styles = {
     gap: 10,
   },
   auxOn: { borderColor: "rgba(255,106,0,.35)", background: "rgba(255,106,0,.08)", color: TEXT },
+
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 9,
     border: "1px solid rgba(15,23,42,.14)",
     display: "grid",
     placeItems: "center",
-    fontSize: 12,
-    fontWeight: 950,
-    color: "#111",
     background: "#fff",
   },
   checkboxOn: { borderColor: "rgba(255,106,0,.45)", background: "rgba(255,106,0,.18)" },
+
   linkBtn: {
     border: "none",
     background: "transparent",
@@ -569,30 +526,6 @@ const styles = {
     boxShadow: "0 16px 40px rgba(255,106,0,.28)",
   },
 
-  socialWrap: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  socialBtn: {
-    padding: 12,
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    fontWeight: 900,
-    color: TEXT,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  socialIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 10,
-    background: "rgba(15,23,42,.05)",
-    border: "1px solid rgba(15,23,42,.06)",
-    display: "grid",
-    placeItems: "center",
-    fontWeight: 950,
-  },
-
   error: {
     marginTop: 12,
     padding: "10px 12px",
@@ -603,23 +536,4 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
   },
-
-  footerRow: {
-    marginTop: 14,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    color: MUTED,
-    flexWrap: "wrap",
-  },
-  footerLink: {
-    border: "none",
-    background: "transparent",
-    color: MUTED,
-    fontWeight: 900,
-    padding: "8px 10px",
-    borderRadius: 999,
-  },
-  footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
