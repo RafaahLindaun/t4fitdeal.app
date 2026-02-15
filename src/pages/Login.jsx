@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 // ✅ ajuste o caminho do arquivo se você salvar com outro nome
-import LogoMark from "../assets/fitdeal-mark.png";
+import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
@@ -724,3 +724,4 @@ const S = {
   },
   bottomDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.75)" },
 };
+
