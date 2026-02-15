@@ -69,7 +69,7 @@ export default function BottomMenu() {
         }}
       >
         <div style={styles.centerIconWrap}>
-          {/* ✅ SVG elegante (fallback) */}
+          {/* ✅ SVG elegante (principal) */}
           <div style={styles.centerIconSvg}>
             <DumbbellIcon active />
           </div>
@@ -192,7 +192,7 @@ const styles: Record<string, any> = {
     filter: "saturate(1.05) brightness(1.02)",
   },
 
-  // ✅ ícone central mais limpo (fica igual “apple”)
+  // ✅ ícone central mais limpo
   centerIconWrap: {
     width: 44,
     height: 44,
@@ -216,7 +216,6 @@ const styles: Record<string, any> = {
     width: 28,
     height: 28,
     objectFit: "contain",
-    // deixa o PNG elegante/branco em cima do laranja
     filter: "brightness(0) invert(1)",
     opacity: 0.95,
     pointerEvents: "none",
@@ -231,10 +230,10 @@ const styles: Record<string, any> = {
   },
 };
 
-/* ÍCONES (SVG) — sem lib, sem emoji */
+/* ÍCONES (SVG) — sem lib */
 function HomeIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M4 10.8 12 4l8 6.8V20a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 20v-9.2Z"
         stroke={active ? "#2563eb" : "#64748b"}
@@ -253,7 +252,7 @@ function HomeIcon({ active }: { active: boolean }) {
 
 function NutritionIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M7 20c4.5 0 10-6.2 10-12.2C17 5.1 15.7 4 14.2 4 12 4 11 6.2 11 6.2S10 4 7.8 4C6.3 4 5 5.1 5 7.8 5 13.8 2.5 20 7 20Z"
         stroke={active ? "#16a34a" : "#64748b"}
@@ -272,7 +271,7 @@ function NutritionIcon({ active }: { active: boolean }) {
 
 function CardIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M4.5 7.5A2.5 2.5 0 0 1 7 5h10a2.5 2.5 0 0 1 2.5 2.5v9A2.5 2.5 0 0 1 17 19H7a2.5 2.5 0 0 1-2.5-2.5v-9Z"
         stroke={active ? "#d97706" : "#64748b"}
@@ -291,7 +290,7 @@ function CardIcon({ active }: { active: boolean }) {
 
 function UserIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M12 12.2c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4Z"
         stroke={active ? "#7c3aed" : "#64748b"}
@@ -307,38 +306,53 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Dumbbell elegante (igual estilo dos outros: traço limpo) */
+/* ✅ Dumbbell corrigido (bonito, simétrico e limpo) */
 function DumbbellIcon({ active }: { active: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {/* haste */}
       <path
-        d="M8.2 9.2V14.8M15.8 9.2V14.8"
+        d="M9 12h6"
         stroke="rgba(255,255,255,.95)"
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
       />
+
+      {/* pegadores */}
       <path
-        d="M9.8 12h4.4"
+        d="M8.2 10v4M15.8 10v4"
         stroke="rgba(255,255,255,.95)"
         strokeWidth="2.2"
         strokeLinecap="round"
       />
+
+      {/* pesos internos */}
       <path
-        d="M6.2 9.6c0-.9.7-1.6 1.6-1.6h.4v8h-.4c-.9 0-1.6-.7-1.6-1.6V9.6Z"
+        d="M6.9 9.2c0-.8.6-1.4 1.4-1.4h.6v8.4h-.6c-.8 0-1.4-.6-1.4-1.4V9.2Z"
+        fill="rgba(255,255,255,.14)"
         stroke="rgba(255,255,255,.95)"
-        strokeWidth="1.8"
-        fill="rgba(255,255,255,.12)"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
       />
       <path
-        d="M17.8 9.6c0-.9-.7-1.6-1.6-1.6h-.4v8h.4c.9 0 1.6-.7 1.6-1.6V9.6Z"
+        d="M17.1 9.2c0-.8-.6-1.4-1.4-1.4h-.6v8.4h.6c.8 0 1.4-.6 1.4-1.4V9.2Z"
+        fill="rgba(255,255,255,.14)"
         stroke="rgba(255,255,255,.95)"
-        strokeWidth="1.8"
-        fill="rgba(255,255,255,.12)"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+
+      {/* pesos externos */}
+      <path
+        d="M5.4 10.2v3.6"
+        stroke="rgba(255,255,255,.95)"
+        strokeWidth="2.4"
+        strokeLinecap="round"
       />
       <path
-        d="M5 10.4v3.2M19 10.4v3.2"
+        d="M18.6 10.2v3.6"
         stroke="rgba(255,255,255,.95)"
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
       />
     </svg>
