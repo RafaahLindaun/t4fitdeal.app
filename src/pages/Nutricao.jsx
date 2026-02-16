@@ -1,8 +1,6 @@
-
 // ✅ COLE EM: src/pages/Nutricao.jsx
-// Nutri+ — com botão “Suplementação” (gradiente preto + ponto laranja, Apple vibe)
-// - botão visível no topo (logo após o header) e também um “pill” pequeno no header
-// - leva para rota: /suplementacao  (ajuste se sua rota for diferente)
+// Nutri+ — SEM o botão preto do topo (header)
+// e SEM a “barra laranja” (track) no botão de baixo (Suplementação)
 
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -13,9 +11,6 @@ const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
 /* ---------------- helpers ---------------- */
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -45,7 +40,6 @@ function seededShuffle(arr, seedKey) {
 /* ---------------- banco de receitas base ---------------- */
 const RECIPE_BANK = {
   cafe: [
-    // --- NOVAS (CAFÉ) ---
     {
       id: "cafe_pao_queijo_tomate",
       title: "Pão + queijo + tomate",
@@ -158,11 +152,7 @@ const RECIPE_BANK = {
       id: "cafe_omelete_queijo",
       title: "Omelete simples com queijo",
       tags: ["proteico", "rápido"],
-      steps: [
-        "Bata 2–4 ovos com sal.",
-        "Adicione queijo picado.",
-        "Cozinhe na frigideira até firmar.",
-      ],
+      steps: ["Bata 2–4 ovos com sal.", "Adicione queijo picado.", "Cozinhe na frigideira até firmar."],
       base: { protein: ["ovos", "queijo"], carb: ["nenhum"], extra: ["tempero"] },
       tips: ["Se precisar de carbo: inclua 1 pão ou 1 fruta."],
     },
@@ -170,11 +160,7 @@ const RECIPE_BANK = {
       id: "cafe_pao_mortadela_tomate",
       title: "Pão + mortadela + tomate (caseiro)",
       tags: ["barato", "rápido", "tradicional"],
-      steps: [
-        "Toste o pão (opcional).",
-        "Adicione mortadela e tomate.",
-        "Finalize com mostarda (opcional).",
-      ],
+      steps: ["Toste o pão (opcional).", "Adicione mortadela e tomate.", "Finalize com mostarda (opcional)."],
       base: { protein: ["mortadela"], carb: ["pão"], extra: ["tomate"] },
       tips: ["Melhor versão: use peito de peru ou frango quando possível."],
     },
@@ -182,11 +168,7 @@ const RECIPE_BANK = {
       id: "cafe_queijo_minas_fruta",
       title: "Queijo minas + fruta + café",
       tags: ["leve", "tradicional", "rápido"],
-      steps: [
-        "Corte queijo minas em cubos/fatias.",
-        "Sirva com 1 fruta.",
-        "Beba café sem açúcar ou com pouco açúcar.",
-      ],
+      steps: ["Corte queijo minas em cubos/fatias.", "Sirva com 1 fruta.", "Beba café sem açúcar ou com pouco açúcar."],
       base: { protein: ["queijo minas"], carb: ["fruta"], extra: ["café"] },
       tips: ["Se quiser mais carbo: inclua 1 pão."],
     },
@@ -194,11 +176,7 @@ const RECIPE_BANK = {
       id: "cafe_panq_aveia_ovo",
       title: "Panqueca de aveia (ovo + banana)",
       tags: ["pré-treino", "fácil", "energia"],
-      steps: [
-        "Bata 1 banana + 1 ovo + 2 colheres de aveia.",
-        "Cozinhe em frigideira antiaderente.",
-        "Finalize com canela.",
-      ],
+      steps: ["Bata 1 banana + 1 ovo + 2 colheres de aveia.", "Cozinhe em frigideira antiaderente.", "Finalize com canela."],
       base: { protein: ["ovos"], carb: ["aveia", "banana"], extra: ["canela"] },
       tips: ["Para ganhar: adicione mel ou pasta de amendoim."],
     },
@@ -262,11 +240,7 @@ const RECIPE_BANK = {
       id: "cafe_ovos_pao",
       title: "Ovos + pão + fruta",
       tags: ["rápido", "proteico"],
-      steps: [
-        "Faça 2–4 ovos mexidos/omelete (sal e pimenta).",
-        "Toste 1–2 fatias de pão.",
-        "Finalize com 1 fruta (banana/maçã).",
-      ],
+      steps: ["Faça 2–4 ovos mexidos/omelete (sal e pimenta).", "Toste 1–2 fatias de pão.", "Finalize com 1 fruta (banana/maçã)."],
       base: { protein: ["ovos"], carb: ["pão"], extra: ["fruta"] },
       tips: ["Se quiser aumentar calorias: adicione queijo ou pasta de amendoim."],
     },
@@ -296,7 +270,6 @@ const RECIPE_BANK = {
     },
   ],
 
-  // ✅ pode colar seu banco completo depois (se estiver vazio, a tela não quebra)
   almoco: [],
   janta: [],
 };
@@ -333,7 +306,7 @@ function makeVariant(recipe, seedKey, objective = "hipertrofia") {
 
 function buildLotsOfOptions({ email, day, objective, mealKey, count = 48 }) {
   const baseList = RECIPE_BANK[mealKey] || [];
-  if (!baseList.length) return []; // ✅ evita crash se almoço/janta estiverem vazios
+  if (!baseList.length) return [];
   const shuffled = seededShuffle(baseList, `${email}_${day}_${mealKey}_base`);
   const out = [];
   for (let i = 0; i < count; i++) {
@@ -355,127 +328,118 @@ export default function Nutricao() {
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
 
-  // nutri+ pago
   const hasNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
-    // ✅ Dia como estado (muda na meia-noite)
-function todayKeyLocal() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-const [day, setDay] = useState(() => todayKeyLocal());
-
-const objetivo = String(user?.objetivo || "hipertrofia");
-const peso = Number(user?.peso || 0) || 80;
-
-// ✅ Água
-const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
-
-const waterKey = useMemo(() => `water_${email}_${day}`, [email, day]);
-const historyKey = useMemo(() => `water_history_${email}`, [email]);
-
-function readHistory() {
-  try {
-    const raw = localStorage.getItem(historyKey);
-    const obj = raw ? JSON.parse(raw) : {};
-    return obj && typeof obj === "object" ? obj : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeHistory(obj) {
-  try {
-    localStorage.setItem(historyKey, JSON.stringify(obj));
-  } catch {}
-}
-
-function persistWater(forDay, ml) {
-  try {
-    localStorage.setItem(`water_${email}_${forDay}`, String(ml));
-  } catch {}
-
-  const h = readHistory();
-  h[forDay] = ml;
-  writeHistory(h);
-}
-
-// ✅ estado inicial (lê a chave do dia atual)
-const [waterMl, setWaterMl] = useState(() => {
-  const v = Number(localStorage.getItem(`water_${email}_${todayKeyLocal()}`) || 0) || 0;
-  persistWater(todayKeyLocal(), v);
-  return v;
-});
-
-// ✅ quando virar o dia, carrega valor do novo dia
-useEffect(() => {
-  const v = Number(localStorage.getItem(waterKey) || 0) || 0;
-  setWaterMl(v);
-  persistWater(day, v);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [waterKey]);
-
-// ✅ agenda virada exatamente após 00:00
-useEffect(() => {
-  function msUntilNextMidnight() {
-    const now = new Date();
-    const next = new Date(now);
-    next.setHours(24, 0, 0, 80); // folga pequena
-    return Math.max(250, next.getTime() - now.getTime());
+  function todayKeyLocal() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   }
 
-  const t = setTimeout(() => {
-    setDay(todayKeyLocal());
-  }, msUntilNextMidnight());
+  const [day, setDay] = useState(() => todayKeyLocal());
 
-  return () => clearTimeout(t);
-}, [day]);
+  const objetivo = String(user?.objetivo || "hipertrofia");
+  const peso = Number(user?.peso || 0) || 80;
 
-function addWater(ml) {
-  setWaterMl((prev) => {
-    const next = clamp(prev + ml, 0, goalMl * 2);
-    persistWater(day, next);
-    return next;
+  const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
+
+  const waterKey = useMemo(() => `water_${email}_${day}`, [email, day]);
+  const historyKey = useMemo(() => `water_history_${email}`, [email]);
+
+  function readHistory() {
+    try {
+      const raw = localStorage.getItem(historyKey);
+      const obj = raw ? JSON.parse(raw) : {};
+      return obj && typeof obj === "object" ? obj : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeHistory(obj) {
+    try {
+      localStorage.setItem(historyKey, JSON.stringify(obj));
+    } catch {}
+  }
+
+  function persistWater(forDay, ml) {
+    try {
+      localStorage.setItem(`water_${email}_${forDay}`, String(ml));
+    } catch {}
+
+    const h = readHistory();
+    h[forDay] = ml;
+    writeHistory(h);
+  }
+
+  const [waterMl, setWaterMl] = useState(() => {
+    const v = Number(localStorage.getItem(`water_${email}_${todayKeyLocal()}`) || 0) || 0;
+    persistWater(todayKeyLocal(), v);
+    return v;
   });
-}
 
-function resetWater() {
-  setWaterMl(0);
-  persistWater(day, 0);
-}
-  // ✅ BOTÃO CALENDÁRIO (leva pro Calendario.jsx)
-function goCalendar() {
-  nav("/calendario");
-}
-  // ✅ Modal
+  useEffect(() => {
+    const v = Number(localStorage.getItem(waterKey) || 0) || 0;
+    setWaterMl(v);
+    persistWater(day, v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waterKey]);
+
+  useEffect(() => {
+    function msUntilNextMidnight() {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(24, 0, 0, 80);
+      return Math.max(250, next.getTime() - now.getTime());
+    }
+
+    const t = setTimeout(() => {
+      setDay(todayKeyLocal());
+    }, msUntilNextMidnight());
+
+    return () => clearTimeout(t);
+  }, [day]);
+
+  function addWater(ml) {
+    setWaterMl((prev) => {
+      const next = clamp(prev + ml, 0, goalMl * 2);
+      persistWater(day, next);
+      return next;
+    });
+  }
+
+  function resetWater() {
+    setWaterMl(0);
+    persistWater(day, 0);
+  }
+
+  function goCalendar() {
+    nav("/calendario");
+  }
+
   const [openRecipe, setOpenRecipe] = useState(null);
 
-  // ✅ Busca/filtro
   const [query, setQuery] = useState("");
   const [mealTab, setMealTab] = useState("cafe");
   const [showFavOnly, setShowFavOnly] = useState(false);
 
-  // favoritos
   const favKey = `nutri_fav_${email}`;
   const [fav, setFav] = useState(() => {
     const raw = localStorage.getItem(favKey);
     return raw ? JSON.parse(raw) : {};
   });
+
   function toggleFav(id) {
     const next = { ...fav, [id]: !fav[id] };
     setFav(next);
     localStorage.setItem(favKey, JSON.stringify(next));
   }
 
-  // ✅ “ver mais” incremental
   const [visibleCount, setVisibleCount] = useState(16);
   useEffect(() => setVisibleCount(16), [mealTab, showFavOnly, query]);
 
-  // ✅ lista grande (combinações)
   const options = useMemo(() => {
     const countPerMeal = 80;
     return buildLotsOfOptions({
@@ -503,7 +467,6 @@ function goCalendar() {
 
   const shown = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
-  // ✅ bloco: “Sugestão do dia”
   const suggestion = useMemo(() => {
     const base = buildLotsOfOptions({
       email,
@@ -517,12 +480,10 @@ function goCalendar() {
     return pick || null;
   }, [email, day, objetivo, mealTab]);
 
-  // ✅ métricas rápidas de água
   const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
   const pctLabel = Math.round(waterPct * 100);
   const leftMl = clamp(goalMl - waterMl, 0, goalMl);
 
-  // ✅ CTA para suplementação (rota nova)
   function goSupp() {
     nav("/suplementacao");
   }
@@ -543,24 +504,16 @@ function goCalendar() {
           </div>
 
           <div style={S.headRight}>
-            {/* pill discreto (preto gradiente + ponto laranja) */}
-            <button style={S.headPill} onClick={goSupp} type="button">
-              <span style={S.headPillText}>
-                Suplementação<span style={S.orangeDot}>.</span>
-              </span>
-              <span style={S.headPillChev}>›</span>
-            </button>
-
+            {/* ✅ removido: botão preto do header */}
             <button style={S.backBtn} onClick={() => nav("/dashboard")} type="button">
               Voltar
             </button>
           </div>
         </div>
 
-        {/* botão principal (visível e bonito) */}
+        {/* ✅ botão de baixo continua, mas SEM barra laranja */}
         <button style={S.suppHero} onClick={goSupp} type="button">
           <div style={S.suppHeroGlow} />
-
           <div style={S.suppHeroTop}>
             <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
             <div style={S.suppHeroChev}>›</div>
@@ -571,10 +524,7 @@ function goCalendar() {
           </div>
 
           <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
-
-          <div style={S.suppHeroTrack}>
-            <div style={S.suppHeroFill} />
-          </div>
+          {/* ✅ removido: track/fill (barra laranja) */}
         </button>
 
         <div style={S.lockCard}>
@@ -590,7 +540,6 @@ function goCalendar() {
           <div style={S.smallNote}>Você mantém o treino gratuito — Nutri+ é um módulo extra premium.</div>
         </div>
 
-        {/* prévia elegante */}
         <div style={S.previewCard}>
           <div style={S.previewTitle}>Prévia</div>
           <div style={S.previewRow}>
@@ -611,7 +560,6 @@ function goCalendar() {
     <div style={S.page}>
       <div style={S.bgGlow} />
 
-      {/* Header */}
       <div style={S.head}>
         <div style={{ minWidth: 0 }}>
           <div style={S.kicker}>Nutri+</div>
@@ -622,24 +570,16 @@ function goCalendar() {
         </div>
 
         <div style={S.headRight}>
-          {/* pill discreto (preto gradiente + ponto laranja) */}
-          <button style={S.headPill} onClick={goSupp} type="button">
-            <span style={S.headPillText}>
-              Suplementação<span style={S.orangeDot}>.</span>
-            </span>
-            <span style={S.headPillChev}>›</span>
-          </button>
-
+          {/* ✅ removido: botão preto do header */}
           <button style={S.backBtn} onClick={() => nav("/dashboard")} type="button">
             Voltar
           </button>
         </div>
       </div>
 
-      {/* Botão principal — bem visível */}
+      {/* ✅ botão de baixo continua, mas SEM barra laranja */}
       <button style={S.suppHero} onClick={goSupp} type="button">
         <div style={S.suppHeroGlow} />
-
         <div style={S.suppHeroTop}>
           <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
           <div style={S.suppHeroChev}>›</div>
@@ -650,13 +590,9 @@ function goCalendar() {
         </div>
 
         <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
-
-        <div style={S.suppHeroTrack}>
-          <div style={S.suppHeroFill} />
-        </div>
+        {/* ✅ removido: track/fill (barra laranja) */}
       </button>
 
-      {/* Bloco: Sugestão do dia */}
       {suggestion ? (
         <button style={S.suggestCard} onClick={() => setOpenRecipe(suggestion)} type="button">
           <div style={S.suggestTop}>
@@ -679,25 +615,23 @@ function goCalendar() {
         </button>
       ) : null}
 
-      {/* Água */}
       <div style={S.card}>
-<div style={S.cardTop}>
-  <div>
-    <div style={S.cardTitle}>Hidratação</div>
-    <div style={S.cardSub}>
-      Meta sugerida: <b>{goalMl} ml</b> • faltam <b>{leftMl} ml</b>
-    </div>
-  </div>
+        <div style={S.cardTop}>
+          <div>
+            <div style={S.cardTitle}>Hidratação</div>
+            <div style={S.cardSub}>
+              Meta sugerida: <b>{goalMl} ml</b> • faltam <b>{leftMl} ml</b>
+            </div>
+          </div>
 
-  {/* ✅ direita: % + botão */}
-  <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-    <div style={S.pill}>{pctLabel}%</div>
+          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+            <div style={S.pill}>{pctLabel}%</div>
 
-    <button style={S.calendarBtn} onClick={goCalendar} type="button">
-      Ver no calendário <span style={S.calendarChev}>›</span>
-    </button>
-  </div>
-</div>
+            <button style={S.calendarBtn} onClick={goCalendar} type="button">
+              Ver no calendário <span style={S.calendarChev}>›</span>
+            </button>
+          </div>
+        </div>
 
         <div style={S.progressWrap}>
           <div style={{ ...S.progressBar, width: `${Math.round(waterPct * 100)}%` }} />
@@ -735,7 +669,6 @@ function goCalendar() {
         </div>
       </div>
 
-      {/* Tabs + Search */}
       <div style={S.card}>
         <div style={S.tabs}>
           {[
@@ -785,7 +718,6 @@ function goCalendar() {
         </div>
       </div>
 
-      {/* Lista de refeições */}
       <div style={S.list}>
         {shown.map((r) => {
           const isFav = !!fav[r.id];
@@ -827,14 +759,12 @@ function goCalendar() {
         })}
       </div>
 
-      {/* Ver mais */}
       {shown.length < filtered.length ? (
         <button style={S.loadMore} onClick={() => setVisibleCount((v) => clamp(v + 16, 16, 9999))} type="button">
           Ver mais opções
         </button>
       ) : null}
 
-      {/* Modal Receita */}
       {openRecipe ? (
         <div style={S.modalOverlay} onClick={() => setOpenRecipe(null)}>
           <div style={S.modal} onClick={(e) => e.stopPropagation()}>
@@ -958,40 +888,8 @@ const S = {
   },
 
   orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
-  headPillText: { display: "inline-flex", alignItems: "baseline", gap: 0 },
 
-  // pill pequeno no header (preto gradiente, Apple-like)
-  headPill: {
-    padding: "12px 14px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,.10)",
-    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 100%)",
-    color: "#fff",
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-    boxShadow: "0 14px 34px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    WebkitTapHighlightColor: "transparent",
-    letterSpacing: -0.2,
-  },
-  headPillChev: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    background: "rgba(255,255,255,.10)",
-    border: "1px solid rgba(255,255,255,.10)",
-    display: "grid",
-    placeItems: "center",
-    fontSize: 18,
-    fontWeight: 950,
-    lineHeight: 1,
-    color: "#fff",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,.08)",
-  },
-
-  // HERO suplementação (preto gradiente + ponto laranja, Apple card)
+  // HERO suplementação (sem barra/track)
   suppHero: {
     position: "relative",
     zIndex: 1,
@@ -1029,37 +927,23 @@ const S = {
   suppHeroChev: { fontSize: 26, fontWeight: 900, opacity: 0.55, color: "rgba(255,255,255,.92)" },
   suppHeroTitle: { marginTop: 12, fontSize: 16, fontWeight: 950, color: "#fff", letterSpacing: -0.2 },
   suppHeroSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,.68)", lineHeight: 1.35 },
-  suppHeroTrack: {
-    marginTop: 12,
-    height: 10,
-    borderRadius: 999,
-    background: "rgba(255,255,255,.10)",
-    border: "1px solid rgba(255,255,255,.10)",
-    overflow: "hidden",
-  },
-  suppHeroFill: {
-    height: "100%",
-    width: "72%",
-    borderRadius: 999,
-    background: "linear-gradient(90deg, rgba(255,106,0,1), rgba(255,178,107,1))",
-  },
 
   calendarBtn: {
-  padding: "10px 12px",
-  borderRadius: 999,
-  border: "1px solid rgba(15,23,42,.10)",
-  background: "rgba(255,255,255,.92)",
-  color: TEXT,
-  fontWeight: 950,
-  fontSize: 12,
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 10,
-  boxShadow: "0 10px 24px rgba(15,23,42,.06)",
-  WebkitTapHighlightColor: "transparent",
-},
-calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
-  /* cards */
+    padding: "10px 12px",
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 10px 24px rgba(15,23,42,.06)",
+    WebkitTapHighlightColor: "transparent",
+  },
+  calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
+
   card: {
     position: "relative",
     zIndex: 1,
@@ -1138,7 +1022,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
     fontWeight: 950,
   },
 
-  /* sugestão */
   suggestCard: {
     position: "relative",
     zIndex: 1,
@@ -1168,7 +1051,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
   suggestSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
   suggestChips: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" },
 
-  /* tabs + search */
   tabs: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 },
   tabBtn: {
     padding: 12,
@@ -1215,7 +1097,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
 
   meta: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
 
-  /* list */
   list: { position: "relative", zIndex: 1, marginTop: 14, display: "grid", gap: 12 },
 
   recipeCard: {
@@ -1277,7 +1158,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
 
-  /* lock */
   lockCard: {
     position: "relative",
     zIndex: 1,
@@ -1289,7 +1169,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
     boxShadow: "0 18px 50px rgba(15,23,42,.10)",
     textAlign: "center",
   },
-  lockIcon: { fontSize: 34, marginBottom: 10 },
   lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
   lockText: { marginTop: 8, fontSize: 13, color: MUTED, fontWeight: 850, lineHeight: 1.4 },
   ctaBtn: {
@@ -1328,7 +1207,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
   previewPillVal: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT },
   previewHint: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
 
-  /* modal */
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -1424,7 +1302,3 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
     boxShadow: "0 16px 40px rgba(255,106,0,.22)",
   },
 };
-
-
-
-
