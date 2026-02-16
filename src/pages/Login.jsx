@@ -1,13 +1,13 @@
 // ✅ COLE EM: src/pages/Login.jsx
 // ✅ SIGNUP VAI PARA /onboarding
-// ✅ Troque o "FD" pelo seu símbolo: /src/assets/fitdeal-mark.png
-// ✅ Pedido: remover 3 CTAs (chips), remover “Seu coach digital • rotina inteligente”, remover “no onboarding”,
-// ✅ sem emojis, usar ícones com cara Apple (SVG), aumentar “fitdeal.”
+// ✅ Logo: /src/assets/fitdeal-mark.png
+// ✅ Mantém simples, Apple-like: sem chips feios, sem “Seu coach digital…”, sem “no onboarding”
+// ✅ Inclui: continuar com Apple/Google + opções inferiores (Ver planos / Suporte / Políticas)
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import LogoMark from "../assets/IMG_5692.png";
+import LogoMark from "../assets/fitdeal-mark.png";
 
 const ORANGE = "#FF6A00";
 const ORANGE_SOFT = "rgba(255,106,0,.12)";
@@ -87,18 +87,42 @@ function Icon({ name }) {
     );
   }
 
-  // arrow right (chevron)
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 6l6 6-6 6"
-        stroke={stroke2}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (name === "chev") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M9 6l6 6-6 6"
+          stroke={stroke2}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  // Apple-like "G" (minimal)
+  if (name === "google") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M20 12.2c0 4.6-3.1 7.8-7.7 7.8A8 8 0 1 1 12.3 4c2.1 0 3.8.8 5.1 2l-2.1 2.1A4.9 4.9 0 1 0 12.3 17c2.6 0 4.1-1.5 4.4-3.6h-4.4v-2.7H20Z"
+          fill="rgba(15,23,42,.78)"
+        />
+      </svg>
+    );
+  }
+
+  // Apple logo via glyph (seguro e simples)
+  if (name === "apple") {
+    return (
+      <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, fontWeight: 900 }}>
+        
+      </span>
+    );
+  }
+
+  return null;
 }
 
 export default function Login() {
@@ -119,7 +143,6 @@ export default function Login() {
   const [erro, setErro] = useState("");
   const [showPass, setShowPass] = useState(false);
 
-  // extras: remember + last email + createdAt
   const [remember, setRemember] = useState(() => localStorage.getItem("remember_login") === "1");
   const [lastEmail, setLastEmail] = useState(() => localStorage.getItem("last_login_email") || "");
   const [createdAt, setCreatedAt] = useState(() => localStorage.getItem("account_created_at") || "");
@@ -130,10 +153,9 @@ export default function Login() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // micro animações leves
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "fitdeal-login-micro-v2";
+    const id = "fitdeal-login-micro-v3";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -229,8 +251,6 @@ export default function Login() {
           fitdeal<span style={{ color: ORANGE }}>.</span>
         </div>
 
-        {/* ✅ removido: "Seu coach digital • rotina inteligente"
-            ✅ mantido apenas se já tiver createdAt, senão some (fica clean) */}
         {createdLabel ? (
           <div style={styles.metaRow}>
             <span style={styles.metaPill}>
@@ -242,12 +262,10 @@ export default function Login() {
 
       <h1 style={styles.title}>{isSignup ? "Criar conta" : "Entrar"}</h1>
 
-      {/* ✅ removido “no onboarding” */}
       <p style={styles.subtitle}>
         {isSignup ? "Crie sua conta e personalize suas metas." : "Entre com seu email e senha para continuar."}
       </p>
 
-      {/* ✅ mantém (discreto e útil) */}
       {quickEmail && (
         <button onClick={continueAsLast} style={styles.lastUser} className="tap" type="button">
           <span style={styles.lastDot} />
@@ -277,40 +295,24 @@ export default function Login() {
         </button>
       </div>
 
-      {/* ✅ removidas as 3 CTAs (chips/benefícios) */}
-
       {isSignup && (
         <>
-          <input name="nome" value={form.nome} onChange={onChange} placeholder="Nome" style={styles.input} autoComplete="name" />
+          <input
+            name="nome"
+            value={form.nome}
+            onChange={onChange}
+            placeholder="Nome"
+            style={styles.input}
+            autoComplete="name"
+          />
           <div style={styles.row}>
-            <input
-              name="altura"
-              value={form.altura}
-              onChange={onChange}
-              placeholder="Altura (cm)"
-              style={styles.input}
-              inputMode="numeric"
-            />
-            <input
-              name="peso"
-              value={form.peso}
-              onChange={onChange}
-              placeholder="Peso (kg)"
-              style={styles.input}
-              inputMode="numeric"
-            />
+            <input name="altura" value={form.altura} onChange={onChange} placeholder="Altura (cm)" style={styles.input} inputMode="numeric" />
+            <input name="peso" value={form.peso} onChange={onChange} placeholder="Peso (kg)" style={styles.input} inputMode="numeric" />
           </div>
         </>
       )}
 
-      <input
-        name="email"
-        value={form.email}
-        onChange={onChange}
-        placeholder="Email"
-        style={styles.input}
-        autoComplete="email"
-      />
+      <input name="email" value={form.email} onChange={onChange} placeholder="Email" style={styles.input} autoComplete="email" />
 
       <div style={styles.passWrap}>
         <input
@@ -359,8 +361,39 @@ export default function Login() {
         {isSignup ? "Continuar" : "Entrar"}
       </button>
 
-      {/* ✅ CTAs removidos (Apple/Google) */}
-      {/* ✅ footer removido para ficar clean (se quiser depois eu coloco minimal de volta) */}
+      {/* ✅ Continuar com Apple / Google (discreto, premium) */}
+      <div style={styles.socialWrap}>
+        <button type="button" className="tap" style={styles.socialBtn} onClick={() => toastSoon("Continuar com Apple — em breve.")}>
+          <span style={styles.socialIcon}>
+            <Icon name="apple" />
+          </span>
+          Continuar com Apple
+        </button>
+
+        <button type="button" className="tap" style={styles.socialBtn} onClick={() => toastSoon("Continuar com Google — em breve.")}>
+          <span style={styles.socialIcon}>
+            <Icon name="google" />
+          </span>
+          Continuar com Google
+        </button>
+      </div>
+
+      {/* ✅ Opções inferiores (como antes) */}
+      <div style={styles.footerRow}>
+        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
+          Ver planos
+        </button>
+        <span style={styles.footerDot} />
+        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => toastSoon("Suporte — em breve.")}>
+          Suporte
+        </button>
+        <span style={styles.footerDot} />
+        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => toastSoon("Políticas — em breve.")}>
+          Políticas
+        </button>
+      </div>
+
+      <div style={{ height: 16 }} />
     </div>
   );
 }
@@ -384,16 +417,17 @@ const styles = {
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
   logoImg: { width: 50, height: 50, objectFit: "contain", display: "block" },
-  logoFallback: { display: "none", width: "100%", height: "100%", placeItems: "center", fontWeight: 950, color: ORANGE, fontSize: 22 },
-
-  // ✅ aumenta fitdeal.
-  logoText: {
-    fontSize: 26,
+  logoFallback: {
+    display: "none",
+    width: "100%",
+    height: "100%",
+    placeItems: "center",
     fontWeight: 950,
-    color: TEXT,
-    letterSpacing: -0.6,
-    lineHeight: 1.05,
+    color: ORANGE,
+    fontSize: 22,
   },
+
+  logoText: { fontSize: 26, fontWeight: 950, color: TEXT, letterSpacing: -0.6, lineHeight: 1.05 },
 
   metaRow: { marginTop: 10 },
   metaPill: {
@@ -425,42 +459,14 @@ const styles = {
     gap: 10,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  lastDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
-    flexShrink: 0,
-  },
+  lastDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)", flexShrink: 0 },
   lastChev: { marginLeft: "auto", display: "grid", placeItems: "center", opacity: 0.55 },
 
-  switchRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  switchBtn: {
-    padding: 12,
-    borderRadius: 14,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    fontWeight: 900,
-    color: MUTED,
-  },
+  switchRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18, marginBottom: 12 },
+  switchBtn: { padding: 12, borderRadius: 14, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, color: MUTED },
   switchActive: { border: `1px solid ${ORANGE}`, background: ORANGE_SOFT, color: ORANGE },
 
-  input: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 14,
-    border: "1px solid #e5e7eb",
-    marginTop: 12,
-    fontSize: 14,
-    outline: "none",
-  },
+  input: { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #e5e7eb", marginTop: 12, fontSize: 14, outline: "none" },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
   passWrap: { position: "relative", marginTop: 12 },
@@ -504,14 +510,7 @@ const styles = {
   },
   checkboxOn: { borderColor: "rgba(255,106,0,.45)", background: "rgba(255,106,0,.18)" },
 
-  linkBtn: {
-    border: "none",
-    background: "transparent",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 10px",
-    borderRadius: 999,
-  },
+  linkBtn: { border: "none", background: "transparent", color: TEXT, fontWeight: 950, padding: "10px 10px", borderRadius: 999 },
 
   cta: {
     width: "100%",
@@ -526,14 +525,43 @@ const styles = {
     boxShadow: "0 16px 40px rgba(255,106,0,.28)",
   },
 
-  error: {
-    marginTop: 12,
-    padding: "10px 12px",
-    borderRadius: 12,
-    background: "#fef2f2",
-    color: "#991b1b",
-    border: "1px solid #fecaca",
-    fontSize: 13,
-    fontWeight: 700,
+  // Social
+  socialWrap: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  socialBtn: {
+    padding: 12,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "#fff",
+    fontWeight: 900,
+    color: TEXT,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    boxShadow: "0 12px 30px rgba(15,23,42,.06)",
   },
+  socialIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    background: "rgba(15,23,42,.05)",
+    border: "1px solid rgba(15,23,42,.06)",
+    display: "grid",
+    placeItems: "center",
+    fontWeight: 950,
+  },
+
+  error: { marginTop: 12, padding: "10px 12px", borderRadius: 12, background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", fontSize: 13, fontWeight: 700 },
+
+  footerRow: {
+    marginTop: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    color: MUTED,
+    flexWrap: "wrap",
+  },
+  footerLink: { border: "none", background: "transparent", color: MUTED, fontWeight: 900, padding: "8px 10px", borderRadius: 999 },
+  footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
