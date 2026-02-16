@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import LogoMark from "../assets/IMG_5694.png";
+import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
 const ORANGE_SOFT = "rgba(255,106,0,.12)";
@@ -688,3 +688,4 @@ const styles = {
   },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
+
