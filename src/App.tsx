@@ -15,6 +15,7 @@ import Planos from "./pages/Planos";
 import TreinoPersonalize from "./pages/TreinoPersonalize.jsx";
 import Metas from "./pages/Metas.jsx";
 import Suplementacao from "./pages/Suplementacao.jsx";
+import Calendario from "./pages/Calendario.jsx";
 
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -157,6 +158,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+
 
 
 
