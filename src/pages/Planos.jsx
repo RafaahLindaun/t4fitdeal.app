@@ -87,9 +87,7 @@ export default function Planos() {
           <div style={{ minWidth: 0 }}>
             <div style={styles.kicker}>Planos</div>
             <div style={styles.title}>Escolha seu acesso</div>
-            <div style={styles.sub}>
-              Pagamento recorrente. Cancelamento simples, sem burocracia.
-            </div>
+            <div style={styles.sub}>Pagamento recorrente. Cancelamento simples, sem burocracia.</div>
           </div>
         </div>
 
@@ -127,8 +125,11 @@ export default function Planos() {
           </div>
         ) : (
           <div style={styles.freeBanner}>
-            <span style={styles.lockDot}>🔒</span>
-            Você está no modo gratuito. Assine para liberar tudo do treino.
+            <span style={styles.lockDot} aria-hidden="true" />
+            <div style={{ minWidth: 0 }}>
+              <div style={styles.freeTitle}>Modo gratuito</div>
+              <div style={styles.freeText}>Assine para liberar tudo do treino.</div>
+            </div>
           </div>
         )}
       </div>
@@ -145,14 +146,12 @@ export default function Planos() {
           </div>
 
           <div style={styles.cardTitle}>Treinos personalizados</div>
-          <div style={styles.cardNote}>
-            Foque no essencial: execução, constância e progressão.
-          </div>
+          <div style={styles.cardNote}>Foque no essencial: execução, constância e progressão.</div>
 
           <div style={styles.featureGrid}>
-            <Feature icon="✅" title="Treino do dia" text="Rotina clara + progresso no app" />
-            <Feature icon="📈" title="Consistência" text="Streak e frequência semanal" />
-            <Feature icon="🔥" title="Estimativa kcal" text="Visão rápida de gasto por treino" />
+            <Feature title="Treino do dia" text="Rotina clara e progresso no app" />
+            <Feature title="Consistência" text="Streak e frequência semanal" />
+            <Feature title="Estimativa kcal" text="Visão rápida de gasto por treino" />
           </div>
 
           <button
@@ -167,9 +166,7 @@ export default function Planos() {
             {paid ? "Já ativado" : "Assinar agora"}
           </button>
 
-          <div style={styles.micro}>
-            Ao assinar, o app libera o treino completo e evolução.
-          </div>
+          <div style={styles.micro}>Ao assinar, o app libera o treino completo e evolução.</div>
         </div>
       </div>
 
@@ -185,26 +182,19 @@ export default function Planos() {
           </div>
 
           <div style={styles.cardTitle}>Nutrição + Treino (upgrade)</div>
-          <div style={styles.cardNote}>
-            Para quem quer dieta guiada e evolução completa.
-          </div>
+          <div style={styles.cardNote}>Para quem quer dieta guiada e evolução completa.</div>
 
           <div style={styles.featureGrid}>
-            <Feature icon="🥗" title="Cardápios" text="Rotativos e práticos (em breve)" />
-            <Feature icon="🛒" title="Lista de compras" text="Organização automática (em breve)" />
-            <Feature icon="💧" title="Hidratação" text="Controle diário (em breve)" />
+            <Feature title="Cardápios" text="Rotativos e práticos (em breve)" />
+            <Feature title="Lista de compras" text="Organização automática (em breve)" />
+            <Feature title="Hidratação" text="Controle diário (em breve)" />
           </div>
 
-          {/* ✅ BOTÃO CORRIGIDO:
-              - aqui ele pode ir pra /nutricao (área), mas também existe scroll certo vindo de fora (#nutri)
-          */}
           <button type="button" style={styles.secondary} onClick={() => nav("/nutriplus")}>
             Ver área de nutrição
           </button>
 
-          <div style={styles.micro}>
-            Orientação Nutricional.
-          </div>
+          <div style={styles.micro}>Orientação nutricional.</div>
         </div>
       </div>
 
@@ -219,10 +209,12 @@ export default function Planos() {
 }
 
 /* ---------- UI bits ---------- */
-function Feature({ icon, title, text }) {
+function Feature({ title, text }) {
   return (
     <div style={styles.feat}>
-      <div style={styles.featIcon}>{icon}</div>
+      <div style={styles.featIcon} aria-hidden="true">
+        <span style={styles.featDot} />
+      </div>
       <div style={{ minWidth: 0 }}>
         <div style={styles.featTitle}>{title}</div>
         <div style={styles.featText}>{text}</div>
@@ -245,7 +237,7 @@ function ChevronLeft() {
   );
 }
 
-/* ---------- styles (Jony Ive-ish: menos ruído, mais respiro, camadas sutis) ---------- */
+/* ---------- styles (Apple-like: menos ruído, mais respiro, camadas sutis) ---------- */
 const styles = {
   page: {
     padding: 18,
@@ -348,7 +340,16 @@ const styles = {
     alignItems: "center",
     gap: 10,
   },
-  lockDot: { fontSize: 14 },
+  lockDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.35)",
+    boxShadow: "0 0 0 4px rgba(15,23,42,.06)",
+    flexShrink: 0,
+  },
+  freeTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.2 },
+  freeText: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.25 },
 
   section: { position: "relative", zIndex: 1, marginTop: 14 },
 
@@ -419,6 +420,13 @@ const styles = {
     display: "grid",
     placeItems: "center",
     flexShrink: 0,
+  },
+  featDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 4px rgba(255,106,0,.14)",
   },
   featTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   featText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
