@@ -1,13 +1,20 @@
 // ✅ COLE EM: src/pages/Login.jsx
 // ✅ SIGNUP VAI PARA /onboarding
-// ✅ Logo: /src/assets/fitdeal-mark.png
-// ✅ Mantém simples, Apple-like: sem chips feios, sem “Seu coach digital…”, sem “no onboarding”
-// ✅ Inclui: continuar com Apple/Google + opções inferiores (Ver planos / Suporte / Políticas)
+// ✅ Símbolo: coloque o PNG em /src/assets/fitdeal-mark.png (import abaixo)
+// ✅ Mantém o estilo simples + clean, com:
+// - logo imagem + fitdeal maior
+// - sem frases extras no topo (removeu “Seu coach digital • rotina inteligente”)
+// - sem chips/3 CTAs ruins
+// - sem emojis (ícones Apple-like em SVG)
+// - remember me + show/hide senha
+// - continuar como último email (se existir)
+// - continuar com Apple/Google (placeholders)
+// - links inferiores (Ver planos / Suporte / Políticas)
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import LogoMark from "../assets/fitdeal-mark.png";
+import LogoMark from "../assets/IMG_5694.png";
 
 const ORANGE = "#FF6A00";
 const ORANGE_SOFT = "rgba(255,106,0,.12)";
@@ -101,24 +108,35 @@ function Icon({ name }) {
     );
   }
 
-  // Apple-like "G" (minimal)
-  if (name === "google") {
+  if (name === "apple") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
-          d="M20 12.2c0 4.6-3.1 7.8-7.7 7.8A8 8 0 1 1 12.3 4c2.1 0 3.8.8 5.1 2l-2.1 2.1A4.9 4.9 0 1 0 12.3 17c2.6 0 4.1-1.5 4.4-3.6h-4.4v-2.7H20Z"
-          fill="rgba(15,23,42,.78)"
+          d="M16.2 13.1c0 2.7 2.4 3.6 2.4 3.6s-1.7 4.9-4 4.9c-1.1 0-1.9-.7-3.1-.7s-2.1.7-3.2.7c-2.1 0-4-4.4-4-7.7 0-3.1 1.8-4.7 3.6-4.7 1.2 0 2.2.8 3 .8s2-.9 3.4-.9c.5 0 2.3.1 3.4 1.8-.1.1-2 .9-2 3.2Z"
+          stroke="rgba(15,23,42,.82)"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M14.9 2.6c.1 1-.3 2-1 2.8-.8.9-2 1.4-3.1 1.3-.1-1 .3-2 1-2.8.8-.9 2.1-1.4 3.1-1.3Z"
+          stroke="rgba(15,23,42,.62)"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
         />
       </svg>
     );
   }
 
-  // Apple logo via glyph (seguro e simples)
-  if (name === "apple") {
+  if (name === "google") {
     return (
-      <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, fontWeight: 900 }}>
-        
-      </span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 10.2v3.7h5.2c-.5 2-2.2 3.3-5.2 3.3a5.8 5.8 0 1 1 0-11.6c1.6 0 2.7.6 3.6 1.4l2.5-2.4C20.6 2.7 18.6 1.7 12 1.7A10.3 10.3 0 1 0 12 22.3c6.1 0 10-4.3 10-10.1 0-.7-.1-1.2-.2-1.7H12Z"
+          stroke="rgba(15,23,42,.70)"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
     );
   }
 
@@ -191,7 +209,6 @@ export default function Login() {
 
   function submit() {
     setErro("");
-
     const email = (form.email || "").trim().toLowerCase();
 
     if (remember) {
@@ -306,13 +323,34 @@ export default function Login() {
             autoComplete="name"
           />
           <div style={styles.row}>
-            <input name="altura" value={form.altura} onChange={onChange} placeholder="Altura (cm)" style={styles.input} inputMode="numeric" />
-            <input name="peso" value={form.peso} onChange={onChange} placeholder="Peso (kg)" style={styles.input} inputMode="numeric" />
+            <input
+              name="altura"
+              value={form.altura}
+              onChange={onChange}
+              placeholder="Altura (cm)"
+              style={styles.input}
+              inputMode="numeric"
+            />
+            <input
+              name="peso"
+              value={form.peso}
+              onChange={onChange}
+              placeholder="Peso (kg)"
+              style={styles.input}
+              inputMode="numeric"
+            />
           </div>
         </>
       )}
 
-      <input name="email" value={form.email} onChange={onChange} placeholder="Email" style={styles.input} autoComplete="email" />
+      <input
+        name="email"
+        value={form.email}
+        onChange={onChange}
+        placeholder="Email"
+        style={styles.input}
+        autoComplete="email"
+      />
 
       <div style={styles.passWrap}>
         <input
@@ -361,16 +399,34 @@ export default function Login() {
         {isSignup ? "Continuar" : "Entrar"}
       </button>
 
-      {/* ✅ Continuar com Apple / Google (discreto, premium) */}
+      {/* -------- Social (Apple / Google) -------- */}
+      <div style={styles.dividerRow}>
+        <div style={styles.dividerLine} />
+        <div style={styles.dividerText}>ou</div>
+        <div style={styles.dividerLine} />
+      </div>
+
       <div style={styles.socialWrap}>
-        <button type="button" className="tap" style={styles.socialBtn} onClick={() => toastSoon("Continuar com Apple — em breve.")}>
+        <button
+          type="button"
+          className="tap"
+          style={styles.socialBtn}
+          onClick={() => toastSoon("Continuar com Apple — em breve.")}
+          aria-label="Continuar com Apple"
+        >
           <span style={styles.socialIcon}>
             <Icon name="apple" />
           </span>
           Continuar com Apple
         </button>
 
-        <button type="button" className="tap" style={styles.socialBtn} onClick={() => toastSoon("Continuar com Google — em breve.")}>
+        <button
+          type="button"
+          className="tap"
+          style={styles.socialBtn}
+          onClick={() => toastSoon("Continuar com Google — em breve.")}
+          aria-label="Continuar com Google"
+        >
           <span style={styles.socialIcon}>
             <Icon name="google" />
           </span>
@@ -378,7 +434,7 @@ export default function Login() {
         </button>
       </div>
 
-      {/* ✅ Opções inferiores (como antes) */}
+      {/* -------- Footer links (como antes) -------- */}
       <div style={styles.footerRow}>
         <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
           Ver planos
@@ -427,7 +483,13 @@ const styles = {
     fontSize: 22,
   },
 
-  logoText: { fontSize: 26, fontWeight: 950, color: TEXT, letterSpacing: -0.6, lineHeight: 1.05 },
+  logoText: {
+    fontSize: 26,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.6,
+    lineHeight: 1.05,
+  },
 
   metaRow: { marginTop: 10 },
   metaPill: {
@@ -459,14 +521,42 @@ const styles = {
     gap: 10,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  lastDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)", flexShrink: 0 },
+  lastDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
+    flexShrink: 0,
+  },
   lastChev: { marginLeft: "auto", display: "grid", placeItems: "center", opacity: 0.55 },
 
-  switchRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18, marginBottom: 12 },
-  switchBtn: { padding: 12, borderRadius: 14, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, color: MUTED },
+  switchRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginTop: 18,
+    marginBottom: 12,
+  },
+  switchBtn: {
+    padding: 12,
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    fontWeight: 900,
+    color: MUTED,
+  },
   switchActive: { border: `1px solid ${ORANGE}`, background: ORANGE_SOFT, color: ORANGE },
 
-  input: { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #e5e7eb", marginTop: 12, fontSize: 14, outline: "none" },
+  input: {
+    width: "100%",
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    marginTop: 12,
+    fontSize: 14,
+    outline: "none",
+  },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
   passWrap: { position: "relative", marginTop: 12 },
@@ -510,7 +600,14 @@ const styles = {
   },
   checkboxOn: { borderColor: "rgba(255,106,0,.45)", background: "rgba(255,106,0,.18)" },
 
-  linkBtn: { border: "none", background: "transparent", color: TEXT, fontWeight: 950, padding: "10px 10px", borderRadius: 999 },
+  linkBtn: {
+    border: "none",
+    background: "transparent",
+    color: TEXT,
+    fontWeight: 950,
+    padding: "10px 10px",
+    borderRadius: 999,
+  },
 
   cta: {
     width: "100%",
@@ -525,7 +622,17 @@ const styles = {
     boxShadow: "0 16px 40px rgba(255,106,0,.28)",
   },
 
-  // Social
+  dividerRow: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr",
+    alignItems: "center",
+    gap: 10,
+    color: MUTED,
+  },
+  dividerLine: { height: 1, background: "rgba(15,23,42,.10)" },
+  dividerText: { fontSize: 12, fontWeight: 900, color: MUTED },
+
   socialWrap: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   socialBtn: {
     padding: 12,
@@ -543,15 +650,24 @@ const styles = {
   socialIcon: {
     width: 28,
     height: 28,
-    borderRadius: 10,
+    borderRadius: 11,
     background: "rgba(15,23,42,.05)",
     border: "1px solid rgba(15,23,42,.06)",
     display: "grid",
     placeItems: "center",
-    fontWeight: 950,
+    flexShrink: 0,
   },
 
-  error: { marginTop: 12, padding: "10px 12px", borderRadius: 12, background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", fontSize: 13, fontWeight: 700 },
+  error: {
+    marginTop: 12,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "#fef2f2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
+    fontSize: 13,
+    fontWeight: 700,
+  },
 
   footerRow: {
     marginTop: 14,
@@ -562,6 +678,13 @@ const styles = {
     color: MUTED,
     flexWrap: "wrap",
   },
-  footerLink: { border: "none", background: "transparent", color: MUTED, fontWeight: 900, padding: "8px 10px", borderRadius: 999 },
+  footerLink: {
+    border: "none",
+    background: "transparent",
+    color: MUTED,
+    fontWeight: 900,
+    padding: "8px 10px",
+    borderRadius: 999,
+  },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
