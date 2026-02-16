@@ -93,7 +93,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
  <Route
           path="/calendario"
           element={
@@ -101,8 +100,7 @@ function AppRoutes() {
               <Calendario />
             </ProtectedRoute>
           }
-        />
-        
+        />    
         <Route
           path="/nutricao"
           element={
@@ -169,6 +167,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+
 
 
 
