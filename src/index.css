@@ -6,6 +6,20 @@
 }
 
 :root {
+  --bg: #f8fafc;
+  --card: rgba(255,255,255,.92);
+  --text: #0f172a;
+  --muted: #64748b;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0c0f;
+  --card: rgba(255,255,255,.06);
+  --text: #e5e7eb;
+  --muted: rgba(229,231,235,.70);
+}
+
+:root {
   --bg: #ffffff;
   --card: #f8fafc;
   --border: #e5e7eb;
