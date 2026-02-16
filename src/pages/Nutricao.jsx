@@ -1,8 +1,8 @@
+
 // ✅ COLE EM: src/pages/Nutricao.jsx
-// ✅ Correções pedidas:
-// 1) Reset automático da água na MEIA-NOITE (horário local) — sem depender de UTC
-// 2) Histórico diário salvo (water_history_<email>) + botão que leva para /calendario (Calendario.jsx)
-// 3) Mantém o resto do seu layout/estilo intacto
+// Nutri+ — com botão “Suplementação” (gradiente preto + ponto laranja, Apple vibe)
+// - botão visível no topo (logo após o header) e também um “pill” pequeno no header
+// - leva para rota: /suplementacao  (ajuste se sua rota for diferente)
 
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -13,15 +13,9 @@ const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
 /* ---------------- helpers ---------------- */
-// ✅ dia local (não UTC)
-function todayKeyLocal() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
 }
-
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -49,22 +43,6 @@ function seededShuffle(arr, seedKey) {
 }
 
 /* ---------------- banco de receitas base ---------------- */
-const RECIPE_BANK = {
-  cafe: [
-    // ... (SEU BANCO CONTINUA IGUAL)
-    {
-      id: "cafe_pao_queijo_tomate",
-      title: "Pão + queijo + tomate",
-      tags: ["rápido", "barato", "br"],
-      steps: [
-        "Toste 1–2 fatias de pão.",
-        "Coloque queijo e tomate em rodelas.",
-        "Finalize com orégano e um fio de azeite (opcional).",
-      ],
-      base: { protein: ["queijo"], carb: ["pão"], extra: ["tomate"] },
-      tips: ["Se quiser mais proteína: adicione 1 ovo mexido junto."],
-    },
-    /* ---------------- banco de receitas base ---------------- */
 const RECIPE_BANK = {
   cafe: [
     // --- NOVAS (CAFÉ) ---
@@ -316,8 +294,9 @@ const RECIPE_BANK = {
       base: { protein: ["leite"], carb: ["banana", "aveia"], extra: ["pasta de amendoim"] },
       tips: ["Para reduzir açúcar: use leite sem açúcar e aveia."],
     },
-    // ✅ pode colar seu banco completo depois
   ],
+
+  // ✅ pode colar seu banco completo depois (se estiver vazio, a tela não quebra)
   almoco: [],
   janta: [],
 };
@@ -354,7 +333,7 @@ function makeVariant(recipe, seedKey, objective = "hipertrofia") {
 
 function buildLotsOfOptions({ email, day, objective, mealKey, count = 48 }) {
   const baseList = RECIPE_BANK[mealKey] || [];
-  if (!baseList.length) return [];
+  if (!baseList.length) return []; // ✅ evita crash se almoço/janta estiverem vazios
   const shuffled = seededShuffle(baseList, `${email}_${day}_${mealKey}_base`);
   const out = [];
   for (let i = 0; i < count; i++) {
@@ -379,89 +358,23 @@ export default function Nutricao() {
   // nutri+ pago
   const hasNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
-  // ✅ dia agora é estado (pra trocar automaticamente na meia-noite)
-  const [day, setDay] = useState(() => todayKeyLocal());
-
+  const day = todayKey();
   const objetivo = String(user?.objetivo || "hipertrofia");
   const peso = Number(user?.peso || 0) || 80;
 
   // ✅ Água
   const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
-  const waterKey = useMemo(() => `water_${email}_${day}`, [email, day]);
-
-  // ✅ histórico (um objeto day -> ml)
-  const historyKey = useMemo(() => `water_history_${email}`, [email]);
-
-  function readHistory() {
-    try {
-      const raw = localStorage.getItem(historyKey);
-      const obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function writeHistory(nextObj) {
-    localStorage.setItem(historyKey, JSON.stringify(nextObj));
-  }
-
-  function persistWater(forDay, ml) {
-    // salva no dia (chave do dia) + no histórico (calendário)
-    localStorage.setItem(`water_${email}_${forDay}`, String(ml));
-    const h = readHistory();
-    h[forDay] = ml;
-    writeHistory(h);
-  }
-
-  const [waterMl, setWaterMl] = useState(() => {
-    const v = Number(localStorage.getItem(waterKey) || 0) || 0;
-    // garante que o histórico tenha o valor atual
-    persistWater(day, v);
-    return v;
-  });
-
-  // ✅ Quando trocar o dia (meia-noite), recarrega o valor daquele novo dia (normalmente 0)
-  useEffect(() => {
-    const v = Number(localStorage.getItem(waterKey) || 0) || 0;
-    setWaterMl(v);
-    persistWater(day, v);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterKey]);
-
-  // ✅ Timer pra virar o dia automaticamente na meia-noite (local)
-  useEffect(() => {
-    function msUntilNextMidnight() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(24, 0, 0, 50); // 00:00:00.050 (micro folga)
-      return Math.max(250, next.getTime() - now.getTime());
-    }
-
-    const t = setTimeout(() => {
-      const newDay = todayKeyLocal();
-      setDay(newDay);
-      // waterMl será recarregado pelo effect do waterKey
-    }, msUntilNextMidnight());
-
-    return () => clearTimeout(t);
-  }, [day]);
+  const waterKey = `water_${email}_${day}`;
+  const [waterMl, setWaterMl] = useState(() => Number(localStorage.getItem(waterKey) || 0) || 0);
 
   function addWater(ml) {
-    setWaterMl((prev) => {
-      const next = clamp(prev + ml, 0, goalMl * 2);
-      persistWater(day, next);
-      return next;
-    });
+    const next = clamp(waterMl + ml, 0, goalMl * 2);
+    setWaterMl(next);
+    localStorage.setItem(waterKey, String(next));
   }
-
   function resetWater() {
     setWaterMl(0);
-    persistWater(day, 0);
-  }
-
-  function goCalendar() {
-    nav("/calendario");
+    localStorage.setItem(waterKey, "0");
   }
 
   // ✅ Modal
@@ -556,6 +469,7 @@ export default function Nutricao() {
           </div>
 
           <div style={S.headRight}>
+            {/* pill discreto (preto gradiente + ponto laranja) */}
             <button style={S.headPill} onClick={goSupp} type="button">
               <span style={S.headPillText}>
                 Suplementação<span style={S.orangeDot}>.</span>
@@ -569,16 +483,21 @@ export default function Nutricao() {
           </div>
         </div>
 
+        {/* botão principal (visível e bonito) */}
         <button style={S.suppHero} onClick={goSupp} type="button">
           <div style={S.suppHeroGlow} />
+
           <div style={S.suppHeroTop}>
             <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
             <div style={S.suppHeroChev}>›</div>
           </div>
+
           <div style={S.suppHeroTitle}>
             Plano de suplementos<span style={S.orangeDot}>.</span>
           </div>
+
           <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
+
           <div style={S.suppHeroTrack}>
             <div style={S.suppHeroFill} />
           </div>
@@ -598,6 +517,7 @@ export default function Nutricao() {
           <div style={S.smallNote}>Você mantém o treino gratuito — Nutri+ é um módulo extra premium.</div>
         </div>
 
+        {/* prévia elegante */}
         <div style={S.previewCard}>
           <div style={S.previewTitle}>Prévia</div>
           <div style={S.previewRow}>
@@ -629,6 +549,7 @@ export default function Nutricao() {
         </div>
 
         <div style={S.headRight}>
+          {/* pill discreto (preto gradiente + ponto laranja) */}
           <button style={S.headPill} onClick={goSupp} type="button">
             <span style={S.headPillText}>
               Suplementação<span style={S.orangeDot}>.</span>
@@ -695,15 +616,7 @@ export default function Nutricao() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-            <div style={S.pill}>{pctLabel}%</div>
-
-            {/* ✅ BOTÃO DO CALENDÁRIO (salvo + navega pro Calendario.jsx) */}
-            <button style={S.calendarBtn} onClick={goCalendar} type="button">
-              Ver no calendário
-              <span style={S.calendarChev}>›</span>
-            </button>
-          </div>
+          <div style={S.pill}>{pctLabel}%</div>
         </div>
 
         <div style={S.progressWrap}>
@@ -736,12 +649,7 @@ export default function Nutricao() {
           <button style={S.waterMini} onClick={() => addWater(750)} type="button">
             +750
           </button>
-          <button
-            style={S.waterMiniGhost}
-            onClick={() => addWater(leftMl)}
-            type="button"
-            title="Completar meta"
-          >
+          <button style={S.waterMiniGhost} onClick={() => addWater(leftMl)} type="button" title="Completar meta">
             Completar meta
           </button>
         </div>
@@ -841,11 +749,7 @@ export default function Nutricao() {
 
       {/* Ver mais */}
       {shown.length < filtered.length ? (
-        <button
-          style={S.loadMore}
-          onClick={() => setVisibleCount((v) => clamp(v + 16, 16, 9999))}
-          type="button"
-        >
+        <button style={S.loadMore} onClick={() => setVisibleCount((v) => clamp(v + 16, 16, 9999))} type="button">
           Ver mais opções
         </button>
       ) : null}
@@ -976,6 +880,7 @@ const S = {
   orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
   headPillText: { display: "inline-flex", alignItems: "baseline", gap: 0 },
 
+  // pill pequeno no header (preto gradiente, Apple-like)
   headPill: {
     padding: "12px 14px",
     borderRadius: 999,
@@ -1006,6 +911,7 @@ const S = {
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.08)",
   },
 
+  // HERO suplementação (preto gradiente + ponto laranja, Apple card)
   suppHero: {
     position: "relative",
     zIndex: 1,
@@ -1058,6 +964,7 @@ const S = {
     background: "linear-gradient(90deg, rgba(255,106,0,1), rgba(255,178,107,1))",
   },
 
+  /* cards */
   card: {
     position: "relative",
     zIndex: 1,
@@ -1082,23 +989,6 @@ const S = {
     color: TEXT,
     whiteSpace: "nowrap",
   },
-
-  // ✅ botão discreto, apple-like
-  calendarBtn: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    fontSize: 12,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    boxShadow: "0 10px 24px rgba(15,23,42,.06)",
-    WebkitTapHighlightColor: "transparent",
-  },
-  calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
 
   progressWrap: {
     marginTop: 12,
@@ -1153,6 +1043,7 @@ const S = {
     fontWeight: 950,
   },
 
+  /* sugestão */
   suggestCard: {
     position: "relative",
     zIndex: 1,
@@ -1182,6 +1073,7 @@ const S = {
   suggestSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
   suggestChips: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" },
 
+  /* tabs + search */
   tabs: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 },
   tabBtn: {
     padding: 12,
@@ -1228,6 +1120,7 @@ const S = {
 
   meta: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
 
+  /* list */
   list: { position: "relative", zIndex: 1, marginTop: 14, display: "grid", gap: 12 },
 
   recipeCard: {
@@ -1289,6 +1182,7 @@ const S = {
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
 
+  /* lock */
   lockCard: {
     position: "relative",
     zIndex: 1,
@@ -1339,6 +1233,7 @@ const S = {
   previewPillVal: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT },
   previewHint: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
 
+  /* modal */
   modalOverlay: {
     position: "fixed",
     inset: 0,
