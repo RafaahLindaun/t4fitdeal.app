@@ -44,7 +44,7 @@ export default function Planos() {
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // ✅ Corrige: /planos#nutri ou /planos?focus=nutri vai direto pra seção certa
+  // /planos#nutri ou /planos?focus=nutri vai direto pra seção certa
   useEffect(() => {
     const hash = (location.hash || "").toLowerCase();
     const qs = new URLSearchParams(location.search || "");
@@ -59,7 +59,7 @@ export default function Planos() {
     }
   }, [location.hash, location.search]);
 
-  // mini “tabs” no topo (bem Apple)
+  // mini “tabs” no topo (glass/Apple)
   function goTab(which) {
     setTap(which);
     setTimeout(() => setTap(null), 140);
@@ -107,7 +107,7 @@ export default function Planos() {
             type="button"
             onClick={() => goTab("nutri")}
             style={{
-              ...styles.tab,
+              ...styles.tabPremium,
               ...(tap === "nutri" ? styles.tabTap : null),
             }}
           >
@@ -125,7 +125,9 @@ export default function Planos() {
           </div>
         ) : (
           <div style={styles.freeBanner}>
-            <span style={styles.lockDot} aria-hidden="true" />
+            <span style={styles.lockMark} aria-hidden="true">
+              <LockGlyph />
+            </span>
             <div style={{ minWidth: 0 }}>
               <div style={styles.freeTitle}>Modo gratuito</div>
               <div style={styles.freeText}>Assine para liberar tudo do treino.</div>
@@ -172,29 +174,31 @@ export default function Planos() {
 
       {/* CARD — NUTRI+ */}
       <div ref={nutriRef} id="nutri" style={styles.section}>
-        <div style={styles.cardSoft}>
+        <div style={styles.cardPremium}>
           <div style={styles.cardHeader}>
-            <div style={styles.tagSoft}>NUTRI+</div>
+            <div style={styles.tagPremium}>NUTRI+</div>
             <div style={styles.priceWrap}>
-              <div style={styles.price}>R$ 65,99</div>
-              <div style={styles.per}>/mês</div>
+              <div style={{ ...styles.price, color: "#fff" }}>R$ 65,99</div>
+              <div style={{ ...styles.per, color: "rgba(255,255,255,.72)" }}>/mês</div>
             </div>
           </div>
 
-          <div style={styles.cardTitle}>Nutrição + Treino (upgrade)</div>
-          <div style={styles.cardNote}>Para quem quer dieta guiada e evolução completa.</div>
+          <div style={styles.cardTitlePremium}>Nutrição + Treino (upgrade)</div>
+          <div style={styles.cardNotePremium}>Para quem quer dieta guiada e evolução completa.</div>
 
-          <div style={styles.featureGrid}>
-            <Feature title="Cardápios" text="Rotativos e práticos (em breve)" />
-            <Feature title="Lista de compras" text="Organização automática (em breve)" />
-            <Feature title="Hidratação" text="Controle diário (em breve)" />
+          <div style={styles.featureGridPremium}>
+            <FeaturePremium title="Cardápios" text="Rotativos e práticos, alinhados ao seu objetivo" />
+            <FeaturePremium title="Lista de compras" text="Organização automática para o dia a dia" />
+            <FeaturePremium title="Hidratação" text="Controle diário com meta recomendada" />
           </div>
 
-          <button type="button" style={styles.secondary} onClick={() => nav("/nutriplus")}>
+          <button type="button" style={styles.premiumCta} onClick={() => nav("/nutriplus")}>
             Ver área de nutrição
           </button>
 
-          <div style={styles.micro}>Orientação nutricional.</div>
+          <div style={styles.microPremium}>
+            Inclui recursos de nutrição e acompanhamento no mesmo fluxo.
+          </div>
         </div>
       </div>
 
@@ -213,11 +217,25 @@ function Feature({ title, text }) {
   return (
     <div style={styles.feat}>
       <div style={styles.featIcon} aria-hidden="true">
-        <span style={styles.featDot} />
+        <CheckGlyph color={ORANGE} />
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={styles.featTitle}>{title}</div>
         <div style={styles.featText}>{text}</div>
+      </div>
+    </div>
+  );
+}
+
+function FeaturePremium({ title, text }) {
+  return (
+    <div style={styles.featPremium}>
+      <div style={styles.featIconPremium} aria-hidden="true">
+        <CheckGlyph color="rgba(255,255,255,.90)" />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={styles.featTitlePremium}>{title}</div>
+        <div style={styles.featTextPremium}>{text}</div>
       </div>
     </div>
   );
@@ -231,6 +249,39 @@ function ChevronLeft() {
         stroke="#111"
         strokeWidth="2.6"
         strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CheckGlyph({ color = "#111" }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 6L9 17l-5-5"
+        stroke={color}
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function LockGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M8.5 11V8.7c0-2.3 1.7-4.2 3.5-4.2s3.5 1.9 3.5 4.2V11"
+        stroke="rgba(15,23,42,.65)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.5 11h9c.9 0 1.5.6 1.5 1.5v6c0 .9-.6 1.5-1.5 1.5h-9c-.9 0-1.5-.6-1.5-1.5v-6c0-.9.6-1.5 1.5-1.5Z"
+        stroke="rgba(15,23,42,.65)"
+        strokeWidth="2.2"
         strokeLinejoin="round"
       />
     </svg>
@@ -300,6 +351,16 @@ const styles = {
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
     transition: "transform .12s ease",
   },
+  tabPremium: {
+    padding: 12,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,.10)",
+    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 100%)",
+    fontWeight: 950,
+    color: "rgba(255,255,255,.94)",
+    boxShadow: "0 14px 38px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.06)",
+    transition: "transform .12s ease",
+  },
   tabTap: { transform: "scale(0.985)" },
 
   paidBanner: {
@@ -340,12 +401,15 @@ const styles = {
     alignItems: "center",
     gap: 10,
   },
-  lockDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.35)",
-    boxShadow: "0 0 0 4px rgba(15,23,42,.06)",
+  lockMark: {
+    width: 34,
+    height: 34,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.86)",
+    border: "1px solid rgba(15,23,42,.06)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 10px 26px rgba(15,23,42,.06)",
     flexShrink: 0,
   },
   freeTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.2 },
@@ -360,16 +424,19 @@ const styles = {
     border: "1px solid rgba(15,23,42,.06)",
     boxShadow: "0 18px 60px rgba(15,23,42,.10)",
   },
-  cardSoft: {
+
+  cardPremium: {
     borderRadius: 26,
     padding: 18,
-    background:
-      "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.03)), rgba(255,255,255,.88)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
+    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 55%, #0E0F13 100%)",
+    border: "1px solid rgba(255,255,255,.10)",
+    boxShadow: "0 22px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06)",
+    position: "relative",
+    overflow: "hidden",
   },
 
   cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+
   tag: {
     display: "inline-flex",
     padding: "8px 12px",
@@ -381,13 +448,14 @@ const styles = {
     fontSize: 12,
     letterSpacing: 0.2,
   },
-  tagSoft: {
+
+  tagPremium: {
     display: "inline-flex",
     padding: "8px 12px",
     borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    border: "1px solid rgba(15,23,42,.10)",
-    color: TEXT,
+    background: "rgba(255,255,255,.08)",
+    border: "1px solid rgba(255,255,255,.12)",
+    color: "rgba(255,255,255,.92)",
     fontWeight: 950,
     fontSize: 12,
     letterSpacing: 0.2,
@@ -400,7 +468,23 @@ const styles = {
   cardTitle: { marginTop: 12, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
   cardNote: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.4 },
 
+  cardTitlePremium: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: 950,
+    color: "rgba(255,255,255,.96)",
+    letterSpacing: -0.3,
+  },
+  cardNotePremium: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: 800,
+    color: "rgba(255,255,255,.70)",
+    lineHeight: 1.4,
+  },
+
   featureGrid: { marginTop: 12, display: "grid", gap: 10 },
+  featureGridPremium: { marginTop: 12, display: "grid", gap: 10 },
 
   feat: {
     borderRadius: 18,
@@ -421,15 +505,31 @@ const styles = {
     placeItems: "center",
     flexShrink: 0,
   },
-  featDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 4px rgba(255,106,0,.14)",
-  },
   featTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   featText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
+
+  featPremium: {
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(255,255,255,.06)",
+    border: "1px solid rgba(255,255,255,.10)",
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+  featIconPremium: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.06)",
+    border: "1px solid rgba(255,255,255,.10)",
+    display: "grid",
+    placeItems: "center",
+    flexShrink: 0,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
+  },
+  featTitlePremium: { fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,.92)", letterSpacing: -0.2 },
+  featTextPremium: { marginTop: 3, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.70)", lineHeight: 1.3 },
 
   primary: {
     marginTop: 14,
@@ -443,11 +543,21 @@ const styles = {
     boxShadow: "0 18px 60px rgba(255,106,0,.26)",
     cursor: "pointer",
   },
-  primaryDisabled: {
-    opacity: 0.55,
-    boxShadow: "none",
-    cursor: "default",
+  primaryDisabled: { opacity: 0.55, boxShadow: "none", cursor: "default" },
+
+  premiumCta: {
+    marginTop: 14,
+    width: "100%",
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,.14)",
+    background: "rgba(255,255,255,.08)",
+    color: "rgba(255,255,255,.92)",
+    fontWeight: 950,
+    cursor: "pointer",
+    boxShadow: "0 14px 40px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.06)",
   },
+
   secondary: {
     marginTop: 14,
     width: "100%",
@@ -461,6 +571,7 @@ const styles = {
   },
 
   micro: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+  microPremium: { marginTop: 10, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.70)", lineHeight: 1.35 },
 
   footer: { position: "relative", zIndex: 1, marginTop: 14 },
   back: {
