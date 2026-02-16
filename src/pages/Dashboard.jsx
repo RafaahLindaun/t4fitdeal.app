@@ -1,11 +1,15 @@
-// ✅ ALTERAÇÃO: removi COMPLETAMENTE o bloco “Hoje / Resumo rápido” (DataBubble)
-// - Mantive as metas ao lado do “Bem-vindo” (desktop 2 colunas / mobile 1 coluna)
-// - Mantive o CTA preto premium com leveza + movimento
-// - Hidratação: só Nutri+. Se não tiver, aparece “Acesso bloqueado”
+// ✅ COLE (com logo + nome do app no ponto ideal, sem balão, premium/clean/apple)
+// ✅ Alteração pedida: adicionar “fitdeal.” + logo (visível e firme) NO TOPO do Dashboard
+// - Sem balão / sem pill
+// - Tipografia firme, estética clean
+// - Sem mexer no resto do layout
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+// ✅ Coloque seu logo em: /src/assets/fitdeal-mark.png
+import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
@@ -327,6 +331,27 @@ export default function Dashboard() {
 
       <div style={styles.bgGlow} />
 
+      {/* ✅ FITDEAL BRAND (logo + nome, sem balão, clean) */}
+      <div style={styles.brandBar}>
+        <img
+          src={LogoMark}
+          alt="fitdeal"
+          style={styles.brandLogo}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+        <div style={styles.brandName}>
+          fitdeal<span style={{ color: ORANGE }}>.</span>
+        </div>
+
+        {/* opcional: um mini “status” bem discreto, sem balão */}
+        <div style={styles.brandRight}>
+          <span style={styles.brandDot} />
+          <span style={styles.brandStatus}>{paid ? "Pro" : "Free"}</span>
+        </div>
+      </div>
+
       {/* ✅ BALÃO DO PLANO */}
       {paid ? (
         <div style={styles.planCard}>
@@ -490,6 +515,54 @@ const styles = {
     pointerEvents: "none",
     filter: "blur(0px)",
   },
+
+  /* ✅ BRAND BAR (sem balão/pill) */
+  brandBar: {
+    position: "relative",
+    zIndex: 3,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  brandLogo: {
+    width: 34,
+    height: 34,
+    objectFit: "contain",
+    borderRadius: 10,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.14)",
+    padding: 6,
+    flexShrink: 0,
+  },
+  brandName: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.45,
+    lineHeight: 1,
+  },
+  brandRight: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    color: MUTED,
+    fontWeight: 900,
+    fontSize: 12,
+    letterSpacing: -0.1,
+    whiteSpace: "nowrap",
+  },
+  brandDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.10)",
+  },
+  brandStatus: { color: MUTED },
 
   heroGrid: {
     position: "relative",
@@ -677,7 +750,6 @@ const styles = {
 
   payFine: { marginTop: 10, fontSize: 12, fontWeight: 750, opacity: 0.72 },
 
-  /* -------- Water -------- */
   waterCard: {
     position: "relative",
     zIndex: 1,
@@ -740,7 +812,6 @@ const styles = {
   },
   waterNumNutri: { marginTop: 10, fontSize: 13, fontWeight: 800, color: MUTED },
 
-  /* -------- Water locked -------- */
   lockCard: {
     position: "relative",
     zIndex: 1,
@@ -769,7 +840,6 @@ const styles = {
   lockSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
   lockChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 
-  /* -------- Goals -------- */
   goalsHeader: {
     position: "relative",
     zIndex: 1,
@@ -859,7 +929,6 @@ const styles = {
   goalChipSub: { marginTop: 3, fontSize: 12, fontWeight: 800, color: MUTED },
   goalChipChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 
-  /* -------- Progress -------- */
   progressRow: {
     position: "relative",
     zIndex: 1,
@@ -893,7 +962,6 @@ const styles = {
     transition: "width .25s ease",
   },
 
-  /* -------- Cards -------- */
   grid: { position: "relative", zIndex: 1, marginTop: 14, display: "grid", gap: 12 },
   card: {
     background: "#fff",
