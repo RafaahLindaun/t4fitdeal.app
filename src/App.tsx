@@ -74,7 +74,7 @@ function AppRoutes() {
     </ProtectedRoute>
   }
 />
-
+<Route path="/calendario" element={<Calendario />} />
         <Route
   path="/suplementacao"
   element={
@@ -157,6 +157,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+
 
 
 
