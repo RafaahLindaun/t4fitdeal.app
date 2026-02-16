@@ -1,15 +1,7 @@
 // ✅ COLE EM: src/pages/Login.jsx
 // ✅ SIGNUP VAI PARA /onboarding
-// ✅ Símbolo: coloque o PNG em /src/assets/fitdeal-mark.png (import abaixo)
-// ✅ Mantém o estilo simples + clean, com:
-// - logo imagem + fitdeal maior
-// - sem frases extras no topo (removeu “Seu coach digital • rotina inteligente”)
-// - sem chips/3 CTAs ruins
-// - sem emojis (ícones Apple-like em SVG)
-// - remember me + show/hide senha
-// - continuar como último email (se existir)
-// - continuar com Apple/Google (placeholders)
-// - links inferiores (Ver planos / Suporte / Políticas)
+// ✅ Símbolo: /src/assets/fitdeal-mark.png
+// ✅ Olhinho corrigido: alinhado no centro e SEM quadrado (botão transparente)
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -173,7 +165,7 @@ export default function Login() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "fitdeal-login-micro-v3";
+    const id = "fitdeal-login-micro-v4";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -359,9 +351,11 @@ export default function Login() {
           onChange={onChange}
           placeholder="Senha"
           type={showPass ? "text" : "password"}
-          style={{ ...styles.input, marginTop: 0, paddingRight: 52 }}
+          style={{ ...styles.input, marginTop: 0, paddingRight: 48 }}
           autoComplete={isSignup ? "new-password" : "current-password"}
         />
+
+        {/* ✅ Olhinho: alinhado, sem quadrado, só ícone */}
         <button
           type="button"
           style={styles.eyeBtn}
@@ -399,7 +393,7 @@ export default function Login() {
         {isSignup ? "Continuar" : "Entrar"}
       </button>
 
-      {/* -------- Social (Apple / Google) -------- */}
+      {/* -------- Social -------- */}
       <div style={styles.dividerRow}>
         <div style={styles.dividerLine} />
         <div style={styles.dividerText}>ou</div>
@@ -434,7 +428,7 @@ export default function Login() {
         </button>
       </div>
 
-      {/* -------- Footer links (como antes) -------- */}
+      {/* -------- Footer links -------- */}
       <div style={styles.footerRow}>
         <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
           Ver planos
@@ -560,19 +554,23 @@ const styles = {
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
   passWrap: { position: "relative", marginTop: 12 },
+
+  // ✅ Olhinho sem quadrado: botão transparente + área de toque correta
   eyeBtn: {
     position: "absolute",
-    right: 10,
-    top: 9,
+    right: 12,
+    top: "50%",
+    transform: "translateY(-50%)",
     width: 40,
     height: 40,
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    cursor: "pointer",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 10px 24px rgba(15,23,42,.06)",
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    cursor: "pointer",
+    color: TEXT,
+    opacity: 0.9,
   },
 
   auxRow: { marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
@@ -688,4 +686,3 @@ const styles = {
   },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
-
