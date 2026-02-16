@@ -727,7 +727,7 @@ export default function Conta() {
         </div>
 
         <div style={styles.hint}>
-          Essas preferências ficam salvas no dispositivo (localStorage) por conta.
+          Essas preferências ficam salvas no dispositivo por conta.
         </div>
       </div>
 
@@ -1523,3 +1523,4 @@ const styles = {
     border: "1px solid rgba(255,255,255,.10)",
   },
 };
+
