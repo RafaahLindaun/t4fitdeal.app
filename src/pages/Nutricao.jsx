@@ -358,10 +358,6 @@ export default function Nutricao() {
   // nutri+ pago
   const hasNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
-  const day = todayKey();
-  const objetivo = String(user?.objetivo || "hipertrofia");
-  const peso = Number(user?.peso || 0) || 80;
-
     // ✅ Dia como estado (muda na meia-noite)
 function todayKeyLocal() {
   const d = new Date();
@@ -1428,6 +1424,7 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
     boxShadow: "0 16px 40px rgba(255,106,0,.22)",
   },
 };
+
 
 
 
