@@ -1,6 +1,7 @@
 // ✅ CRIE/COLE EM: src/pages/Calendario.jsx
-// Página simples (Apple vibe) mostrando o histórico de água por dia (mês atual)
+// Calendário (Apple vibe) — histórico de água por dia (mês atual)
 // Lê: water_history_<email> (salvo pelo Nutricao.jsx)
+// ✅ FIX: evita “empurrar pro lado” quando aparece ml/% (minmax(0,1fr) + minWidth:0 + overflowX hidden)
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -69,7 +70,7 @@ export default function Calendario() {
     const last = new Date(y, m + 1, 0);
     const totalDays = last.getDate();
 
-    // 0=dom ... 6=sab — em pt-BR a semana normalmente começa dom
+    // 0=dom ... 6=sab
     const startWeekday = first.getDay();
 
     const grid = [];
@@ -82,9 +83,7 @@ export default function Calendario() {
       grid.push({ d, key, ml });
     }
 
-    // completa o grid pra múltiplo de 7
     while (grid.length % 7 !== 0) grid.push(null);
-
     return grid;
   }, [cursor, history]);
 
@@ -108,7 +107,7 @@ export default function Calendario() {
       <div style={S.bgGlow} />
 
       <div style={S.head}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={S.kicker}>Calendário</div>
           <div style={S.title}>
             Hidratação<span style={{ color: ORANGE }}>.</span>
@@ -134,8 +133,8 @@ export default function Calendario() {
       </div>
 
       <div style={S.weekRow}>
-        {["D", "S", "T", "Q", "Q", "S", "S"].map((w) => (
-          <div key={w} style={S.weekCell}>
+        {["D", "S", "T", "Q", "Q", "S", "S"].map((w, i) => (
+          <div key={`${w}_${i}`} style={S.weekCell}>
             {w}
           </div>
         ))}
@@ -143,7 +142,7 @@ export default function Calendario() {
 
       <div style={S.grid}>
         {days.map((it, idx) => {
-          if (!it) return <div key={idx} style={S.emptyCell} />;
+          if (!it) return <div key={`e_${idx}`} style={S.emptyCell} />;
 
           const pct = goalMl ? clamp(it.ml / goalMl, 0, 1) : 0;
           const isToday = it.key === todayKey;
@@ -152,10 +151,12 @@ export default function Calendario() {
             <div key={it.key} style={{ ...S.cell, ...(isToday ? S.todayCell : null) }}>
               <div style={S.cellTop}>
                 <div style={S.dayNum}>{it.d}</div>
-                <div style={S.ml}>{it.ml ? `${it.ml}ml` : ""}</div>
+                <div style={S.ml} title={it.ml ? `${it.ml} ml` : ""}>
+                  {it.ml ? `${it.ml}ml` : ""}
+                </div>
               </div>
 
-              <div style={S.track}>
+              <div style={S.track} aria-hidden="true">
                 <div style={{ ...S.fill, width: `${Math.round(pct * 100)}%` }} />
               </div>
 
@@ -182,6 +183,9 @@ const S = {
       "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.10), rgba(248,250,252,0) 60%), linear-gradient(180deg, #f8fafc, #f7f9fc)",
     position: "relative",
     overflow: "hidden",
+    overflowX: "hidden", // ✅ trava scroll lateral
+    maxWidth: "100%",
+    boxSizing: "border-box",
   },
   bgGlow: {
     position: "absolute",
@@ -219,6 +223,7 @@ const S = {
     fontWeight: 950,
     whiteSpace: "nowrap",
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
+    flexShrink: 0,
   },
 
   monthBar: {
@@ -234,8 +239,20 @@ const S = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
+    maxWidth: "100%",
+    boxSizing: "border-box",
   },
-  monthLabel: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2, textTransform: "capitalize" },
+  monthLabel: {
+    fontSize: 14,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+    textTransform: "capitalize",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    minWidth: 0,
+  },
   monthBtn: {
     width: 44,
     height: 44,
@@ -246,6 +263,7 @@ const S = {
     fontWeight: 950,
     fontSize: 22,
     lineHeight: 1,
+    flexShrink: 0,
   },
 
   weekRow: {
@@ -253,8 +271,11 @@ const S = {
     zIndex: 1,
     marginTop: 10,
     display: "grid",
-    gridTemplateColumns: "repeat(7, 1fr)",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))", // ✅ não deixa conteúdo “forçar” largura
     gap: 8,
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   },
   weekCell: {
     textAlign: "center",
@@ -262,6 +283,7 @@ const S = {
     fontWeight: 900,
     color: MUTED,
     padding: "6px 0",
+    minWidth: 0,
   },
 
   grid: {
@@ -269,8 +291,11 @@ const S = {
     zIndex: 1,
     marginTop: 8,
     display: "grid",
-    gridTemplateColumns: "repeat(7, 1fr)",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))", // ✅ principal correção
     gap: 8,
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   },
 
   emptyCell: {
@@ -278,6 +303,7 @@ const S = {
     borderRadius: 18,
     border: "1px dashed rgba(15,23,42,.06)",
     background: "rgba(255,255,255,.45)",
+    minWidth: 0, // ✅
   },
 
   cell: {
@@ -290,14 +316,40 @@ const S = {
     display: "grid",
     gap: 8,
     alignContent: "start",
+    minWidth: 0, // ✅
+    overflow: "hidden", // ✅ impede conteúdo estourar e empurrar grid
+    boxSizing: "border-box",
   },
   todayCell: {
     border: "1px solid rgba(255,106,0,.26)",
     boxShadow: "0 14px 30px rgba(255,106,0,.10)",
   },
-  cellTop: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
-  dayNum: { fontSize: 13, fontWeight: 950, color: TEXT },
-  ml: { fontSize: 11, fontWeight: 900, color: MUTED },
+
+  cellTop: {
+    display: "flex",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 8,
+    minWidth: 0, // ✅
+  },
+  dayNum: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: TEXT,
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+  },
+  ml: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    minWidth: 0,
+    textAlign: "right",
+    fontVariantNumeric: "tabular-nums",
+  },
 
   track: {
     height: 10,
@@ -305,6 +357,7 @@ const S = {
     background: "rgba(15,23,42,.06)",
     overflow: "hidden",
     border: "1px solid rgba(15,23,42,.06)",
+    minWidth: 0, // ✅
   },
   fill: {
     height: "100%",
@@ -312,7 +365,15 @@ const S = {
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     transition: "width .25s ease",
   },
-  pct: { fontSize: 11, fontWeight: 950, color: TEXT, opacity: 0.9 },
+  pct: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: TEXT,
+    opacity: 0.9,
+    whiteSpace: "nowrap",
+    fontVariantNumeric: "tabular-nums",
+    minWidth: 0, // ✅
+  },
 
   footerNote: {
     position: "relative",
