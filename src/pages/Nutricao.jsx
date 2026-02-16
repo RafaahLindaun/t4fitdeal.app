@@ -362,164 +362,95 @@ export default function Nutricao() {
   const objetivo = String(user?.objetivo || "hipertrofia");
   const peso = Number(user?.peso || 0) || 80;
 
-    // ✅ Dia como estado: muda automaticamente na meia-noite
-  const [day, setDay] = useState(() => todayKeyLocal());
+    // ✅ Dia como estado (muda na meia-noite)
+function todayKeyLocal() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
-  const objetivo = String(user?.objetivo || "hipertrofia");
-  const peso = Number(user?.peso || 0) || 80;
+const [day, setDay] = useState(() => todayKeyLocal());
 
-  // ✅ Chave do dia (água do dia)
-  const waterKey = useMemo(() => `water_${email}_${day}`, [email, day]);
+const objetivo = String(user?.objetivo || "hipertrofia");
+const peso = Number(user?.peso || 0) || 80;
 
-  // ✅ Histórico diário (para calendário)
-  const historyKey = useMemo(() => `water_history_${email}`, [email]);
+// ✅ Água
+const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
 
-  function readHistory() {
-    try {
-      const raw = localStorage.getItem(historyKey);
-      const obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
-    } catch {
-      return {};
-    }
+const waterKey = useMemo(() => `water_${email}_${day}`, [email, day]);
+const historyKey = useMemo(() => `water_history_${email}`, [email]);
+
+function readHistory() {
+  try {
+    const raw = localStorage.getItem(historyKey);
+    const obj = raw ? JSON.parse(raw) : {};
+    return obj && typeof obj === "object" ? obj : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeHistory(obj) {
+  try {
+    localStorage.setItem(historyKey, JSON.stringify(obj));
+  } catch {}
+}
+
+function persistWater(forDay, ml) {
+  try {
+    localStorage.setItem(`water_${email}_${forDay}`, String(ml));
+  } catch {}
+
+  const h = readHistory();
+  h[forDay] = ml;
+  writeHistory(h);
+}
+
+// ✅ estado inicial (lê a chave do dia atual)
+const [waterMl, setWaterMl] = useState(() => {
+  const v = Number(localStorage.getItem(`water_${email}_${todayKeyLocal()}`) || 0) || 0;
+  persistWater(todayKeyLocal(), v);
+  return v;
+});
+
+// ✅ quando virar o dia, carrega valor do novo dia
+useEffect(() => {
+  const v = Number(localStorage.getItem(waterKey) || 0) || 0;
+  setWaterMl(v);
+  persistWater(day, v);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [waterKey]);
+
+// ✅ agenda virada exatamente após 00:00
+useEffect(() => {
+  function msUntilNextMidnight() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(24, 0, 0, 80); // folga pequena
+    return Math.max(250, next.getTime() - now.getTime());
   }
 
-  function writeHistory(obj) {
-    try {
-      localStorage.setItem(historyKey, JSON.stringify(obj));
-    } catch {
-      // se localStorage estourar/quebrar, não trava a UI
-    }
-  }
+  const t = setTimeout(() => {
+    setDay(todayKeyLocal());
+  }, msUntilNextMidnight());
 
-  // ✅ Persiste água: salva na chave do dia e no histórico (para o Calendario.jsx)
-  function persistWater(forDay, ml) {
-    try {
-      localStorage.setItem(`water_${email}_${forDay}`, String(ml));
-    } catch {
-      // ignore
-    }
-    const h = readHistory();
-    h[forDay] = ml;
-    writeHistory(h);
-  }
+  return () => clearTimeout(t);
+}, [day]);
 
-  // ✅ Estado inicial da água (lê a chave do dia atual)
-  const [waterMl, setWaterMl] = useState(() => {
-    const v = Number(localStorage.getItem(`water_${email}_${day}`) || 0) || 0;
-    // garante que o histórico sempre tenha o valor do dia
-    persistWater(day, v);
-    return v;
+function addWater(ml) {
+  setWaterMl((prev) => {
+    const next = clamp(prev + ml, 0, goalMl * 2);
+    persistWater(day, next);
+    return next;
   });
+}
 
-  // ✅ Quando a chave do dia mudar (virou meia-noite), recarrega o valor do novo dia
-  useEffect(() => {
-    const v = Number(localStorage.getItem(waterKey) || 0) || 0;
-    setWaterMl(v);
-    persistWater(day, v);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterKey]);
-
-  // ✅ Timer: agenda a virada do dia para exatamente após 00:00 (local)
-  useEffect(() => {
-    function msUntilNextMidnight() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(24, 0, 0, 60); // 00:00:00.060 (folga)
-      return Math.max(250, next.getTime() - now.getTime());
-    }
-
-    const t = setTimeout(() => {
-      const newDay = todayKeyLocal();
-      setDay(newDay);
-      // waterMl será atualizado automaticamente pelo useEffect do waterKey
-    }, msUntilNextMidnight());
-
-    return () => clearTimeout(t);
-  }, [day])
-    // ✅ Histórico diário (para calendário)
-  const historyKey = useMemo(() => `water_history_${email}`, [email]);
-
-  function readHistory() {
-    try {
-      const raw = localStorage.getItem(historyKey);
-      const obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function writeHistory(obj) {
-    try {
-      localStorage.setItem(historyKey, JSON.stringify(obj));
-    } catch {
-      // se localStorage estourar/quebrar, não trava a UI
-    }
-  }
-
-  // ✅ Persiste água: salva na chave do dia e no histórico (para o Calendario.jsx)
-  function persistWater(forDay, ml) {
-    try {
-      localStorage.setItem(`water_${email}_${forDay}`, String(ml));
-    } catch {
-      // ignore
-    }
-    const h = readHistory();
-    h[forDay] = ml;
-    writeHistory(h);
-  }
-
-  // ✅ Estado inicial da água (lê a chave do dia atual)
-  const [waterMl, setWaterMl] = useState(() => {
-    const v = Number(localStorage.getItem(`water_${email}_${day}`) || 0) || 0;
-    // garante que o histórico sempre tenha o valor do dia
-    persistWater(day, v);
-    return v;
-  });
-
-  // ✅ Quando a chave do dia mudar (virou meia-noite), recarrega o valor do novo dia
-  useEffect(() => {
-    const v = Number(localStorage.getItem(waterKey) || 0) || 0;
-    setWaterMl(v);
-    persistWater(day, v);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterKey]);
-
-  // ✅ Timer: agenda a virada do dia para exatamente após 00:00 (local)
-  useEffect(() => {
-    function msUntilNextMidnight() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(24, 0, 0, 60); // 00:00:00.060 (folga)
-      return Math.max(250, next.getTime() - now.getTime());
-    }
-
-    const t = setTimeout(() => {
-      const newDay = todayKeyLocal();
-      setDay(newDay);
-      // waterMl será atualizado automaticamente pelo useEffect do waterKey
-    }, msUntilNextMidnight());
-
-    return () => clearTimeout(t);
-  }, [day]);
-
-  function addWater(ml) {
-    setWaterMl((prev) => {
-      const next = clamp(prev + ml, 0, goalMl * 2);
-      persistWater(day, next);
-      return next;
-    });
-  }
-
-  function resetWater() {
-    setWaterMl(0);
-    persistWater(day, 0);
-  }
-  
-  // ✅ Água
-  const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
-  
+function resetWater() {
+  setWaterMl(0);
+  persistWater(day, 0);
+}
   // ✅ BOTÃO CALENDÁRIO (leva pro Calendario.jsx)
 function goCalendar() {
   nav("/calendario");
@@ -1497,5 +1428,6 @@ calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
     boxShadow: "0 16px 40px rgba(255,106,0,.22)",
   },
 };
+
 
 
