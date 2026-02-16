@@ -191,7 +191,7 @@ p {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: #ffffff;
+  background: var(--bg);
 }
 
 .splash-stage {
