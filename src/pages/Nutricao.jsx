@@ -376,7 +376,11 @@ export default function Nutricao() {
     setWaterMl(0);
     localStorage.setItem(waterKey, "0");
   }
-
+  
+  // ✅ BOTÃO CALENDÁRIO (leva pro Calendario.jsx)
+function goCalendar() {
+  nav("/calendario");
+}
   // ✅ Modal
   const [openRecipe, setOpenRecipe] = useState(null);
 
@@ -504,7 +508,6 @@ export default function Nutricao() {
         </button>
 
         <div style={S.lockCard}>
-          <div style={S.lockIcon}>🍽️</div>
           <div style={S.lockTitle}>Nutri+ é exclusivo para assinantes</div>
           <div style={S.lockText}>
             Libera: combinações de refeições, receitas detalhadas, favoritos e contador de água.
@@ -608,16 +611,23 @@ export default function Nutricao() {
 
       {/* Água */}
       <div style={S.card}>
-        <div style={S.cardTop}>
-          <div>
-            <div style={S.cardTitle}>Hidratação</div>
-            <div style={S.cardSub}>
-              Meta sugerida: <b>{goalMl} ml</b> • faltam <b>{leftMl} ml</b>
-            </div>
-          </div>
+<div style={S.cardTop}>
+  <div>
+    <div style={S.cardTitle}>Hidratação</div>
+    <div style={S.cardSub}>
+      Meta sugerida: <b>{goalMl} ml</b> • faltam <b>{leftMl} ml</b>
+    </div>
+  </div>
 
-          <div style={S.pill}>{pctLabel}%</div>
-        </div>
+  {/* ✅ direita: % + botão */}
+  <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+    <div style={S.pill}>{pctLabel}%</div>
+
+    <button style={S.calendarBtn} onClick={goCalendar} type="button">
+      Ver no calendário <span style={S.calendarChev}>›</span>
+    </button>
+  </div>
+</div>
 
         <div style={S.progressWrap}>
           <div style={{ ...S.progressBar, width: `${Math.round(waterPct * 100)}%` }} />
@@ -964,6 +974,21 @@ const S = {
     background: "linear-gradient(90deg, rgba(255,106,0,1), rgba(255,178,107,1))",
   },
 
+  calendarBtn: {
+  padding: "10px 12px",
+  borderRadius: 999,
+  border: "1px solid rgba(15,23,42,.10)",
+  background: "rgba(255,255,255,.92)",
+  color: TEXT,
+  fontWeight: 950,
+  fontSize: 12,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 10,
+  boxShadow: "0 10px 24px rgba(15,23,42,.06)",
+  WebkitTapHighlightColor: "transparent",
+},
+calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
   /* cards */
   card: {
     position: "relative",
@@ -1329,3 +1354,4 @@ const S = {
     boxShadow: "0 16px 40px rgba(255,106,0,.22)",
   },
 };
+
