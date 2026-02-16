@@ -7,28 +7,31 @@
 
 :root {
   --bg: #f8fafc;
-  --card: rgba(255,255,255,.92);
+  --card: rgba(255, 255, 255, 0.92);
+  --card2: rgba(255, 255, 255, 0.86);
+  --border: rgba(15, 23, 42, 0.10);
+  --soft: rgba(15, 23, 42, 0.06);
+
   --text: #0f172a;
   --muted: #64748b;
+
+  --accent: #2563eb;
 }
 
 :root[data-theme="dark"] {
   --bg: #0b0c0f;
-  --card: rgba(255,255,255,.06);
+  --card: rgba(255, 255, 255, 0.06);
+  --card2: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
+  --soft: rgba(255, 255, 255, 0.08);
+
   --text: #e5e7eb;
-  --muted: rgba(229,231,235,.70);
+  --muted: rgba(229, 231, 235, 0.70);
+
+  --accent: #60a5fa;
 }
 
-:root {
-  --bg: #ffffff;
-  --card: #f8fafc;
-  --border: #e5e7eb;
-  --text: #0f172a;
-  --muted: #64748b;
-  --accent: #2563eb;
-}
-
-body {
+html, body {
   background: var(--bg);
   color: var(--text);
 }
