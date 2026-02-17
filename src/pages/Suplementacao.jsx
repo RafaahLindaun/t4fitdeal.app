@@ -678,13 +678,7 @@ export default function Suplementacao() {
             const it = CATALOG.find((x) => x.id === id);
             if (!it) return null;
             return (
-              <button
-                key={id}
-                style={S.stackPill}
-                className="tap"
-                onClick={() => openSheet(id)}
-                type="button"
-              >
+              <button key={id} style={S.stackPill} className="tap" onClick={() => openSheet(id)} type="button">
                 <div style={S.stackIcon}>
                   <Icon id={id} />
                 </div>
@@ -772,14 +766,7 @@ export default function Suplementacao() {
           const orange = it.accent === "orange";
 
           return (
-            <div
-              key={it.id}
-              style={{
-                ...S.card,
-                ...(orange ? S.cardOrange : S.cardSoft),
-                ...(on ? S.cardOn : null),
-              }}
-            >
+            <div key={it.id} style={{ ...S.card, ...(orange ? S.cardOrange : S.cardSoft), ...(on ? S.cardOn : null) }}>
               <div style={S.cardTop}>
                 <div style={S.cardIcon}>
                   <Icon id={it.id} />
@@ -830,6 +817,11 @@ export default function Suplementacao() {
             aria-modal="true"
           >
             <div style={S.sheetGrab} />
+
+            {/* ✅ NOME DO APP NO TOPO */}
+            <div style={S.brandBar}>
+              <div style={S.brandText}>fitdeal</div>
+            </div>
 
             {/* HEADER DO SHEET */}
             <div style={S.sheetHead}>
@@ -885,7 +877,7 @@ export default function Suplementacao() {
               </button>
             </div>
 
-            {/* Conteúdo interno com animação leve ao trocar modo */}
+            {/* ✅ AGORA O SCROLL FICA AQUI (CORPO), NÃO ESTOURA O SHEET */}
             <div style={S.sheetBody} className="fadeSlideIn">
               {sheetMode === "list" ? (
                 <div>
@@ -1198,10 +1190,20 @@ const S = {
   lockBtn: { marginTop: 12, width: "100%", padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 14px 36px rgba(255,106,0,.22)" },
 
   // SHEET
-  sheetOverlay: { position: "fixed", inset: 0, zIndex: 9999, display: "grid", alignItems: "end", padding: 12 },
+  // ✅ safe-area no overlay (iPhone) e enquadramento melhor
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+  },
   overlayOn: { background: "rgba(2,6,23,.44)" },
   overlayOff: { background: "rgba(2,6,23,0)" },
 
+  // ✅ maxHeight + flex column (corpo scrolla; footer fixo)
   sheet: {
     width: "100%",
     maxWidth: 520,
@@ -1213,25 +1215,38 @@ const S = {
     backdropFilter: "blur(16px)",
     WebkitBackdropFilter: "blur(16px)",
     overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    maxHeight: "calc(100dvh - 24px)",
   },
   sheetOn: { opacity: 1 },
   sheetOff: { opacity: 0.98 },
 
   sheetGrab: { width: 52, height: 6, borderRadius: 999, background: "rgba(15,23,42,.12)", margin: "10px auto 0" },
 
-  sheetHead: { padding: 14, display: "flex", alignItems: "center", gap: 12 },
+  // ✅ brand
+  brandBar: { padding: "6px 14px 0", display: "flex", justifyContent: "center" },
+  brandText: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.35, opacity: 0.75 },
+
+  sheetHead: { padding: 14, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 },
   sheetIcon: { width: 44, height: 44, borderRadius: 18, background: "rgba(15,23,42,.04)", border: "1px solid rgba(15,23,42,.06)", display: "grid", placeItems: "center", flexShrink: 0 },
   sheetTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
   sheetSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
   sheetX: { marginLeft: "auto", width: 40, height: 40, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, flexShrink: 0 },
 
-  sheetCtas: { padding: "0 14px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  sheetCtas: { padding: "0 14px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, flexShrink: 0 },
   primaryBtn: { padding: 14, borderRadius: 18, border: "none", fontWeight: 950, letterSpacing: 0.1 },
   primaryBtnOn: { background: ORANGE, color: "#111", boxShadow: "0 16px 40px rgba(255,106,0,.22)" },
   primaryBtnOff: { background: "#0B0B0C", color: "#fff", boxShadow: "0 16px 40px rgba(0,0,0,.18)" },
   ghostBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
 
-  sheetBody: { paddingBottom: 2 },
+  // ✅ área que rola
+  sheetBody: {
+    paddingBottom: 2,
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+    flex: 1,
+  },
 
   sheetSection: { padding: "14px 14px 0" },
   sheetSectionTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
@@ -1295,8 +1310,32 @@ const S = {
   qaTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   qaText: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  // footer do sheet
-  sheetFooter: { padding: "12px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, borderTop: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.86)" },
-  footerGhost: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
-  footerClose: { padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.18)" },
+  // footer do sheet (✅ safe-area)
+  sheetFooter: {
+    padding: "12px 14px 14px",
+    paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    borderTop: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.86)",
+    flexShrink: 0,
+  },
+    footerGhost: {
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.86)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+  footerClose: {
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 16px 40px rgba(0,0,0,.18)",
+  },
 };
