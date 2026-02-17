@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
@@ -20,6 +20,19 @@ import Calendario from "./pages/Calendario.jsx";
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// ✅ Só pra controlar onde o BottomMenu aparece (sem mexer no BottomMenu.jsx)
+function BottomMenuGate() {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+
+  if (!user) return null;
+
+  // ✅ Aqui é a única regra: no onboarding NÃO mostra menu
+  if (pathname.startsWith("/onboarding")) return null;
+
+  return <BottomMenu />;
+}
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -56,34 +69,37 @@ function AppRoutes() {
           }
         />
 
-<Route path="/treino/detalhe" element={<TreinoDetalhe />} />
+        <Route path="/treino/detalhe" element={<TreinoDetalhe />} />
 
-<Route
-  path="/treino/personalizar"
-  element={
-    <ProtectedRoute>
-      <TreinoPersonalize />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/metas"
-  element={
-    <ProtectedRoute>
-      <Metas />
-    </ProtectedRoute>
-  }
-/>
-<Route path="/calendario" element={<Calendario />} />
         <Route
-  path="/suplementacao"
-  element={
-    <ProtectedRoute>
-      <Suplementacao />
-    </ProtectedRoute>
-  }
-/>   
+          path="/treino/personalizar"
+          element={
+            <ProtectedRoute>
+              <TreinoPersonalize />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/metas"
+          element={
+            <ProtectedRoute>
+              <Metas />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/calendario" element={<Calendario />} />
+
+        <Route
+          path="/suplementacao"
+          element={
+            <ProtectedRoute>
+              <Suplementacao />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/cardio"
           element={
@@ -92,6 +108,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/nutricao"
           element={
@@ -100,7 +117,8 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-<Route
+
+        <Route
           path="/nutricaoopcao"
           element={
             <ProtectedRoute>
@@ -108,14 +126,16 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
-        path="/nutriplus"
-        element={
-          <ProtectedRoute>
-            <NutriPlus />
-          </ProtectedRoute>
-        }
-      />
+          path="/nutriplus"
+          element={
+            <ProtectedRoute>
+              <NutriPlus />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/conta"
           element={
@@ -146,7 +166,8 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
       </Routes>
 
-      {user ? <BottomMenu /> : null}
+      {/* ✅ Menu agora só aparece fora do onboarding */}
+      <BottomMenuGate />
     </BrowserRouter>
   );
 }
@@ -158,12 +179,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
-
-
-
-
-
-
-
-
