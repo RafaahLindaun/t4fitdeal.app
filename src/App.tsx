@@ -16,6 +16,7 @@ import TreinoPersonalize from "./pages/TreinoPersonalize.jsx";
 import Metas from "./pages/Metas.jsx";
 import Suplementacao from "./pages/Suplementacao.jsx";
 import Calendario from "./pages/Calendario.jsx";
+import ComoFunciona from "./pages/ComoFunciona.jsx";
 
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -128,6 +129,15 @@ function AppRoutes() {
         />
 
         <Route
+          path="/comofunciona"
+          element={
+            <ProtectedRoute>
+              <ComoFunciona />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
           path="/nutriplus"
           element={
             <ProtectedRoute>
@@ -179,3 +189,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
