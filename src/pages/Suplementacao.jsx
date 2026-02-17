@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/IMG_5692.png"; // troque .png por .jpg se for o caso
 
 const APP_NAME = "fitdeal";
 const ORANGE = "#FF6A00";
@@ -427,7 +428,16 @@ function Icon({ id }) {
 function BrandMark() {
   return (
     <div style={S.brandMark} aria-hidden="true">
-      <span style={S.brandMarkLetter}>P</span>
+      <img
+        src={logo}
+        alt=""
+        style={{
+          width: 18,
+          height: 18,
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
     </div>
   );
 }
