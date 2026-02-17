@@ -5,8 +5,9 @@
 // - doses calculadas por kg (quando aplicável)
 // - “Meu stack” salvo em localStorage: supp_stack_<email>
 // - bottom sheet (detalhes) com:
-//    • botão VOLTAR dentro da aba (volta para lista do grupo sem fechar)
-//    • botão FECHAR no topo (fecha o sheet)
+//    • topo com nome do app (fitdeal.) no estilo do print
+//    • botão FECHAR no topo (X)
+//    • 1 único botão grande "Voltar" no rodapé (fecha o sheet e volta pra página)
 //    • animações leves (fade + slide + micro-scale) + redução automática em "prefers-reduced-motion"
 // - sem libs
 
@@ -14,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const APP_NAME = "fitdeal";
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
@@ -422,6 +424,14 @@ function Icon({ id }) {
   );
 }
 
+function BrandMark() {
+  return (
+    <div style={S.brandMark} aria-hidden="true">
+      <span style={S.brandMarkLetter}>P</span>
+    </div>
+  );
+}
+
 export default function Suplementacao() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -447,11 +457,6 @@ export default function Suplementacao() {
   const [openId, setOpenId] = useState(null);
   const [sheetOn, setSheetOn] = useState(false);
 
-  // navegação dentro do sheet (mini "aba")
-  // mode = "detail" (mostra conteúdo) | "list" (mostra itens do grupo sem fechar)
-  const [sheetMode, setSheetMode] = useState("detail");
-  const [sheetGroup, setSheetGroup] = useState("base"); // qual grupo está sendo exibido dentro do sheet
-
   // ref para travar scroll quando sheet está aberto
   const prevOverflowRef = useRef("");
 
@@ -469,9 +474,6 @@ export default function Suplementacao() {
 
   function openSheet(id) {
     setOpenId(id);
-    const it = CATALOG.find((x) => x.id === id);
-    setSheetGroup(it?.group || group || "base");
-    setSheetMode("detail");
     setSheetOn(true);
   }
 
@@ -480,17 +482,7 @@ export default function Suplementacao() {
     // transição suave; depois limpa openId
     setTimeout(() => {
       setOpenId(null);
-      setSheetMode("detail");
     }, 190);
-  }
-
-  function sheetBackToList() {
-    setSheetMode("list");
-  }
-
-  function sheetOpenFromList(id) {
-    setOpenId(id);
-    setSheetMode("detail");
   }
 
   // data
@@ -540,8 +532,6 @@ export default function Suplementacao() {
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
-      @keyframes floatSoft { 0%,100%{ transform: translateY(0px);} 50%{ transform: translateY(-2px);} }
-
       /* sheet open/close */
       @keyframes sheetIn { 
         from { transform: translateY(14px) scale(.995); opacity: 0; } 
@@ -550,12 +540,6 @@ export default function Suplementacao() {
       @keyframes sheetOut { 
         from { transform: translateY(0) scale(1); opacity: 1; } 
         to { transform: translateY(12px) scale(.996); opacity: 0; } 
-      }
-
-      /* content swap inside sheet */
-      @keyframes fadeSlideIn {
-        from { opacity: 0; transform: translateY(6px); }
-        to { opacity: 1; transform: translateY(0); }
       }
 
       /* overlay fade */
@@ -571,11 +555,9 @@ export default function Suplementacao() {
       .overlayIn { animation: overlayIn .18s ease both; }
       .overlayOut { animation: overlayOut .18s ease both; }
 
-      .fadeSlideIn { animation: fadeSlideIn .16s ease both; }
-
       /* Reduced motion: respeita iOS/OS settings */
       @media (prefers-reduced-motion: reduce) {
-        .tap, .sheetIn, .sheetOut, .overlayIn, .overlayOut, .fadeSlideIn { 
+        .tap, .sheetIn, .sheetOut, .overlayIn, .overlayOut { 
           animation: none !important; 
           transition: none !important; 
         }
@@ -602,17 +584,10 @@ export default function Suplementacao() {
     if (!sheetOn) return;
     const onKey = (e) => {
       if (e.key === "Escape") closeSheet();
-      if (e.key === "Backspace") {
-        // Backspace como "voltar" dentro do sheet (quando em detail)
-        if (sheetMode === "detail") {
-          e.preventDefault();
-          sheetBackToList();
-        }
-      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOn, sheetMode]);
+  }, [sheetOn]);
 
   if (!paid) {
     return (
@@ -704,13 +679,7 @@ export default function Suplementacao() {
             </div>
           </div>
 
-          <button
-            style={S.softBtn}
-            className="tap"
-            onClick={() => persist(recommended)}
-            type="button"
-            aria-label="Aplicar sugestão"
-          >
+          <button style={S.softBtn} className="tap" onClick={() => persist(recommended)} type="button" aria-label="Aplicar sugestão">
             Aplicar
           </button>
         </div>
@@ -746,13 +715,7 @@ export default function Suplementacao() {
         {["base", "performance", "recovery", "health"].map((k) => {
           const on = group === k;
           return (
-            <button
-              key={k}
-              style={{ ...S.tab, ...(on ? S.tabOn : S.tabOff) }}
-              className="tap"
-              onClick={() => setGroup(k)}
-              type="button"
-            >
+            <button key={k} style={{ ...S.tab, ...(on ? S.tabOn : S.tabOff) }} className="tap" onClick={() => setGroup(k)} type="button">
               {groupTitle(k)}
             </button>
           );
@@ -766,7 +729,14 @@ export default function Suplementacao() {
           const orange = it.accent === "orange";
 
           return (
-            <div key={it.id} style={{ ...S.card, ...(orange ? S.cardOrange : S.cardSoft), ...(on ? S.cardOn : null) }}>
+            <div
+              key={it.id}
+              style={{
+                ...S.card,
+                ...(orange ? S.cardOrange : S.cardSoft),
+                ...(on ? S.cardOn : null),
+              }}
+            >
               <div style={S.cardTop}>
                 <div style={S.cardIcon}>
                   <Icon id={it.id} />
@@ -818,12 +788,18 @@ export default function Suplementacao() {
           >
             <div style={S.sheetGrab} />
 
-            {/* ✅ NOME DO APP NO TOPO */}
+            {/* TOPO COM NOME DO APP (igual referência) */}
             <div style={S.brandBar}>
-              <div style={S.brandText}>fitdeal</div>
+              <div style={S.brandLeft}>
+                <BrandMark />
+                <div style={S.brandText}>
+                  {APP_NAME}
+                  <span style={S.brandDot}>.</span>
+                </div>
+              </div>
             </div>
 
-            {/* HEADER DO SHEET */}
+            {/* HEADER DO SUPLEMENTO */}
             <div style={S.sheetHead}>
               <div style={S.sheetIcon}>
                 <Icon id={openId} />
@@ -848,8 +824,8 @@ export default function Suplementacao() {
               </button>
             </div>
 
-            {/* CTAs do sheet */}
-            <div style={S.sheetCtas}>
+            {/* CTA principal (sem botão extra de voltar) */}
+            <div style={S.sheetCtasSingle}>
               <button
                 style={{
                   ...S.primaryBtn,
@@ -861,133 +837,65 @@ export default function Suplementacao() {
               >
                 {stack.includes(openId) ? "Remover do stack" : "Adicionar ao stack"}
               </button>
-
-              {/* ✅ BOTÃO VOLTAR “na aba” */}
-              <button
-                style={S.ghostBtn}
-                className="tap"
-                onClick={() => {
-                  // se já estiver em list: volta para detalhe do item atual
-                  if (sheetMode === "list") setSheetMode("detail");
-                  else sheetBackToList();
-                }}
-                type="button"
-              >
-                {sheetMode === "list" ? "Voltar ao detalhe" : "Voltar (lista)"}
-              </button>
             </div>
 
-            {/* ✅ AGORA O SCROLL FICA AQUI (CORPO), NÃO ESTOURA O SHEET */}
-            <div style={S.sheetBody} className="fadeSlideIn">
-              {sheetMode === "list" ? (
-                <div>
-                  <div style={S.sheetSection}>
-                    <div style={S.sheetSectionTitle}>
-                      {groupTitle(sheetGroup)} • itens
-                      <span style={S.sheetHint}> (toque para abrir)</span>
+            {/* BODY (rolagem interna para não “vazar” do enquadramento) */}
+            <div style={S.sheetBodyScroll}>
+              {/* DETAILS */}
+              <div style={S.sheetSection}>
+                <div style={S.sheetSectionTitle}>Como isso pode ajudar</div>
+                <div style={S.kvGrid}>
+                  {(focusDose?.details || []).map((x, idx) => (
+                    <div key={idx} style={S.kv}>
+                      <div style={S.k}>{x.k}</div>
+                      <div style={S.v}>{x.v}</div>
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                    <div style={S.sheetList}>
-                      {(grouped[sheetGroup] || []).map((it) => {
-                        const on = stack.includes(it.id);
-                        return (
-                          <button
-                            key={it.id}
-                            style={{ ...S.sheetRow, ...(it.id === openId ? S.sheetRowActive : null) }}
-                            className="tap"
-                            onClick={() => sheetOpenFromList(it.id)}
-                            type="button"
-                          >
-                            <div style={S.sheetRowIcon}>
-                              <Icon id={it.id} />
-                            </div>
-
-                            <div style={{ minWidth: 0 }}>
-                              <div style={S.sheetRowTitle}>{it.name}</div>
-                              <div style={S.sheetRowSub}>{it.what}</div>
-                            </div>
-
-                            <div style={S.sheetRowRight}>
-                              <span style={{ ...S.badge, ...(on ? S.badgeOn : S.badgeOff) }}>{on ? "No stack" : "—"}</span>
-                              <span style={S.rowChev}>›</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div style={S.sheetSection}>
-                    <div style={S.qa}>
-                      <div style={S.qaTitle}>Dica rápida</div>
-                      <div style={S.qaText}>
-                        Use a lista do grupo para comparar. Depois volte ao detalhe do suplemento escolhido para ver dose, timing e atenções.
+              <div style={S.sheetSection}>
+                <div style={S.sheetSectionTitle}>Rotina sugerida</div>
+                <div style={S.timeline}>
+                  {(focusDose?.timing || []).map((x, idx) => (
+                    <div key={idx} style={S.timeRow}>
+                      <div style={S.timeDot} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={S.timeTitle}>{x.t}</div>
+                        <div style={S.timeSub}>{x.v}</div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={S.sheetSection}>
+                <div style={S.sheetSectionTitle}>Atenções</div>
+                <div style={S.warnBox}>
+                  {(focusDose?.cautions || []).map((t, i) => (
+                    <div key={i} style={S.warnLine}>
+                      <span style={S.warnDot} />
+                      <span style={S.warnTxt}>{t}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={S.qa}>
+                  <div style={S.qaTitle}>Qualidade e segurança</div>
+                  <div style={S.qaText}>
+                    Prefira marcas com controle de qualidade e transparência (lote/terceira parte quando possível).
+                    Evite “blends” misteriosos e “doses proprietárias”.
                   </div>
                 </div>
-              ) : (
-                <div>
-                  {/* DETAILS */}
-                  <div style={S.sheetSection}>
-                    <div style={S.sheetSectionTitle}>Como isso pode ajudar</div>
-                    <div style={S.kvGrid}>
-                      {(focusDose?.details || []).map((x, idx) => (
-                        <div key={idx} style={S.kv}>
-                          <div style={S.k}>{x.k}</div>
-                          <div style={S.v}>{x.v}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              </div>
 
-                  <div style={S.sheetSection}>
-                    <div style={S.sheetSectionTitle}>Rotina sugerida</div>
-                    <div style={S.timeline}>
-                      {(focusDose?.timing || []).map((x, idx) => (
-                        <div key={idx} style={S.timeRow}>
-                          <div style={S.timeDot} />
-                          <div style={{ minWidth: 0 }}>
-                            <div style={S.timeTitle}>{x.t}</div>
-                            <div style={S.timeSub}>{x.v}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={S.sheetSection}>
-                    <div style={S.sheetSectionTitle}>Atenções</div>
-                    <div style={S.warnBox}>
-                      {(focusDose?.cautions || []).map((t, i) => (
-                        <div key={i} style={S.warnLine}>
-                          <span style={S.warnDot} />
-                          <span style={S.warnTxt}>{t}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={S.qa}>
-                      <div style={S.qaTitle}>Qualidade e segurança</div>
-                      <div style={S.qaText}>
-                        Prefira marcas com controle de qualidade e transparência (lote/terceira parte quando possível).
-                        Evite “blends” misteriosos e “doses proprietárias”.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ height: 10 }} />
-                </div>
-              )}
+              <div style={{ height: 10 }} />
             </div>
 
-            {/* footer com voltar para nutrição + fechar */}
-            <div style={S.sheetFooter}>
-              <button style={S.footerGhost} className="tap" onClick={() => nav("/nutricao")} type="button">
-                Voltar à Nutrição
-              </button>
-              <button style={S.footerClose} className="tap" onClick={closeSheet} type="button">
-                Fechar
+            {/* Rodapé: 1 único botão grande "Voltar" (fecha o sheet) */}
+            <div style={S.sheetFooterSingle}>
+              <button style={S.footerBack} className="tap" onClick={closeSheet} type="button">
+                Voltar
               </button>
             </div>
           </div>
@@ -1189,21 +1097,20 @@ const S = {
   lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 850, lineHeight: 1.4 },
   lockBtn: { marginTop: 12, width: "100%", padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 14px 36px rgba(255,106,0,.22)" },
 
-  // SHEET
-  // ✅ safe-area no overlay (iPhone) e enquadramento melhor
+  // SHEET OVERLAY (safe-area + enquadramento)
   sheetOverlay: {
     position: "fixed",
     inset: 0,
     zIndex: 9999,
     display: "grid",
     alignItems: "end",
-    padding: 12,
+    padding: "12px",
     paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+    paddingTop: "calc(12px + env(safe-area-inset-top))",
   },
   overlayOn: { background: "rgba(2,6,23,.44)" },
   overlayOff: { background: "rgba(2,6,23,0)" },
 
-  // ✅ maxHeight + flex column (corpo scrolla; footer fixo)
   sheet: {
     width: "100%",
     maxWidth: 520,
@@ -1217,78 +1124,65 @@ const S = {
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
-    maxHeight: "calc(100dvh - 24px)",
+    maxHeight: "calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
   },
   sheetOn: { opacity: 1 },
   sheetOff: { opacity: 0.98 },
 
   sheetGrab: { width: 52, height: 6, borderRadius: 999, background: "rgba(15,23,42,.12)", margin: "10px auto 0" },
 
-  // ✅ brand
-  brandBar: { padding: "6px 14px 0", display: "flex", justifyContent: "center" },
-  brandText: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.35, opacity: 0.75 },
+  // Brand top
+  brandBar: {
+    padding: "10px 14px 2px",
+    display: "flex",
+    justifyContent: "center",
+  },
+  brandLeft: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    background: "rgba(15,23,42,.04)",
+    border: "1px solid rgba(15,23,42,.06)",
+    borderRadius: 999,
+    padding: "8px 12px",
+  },
+  brandText: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
+  brandDot: { color: ORANGE },
 
-  sheetHead: { padding: 14, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 },
+  brandMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    background: "linear-gradient(180deg, rgba(255,106,0,.28), rgba(255,106,0,.12))",
+    border: "1px solid rgba(255,106,0,.22)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 10px 24px rgba(255,106,0,.14)",
+  },
+  brandMarkLetter: { fontSize: 14, fontWeight: 950, color: "rgba(15,23,42,.86)" },
+
+  sheetHead: { padding: 14, display: "flex", alignItems: "center", gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 18, background: "rgba(15,23,42,.04)", border: "1px solid rgba(15,23,42,.06)", display: "grid", placeItems: "center", flexShrink: 0 },
   sheetTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
   sheetSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
   sheetX: { marginLeft: "auto", width: 40, height: 40, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, flexShrink: 0 },
 
-  sheetCtas: { padding: "0 14px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, flexShrink: 0 },
-  primaryBtn: { padding: 14, borderRadius: 18, border: "none", fontWeight: 950, letterSpacing: 0.1 },
+  sheetCtasSingle: { padding: "0 14px 12px" },
+
+  primaryBtn: { width: "100%", padding: 14, borderRadius: 18, border: "none", fontWeight: 950, letterSpacing: 0.1 },
   primaryBtnOn: { background: ORANGE, color: "#111", boxShadow: "0 16px 40px rgba(255,106,0,.22)" },
   primaryBtnOff: { background: "#0B0B0C", color: "#fff", boxShadow: "0 16px 40px rgba(0,0,0,.18)" },
-  ghostBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
 
-  // ✅ área que rola
-  sheetBody: {
-    paddingBottom: 2,
+  // Conteúdo rolável (enquadrado)
+  sheetBodyScroll: {
+    flex: 1,
     overflowY: "auto",
     WebkitOverflowScrolling: "touch",
-    flex: 1,
+    paddingBottom: 2,
   },
 
   sheetSection: { padding: "14px 14px 0" },
   sheetSectionTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  sheetHint: { marginLeft: 6, fontSize: 12, fontWeight: 850, color: MUTED },
-
-  // list inside sheet
-  sheetList: { marginTop: 10, display: "grid", gap: 10 },
-  sheetRow: {
-    width: "100%",
-    textAlign: "left",
-    border: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.86)",
-    borderRadius: 20,
-    padding: 12,
-    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-  },
-  sheetRowActive: {
-    borderColor: "rgba(255,106,0,.22)",
-    boxShadow: "0 14px 40px rgba(255,106,0,.12)",
-  },
-  sheetRowIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    background: "rgba(15,23,42,.04)",
-    border: "1px solid rgba(15,23,42,.06)",
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
-  },
-  sheetRowTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  sheetRowSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-  sheetRowRight: { marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 },
-
-  rowChev: { width: 28, height: 28, borderRadius: 12, background: "rgba(15,23,42,.06)", display: "grid", placeItems: "center", color: TEXT, fontWeight: 950 },
-
-  badge: { padding: "6px 10px", borderRadius: 999, fontSize: 11, fontWeight: 950, border: "1px solid rgba(15,23,42,.10)" },
-  badgeOn: { background: "rgba(255,106,0,.14)", borderColor: "rgba(255,106,0,.20)", color: TEXT },
-  badgeOff: { background: "rgba(255,255,255,.70)", color: MUTED },
 
   kvGrid: { marginTop: 10, display: "grid", gap: 10 },
   kv: { borderRadius: 18, padding: 12, background: "rgba(255,255,255,.86)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 12px 34px rgba(15,23,42,.06)" },
@@ -1310,26 +1204,14 @@ const S = {
   qaTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   qaText: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  // footer do sheet (✅ safe-area)
-  sheetFooter: {
-    padding: "12px 14px 14px",
-    paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
+  // footer do sheet (1 botão só)
+  sheetFooterSingle: {
+    padding: "12px 14px",
     borderTop: "1px solid rgba(15,23,42,.06)",
     background: "rgba(255,255,255,.86)",
-    flexShrink: 0,
   },
-    footerGhost: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.86)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  footerClose: {
+  footerBack: {
+    width: "100%",
     padding: 14,
     borderRadius: 18,
     border: "none",
