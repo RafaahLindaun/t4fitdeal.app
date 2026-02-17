@@ -43,11 +43,7 @@ function Icon({ name }) {
           strokeWidth="1.8"
           strokeLinejoin="round"
         />
-        <path
-          d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
-          stroke={stroke}
-          strokeWidth="1.8"
-        />
+        <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke={stroke} strokeWidth="1.8" />
       </svg>
     );
   }
@@ -62,12 +58,7 @@ function Icon({ name }) {
           strokeWidth="1.8"
           strokeLinecap="round"
         />
-        <path
-          d="M10.2 10.2a3.2 3.2 0 0 0 3.6 3.6"
-          stroke={stroke2}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
+        <path d="M10.2 10.2a3.2 3.2 0 0 0 3.6 3.6" stroke={stroke2} strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -239,6 +230,11 @@ export default function Login() {
     setMode(next);
   }
 
+  // ✅ NAV pronto para "Como funciona?"
+  function goComoFunciona() {
+    nav("/comofunciona");
+  }
+
   return (
     <div className="container page fadeUp" style={styles.page}>
       <div style={styles.logoWrap}>
@@ -306,14 +302,7 @@ export default function Login() {
 
       {isSignup && (
         <>
-          <input
-            name="nome"
-            value={form.nome}
-            onChange={onChange}
-            placeholder="Nome"
-            style={styles.input}
-            autoComplete="name"
-          />
+          <input name="nome" value={form.nome} onChange={onChange} placeholder="Nome" style={styles.input} autoComplete="name" />
           <div style={styles.row}>
             <input
               name="altura"
@@ -335,14 +324,7 @@ export default function Login() {
         </>
       )}
 
-      <input
-        name="email"
-        value={form.email}
-        onChange={onChange}
-        placeholder="Email"
-        style={styles.input}
-        autoComplete="email"
-      />
+      <input name="email" value={form.email} onChange={onChange} placeholder="Email" style={styles.input} autoComplete="email" />
 
       <div style={styles.passWrap}>
         <input
@@ -355,7 +337,6 @@ export default function Login() {
           autoComplete={isSignup ? "new-password" : "current-password"}
         />
 
-        {/* ✅ Olhinho: alinhado, sem quadrado, só ícone */}
         <button
           type="button"
           style={styles.eyeBtn}
@@ -382,7 +363,12 @@ export default function Login() {
           Lembrar
         </button>
 
-        <button type="button" className="tapSoft" style={styles.linkBtn} onClick={() => toastSoon("Em breve.")}>
+        <button
+          type="button"
+          className="tapSoft"
+          style={styles.linkBtn}
+          onClick={() => (isSignup ? goComoFunciona() : toastSoon("Em breve."))}
+        >
           {isSignup ? "Como funciona?" : "Esqueci a senha"}
         </button>
       </div>
@@ -393,7 +379,6 @@ export default function Login() {
         {isSignup ? "Continuar" : "Entrar"}
       </button>
 
-      {/* -------- Social -------- */}
       <div style={styles.dividerRow}>
         <div style={styles.dividerLine} />
         <div style={styles.dividerText}>ou</div>
@@ -401,26 +386,14 @@ export default function Login() {
       </div>
 
       <div style={styles.socialWrap}>
-        <button
-          type="button"
-          className="tap"
-          style={styles.socialBtn}
-          onClick={() => toastSoon("Continuar com Apple — em breve.")}
-          aria-label="Continuar com Apple"
-        >
+        <button type="button" className="tap" style={styles.socialBtn} onClick={() => toastSoon("Continuar com Apple — em breve.")}>
           <span style={styles.socialIcon}>
             <Icon name="apple" />
           </span>
           Continuar com Apple
         </button>
 
-        <button
-          type="button"
-          className="tap"
-          style={styles.socialBtn}
-          onClick={() => toastSoon("Continuar com Google — em breve.")}
-          aria-label="Continuar com Google"
-        >
+        <button type="button" className="tap" style={styles.socialBtn} onClick={() => toastSoon("Continuar com Google — em breve.")}>
           <span style={styles.socialIcon}>
             <Icon name="google" />
           </span>
@@ -428,7 +401,6 @@ export default function Login() {
         </button>
       </div>
 
-      {/* -------- Footer links -------- */}
       <div style={styles.footerRow}>
         <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
           Ver planos
@@ -477,13 +449,7 @@ const styles = {
     fontSize: 22,
   },
 
-  logoText: {
-    fontSize: 26,
-    fontWeight: 950,
-    color: TEXT,
-    letterSpacing: -0.6,
-    lineHeight: 1.05,
-  },
+  logoText: { fontSize: 26, fontWeight: 950, color: TEXT, letterSpacing: -0.6, lineHeight: 1.05 },
 
   metaRow: { marginTop: 10 },
   metaPill: {
@@ -515,47 +481,17 @@ const styles = {
     gap: 10,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  lastDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
-    flexShrink: 0,
-  },
+  lastDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
   lastChev: { marginLeft: "auto", display: "grid", placeItems: "center", opacity: 0.55 },
 
-  switchRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  switchBtn: {
-    padding: 12,
-    borderRadius: 14,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    fontWeight: 900,
-    color: MUTED,
-  },
+  switchRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18, marginBottom: 12 },
+  switchBtn: { padding: 12, borderRadius: 14, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, color: MUTED },
   switchActive: { border: `1px solid ${ORANGE}`, background: ORANGE_SOFT, color: ORANGE },
 
-  input: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 14,
-    border: "1px solid #e5e7eb",
-    marginTop: 12,
-    fontSize: 14,
-    outline: "none",
-  },
+  input: { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #e5e7eb", marginTop: 12, fontSize: 14, outline: "none" },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
   passWrap: { position: "relative", marginTop: 12 },
-
-  // ✅ Olhinho sem quadrado: botão transparente + área de toque correta
   eyeBtn: {
     position: "absolute",
     right: 12,
@@ -587,47 +523,14 @@ const styles = {
   },
   auxOn: { borderColor: "rgba(255,106,0,.35)", background: "rgba(255,106,0,.08)", color: TEXT },
 
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 9,
-    border: "1px solid rgba(15,23,42,.14)",
-    display: "grid",
-    placeItems: "center",
-    background: "#fff",
-  },
+  checkbox: { width: 22, height: 22, borderRadius: 9, border: "1px solid rgba(15,23,42,.14)", display: "grid", placeItems: "center", background: "#fff" },
   checkboxOn: { borderColor: "rgba(255,106,0,.45)", background: "rgba(255,106,0,.18)" },
 
-  linkBtn: {
-    border: "none",
-    background: "transparent",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 10px",
-    borderRadius: 999,
-  },
+  linkBtn: { border: "none", background: "transparent", color: TEXT, fontWeight: 950, padding: "10px 10px", borderRadius: 999 },
 
-  cta: {
-    width: "100%",
-    padding: 16,
-    marginTop: 16,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    fontSize: 15,
-    boxShadow: "0 16px 40px rgba(255,106,0,.28)",
-  },
+  cta: { width: "100%", padding: 16, marginTop: 16, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, fontSize: 15, boxShadow: "0 16px 40px rgba(255,106,0,.28)" },
 
-  dividerRow: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "1fr auto 1fr",
-    alignItems: "center",
-    gap: 10,
-    color: MUTED,
-  },
+  dividerRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 10, color: MUTED },
   dividerLine: { height: 1, background: "rgba(15,23,42,.10)" },
   dividerText: { fontSize: 12, fontWeight: 900, color: MUTED },
 
@@ -645,44 +548,11 @@ const styles = {
     gap: 10,
     boxShadow: "0 12px 30px rgba(15,23,42,.06)",
   },
-  socialIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 11,
-    background: "rgba(15,23,42,.05)",
-    border: "1px solid rgba(15,23,42,.06)",
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
-  },
+  socialIcon: { width: 28, height: 28, borderRadius: 11, background: "rgba(15,23,42,.05)", border: "1px solid rgba(15,23,42,.06)", display: "grid", placeItems: "center" },
 
-  error: {
-    marginTop: 12,
-    padding: "10px 12px",
-    borderRadius: 12,
-    background: "#fef2f2",
-    color: "#991b1b",
-    border: "1px solid #fecaca",
-    fontSize: 13,
-    fontWeight: 700,
-  },
+  error: { marginTop: 12, padding: "10px 12px", borderRadius: 12, background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", fontSize: 13, fontWeight: 700 },
 
-  footerRow: {
-    marginTop: 14,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    color: MUTED,
-    flexWrap: "wrap",
-  },
-  footerLink: {
-    border: "none",
-    background: "transparent",
-    color: MUTED,
-    fontWeight: 900,
-    padding: "8px 10px",
-    borderRadius: 999,
-  },
+  footerRow: { marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: MUTED, flexWrap: "wrap" },
+  footerLink: { border: "none", background: "transparent", color: MUTED, fontWeight: 900, padding: "8px 10px", borderRadius: 999 },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
