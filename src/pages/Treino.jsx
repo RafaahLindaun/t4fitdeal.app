@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 // ✅ GANCHO DO EXERCISE BANK (ajuste o caminho se precisar)
-import exerciseBank from "../exerciseBank"; // ex: "../data/exerciseBank" ou "../utils/exerciseBank"
+import exerciseBank from "/data/exerciseBank"; // ex: "../data/exerciseBank" ou "../utils/exerciseBank"
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
@@ -1206,3 +1206,4 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
