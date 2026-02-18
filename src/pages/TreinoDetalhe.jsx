@@ -65,7 +65,33 @@ function gifForExercise(name) {
   const slug = slugifyExercise(name);
   return `/gifs/${slug}.GIF`;
 }
+function gifCandidates(name) {
+  const slug = slugifyExercise(name);
+  return [`/gifs/${slug}.GIF`, `/gifs/${slug}.gif`];
+}
 
+function ExerciseGif({ name }) {
+  const [idx, setIdx] = useState(0);
+  const sources = useMemo(() => gifCandidates(name), [name]);
+  const src = sources[idx] || sources[0];
+
+  return (
+    <img
+      src={src}
+      alt={`${name} (gif)`}
+      style={S.gif}
+      onError={(e) => {
+        if (idx < sources.length - 1) {
+          setIdx((p) => p + 1);
+          return;
+        }
+        e.currentTarget.style.display = "none";
+        const parent = e.currentTarget.parentElement;
+        if (parent) parent.setAttribute("data-gif-missing", "1");
+      }}
+    />
+  );
+}
 /** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
 function parseRestToSeconds(restText) {
   const raw = String(restText || "").toLowerCase().trim();
@@ -1438,4 +1464,5 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
 
