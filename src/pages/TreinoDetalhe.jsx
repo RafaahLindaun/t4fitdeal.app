@@ -882,16 +882,8 @@ export default function TreinoDetalhe() {
 
                 {/* GIF */}
                 <div style={S.gifWrap}>
-                  <img
-                    src={gifSrc}
-                    alt={`${ex.name} (gif)`}
-                    style={S.gif}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      const parent = e.currentTarget.parentElement;
-                      if (parent) parent.setAttribute("data-gif-missing", "1");
-                    }}
-                  />
+                  <ExerciseGif name={ex.name} />
+        
                   <div style={S.gifFallback} aria-hidden="true">
                     <div style={S.gifFallbackBadge}>GIF</div>
                     <div style={S.gifFallbackText}>Adicione: /public/gifs/{slugifyExercise(ex.name)}.gif</div>
@@ -1464,5 +1456,6 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
 
 
