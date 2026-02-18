@@ -1,5 +1,21 @@
 // ✅ COLE EM: src/pages/TreinoDetalhe.jsx
-import { useMemo, useState, useEffect } from "react";
+// Treino detalhado em “livro” (arrastar pro lado) + GIF por exercício + timer de descanso fixo embaixo
+// - swipe horizontal com snap (estilo páginas)
+// - aviso “arraste pro lado” (só na 1ª vez)
+// - embaixo: COMEÇAR grande + PAUSAR pequeno + cronômetro de descanso
+// - última página: “Bora pro cardio?” (pagantes -> leva pro cardio / não pagantes -> upsell)
+// - sem libs
+//
+// ✅ GIFs:
+// Coloque seus gifs em: /public/gifs/
+// E nomeie assim (slug do nome do exercício):
+//   "Supino reto" -> /public/gifs/supino-reto.gif
+//   "Cadeira extensora" -> /public/gifs/cadeira-extensora.gif
+// O slug é gerado automaticamente (sem acento, minúsculo, espaço vira hífen).
+//
+// Exemplo: public/gifs/supino-reto.gif
+
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -36,6 +52,58 @@ function calcDayIndex(email) {
 function dayLetter(i) {
   const letters = ["A", "B", "C", "D", "E", "F"];
   return letters[i % letters.length] || "A";
+}
+
+function stripAccents(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+function slugifyExercise(name) {
+  const base = stripAccents(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s/g, "-");
+  return base || "exercicio";
+}
+function gifForExercise(name) {
+  const slug = slugifyExercise(name);
+  return `/gifs/${slug}.gif`;
+}
+
+/** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
+function parseRestToSeconds(restText) {
+  const raw = String(restText || "").toLowerCase().trim();
+  if (!raw) return 90;
+
+  // se tiver "min"
+  const minMatch = raw.match(/(\d+)\s*min/);
+  if (minMatch) return clamp(Number(minMatch[1]) * 60, 15, 600);
+
+  // pega o primeiro número antes de "s"
+  const sMatch = raw.match(/(\d+)\s*s/);
+  if (sMatch) return clamp(Number(sMatch[1]), 10, 600);
+
+  // se tiver faixa 75–120 (sem s)
+  const range = raw.match(/(\d+)\s*[-–]\s*(\d+)/);
+  if (range) return clamp(Number(range[1]), 10, 600);
+
+  // número solto
+  const n = raw.match(/(\d+)/);
+  if (n) return clamp(Number(n[1]), 10, 600);
+
+  return 90;
+}
+
+function fmtMMSS(sec) {
+  const s = Math.max(0, Math.floor(Number(sec || 0)));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(r).padStart(2, "0");
+  return `${mm}:${ss}`;
 }
 
 /* ---------------- banco (MESMO do Treino) ---------------- */
@@ -228,7 +296,7 @@ function keyForLoad(viewIdx, exName) {
   return `${viewIdx}__${String(exName || "").toLowerCase()}`;
 }
 
-/* ---------------- detalhes por nome ---------------- */
+/* ---------------- detalhes por nome (mantém seu conteúdo) ---------------- */
 function detailFor(exName) {
   const n = String(exName || "").toLowerCase();
 
@@ -309,18 +377,7 @@ function suggestLoadRange(exName, pesoKg, objetivo) {
   return `${low}–${high}kg`;
 }
 
-function splitSteps(text) {
-  const t = String(text || "").trim();
-  if (!t) return [];
-  const parts = t
-    .replace(/\s*•\s*/g, ". ")
-    .split(".")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return parts.slice(0, 7);
-}
-
-/* ---------------- icons (sem emoji) ---------------- */
+/* ---------------- icons ---------------- */
 function IconChevronLeft() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -335,148 +392,47 @@ function IconArrowRight() {
     </svg>
   );
 }
-function IconClose() {
+function IconPause() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M18 6L6 18" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M6 6l12 12" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M8 6v12" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M16 6v12" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
     </svg>
   );
 }
-function IconSets() {
+function IconPlay() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6.8 8.2h10.4" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M6.8 12h10.4" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M6.8 15.8h10.4" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M7.0 18.8h6.4" stroke="rgba(255,106,0,.30)" strokeWidth="4" strokeLinecap="round" />
+      <path d="M9 7l10 5-10 5V7Z" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
     </svg>
   );
 }
-function IconReps() {
+function IconReset() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7.2 7.6h9.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M7.2 16.4h9.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M9.2 9.2c-2 2-2 5.6 0 7.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M14.8 9.2c2 2 2 5.6 0 7.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M12 12.2v2.4" stroke="rgba(255,106,0,.30)" strokeWidth="4" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IconRest() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 7.2v5.1l3.2 1.7" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 20.2a8.2 8.2 0 1 1 8.2-8.2" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M20.2 12a8.2 8.2 0 0 1-.9 3.7" stroke="rgba(255,106,0,.30)" strokeWidth="4" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IconGroup() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 20h10" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
       <path
-        d="M9 20V8.8c0-.6.3-1.1.8-1.4l1.8-1a1.5 1.5 0 0 1 1.4 0l1.8 1c.5.3.8.8.8 1.4V20"
+        d="M20 12a8 8 0 1 1-2.3-5.6"
         stroke={INK}
         strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M9 12h6" stroke="rgba(255,106,0,.30)" strokeWidth="4" strokeLinecap="round" />
+      <path d="M20 4v6h-6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/* ---------------- UI components ---------------- */
-function MetricChip({ icon, label, value }) {
+function Chip({ label, value }) {
   return (
-    <div style={S.metricChip}>
-      <div style={S.metricTop}>
-        <span style={S.metricIcon}>{icon}</span>
-        <span style={S.metricLabel}>{label}</span>
-      </div>
-
-      <div style={S.metricValue}>{value}</div>
-
-      <div style={S.metricSheen} aria-hidden="true" />
+    <div style={S.chip}>
+      <div style={S.chipLabel}>{label}</div>
+      <div style={S.chipValue}>{value}</div>
+      <div style={S.chipSheen} aria-hidden="true" />
     </div>
   );
 }
 
-function ActionButton({ onClick, children }) {
-  return (
-    <button type="button" onClick={onClick} style={S.actionBtn} className="td-press">
-      <span style={S.actionBtnText}>{children}</span>
-      <span style={S.actionBtnIcon} aria-hidden="true">
-        <IconArrowRight />
-      </span>
-      <span style={S.actionBtnSheen} aria-hidden="true" />
-    </button>
-  );
-}
-
-function HowToModal({ open, onClose, title, group, sets, reps, rest, area, cue }) {
-  if (!open) return null;
-  const steps = splitSteps(cue);
-
-  return (
-    <div style={S.modalWrap} role="dialog" aria-modal="true">
-      <button style={S.modalBackdrop} onClick={onClose} aria-label="Fechar" type="button" />
-
-      <div style={S.modalCard}>
-        <div style={S.modalGlow} aria-hidden="true" />
-
-        <div style={S.modalTop}>
-          <div style={{ minWidth: 0 }}>
-            <div style={S.modalKicker}>Execução</div>
-            <div style={S.modalTitle}>{title}</div>
-            <div style={S.modalSub}>{group}</div>
-          </div>
-
-          <button type="button" onClick={onClose} style={S.modalClose} aria-label="Fechar" className="td-press">
-            <IconClose />
-          </button>
-        </div>
-
-        <div style={S.modalMetrics}>
-          <MetricChip icon={<IconSets />} label="Séries" value={String(sets)} />
-          <MetricChip icon={<IconReps />} label="Repetições" value={String(reps)} />
-          <MetricChip icon={<IconRest />} label="Descanso" value={String(rest)} />
-        </div>
-
-        <div style={S.modalPanelSoft}>
-          <div style={S.panelTitle}>Área trabalhada</div>
-          <div style={S.panelText}>{area}</div>
-        </div>
-
-        <div style={S.modalPanel}>
-          <div style={S.panelTitle}>Passo a passo</div>
-
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-            {steps.length ? (
-              steps.map((s, i) => (
-                <div key={i} style={S.stepRow}>
-                  <div style={S.stepDot}>{i + 1}</div>
-                  <div style={S.stepText}>{s}</div>
-                </div>
-              ))
-            ) : (
-              <div style={S.panelText}>{cue}</div>
-            )}
-          </div>
-        </div>
-
-        <button type="button" onClick={onClose} style={S.modalDone} className="td-press">
-          Fechar
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ----------------- Page ----------------- */
+/* ---------------- Page ---------------- */
 export default function TreinoDetalhe() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
@@ -506,6 +462,18 @@ export default function TreinoDetalhe() {
     [workoutRaw]
   );
 
+  // Páginas: exercícios + última página cardio
+  const pages = useMemo(() => {
+    const exPages = workout.map((ex, i) => ({
+      type: "exercise",
+      key: `${i}_${ex.name}`,
+      ex,
+      index: i,
+    }));
+    const endPage = { type: "cardio", key: "end_cardio" };
+    return [...exPages, endPage];
+  }, [workout]);
+
   // cargas
   const [loads, setLoads] = useState(() => loadLoads(email));
   function setLoad(exName, v) {
@@ -515,56 +483,122 @@ export default function TreinoDetalhe() {
     saveLoads(email, next);
   }
 
-  // preview próximos 3 dias
-  const upcoming = useMemo(() => {
-    const arr = [];
-    for (let k = 1; k <= 3; k++) {
-      const idx = (viewSafe + k) % split.length;
-      arr.push({ idx, title: `Treino ${dayLetter(idx)}`, count: (split[idx] || []).length });
+  // swipe / pager
+  const scrollerRef = useRef(null);
+  const [page, setPage] = useState(0);
+
+  // dica “arraste”
+  const hintKey = `td_swipe_hint_${email}`;
+  const [showHint, setShowHint] = useState(() => localStorage.getItem(hintKey) !== "1");
+
+  // descanso (countdown)
+  const [restTotal, setRestTotal] = useState(90);
+  const [restLeft, setRestLeft] = useState(90);
+  const [running, setRunning] = useState(false);
+
+  // atualiza o descanso quando muda de página (pega rest do exercício atual)
+  useEffect(() => {
+    const p = pages[page];
+    if (!p || p.type !== "exercise") {
+      setRunning(false);
+      setRestTotal(90);
+      setRestLeft(90);
+      return;
     }
-    return arr;
-  }, [viewSafe, split]);
+    const ex = p.ex;
+    const rest = ex?.rest ?? base.rest ?? "90s";
+    const sec = parseRestToSeconds(rest);
+    setRunning(false);
+    setRestTotal(sec);
+    setRestLeft(sec);
+  }, [page, pages, base.rest]);
 
-  // modal
-  const [howTo, setHowTo] = useState(null);
+  // tick do timer
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => {
+      setRestLeft((prev) => {
+        const next = Math.max(0, prev - 1);
+        if (next === 0) {
+          // terminou
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [running]);
 
-  // defaults do dia (pra deixar sempre claro no topo)
-  const exCount = workout.length;
-  const defaultSets = workout[0]?.sets ?? base.sets;
-  const defaultReps = workout[0]?.reps ?? base.reps;
-  const defaultRest = workout[0]?.rest ?? base.rest;
+  // se chegou a 0, para sozinho
+  useEffect(() => {
+    if (restLeft === 0 && running) setRunning(false);
+  }, [restLeft, running]);
 
-  // injeta CSS keyframes + micro-interactions
+  function startTimer() {
+    if (restLeft <= 0) setRestLeft(restTotal);
+    setRunning(true);
+
+    // marcou que o usuário já entendeu swipe
+    if (showHint) {
+      localStorage.setItem(hintKey, "1");
+      setShowHint(false);
+    }
+  }
+  function pauseTimer() {
+    setRunning(false);
+  }
+  function resetTimer() {
+    setRunning(false);
+    setRestLeft(restTotal);
+  }
+
+  // escuta scroll e calcula página atual
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const w = el.clientWidth || 1;
+      const idx = Math.round(el.scrollLeft / w);
+      const safe = clamp(idx, 0, pages.length - 1);
+      setPage(safe);
+
+      if (showHint && Math.abs(el.scrollLeft) > 20) {
+        localStorage.setItem(hintKey, "1");
+        setShowHint(false);
+      }
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [pages.length, showHint, hintKey]);
+
+  function goTo(i) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    el.scrollTo({ left: w * i, behavior: "smooth" });
+  }
+
+  // injeta CSS (snap + micro)
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "treino-detalhe-advanced-keyframes";
+    const id = "treino-detalhe-book-ui";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
-      @keyframes tdFloat {
-        0%,100% { transform: translateY(0px); }
-        50%     { transform: translateY(-2px); }
-      }
-      @keyframes tdSheetUp {
-        from { transform: translateY(14px); opacity: 0; }
-        to   { transform: translateY(0px); opacity: 1; }
+      @keyframes tdHint {
+        0%,100% { transform: translateX(0); opacity: .95; }
+        50% { transform: translateX(6px); opacity: 1; }
       }
       @keyframes tdSheen {
         0%, 35%   { transform: translateX(-70%); opacity: .18; }
         55%, 100% { transform: translateX(140%); opacity: .18; }
       }
-      @keyframes tdPulseBorder {
-        0%,100% { filter: drop-shadow(0 0 0 rgba(255,106,0,.00)); }
-        50%     { filter: drop-shadow(0 16px 28px rgba(255,106,0,.14)); }
-      }
       .td-press { transition: transform .12s ease, filter .12s ease; }
       .td-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
-      input:focus {
-        border-color: rgba(255,106,0,.38) !important;
-        box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
-      }
       @media (prefers-reduced-motion: reduce) {
         * { animation: none !important; transition: none !important; }
       }
@@ -576,15 +610,32 @@ export default function TreinoDetalhe() {
     return (
       <div style={S.page}>
         <div style={S.lockCard}>
-          <div style={S.lockTitle}>Treino detalhado bloqueado</div>
-          <div style={S.lockText}>Assine para liberar detalhamento, execução e registro de carga.</div>
+          <div style={S.lockTitle}>Treino em modo “livro”</div>
+          <div style={S.lockText}>
+            Assine para liberar o treino detalhado em páginas, GIFs por exercício e cronômetro de descanso.
+          </div>
           <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
             Ver planos
+          </button>
+          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="td-press">
+            Voltar
           </button>
         </div>
       </div>
     );
   }
+
+  const pNow = pages[page];
+  const isExercise = pNow?.type === "exercise";
+  const exNow = isExercise ? pNow.ex : null;
+
+  const exCount = workout.length;
+  const totalPages = pages.length;
+  const progressText = `${page + 1}/${totalPages}`;
+
+  const setsNow = isExercise ? (exNow?.sets ?? base.sets) : null;
+  const repsNow = isExercise ? (exNow?.reps ?? base.reps) : null;
+  const restNow = isExercise ? (exNow?.rest ?? base.rest) : null;
 
   return (
     <div style={S.page}>
@@ -603,46 +654,89 @@ export default function TreinoDetalhe() {
           <div style={S.hLine}>
             <span style={S.tagStrong}>{base.style}</span>
             <span style={S.tagSoft}>{exCount} exercícios</span>
+            <span style={S.tagSoft}>{progressText}</span>
           </div>
 
-          {/* ✅ Sempre legível: séries / reps / descanso no topo */}
-          <div style={S.dayMetrics}>
-            <MetricChip icon={<IconSets />} label="Séries" value={String(defaultSets)} />
-            <MetricChip icon={<IconReps />} label="Repetições" value={String(defaultReps)} />
-            <MetricChip icon={<IconRest />} label="Descanso" value={String(defaultRest)} />
-          </div>
-
-          <div style={S.hMeta}>Toque em “Execução” para ver detalhes e instruções.</div>
-        </div>
-      </div>
-
-      {/* Próximos dias */}
-      <div style={S.nextCard}>
-        <div style={S.nextGlow} aria-hidden="true" />
-
-        <div style={S.nextTop}>
-          <div style={S.nextTitle}>Próximos dias</div>
-          <div style={S.nextNote}>Prévia do ciclo</div>
-        </div>
-
-        <div style={S.nextRow}>
-          {upcoming.map((d, i) => (
-            <div key={i} style={S.nextItem}>
-              <div style={S.nextSheen} aria-hidden="true" />
-              <div style={S.nextDay}>Dia +{i + 1}</div>
-              <div style={S.nextName}>{d.title}</div>
-              <div style={S.nextMini}>{d.count} exercícios</div>
+          {/* Métricas do exercício atual (bem visual) */}
+          {isExercise ? (
+            <div style={S.topChips}>
+              <Chip label="Séries" value={String(setsNow)} />
+              <Chip label="Reps" value={String(repsNow)} />
+              <Chip label="Descanso" value={String(restNow)} />
             </div>
-          ))}
+          ) : (
+            <div style={S.hMeta}>Última página — finalize e vá pro cardio.</div>
+          )}
         </div>
       </div>
 
-      <div style={S.section}>Exercícios do dia</div>
+      {/* Dots (páginas) */}
+      <div style={S.dotsRow}>
+        {pages.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => goTo(i)}
+            style={{ ...S.dot, ...(i === page ? S.dotOn : S.dotOff) }}
+            aria-label={`Ir para página ${i + 1}`}
+            className="td-press"
+          />
+        ))}
+      </div>
 
-      <div style={S.list}>
-        {workout.map((ex, i) => {
+      {/* SWIPE HINT */}
+      {showHint && (
+        <div style={S.hintWrap} aria-hidden="true">
+          <div style={S.hintPill}>
+            <span style={S.hintIcon}>→</span>
+            <span style={S.hintText}>Arraste para o lado</span>
+            <span style={S.hintAnim} />
+          </div>
+        </div>
+      )}
+
+      {/* PAGER */}
+      <div ref={scrollerRef} style={S.pager} aria-label="Treino em páginas">
+        {pages.map((p, idx) => {
+          if (p.type === "cardio") {
+            return (
+              <div key={p.key} style={S.pageItem}>
+                <div style={S.cardPage}>
+                  <div style={S.cardGlow} aria-hidden="true" />
+
+                  <div style={S.endKicker}>Final do treino</div>
+                  <div style={S.endTitle}>Bora pro cardio?</div>
+                  <div style={S.endSub}>
+                    Se quiser maximizar resultado (ou manter consistência), um cardio leve/moderado fecha muito bem o dia.
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => nav("/cardio")}
+                    style={S.endCta}
+                    className="td-press"
+                    aria-label="Ir para cardio"
+                  >
+                    Ir para Cardio
+                    <span style={S.endCtaIcon} aria-hidden="true">
+                      <IconArrowRight />
+                    </span>
+                  </button>
+
+                  <button type="button" onClick={() => nav("/treino")} style={S.endGhost} className="td-press">
+                    Voltar ao Treino
+                  </button>
+
+                  <div style={S.endNote}>
+                    Dica: se estiver sem tempo, faça 10–15 min “leve e constante” — melhor do que pular.
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          const ex = p.ex;
           const det = detailFor(ex.name);
-
           const peso = user?.peso ?? user?.weight ?? 70;
           const objetivo = user?.objetivo ?? user?.goal ?? "";
           const suggested = suggestLoadRange(ex.name, peso, objetivo);
@@ -654,112 +748,175 @@ export default function TreinoDetalhe() {
           const reps = ex.reps ?? base.reps;
           const rest = ex.rest ?? base.rest;
 
+          const gifSrc = gifForExercise(ex.name);
+
           return (
-            <div key={i} style={S.card}>
-              <div style={S.cardGlow} aria-hidden="true" />
-              <div style={S.cardSheen} aria-hidden="true" />
+            <div key={p.key} style={S.pageItem}>
+              <div style={S.cardPage}>
+                <div style={S.cardGlow} aria-hidden="true" />
+                <div style={S.cardSheen} aria-hidden="true" />
 
-              <div style={S.cardTop}>
-                <div style={S.num}>{i + 1}</div>
-
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={S.nameRow}>
-                    <div style={S.name}>{ex.name}</div>
-                    <div style={S.groupPill}>
-                      <span style={{ display: "grid", placeItems: "center" }}>
-                        <IconGroup />
-                      </span>
-                      <span style={S.groupText}>{ex.group}</span>
-                    </div>
+                <div style={S.exerciseTop}>
+                  <div style={S.exerciseIndex}>{idx + 1}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={S.exerciseName}>{ex.name}</div>
+                    <div style={S.exerciseGroup}>{ex.group}</div>
                   </div>
 
-                  {/* ✅ Corrige “bugado”: grid auto-fit com min width, sempre visível */}
-                  <div style={S.metricsGrid}>
-                    <MetricChip icon={<IconSets />} label="Séries" value={String(sets)} />
-                    <MetricChip icon={<IconReps />} label="Repetições" value={String(reps)} />
-                    <MetricChip icon={<IconRest />} label="Descanso" value={String(rest)} />
-                  </div>
-                </div>
-
-                <div style={S.rightCol}>
-                  <ActionButton
-                    onClick={() =>
-                      setHowTo({
-                        name: ex.name,
-                        group: ex.group,
-                        sets,
-                        reps,
-                        rest,
-                        area: det.area,
-                        cue: det.cue,
-                      })
-                    }
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // micro: abre um modal simples via alert? não.
+                      // Aqui mantemos dentro da página (área + cue) e não popup pra ficar “livro”.
+                      // Se quiser modal depois, eu adapto.
+                      // Por enquanto: apenas rola pro bloco “Execução” (tem âncora).
+                      const el = document.getElementById(`exec_${idx}`);
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    style={S.execBtn}
+                    className="td-press"
                   >
                     Execução
-                  </ActionButton>
-                </div>
-              </div>
-
-              {/* Carga */}
-              <div style={S.loadRow}>
-                <div style={S.loadLeft}>
-                  <div style={S.loadLabel}>Carga sugerida</div>
-                  <div style={S.loadVal}>{suggested}</div>
-                  <div style={S.loadHint}>Ajuste para manter forma e controle.</div>
+                  </button>
                 </div>
 
-                <div style={S.loadRight}>
-                  <div style={S.loadLabel}>Sua carga</div>
-                  <input
-                    value={myLoad}
-                    onChange={(e) => setLoad(ex.name, e.target.value)}
-                    placeholder="Ex.: 40kg"
-                    style={S.input}
-                    inputMode="text"
+                {/* GIF */}
+                <div style={S.gifWrap}>
+                  <img
+                    src={gifSrc}
+                    alt={`${ex.name} (gif)`}
+                    style={S.gif}
+                    onError={(e) => {
+                      // fallback bonito se não existir gif
+                      e.currentTarget.style.display = "none";
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) parent.setAttribute("data-gif-missing", "1");
+                    }}
                   />
+                  <div style={S.gifFallback} aria-hidden="true">
+                    <div style={S.gifFallbackBadge}>GIF</div>
+                    <div style={S.gifFallbackText}>Adicione: /public/gifs/{slugifyExercise(ex.name)}.gif</div>
+                  </div>
                 </div>
+
+                {/* Chips grandes */}
+                <div style={S.bigChips}>
+                  <Chip label="Séries" value={String(sets)} />
+                  <Chip label="Repetições" value={String(reps)} />
+                  <Chip label="Descanso" value={String(rest)} />
+                </div>
+
+                {/* Carga */}
+                <div style={S.loadBox}>
+                  <div style={S.loadLeft}>
+                    <div style={S.loadLabel}>Carga sugerida</div>
+                    <div style={S.loadVal}>{suggested}</div>
+                    <div style={S.loadHint}>Só é “boa” se você mantém forma e controle.</div>
+                  </div>
+
+                  <div style={S.loadRight}>
+                    <div style={S.loadLabel}>Sua carga</div>
+                    <input
+                      value={myLoad}
+                      onChange={(e) => setLoad(ex.name, e.target.value)}
+                      placeholder="Ex.: 40kg"
+                      style={S.input}
+                      inputMode="text"
+                    />
+                  </div>
+                </div>
+
+                {/* Execução (sem modal, bem visual e direto) */}
+                <div id={`exec_${idx}`} style={S.execPanel}>
+                  <div style={S.execTitle}>Execução — o que focar</div>
+                  <div style={S.execArea}>
+                    <div style={S.execLabel}>Área trabalhada</div>
+                    <div style={S.execText}>{det.area}</div>
+                  </div>
+                  <div style={S.execCue}>
+                    <div style={S.execLabel}>Dica prática</div>
+                    <div style={S.execText}>{det.cue}</div>
+                  </div>
+                </div>
+
+                {/* Navegação rápida (setas) — opcional mas ajuda */}
+                <div style={S.navRow}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(Math.max(0, idx - 1))}
+                    style={{ ...S.navBtn, ...(idx === 0 ? S.navBtnDisabled : null) }}
+                    className="td-press"
+                    disabled={idx === 0}
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goTo(Math.min(pages.length - 1, idx + 1))}
+                    style={S.navBtn}
+                    className="td-press"
+                  >
+                    Próximo →
+                  </button>
+                </div>
+
+                <div style={{ height: 110 }} />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* CTA Cardio */}
-      <button style={S.cardioGo} onClick={() => nav("/cardio")} type="button" className="td-press">
-        <div style={S.cardioGlow} aria-hidden="true" />
-        <div style={S.cardioSheen} aria-hidden="true" />
-
-        <div style={S.cardioGoRow}>
+      {/* BOTTOM CONTROLS (fixo) */}
+      <div style={S.bottom}>
+        <div style={S.bottomTop}>
           <div style={{ minWidth: 0 }}>
-            <div style={S.cardioTop}>Cardio</div>
-            <div style={S.cardioSub}>Abrir rotina pós-treino</div>
+            <div style={S.bottomKicker}>Cronômetro de descanso</div>
+            <div style={S.bottomTime}>{fmtMMSS(restLeft)}</div>
+            <div style={S.bottomSub}>
+              {isExercise ? (
+                <>
+                  Exercício: <b style={{ color: TEXT }}>{exNow?.name}</b>
+                </>
+              ) : (
+                <>Você chegou no final — bora pro cardio.</>
+              )}
+            </div>
           </div>
 
-          <div style={S.cardioIcon} aria-hidden="true">
-            <IconArrowRight />
-          </div>
+          <button type="button" onClick={resetTimer} style={S.resetBtn} className="td-press" aria-label="Resetar descanso">
+            <IconReset />
+          </button>
         </div>
 
-        <div style={S.progressTrack}>
-          <div style={S.progressFill} />
+        <div style={S.bottomBtns}>
+          <button
+            type="button"
+            onClick={startTimer}
+            style={{ ...S.bigStart, ...(running ? S.bigStartOn : S.bigStartOff) }}
+            className="td-press"
+            aria-label="Começar descanso"
+            disabled={!isExercise}
+          >
+            {running ? "Rodando..." : restLeft === 0 ? "Recomeçar" : "Começar"}
+            <span style={S.bigStartIcon} aria-hidden="true">
+              <IconPlay />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={pauseTimer}
+            style={S.smallPause}
+            className="td-press"
+            aria-label="Pausar descanso"
+            disabled={!running}
+          >
+            <IconPause />
+            Pausar
+          </button>
         </div>
-
-        <div style={S.cardioMeta}>Rápido, direto e consistente.</div>
-      </button>
-
-      <div style={{ height: 140 }} />
-
-      <HowToModal
-        open={!!howTo}
-        onClose={() => setHowTo(null)}
-        title={howTo?.name}
-        group={howTo?.group}
-        sets={howTo?.sets}
-        reps={howTo?.reps}
-        rest={howTo?.rest}
-        area={howTo?.area}
-        cue={howTo?.cue}
-      />
+      </div>
     </div>
   );
 }
@@ -768,7 +925,7 @@ export default function TreinoDetalhe() {
 const S = {
   page: {
     padding: 18,
-    paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
+    paddingBottom: "calc(160px + env(safe-area-inset-bottom))",
     background: BG,
   },
 
@@ -842,60 +999,64 @@ const S = {
   },
   hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
-  dayMetrics: {
+  topChips: {
     marginTop: 12,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
   },
 
-  /* Próximos dias */
-  nextCard: {
-    marginTop: 14,
-    borderRadius: 28,
-    padding: 16,
-    background: "#fff",
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 18px 62px rgba(15,23,42,.06)",
-    position: "relative",
-    overflow: "hidden",
-  },
-  nextGlow: {
-    position: "absolute",
-    inset: -40,
-    background: "radial-gradient(520px 240px at 30% 0%, rgba(255,106,0,.10), transparent 60%)",
-    pointerEvents: "none",
-  },
-  nextTop: { display: "grid", gap: 4, position: "relative" },
-  nextTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
-  nextNote: { fontSize: 12, fontWeight: 800, color: MUTED },
+  /* dots */
+  dotsRow: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
+  dot: { width: 10, height: 10, borderRadius: 999, border: "none" },
+  dotOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotOff: { background: "rgba(15,23,42,.14)" },
 
-  nextRow: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 },
-  nextItem: {
-    borderRadius: 18,
-    padding: 12,
-    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
-    border: "1px solid rgba(255,106,0,.14)",
+  /* hint */
+  hintWrap: { marginTop: 10, display: "grid", placeItems: "center" },
+  hintPill: {
     position: "relative",
+    borderRadius: 999,
+    padding: "10px 14px",
+    background: "rgba(11,11,12,.90)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,.10)",
+    boxShadow: "0 18px 60px rgba(0,0,0,.25)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
     overflow: "hidden",
   },
-  nextSheen: {
+  hintIcon: { fontWeight: 950, opacity: 0.9 },
+  hintText: { fontSize: 12, fontWeight: 900, letterSpacing: 0.2 },
+  hintAnim: {
     position: "absolute",
     inset: 0,
-    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.30) 25%, transparent 55%)",
+    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.20) 25%, transparent 55%)",
     transform: "translateX(-70%)",
-    animation: "tdSheen 5.2s ease-in-out infinite",
+    animation: "tdSheen 2.4s ease-in-out infinite",
     pointerEvents: "none",
   },
-  nextDay: { fontSize: 11, fontWeight: 950, color: MUTED, textTransform: "uppercase" },
-  nextName: { marginTop: 6, fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  nextMini: { marginTop: 10, fontSize: 11, fontWeight: 900, color: ORANGE },
 
-  /* Exercícios */
-  section: { marginTop: 14, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
-  list: { marginTop: 12, display: "grid", gap: 14 },
+  /* pager */
+  pager: {
+    marginTop: 12,
+    borderRadius: 28,
+    overflowX: "auto",
+    overflowY: "hidden",
+    display: "flex",
+    scrollSnapType: "x mandatory",
+    WebkitOverflowScrolling: "touch",
+    gap: 12,
+    paddingBottom: 2,
+  },
+  pageItem: {
+    scrollSnapAlign: "start",
+    flex: "0 0 100%",
+  },
 
-  card: {
+  /* card page */
+  cardPage: {
     borderRadius: 28,
     padding: 16,
     background: "linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.94))",
@@ -903,12 +1064,13 @@ const S = {
     boxShadow: "0 18px 70px rgba(15,23,42,.06)",
     position: "relative",
     overflow: "hidden",
+    minHeight: "calc(100vh - 320px)",
   },
   cardGlow: {
     position: "absolute",
     inset: -40,
     background:
-      "radial-gradient(600px 240px at 12% 0%, rgba(255,106,0,.12), transparent 60%), radial-gradient(620px 240px at 98% 10%, rgba(15,23,42,.08), transparent 62%)",
+      "radial-gradient(620px 260px at 18% 0%, rgba(255,106,0,.14), transparent 60%), radial-gradient(520px 240px at 95% 0%, rgba(15,23,42,.10), transparent 62%)",
     pointerEvents: "none",
   },
   cardSheen: {
@@ -916,75 +1078,95 @@ const S = {
     inset: 0,
     background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.22) 22%, transparent 50%)",
     transform: "translateX(-70%)",
-    animation: "tdSheen 6.0s ease-in-out infinite",
+    animation: "tdSheen 6.2s ease-in-out infinite",
     pointerEvents: "none",
   },
 
-  cardTop: { display: "flex", gap: 12, alignItems: "flex-start", position: "relative" },
-  num: {
-    width: 50,
-    height: 50,
+  exerciseTop: { position: "relative", display: "flex", gap: 12, alignItems: "center" },
+  exerciseIndex: {
+    width: 44,
+    height: 44,
     borderRadius: 18,
     display: "grid",
     placeItems: "center",
     background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,106,0,.58))",
     color: "#fff",
     fontWeight: 950,
-    fontSize: 16,
-    flexShrink: 0,
+    fontSize: 15,
     boxShadow: "0 16px 42px rgba(255,106,0,.22)",
-    animation: "tdPulseBorder 6.5s ease-in-out infinite",
+    flexShrink: 0,
+  },
+  exerciseName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.35, lineHeight: 1.15 },
+  exerciseGroup: { marginTop: 5, fontSize: 12, fontWeight: 850, color: MUTED },
+  execBtn: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "rgba(255,106,0,.10)",
+    fontWeight: 950,
+    color: TEXT,
+    flexShrink: 0,
   },
 
-  nameRow: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  name: { fontSize: 17, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
-
-  groupPill: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "7px 10px",
-    borderRadius: 999,
-    background: SOFT,
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 12px 26px rgba(15,23,42,.05)",
-  },
-  groupText: { fontSize: 12, fontWeight: 900, color: "#334155" },
-
-  rightCol: { display: "flex", alignItems: "flex-start", flexShrink: 0 },
-
-  metricsGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: 10,
-  },
-
-  metricChip: {
+  gifWrap: {
+    marginTop: 14,
     borderRadius: 22,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(15,23,42,.03)",
+    overflow: "hidden",
+    position: "relative",
+    minHeight: 180,
+  },
+  gif: {
+    width: "100%",
+    height: 220,
+    objectFit: "cover",
+    display: "block",
+  },
+  gifFallback: {
+    position: "absolute",
+    inset: 0,
     padding: 14,
+    display: "grid",
+    placeItems: "center",
+    textAlign: "center",
+    background:
+      "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
+    opacity: 0.0,
+  },
+  gifFallbackBadge: {
+    display: "inline-flex",
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "rgba(11,11,12,.92)",
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 950,
+    marginBottom: 8,
+  },
+  gifFallbackText: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 320 },
+
+  bigChips: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
+    position: "relative",
+  },
+
+  chip: {
+    borderRadius: 20,
+    padding: 12,
     background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))",
     border: `1px solid ${BORDER}`,
     boxShadow: "0 14px 34px rgba(15,23,42,.05)",
-    minHeight: 78,
     position: "relative",
     overflow: "hidden",
+    minHeight: 72,
   },
-  metricTop: { display: "flex", alignItems: "center", gap: 10 },
-  metricIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 16,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.18)",
-    boxShadow: "0 14px 28px rgba(255,106,0,.10)",
-    flexShrink: 0,
-  },
-  metricLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  metricValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
-  metricSheen: {
+  chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+  chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
+  chipSheen: {
     position: "absolute",
     inset: 0,
     background: "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)",
@@ -992,44 +1174,13 @@ const S = {
     pointerEvents: "none",
   },
 
-  actionBtn: {
-    height: 46,
-    padding: "0 12px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "linear-gradient(135deg, rgba(255,106,0,.14), rgba(255,255,255,.72))",
-    color: TEXT,
-    fontWeight: 950,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    whiteSpace: "nowrap",
-    boxShadow: "0 16px 36px rgba(255,106,0,.14)",
-    position: "relative",
-    overflow: "hidden",
-  },
-  actionBtnText: { fontSize: 13, fontWeight: 950 },
-  actionBtnIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(255,255,255,.70)",
-    border: "1px solid rgba(255,255,255,.55)",
-    boxShadow: "0 14px 34px rgba(15,23,42,.10)",
-  },
-  actionBtnSheen: {
-    position: "absolute",
-    inset: 0,
-    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.32) 25%, transparent 55%)",
-    transform: "translateX(-70%)",
-    animation: "tdSheen 6.2s ease-in-out infinite",
-    pointerEvents: "none",
-  },
-
-  loadRow: {
-    marginTop: 16,
+  loadBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     display: "grid",
     gridTemplateColumns: "1fr minmax(160px, 220px)",
     gap: 12,
@@ -1041,7 +1192,6 @@ const S = {
   loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
   loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
   loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
-
   input: {
     width: "100%",
     marginTop: 6,
@@ -1055,67 +1205,137 @@ const S = {
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)",
   },
 
-  /* Cardio CTA */
-  cardioGo: {
+  execPanel: {
     marginTop: 14,
-    width: "100%",
-    borderRadius: 30,
-    padding: 18,
-    border: "none",
-    textAlign: "left",
-    background: "linear-gradient(135deg, rgba(255,106,0,.20), rgba(255,255,255,.96))",
-    boxShadow: "0 22px 80px rgba(15,23,42,.10)",
-    borderLeft: "1px solid rgba(255,106,0,.22)",
-    borderTop: `1px solid ${BORDER}`,
+    borderRadius: 22,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
+    border: "1px solid rgba(255,106,0,.16)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     position: "relative",
+  },
+  execTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  execArea: { marginTop: 10 },
+  execCue: { marginTop: 10 },
+  execLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  execText: { marginTop: 6, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
+
+  navRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" },
+  navBtn: {
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  navBtnDisabled: { opacity: 0.55 },
+
+  /* END PAGE */
+  endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase", position: "relative" },
+  endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, position: "relative" },
+  endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5, position: "relative" },
+  endCta: {
+    marginTop: 16,
+    width: "100%",
+    padding: 16,
+    borderRadius: 22,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    position: "relative",
+  },
+  endCtaIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.10)",
+    display: "grid",
+    placeItems: "center",
+  },
+  endGhost: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+  endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, position: "relative" },
+
+  /* bottom fixed controls */
+  bottom: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    bottom: "calc(12px + env(safe-area-inset-bottom))",
+    zIndex: 999,
+    borderRadius: 26,
+    padding: 14,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.20)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
     overflow: "hidden",
-    animation: "tdFloat 3.6s ease-in-out infinite",
   },
-  cardioGlow: {
-    position: "absolute",
-    inset: -40,
-    background:
-      "radial-gradient(520px 240px at 20% 10%, rgba(255,106,0,.22), transparent 58%), radial-gradient(520px 240px at 90% 0%, rgba(15,23,42,.12), transparent 60%)",
-    pointerEvents: "none",
-  },
-  cardioSheen: {
-    position: "absolute",
-    inset: 0,
-    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.34) 25%, transparent 55%)",
-    transform: "translateX(-70%)",
-    animation: "tdSheen 4.8s ease-in-out infinite",
-    pointerEvents: "none",
-  },
-  cardioGoRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, position: "relative" },
-  cardioTop: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  cardioSub: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  cardioIcon: {
+  bottomTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  bottomKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  bottomTime: { marginTop: 6, fontSize: 28, fontWeight: 950, color: TEXT, letterSpacing: -0.9 },
+  bottomSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 380 },
+  resetBtn: {
     width: 46,
     height: 46,
     borderRadius: 18,
-    background: "linear-gradient(135deg, rgba(255,255,255,.78), rgba(255,255,255,.52))",
-    border: "1px solid rgba(255,255,255,.55)",
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(15,23,42,.04)",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 18px 40px rgba(15,23,42,.12)",
     flexShrink: 0,
   },
-  progressTrack: {
-    marginTop: 12,
-    height: 10,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.08)",
-    overflow: "hidden",
-    position: "relative",
+  bottomBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" },
+  bigStart: {
+    width: "100%",
+    padding: 16,
+    borderRadius: 22,
+    border: "none",
+    fontWeight: 950,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
   },
-  progressFill: {
-    height: "100%",
-    width: "78%",
-    borderRadius: 999,
-    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
-    boxShadow: "0 12px 28px rgba(255,106,0,.18)",
+  bigStartOn: { background: "rgba(255,106,0,.14)", color: TEXT, boxShadow: "0 18px 55px rgba(255,106,0,.18)" },
+  bigStartOff: { background: "#0B0B0C", color: "#fff", boxShadow: "0 18px 55px rgba(0,0,0,.18)" },
+  bigStartIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 18,
+    background: "rgba(255,255,255,.10)",
+    display: "grid",
+    placeItems: "center",
   },
-  cardioMeta: { marginTop: 10, fontSize: 12, fontWeight: 850, color: "#334155", position: "relative" },
+  smallPause: {
+    padding: "14px 14px",
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
 
   /* Lock */
   lockCard: {
@@ -1138,73 +1358,30 @@ const S = {
     fontWeight: 950,
     boxShadow: "0 18px 55px rgba(255,106,0,.22)",
   },
-
-  /* Modal */
-  modalWrap: { position: "fixed", inset: 0, zIndex: 9999, display: "grid", placeItems: "end center", padding: 14 },
-  modalBackdrop: { position: "fixed", inset: 0, background: "rgba(2,6,23,.60)", border: "none" },
-  modalCard: {
-    position: "relative",
-    width: "min(720px, 100%)",
-    borderRadius: 30,
-    background: "linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.92))",
-    border: "1px solid rgba(255,255,255,.30)",
-    boxShadow: "0 38px 150px rgba(2,6,23,.46)",
-    padding: 16,
-    overflow: "hidden",
-    animation: "tdSheetUp .22s ease-out",
-  },
-  modalGlow: {
-    position: "absolute",
-    inset: -40,
-    background:
-      "radial-gradient(620px 260px at 25% 0%, rgba(255,106,0,.18), transparent 60%), radial-gradient(540px 240px at 95% 0%, rgba(15,23,42,.12), transparent 62%)",
-    pointerEvents: "none",
-  },
-  modalTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, position: "relative" },
-  modalKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
-  modalTitle: { marginTop: 4, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
-  modalSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED },
-  modalClose: {
-    width: 44,
-    height: 44,
-    borderRadius: 18,
-    border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.72)",
-    boxShadow: "0 16px 40px rgba(15,23,42,.12)",
-    display: "grid",
-    placeItems: "center",
-  },
-  modalMetrics: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 },
-  modalPanelSoft: { marginTop: 12, borderRadius: 22, padding: 14, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.20)", position: "relative" },
-  modalPanel: { marginTop: 10, borderRadius: 22, padding: 14, background: "rgba(15,23,42,.03)", border: `1px solid ${BORDER}`, position: "relative" },
-  panelTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.95 },
-  panelText: { marginTop: 6, fontSize: 13, fontWeight: 800, color: "#334155", lineHeight: 1.5 },
-
-  stepRow: { display: "flex", gap: 10, alignItems: "flex-start" },
-  stepDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 12,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(255,106,0,.14)",
-    border: "1px solid rgba(255,106,0,.22)",
-    fontSize: 12,
-    fontWeight: 950,
-    color: TEXT,
-    flexShrink: 0,
-  },
-  stepText: { fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
-
-  modalDone: {
-    marginTop: 12,
+  lockGhost: {
+    marginTop: 10,
     width: "100%",
     padding: 14,
-    borderRadius: 22,
-    border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.90)",
+    color: TEXT,
     fontWeight: 950,
-    boxShadow: "0 18px 65px rgba(255,106,0,.22)",
   },
 };
+
+/* 🔧 pequeno truque: se o GIF não existir, mostra fallback */
+if (typeof window !== "undefined") {
+  // aplica estilo quando data-gif-missing=1
+  // (não quebra nada se rodar mais de uma vez)
+  const id = "td-gif-missing-style";
+  if (!document.getElementById(id)) {
+    const st = document.createElement("style");
+    st.id = id;
+    st.innerHTML = `
+      [data-gif-missing="1"] img { display: none !important; }
+      [data-gif-missing="1"] > div { opacity: 1 !important; }
+    `;
+    document.head.appendChild(st);
+  }
+}
