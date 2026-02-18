@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { EXERCISE_BANK } from "../data/exerciseBank"; 
+// ou: import exerciseBank from "../data/exerciseBank";
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
@@ -41,6 +43,45 @@ function bumpDayIndex(email, max) {
   const n = raw ? Number(raw) : 0;
   const next = (Number.isFinite(n) ? n : 0) + 1;
   localStorage.setItem(key, String(next % Math.max(max, 1)));
+}
+function normalizeKey(s) {
+  return String(s || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // tira acento
+    .toLowerCase()
+    .trim();
+}
+
+// EXERCISE_BANK pode ser array ou objeto — deixo robusto
+function makeBankMap(bank) {
+  // se já for objeto (mapa) retorna direto
+  if (bank && !Array.isArray(bank) && typeof bank === "object") return bank;
+
+  const arr = Array.isArray(bank) ? bank : [];
+  const map = {};
+  for (const ex of arr) {
+    // tenta achar campos comuns
+    const name = ex?.name || ex?.nome || ex?.title;
+    if (!name) continue;
+    map[normalizeKey(name)] = ex;
+  }
+  return map;
+}
+
+function attachBankData(list, bankMap) {
+  const arr = Array.isArray(list) ? list : [];
+  return arr.map((ex) => {
+    const k = normalizeKey(ex?.name);
+    const bank = bankMap?.[k] || null;
+
+    // Você escolhe quais campos quer “puxar” do bank:
+    // gif/url/id/targets/equipment/instructions...
+    return {
+      ...ex,
+      bank, // guarda tudo do bank (mais simples)
+      gif: ex.gif || bank?.gif || bank?.gifUrl || bank?.gif_url || bank?.url || null,
+      bankId: ex.bankId || bank?.id || bank?.exerciseId || null,
+    };
+  });
 }
 function getWeekdaysStrip(splitLen, currentIdx) {
   const out = [];
@@ -262,7 +303,12 @@ export default function Treino() {
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
-  const workout = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
+  const bankMap = useMemo(() => makeBankMap(EXERCISE_BANK), []);
+
+const workout = useMemo(() => {
+  const baseList = split[viewSafe] || [];
+  return attachBankData(baseList, bankMap);
+}, [split, viewSafe, bankMap]);
 
   const doneKey = `done_ex_${email}_${viewSafe}`;
   const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
@@ -1087,3 +1133,4 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
