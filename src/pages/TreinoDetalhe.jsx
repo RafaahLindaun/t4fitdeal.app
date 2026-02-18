@@ -63,7 +63,7 @@ function slugifyExercise(name) {
 }
 function gifForExercise(name) {
   const slug = slugifyExercise(name);
-  return `/gifs/${slug}.gif`;
+  return `/gifs/${slug}.GIF`;
 }
 
 /** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
@@ -1438,3 +1438,4 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
