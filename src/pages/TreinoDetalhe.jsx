@@ -1,19 +1,12 @@
 // ✅ COLE EM: src/pages/TreinoDetalhe.jsx
-// Treino detalhado em “livro” (arrastar pro lado) + GIF por exercício + timer de descanso fixo embaixo
-// - swipe horizontal com snap (estilo páginas)
-// - aviso “arraste pro lado” (só na 1ª vez)
-// - embaixo: COMEÇAR grande + PAUSAR pequeno + cronômetro de descanso
-// - última página: “Bora pro cardio?” (pagantes -> leva pro cardio / não pagantes -> upsell)
-// - sem libs
+// + Controle de séries (bolinhas 1/4) por exercício
+// + Ao marcar série: inicia descanso automaticamente
+// + Cronômetro vira “balão/mini botão” (dock) e abre ao clicar ou arrastar pra cima
+// + O cronômetro pode ficar fechado (opcional), estilo “adicional”
 //
 // ✅ GIFs:
-// Coloque seus gifs em: /public/gifs/
-// E nomeie assim (slug do nome do exercício):
-//   "Supino reto" -> /public/gifs/supino-reto.gif
-//   "Cadeira extensora" -> /public/gifs/cadeira-extensora.gif
-// O slug é gerado automaticamente (sem acento, minúsculo, espaço vira hífen).
-//
-// Exemplo: public/gifs/supino-reto.gif
+// /public/gifs/<slug>.gif  (slug automático)
+// ex: "Supino reto" -> /public/gifs/supino-reto.gif
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -78,19 +71,15 @@ function parseRestToSeconds(restText) {
   const raw = String(restText || "").toLowerCase().trim();
   if (!raw) return 90;
 
-  // se tiver "min"
   const minMatch = raw.match(/(\d+)\s*min/);
   if (minMatch) return clamp(Number(minMatch[1]) * 60, 15, 600);
 
-  // pega o primeiro número antes de "s"
   const sMatch = raw.match(/(\d+)\s*s/);
   if (sMatch) return clamp(Number(sMatch[1]), 10, 600);
 
-  // se tiver faixa 75–120 (sem s)
   const range = raw.match(/(\d+)\s*[-–]\s*(\d+)/);
   if (range) return clamp(Number(range[1]), 10, 600);
 
-  // número solto
   const n = raw.match(/(\d+)/);
   if (n) return clamp(Number(n[1]), 10, 600);
 
@@ -296,7 +285,18 @@ function keyForLoad(viewIdx, exName) {
   return `${viewIdx}__${String(exName || "").toLowerCase()}`;
 }
 
-/* ---------------- detalhes por nome (mantém seu conteúdo) ---------------- */
+/* ---------------- progresso de séries ---------------- */
+function loadSetsProg(email) {
+  return safeJsonParse(localStorage.getItem(`setsprog_${email}`), {});
+}
+function saveSetsProg(email, obj) {
+  localStorage.setItem(`setsprog_${email}`, JSON.stringify(obj));
+}
+function keyForSetProg(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
+
+/* ---------------- detalhes por nome ---------------- */
 function detailFor(exName) {
   const n = String(exName || "").toLowerCase();
 
@@ -342,9 +342,6 @@ function detailFor(exName) {
     return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
   if (n.includes("abdominal"))
     return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
-
-  if (n.includes("aquecimento"))
-    return { area: "Preparação geral.", cue: "Aqueça leve por 5–8 min. Objetivo é preparar, não cansar." };
 
   return { area: "Músculos relacionados ao movimento.", cue: "Postura firme. Controle na descida. Execução limpa sem roubar." };
 }
@@ -410,24 +407,56 @@ function IconPlay() {
 function IconReset() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M20 12a8 8 0 1 1-2.3-5.6"
-        stroke={INK}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M20 12a8 8 0 1 1-2.3-5.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M20 4v6h-6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
+function IconClock() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 7.2v5.2l3.2 1.7" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 20.2a8.2 8.2 0 1 1 8.2-8.2" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
+/* ---------------- UI bits ---------------- */
 function Chip({ label, value }) {
   return (
     <div style={S.chip}>
       <div style={S.chipLabel}>{label}</div>
       <div style={S.chipValue}>{value}</div>
       <div style={S.chipSheen} aria-hidden="true" />
+    </div>
+  );
+}
+
+function SetDots({ total, done, onToggle }) {
+  const n = clamp(Number(total || 0) || 0, 1, 12);
+  const d = clamp(Number(done || 0) || 0, 0, n);
+
+  return (
+    <div style={S.dotsBox}>
+      <div style={S.dotsTitle}>Séries feitas</div>
+      <div style={S.dotsRowInner}>
+        {Array.from({ length: n }).map((_, i) => {
+          const filled = i < d;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onToggle(i)}
+              style={{ ...S.dotBtn, ...(filled ? S.dotBtnOn : S.dotBtnOff) }}
+              className="td-press"
+              aria-label={`Marcar série ${i + 1} de ${n}`}
+            />
+          );
+        })}
+      </div>
+      <div style={S.dotsMini}>
+        {d}/{n}
+      </div>
     </div>
   );
 }
@@ -441,28 +470,24 @@ export default function TreinoDetalhe() {
   const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // origem do Treino
+  // plano
   const plan = useMemo(() => buildCustomPlan(email), [email]);
   const fallback = useMemo(() => buildFallbackSplit(), []);
   const base = plan?.base || fallback.base;
   const split = plan?.split || fallback.split;
 
-  // dia real
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
 
-  // dia exibido (?d=)
   const dParam = Number(sp.get("d"));
   const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
 
-  // exercícios do dia (remove aquecimento)
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
   const workout = useMemo(
     () => workoutRaw.filter((ex) => !String(ex?.name || "").toLowerCase().includes("aquecimento")),
     [workoutRaw]
   );
 
-  // Páginas: exercícios + última página cardio
   const pages = useMemo(() => {
     const exPages = workout.map((ex, i) => ({
       type: "exercise",
@@ -470,8 +495,7 @@ export default function TreinoDetalhe() {
       ex,
       index: i,
     }));
-    const endPage = { type: "cardio", key: "end_cardio" };
-    return [...exPages, endPage];
+    return [...exPages, { type: "cardio", key: "end_cardio" }];
   }, [workout]);
 
   // cargas
@@ -483,7 +507,22 @@ export default function TreinoDetalhe() {
     saveLoads(email, next);
   }
 
-  // swipe / pager
+  // séries feitas (persistente)
+  const [setsProg, setSetsProg] = useState(() => loadSetsProg(email));
+  function getDone(exName, setsTotal) {
+    const key = keyForSetProg(viewSafe, exName);
+    const val = setsProg[key];
+    const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
+    return clamp(Number(val || 0) || 0, 0, n);
+  }
+  function setDone(exName, nextDone) {
+    const key = keyForSetProg(viewSafe, exName);
+    const next = { ...setsProg, [key]: nextDone };
+    setSetsProg(next);
+    saveSetsProg(email, next);
+  }
+
+  // pager
   const scrollerRef = useRef(null);
   const [page, setPage] = useState(0);
 
@@ -491,12 +530,24 @@ export default function TreinoDetalhe() {
   const hintKey = `td_swipe_hint_${email}`;
   const [showHint, setShowHint] = useState(() => localStorage.getItem(hintKey) !== "1");
 
-  // descanso (countdown)
+  // cronômetro: estado + UI (dock fechado/aberto)
+  const timerKey = `td_timer_open_${email}`;
+  const [timerOpen, setTimerOpen] = useState(() => localStorage.getItem(timerKey) === "1");
+
   const [restTotal, setRestTotal] = useState(90);
   const [restLeft, setRestLeft] = useState(90);
   const [running, setRunning] = useState(false);
 
-  // atualiza o descanso quando muda de página (pega rest do exercício atual)
+  // drag pra abrir/fechar
+  const dragStartY = useRef(null);
+  const dragMoved = useRef(false);
+
+  function setTimerOpenPersist(v) {
+    setTimerOpen(v);
+    localStorage.setItem(timerKey, v ? "1" : "0");
+  }
+
+  // quando muda de página: muda o descanso padrão
   useEffect(() => {
     const p = pages[page];
     if (!p || p.type !== "exercise") {
@@ -513,23 +564,15 @@ export default function TreinoDetalhe() {
     setRestLeft(sec);
   }, [page, pages, base.rest]);
 
-  // tick do timer
+  // tick
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => {
-      setRestLeft((prev) => {
-        const next = Math.max(0, prev - 1);
-        if (next === 0) {
-          // terminou
-          return 0;
-        }
-        return next;
-      });
+      setRestLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(t);
   }, [running]);
 
-  // se chegou a 0, para sozinho
   useEffect(() => {
     if (restLeft === 0 && running) setRunning(false);
   }, [restLeft, running]);
@@ -538,7 +581,6 @@ export default function TreinoDetalhe() {
     if (restLeft <= 0) setRestLeft(restTotal);
     setRunning(true);
 
-    // marcou que o usuário já entendeu swipe
     if (showHint) {
       localStorage.setItem(hintKey, "1");
       setShowHint(false);
@@ -552,7 +594,15 @@ export default function TreinoDetalhe() {
     setRestLeft(restTotal);
   }
 
-  // escuta scroll e calcula página atual
+  // abrir “adicional” quando inicia automaticamente (mas não forçar abrir se usuário não quiser)
+  function softPingTimer() {
+    // só dá uma animadinha no dock (aqui: abre por 1.2s e volta se tava fechado)
+    if (timerOpen) return;
+    setTimerOpenPersist(true);
+    window.setTimeout(() => setTimerOpenPersist(false), 1200);
+  }
+
+  // scroll -> página
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -580,25 +630,29 @@ export default function TreinoDetalhe() {
     el.scrollTo({ left: w * i, behavior: "smooth" });
   }
 
-  // injeta CSS (snap + micro)
+  // css
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "treino-detalhe-book-ui";
+    const id = "treino-detalhe-book-ui-v2";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
-      @keyframes tdHint {
-        0%,100% { transform: translateX(0); opacity: .95; }
-        50% { transform: translateX(6px); opacity: 1; }
-      }
       @keyframes tdSheen {
         0%, 35%   { transform: translateX(-70%); opacity: .18; }
         55%, 100% { transform: translateX(140%); opacity: .18; }
       }
+      @keyframes tdPop {
+        0%,100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+      }
       .td-press { transition: transform .12s ease, filter .12s ease; }
       .td-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
+      input:focus {
+        border-color: rgba(255,106,0,.38) !important;
+        box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
+      }
       @media (prefers-reduced-motion: reduce) {
         * { animation: none !important; transition: none !important; }
       }
@@ -611,9 +665,7 @@ export default function TreinoDetalhe() {
       <div style={S.page}>
         <div style={S.lockCard}>
           <div style={S.lockTitle}>Treino em modo “livro”</div>
-          <div style={S.lockText}>
-            Assine para liberar o treino detalhado em páginas, GIFs por exercício e cronômetro de descanso.
-          </div>
+          <div style={S.lockText}>Assine para liberar páginas, GIFs, marcação de séries e cronômetro opcional.</div>
           <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
             Ver planos
           </button>
@@ -633,9 +685,37 @@ export default function TreinoDetalhe() {
   const totalPages = pages.length;
   const progressText = `${page + 1}/${totalPages}`;
 
-  const setsNow = isExercise ? (exNow?.sets ?? base.sets) : null;
-  const repsNow = isExercise ? (exNow?.reps ?? base.reps) : null;
-  const restNow = isExercise ? (exNow?.rest ?? base.rest) : null;
+  // drag handlers do dock
+  function onDockPointerDown(e) {
+    dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
+    dragMoved.current = false;
+  }
+  function onDockPointerMove(e) {
+    if (dragStartY.current == null) return;
+    const y = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
+    if (y == null) return;
+
+    const dy = y - dragStartY.current;
+    if (Math.abs(dy) > 10) dragMoved.current = true;
+
+    // arrastar pra cima abre, pra baixo fecha
+    if (dy < -26) {
+      dragStartY.current = null;
+      setTimerOpenPersist(true);
+    }
+    if (dy > 26) {
+      dragStartY.current = null;
+      setTimerOpenPersist(false);
+    }
+  }
+  function onDockPointerUp() {
+    dragStartY.current = null;
+  }
+  function onDockClick() {
+    // se foi drag, não alterna no click
+    if (dragMoved.current) return;
+    setTimerOpenPersist(!timerOpen);
+  }
 
   return (
     <div style={S.page}>
@@ -657,43 +737,25 @@ export default function TreinoDetalhe() {
             <span style={S.tagSoft}>{progressText}</span>
           </div>
 
-          {/* Métricas do exercício atual (bem visual) */}
-          {isExercise ? (
-            <div style={S.topChips}>
-              <Chip label="Séries" value={String(setsNow)} />
-              <Chip label="Reps" value={String(repsNow)} />
-              <Chip label="Descanso" value={String(restNow)} />
-            </div>
-          ) : (
-            <div style={S.hMeta}>Última página — finalize e vá pro cardio.</div>
-          )}
+          <div style={S.hMeta}>
+            {showHint ? "Arraste para o lado (estilo livro)." : "Toque nas bolinhas para marcar séries e iniciar descanso."}
+          </div>
         </div>
       </div>
 
       {/* Dots (páginas) */}
-      <div style={S.dotsRow}>
+      <div style={S.dotsNav}>
         {pages.map((_, i) => (
           <button
             key={i}
             type="button"
             onClick={() => goTo(i)}
-            style={{ ...S.dot, ...(i === page ? S.dotOn : S.dotOff) }}
+            style={{ ...S.dotNav, ...(i === page ? S.dotNavOn : S.dotNavOff) }}
             aria-label={`Ir para página ${i + 1}`}
             className="td-press"
           />
         ))}
       </div>
-
-      {/* SWIPE HINT */}
-      {showHint && (
-        <div style={S.hintWrap} aria-hidden="true">
-          <div style={S.hintPill}>
-            <span style={S.hintIcon}>→</span>
-            <span style={S.hintText}>Arraste para o lado</span>
-            <span style={S.hintAnim} />
-          </div>
-        </div>
-      )}
 
       {/* PAGER */}
       <div ref={scrollerRef} style={S.pager} aria-label="Treino em páginas">
@@ -707,16 +769,10 @@ export default function TreinoDetalhe() {
                   <div style={S.endKicker}>Final do treino</div>
                   <div style={S.endTitle}>Bora pro cardio?</div>
                   <div style={S.endSub}>
-                    Se quiser maximizar resultado (ou manter consistência), um cardio leve/moderado fecha muito bem o dia.
+                    Um cardio leve/moderado (10–20min) fecha bem o dia e ajuda consistência.
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => nav("/cardio")}
-                    style={S.endCta}
-                    className="td-press"
-                    aria-label="Ir para cardio"
-                  >
+                  <button type="button" onClick={() => nav("/cardio")} style={S.endCta} className="td-press">
                     Ir para Cardio
                     <span style={S.endCtaIcon} aria-hidden="true">
                       <IconArrowRight />
@@ -727,9 +783,7 @@ export default function TreinoDetalhe() {
                     Voltar ao Treino
                   </button>
 
-                  <div style={S.endNote}>
-                    Dica: se estiver sem tempo, faça 10–15 min “leve e constante” — melhor do que pular.
-                  </div>
+                  <div style={S.endNote}>Dica: sem tempo? 10 min leve > nada.</div>
                 </div>
               </div>
             );
@@ -748,7 +802,31 @@ export default function TreinoDetalhe() {
           const reps = ex.reps ?? base.reps;
           const rest = ex.rest ?? base.rest;
 
+          const done = getDone(ex.name, sets);
+          const totalSets = clamp(Number(sets) || 4, 1, 12);
+
           const gifSrc = gifForExercise(ex.name);
+
+          function toggleSet(i) {
+            // i é o índice clicado (0-based). Se clicar numa já feita, volta até ela.
+            let nextDone = 0;
+            if (i < done) nextDone = i; // volta
+            else nextDone = i + 1; // avança
+
+            setDone(ex.name, nextDone);
+
+            // inicia descanso automático quando avança (feito de verdade)
+            if (nextDone > done) {
+              // ajusta o timer pra rest do exercício atual
+              const sec = parseRestToSeconds(rest);
+              setRestTotal(sec);
+              setRestLeft(sec);
+              setRunning(true);
+
+              // opcional: dá um “ping” (não força abrir sempre)
+              softPingTimer();
+            }
+          }
 
           return (
             <div key={p.key} style={S.pageItem}>
@@ -766,10 +844,6 @@ export default function TreinoDetalhe() {
                   <button
                     type="button"
                     onClick={() => {
-                      // micro: abre um modal simples via alert? não.
-                      // Aqui mantemos dentro da página (área + cue) e não popup pra ficar “livro”.
-                      // Se quiser modal depois, eu adapto.
-                      // Por enquanto: apenas rola pro bloco “Execução” (tem âncora).
                       const el = document.getElementById(`exec_${idx}`);
                       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
@@ -787,7 +861,6 @@ export default function TreinoDetalhe() {
                     alt={`${ex.name} (gif)`}
                     style={S.gif}
                     onError={(e) => {
-                      // fallback bonito se não existir gif
                       e.currentTarget.style.display = "none";
                       const parent = e.currentTarget.parentElement;
                       if (parent) parent.setAttribute("data-gif-missing", "1");
@@ -799,19 +872,22 @@ export default function TreinoDetalhe() {
                   </div>
                 </div>
 
-                {/* Chips grandes */}
+                {/* Chips */}
                 <div style={S.bigChips}>
                   <Chip label="Séries" value={String(sets)} />
                   <Chip label="Repetições" value={String(reps)} />
                   <Chip label="Descanso" value={String(rest)} />
                 </div>
 
+                {/* Séries (bolinhas) */}
+                <SetDots total={totalSets} done={done} onToggle={toggleSet} />
+
                 {/* Carga */}
                 <div style={S.loadBox}>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Carga sugerida</div>
                     <div style={S.loadVal}>{suggested}</div>
-                    <div style={S.loadHint}>Só é “boa” se você mantém forma e controle.</div>
+                    <div style={S.loadHint}>Boa = mantém forma e controle.</div>
                   </div>
 
                   <div style={S.loadRight}>
@@ -826,7 +902,7 @@ export default function TreinoDetalhe() {
                   </div>
                 </div>
 
-                {/* Execução (sem modal, bem visual e direto) */}
+                {/* Execução */}
                 <div id={`exec_${idx}`} style={S.execPanel}>
                   <div style={S.execTitle}>Execução — o que focar</div>
                   <div style={S.execArea}>
@@ -839,7 +915,6 @@ export default function TreinoDetalhe() {
                   </div>
                 </div>
 
-                {/* Navegação rápida (setas) — opcional mas ajuda */}
                 <div style={S.navRow}>
                   <button
                     type="button"
@@ -850,72 +925,80 @@ export default function TreinoDetalhe() {
                   >
                     ← Anterior
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => goTo(Math.min(pages.length - 1, idx + 1))}
-                    style={S.navBtn}
-                    className="td-press"
-                  >
+                  <button type="button" onClick={() => goTo(Math.min(pages.length - 1, idx + 1))} style={S.navBtn} className="td-press">
                     Próximo →
                   </button>
                 </div>
 
-                <div style={{ height: 110 }} />
+                <div style={{ height: 120 }} />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* BOTTOM CONTROLS (fixo) */}
-      <div style={S.bottom}>
-        <div style={S.bottomTop}>
-          <div style={{ minWidth: 0 }}>
-            <div style={S.bottomKicker}>Cronômetro de descanso</div>
-            <div style={S.bottomTime}>{fmtMMSS(restLeft)}</div>
-            <div style={S.bottomSub}>
-              {isExercise ? (
-                <>
-                  Exercício: <b style={{ color: TEXT }}>{exNow?.name}</b>
-                </>
-              ) : (
-                <>Você chegou no final — bora pro cardio.</>
-              )}
-            </div>
+      {/* DOCK: botão “Cronômetro de descanso” (opcional) */}
+      <div
+        style={{ ...S.dock, ...(timerOpen ? S.dockOpen : S.dockClosed) }}
+        onMouseDown={onDockPointerDown}
+        onMouseMove={onDockPointerMove}
+        onMouseUp={onDockPointerUp}
+        onTouchStart={onDockPointerDown}
+        onTouchMove={onDockPointerMove}
+        onTouchEnd={onDockPointerUp}
+        onClick={onDockClick}
+        role="button"
+        aria-label="Cronômetro de descanso"
+      >
+        <div style={S.dockHeader}>
+          <div style={S.dockPill}>
+            <span style={S.dockIcon} aria-hidden="true">
+              <IconClock />
+            </span>
+            <span style={S.dockTitle}>Cronômetro de descanso</span>
           </div>
 
-          <button type="button" onClick={resetTimer} style={S.resetBtn} className="td-press" aria-label="Resetar descanso">
-            <IconReset />
-          </button>
+          <div style={S.dockMini}>
+            <span style={S.dockMiniTime}>{fmtMMSS(restLeft)}</span>
+            <span style={S.dockMiniState}>{running ? "rodando" : "parado"}</span>
+          </div>
         </div>
 
-        <div style={S.bottomBtns}>
-          <button
-            type="button"
-            onClick={startTimer}
-            style={{ ...S.bigStart, ...(running ? S.bigStartOn : S.bigStartOff) }}
-            className="td-press"
-            aria-label="Começar descanso"
-            disabled={!isExercise}
-          >
-            {running ? "Rodando..." : restLeft === 0 ? "Recomeçar" : "Começar"}
-            <span style={S.bigStartIcon} aria-hidden="true">
-              <IconPlay />
-            </span>
-          </button>
+        {/* Conteúdo abre/fecha */}
+        {timerOpen && (
+          <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
+            <div style={S.dockBigTime}>{fmtMMSS(restLeft)}</div>
+            <div style={S.dockSub}>
+              {isExercise ? (
+                <>
+                  Exercício atual: <b style={{ color: TEXT }}>{exNow?.name}</b>
+                </>
+              ) : (
+                <>Final — bora pro cardio.</>
+              )}
+            </div>
 
-          <button
-            type="button"
-            onClick={pauseTimer}
-            style={S.smallPause}
-            className="td-press"
-            aria-label="Pausar descanso"
-            disabled={!running}
-          >
-            <IconPause />
-            Pausar
-          </button>
-        </div>
+            <div style={S.dockBtns}>
+              <button type="button" onClick={startTimer} style={S.bigStart} className="td-press" disabled={!isExercise}>
+                {running ? "Rodando..." : restLeft === 0 ? "Recomeçar" : "Começar"}
+                <span style={S.bigStartIcon} aria-hidden="true">
+                  <IconPlay />
+                </span>
+              </button>
+
+              <button type="button" onClick={pauseTimer} style={S.smallPause} className="td-press" disabled={!running}>
+                <IconPause />
+                Pausar
+              </button>
+
+              <button type="button" onClick={resetTimer} style={S.resetBtn} className="td-press">
+                <IconReset />
+              </button>
+            </div>
+
+            <div style={S.dockHint}>Dica: arraste pra cima pra abrir, pra baixo pra fechar.</div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -925,11 +1008,10 @@ export default function TreinoDetalhe() {
 const S = {
   page: {
     padding: 18,
-    paddingBottom: "calc(160px + env(safe-area-inset-bottom))",
+    paddingBottom: "calc(44px + env(safe-area-inset-bottom))",
     background: BG,
   },
 
-  /* Header */
   head: {
     borderRadius: 28,
     padding: 16,
@@ -962,20 +1044,8 @@ const S = {
     placeItems: "center",
     flexShrink: 0,
   },
-  hKicker: {
-    fontSize: 11,
-    fontWeight: 950,
-    color: MUTED,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  hTitle: {
-    marginTop: 6,
-    fontSize: 22,
-    fontWeight: 950,
-    color: TEXT,
-    letterSpacing: -0.7,
-  },
+  hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
   hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
   tagStrong: {
     display: "inline-flex",
@@ -999,46 +1069,11 @@ const S = {
   },
   hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
-  topChips: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 10,
-  },
+  dotsNav: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
+  dotNav: { width: 10, height: 10, borderRadius: 999, border: "none" },
+  dotNavOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotNavOff: { background: "rgba(15,23,42,.14)" },
 
-  /* dots */
-  dotsRow: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
-  dot: { width: 10, height: 10, borderRadius: 999, border: "none" },
-  dotOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
-  dotOff: { background: "rgba(15,23,42,.14)" },
-
-  /* hint */
-  hintWrap: { marginTop: 10, display: "grid", placeItems: "center" },
-  hintPill: {
-    position: "relative",
-    borderRadius: 999,
-    padding: "10px 14px",
-    background: "rgba(11,11,12,.90)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,.10)",
-    boxShadow: "0 18px 60px rgba(0,0,0,.25)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    overflow: "hidden",
-  },
-  hintIcon: { fontWeight: 950, opacity: 0.9 },
-  hintText: { fontSize: 12, fontWeight: 900, letterSpacing: 0.2 },
-  hintAnim: {
-    position: "absolute",
-    inset: 0,
-    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.20) 25%, transparent 55%)",
-    transform: "translateX(-70%)",
-    animation: "tdSheen 2.4s ease-in-out infinite",
-    pointerEvents: "none",
-  },
-
-  /* pager */
   pager: {
     marginTop: 12,
     borderRadius: 28,
@@ -1050,12 +1085,8 @@ const S = {
     gap: 12,
     paddingBottom: 2,
   },
-  pageItem: {
-    scrollSnapAlign: "start",
-    flex: "0 0 100%",
-  },
+  pageItem: { scrollSnapAlign: "start", flex: "0 0 100%" },
 
-  /* card page */
   cardPage: {
     borderRadius: 28,
     padding: 16,
@@ -1064,7 +1095,7 @@ const S = {
     boxShadow: "0 18px 70px rgba(15,23,42,.06)",
     position: "relative",
     overflow: "hidden",
-    minHeight: "calc(100vh - 320px)",
+    minHeight: "calc(100vh - 290px)",
   },
   cardGlow: {
     position: "absolute",
@@ -1117,12 +1148,7 @@ const S = {
     position: "relative",
     minHeight: 180,
   },
-  gif: {
-    width: "100%",
-    height: 220,
-    objectFit: "cover",
-    display: "block",
-  },
+  gif: { width: "100%", height: 220, objectFit: "cover", display: "block" },
   gifFallback: {
     position: "absolute",
     inset: 0,
@@ -1146,14 +1172,7 @@ const S = {
   },
   gifFallbackText: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 320 },
 
-  bigChips: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 10,
-    position: "relative",
-  },
-
+  bigChips: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, position: "relative" },
   chip: {
     borderRadius: 20,
     padding: 12,
@@ -1173,6 +1192,22 @@ const S = {
     opacity: 0.42,
     pointerEvents: "none",
   },
+
+  dotsBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
+    border: "1px solid rgba(255,106,0,.16)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    position: "relative",
+  },
+  dotsTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dotsRowInner: { marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" },
+  dotBtn: { width: 16, height: 16, borderRadius: 999, border: "none" },
+  dotBtnOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotBtnOff: { background: "rgba(15,23,42,.14)" },
+  dotsMini: { marginTop: 10, fontSize: 12, fontWeight: 900, color: MUTED },
 
   loadBox: {
     marginTop: 14,
@@ -1209,8 +1244,8 @@ const S = {
     marginTop: 14,
     borderRadius: 22,
     padding: 14,
-    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
-    border: "1px solid rgba(255,106,0,.16)",
+    background: "rgba(15,23,42,.03)",
+    border: `1px solid ${BORDER}`,
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     position: "relative",
   },
@@ -1232,7 +1267,6 @@ const S = {
   },
   navBtnDisabled: { opacity: 0.55 },
 
-  /* END PAGE */
   endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase", position: "relative" },
   endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, position: "relative" },
   endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5, position: "relative" },
@@ -1252,14 +1286,7 @@ const S = {
     gap: 10,
     position: "relative",
   },
-  endCtaIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    background: "rgba(255,255,255,.10)",
-    display: "grid",
-    placeItems: "center",
-  },
+  endCtaIcon: { width: 40, height: 40, borderRadius: 16, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
   endGhost: {
     marginTop: 10,
     width: "100%",
@@ -1271,71 +1298,6 @@ const S = {
     fontWeight: 950,
   },
   endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, position: "relative" },
-
-  /* bottom fixed controls */
-  bottom: {
-    position: "fixed",
-    left: 12,
-    right: 12,
-    bottom: "calc(12px + env(safe-area-inset-bottom))",
-    zIndex: 999,
-    borderRadius: 26,
-    padding: 14,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(255,255,255,.35)",
-    boxShadow: "0 28px 90px rgba(0,0,0,.20)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    overflow: "hidden",
-  },
-  bottomTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  bottomKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
-  bottomTime: { marginTop: 6, fontSize: 28, fontWeight: 950, color: TEXT, letterSpacing: -0.9 },
-  bottomSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 380 },
-  resetBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(15,23,42,.04)",
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
-  },
-  bottomBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" },
-  bigStart: {
-    width: "100%",
-    padding: 16,
-    borderRadius: 22,
-    border: "none",
-    fontWeight: 950,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  bigStartOn: { background: "rgba(255,106,0,.14)", color: TEXT, boxShadow: "0 18px 55px rgba(255,106,0,.18)" },
-  bigStartOff: { background: "#0B0B0C", color: "#fff", boxShadow: "0 18px 55px rgba(0,0,0,.18)" },
-  bigStartIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 18,
-    background: "rgba(255,255,255,.10)",
-    display: "grid",
-    placeItems: "center",
-  },
-  smallPause: {
-    padding: "14px 14px",
-    borderRadius: 22,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
-  },
 
   /* Lock */
   lockCard: {
@@ -1368,12 +1330,103 @@ const S = {
     color: TEXT,
     fontWeight: 950,
   },
+
+  /* Dock do cronômetro (fechado/aberto) */
+  dock: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    bottom: "calc(12px + env(safe-area-inset-bottom))",
+    zIndex: 999,
+    borderRadius: 26,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.20)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    overflow: "hidden",
+    cursor: "pointer",
+    animation: "tdPop 6s ease-in-out infinite",
+  },
+  dockOpen: { paddingBottom: 14 },
+  dockClosed: { paddingBottom: 10 },
+
+  dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  dockPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.18)",
+    boxShadow: "0 14px 34px rgba(255,106,0,.10)",
+  },
+  dockIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,255,255,.70)",
+    border: "1px solid rgba(255,255,255,.55)",
+  },
+  dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
+
+  dockMini: { display: "grid", justifyItems: "end", gap: 2 },
+  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dockMiniState: { fontSize: 11, fontWeight: 900, color: MUTED },
+
+  dockBody: { marginTop: 12, cursor: "default" },
+  dockBigTime: { fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0 },
+  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  dockBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" },
+
+  bigStart: {
+    width: "100%",
+    padding: 16,
+    borderRadius: 22,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+  },
+  bigStartIcon: { width: 42, height: 42, borderRadius: 18, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+
+  smallPause: {
+    padding: "14px 14px",
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  resetBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(15,23,42,.04)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
 };
 
-/* 🔧 pequeno truque: se o GIF não existir, mostra fallback */
+/* 🔧 se GIF não existir, mostra fallback */
 if (typeof window !== "undefined") {
-  // aplica estilo quando data-gif-missing=1
-  // (não quebra nada se rodar mais de uma vez)
   const id = "td-gif-missing-style";
   if (!document.getElementById(id)) {
     const st = document.createElement("style");
