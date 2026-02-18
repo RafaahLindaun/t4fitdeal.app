@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { EXERCISE_BANK } from "../data/exerciseBank"; 
-// ou: import exerciseBank from "../data/exerciseBank";
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
@@ -44,45 +42,6 @@ function bumpDayIndex(email, max) {
   const next = (Number.isFinite(n) ? n : 0) + 1;
   localStorage.setItem(key, String(next % Math.max(max, 1)));
 }
-function normalizeKey(s) {
-  return String(s || "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // tira acento
-    .toLowerCase()
-    .trim();
-}
-
-// EXERCISE_BANK pode ser array ou objeto — deixo robusto
-function makeBankMap(bank) {
-  // se já for objeto (mapa) retorna direto
-  if (bank && !Array.isArray(bank) && typeof bank === "object") return bank;
-
-  const arr = Array.isArray(bank) ? bank : [];
-  const map = {};
-  for (const ex of arr) {
-    // tenta achar campos comuns
-    const name = ex?.name || ex?.nome || ex?.title;
-    if (!name) continue;
-    map[normalizeKey(name)] = ex;
-  }
-  return map;
-}
-
-function attachBankData(list, bankMap) {
-  const arr = Array.isArray(list) ? list : [];
-  return arr.map((ex) => {
-    const k = normalizeKey(ex?.name);
-    const bank = bankMap?.[k] || null;
-
-    // Você escolhe quais campos quer “puxar” do bank:
-    // gif/url/id/targets/equipment/instructions...
-    return {
-      ...ex,
-      bank, // guarda tudo do bank (mais simples)
-      gif: ex.gif || bank?.gif || bank?.gifUrl || bank?.gif_url || bank?.url || null,
-      bankId: ex.bankId || bank?.id || bank?.exerciseId || null,
-    };
-  });
-}
 function getWeekdaysStrip(splitLen, currentIdx) {
   const out = [];
   const len = Math.max(splitLen, 1);
@@ -91,6 +50,156 @@ function getWeekdaysStrip(splitLen, currentIdx) {
     out.push({ idx, label: `Treino ${dayLetter(idx)}`, isToday: k === 0 });
   }
   return out;
+}
+
+/* ---------------- banco de grupos musculares (custom) ---------------- */
+const MUSCLE_GROUPS = [
+  {
+    id: "peito_triceps",
+    name: "Peito + Tríceps",
+    muscles: ["Peito", "Tríceps"],
+    library: [
+      { name: "Supino reto", group: "Peito" },
+      { name: "Supino inclinado", group: "Peito" },
+      { name: "Crucifixo / Peck-deck", group: "Peito" },
+      { name: "Crossover", group: "Peito" },
+      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
+      { name: "Tríceps corda", group: "Tríceps" },
+      { name: "Tríceps francês", group: "Tríceps" },
+    ],
+  },
+  {
+    id: "costas_biceps",
+    name: "Costas + Bíceps",
+    muscles: ["Costas", "Bíceps"],
+    library: [
+      { name: "Puxada (barra/puxador)", group: "Costas" },
+      { name: "Remada (máquina/curvada)", group: "Costas" },
+      { name: "Remada unilateral", group: "Costas" },
+      { name: "Pulldown braço reto", group: "Costas" },
+      { name: "Face pull", group: "Ombro/escápulas" },
+      { name: "Rosca direta", group: "Bíceps" },
+      { name: "Rosca martelo", group: "Bíceps" },
+    ],
+  },
+  {
+    id: "pernas",
+    name: "Pernas (Quad + geral)",
+    muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
+    library: [
+      { name: "Agachamento", group: "Pernas" },
+      { name: "Leg press", group: "Pernas" },
+      { name: "Cadeira extensora", group: "Quadríceps" },
+      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
+      { name: "Panturrilha", group: "Panturrilha" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
+  {
+    id: "posterior_gluteo",
+    name: "Posterior + Glúteo",
+    muscles: ["Posterior", "Glúteos", "Core"],
+    library: [
+      { name: "Terra romeno", group: "Posterior" },
+      { name: "Mesa flexora", group: "Posterior" },
+      { name: "Hip thrust", group: "Glúteo" },
+      { name: "Abdução", group: "Glúteo médio" },
+      { name: "Passada (foco glúteo)", group: "Glúteo" },
+      { name: "Core (dead bug)", group: "Core" },
+    ],
+  },
+  {
+    id: "ombro_core",
+    name: "Ombro + Core",
+    muscles: ["Ombros", "Core"],
+    library: [
+      { name: "Desenvolvimento", group: "Ombros" },
+      { name: "Elevação lateral", group: "Ombros" },
+      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
+      { name: "Encolhimento", group: "Trapézio" },
+      { name: "Pallof press", group: "Core" },
+      { name: "Abdominal", group: "Core" },
+    ],
+  },
+  {
+    id: "fullbody",
+    name: "Full body (saúde / base)",
+    muscles: ["Corpo todo"],
+    library: [
+      { name: "Agachamento (leve)", group: "Pernas" },
+      { name: "Supino (leve)", group: "Peito" },
+      { name: "Remada (leve)", group: "Costas" },
+      { name: "Desenvolvimento (leve)", group: "Ombros" },
+      { name: "Posterior (leve)", group: "Posterior" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
+];
+
+function groupById(id) {
+  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
+}
+
+/* ✅ garante volume: se vier pouco, completa com acessórios coerentes */
+function ensureVolume(list, minCount = 7) {
+  const base = Array.isArray(list) ? [...list] : [];
+  if (base.length >= minCount) return base;
+
+  const extras = [
+    { name: "Aquecimento (5–8min)", group: "Preparação" },
+    { name: "Alongamento curto", group: "Mobilidade" },
+    { name: "Core (prancha)", group: "Core" },
+    { name: "Elevação lateral (leve)", group: "Ombros" },
+    { name: "Rosca direta (leve)", group: "Bíceps" },
+    { name: "Tríceps corda (leve)", group: "Tríceps" },
+    { name: "Panturrilha", group: "Panturrilha" },
+  ];
+
+  let i = 0;
+  while (base.length < minCount && i < extras.length) {
+    base.push(extras[i++]);
+  }
+  return base;
+}
+
+function buildCustomPlan(email) {
+  const raw = localStorage.getItem(`custom_split_${email}`);
+  const custom = safeJsonParse(raw, null);
+  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
+
+  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
+  const days = clamp(rawDays, 2, 6);
+
+  const dayGroups = [];
+  for (let i = 0; i < days; i++) {
+    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
+  }
+
+  const prescriptions = custom.prescriptions || {};
+
+  const split = dayGroups.map((gid, idx) => {
+    const g = groupById(gid);
+    const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
+
+    const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
+
+    return baseList.map((ex) => ({
+      ...ex,
+      sets: pres.sets,
+      reps: pres.reps,
+      rest: pres.rest,
+      method: `Split ${custom.splitId || ""} • ${g.name}`,
+    }));
+  });
+
+  const base = {
+    sets: "custom",
+    reps: "custom",
+    rest: "custom",
+    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
+  };
+
+  return { base, split, meta: { days } };
 }
 
 /* ---------------- carga/progressão (localStorage) ---------------- */
@@ -153,12 +262,7 @@ export default function Treino() {
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
-  const bankMap = useMemo(() => makeBankMap(EXERCISE_BANK), []);
-
-const workout = useMemo(() => {
-  const baseList = split[viewSafe] || [];
-  return attachBankData(baseList, bankMap);
-}, [split, viewSafe, bankMap]);
+  const workout = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
 
   const doneKey = `done_ex_${email}_${viewSafe}`;
   const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
@@ -983,5 +1087,3 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
-
-
