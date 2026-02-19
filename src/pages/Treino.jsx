@@ -321,7 +321,54 @@ function buildCustomPlan(email) {
     const g = groupById(gid);
     const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
 
-    const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
+    // ✅ GANCHO REAL: gera exercícios a partir do EXERCISE_BANK
+const seedKey = `${email}__day_${idx}`;
+
+// map do seu grupo (gid) -> tags do bank
+const groupTags =
+  gid === "peito_triceps" ? ["peito", "triceps"] :
+  gid === "costas_biceps" ? ["costas", "biceps"] :
+  gid === "pernas" ? ["quads", "panturrilha", "core"] :
+  gid === "posterior_gluteo" ? ["posterior", "gluteos", "core"] :
+  gid === "ombro_core" ? ["ombros", "core"] :
+  ["quads", "peito", "costas", "ombros", "posterior", "core"]; // fullbody
+
+// fallback se você não tiver pickFromBank
+function normalizeGroup(x) {
+  return String(x || "").trim().toLowerCase();
+}
+function seededPick(arr, seed, limit) {
+  // shuffle simples e estável
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const r = () => ((h = (h + 0x6d2b79f5) | 0) >>> 0) / 4294967296;
+
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, limit);
+}
+
+const bankArray =
+  Array.isArray(exerciseBank) ? exerciseBank :
+  Array.isArray(exerciseBank?.exercises) ? exerciseBank.exercises :
+  Array.isArray(EXERCISE_BANK) ? EXERCISE_BANK :
+  [];
+
+const filtered = bankArray.filter((e) => groupTags.includes(normalizeGroup(e.group)));
+
+const picked = [
+  ...seededPick(filtered.filter((e) => (e.difficulty || e.level) === "facil"), seedKey + "_f", 4),
+  ...seededPick(filtered.filter((e) => (e.difficulty || e.level) === "medio"), seedKey + "_m", 4),
+];
+
+// transforma pro formato do seu split
+const baseList = ensureVolume(
+  picked.map((x) => ({ name: x.name, group: x.group })),
+  7
+);
 
     return baseList.map((ex) => ({
       ...ex,
@@ -1206,5 +1253,6 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
 
 
