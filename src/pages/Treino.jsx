@@ -1,5 +1,3 @@
-coloque o gancho pra mim na aba treino pois o exercisebank ja esta pronto
-
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -1089,3 +1087,4 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
