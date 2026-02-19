@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// ✅ GANCHO DO EXERCISE BANK (ajuste o caminho se precisar)
-import exerciseBank from "../data/exerciseBank"; // ex: "../data/exerciseBank" ou "../utils/exerciseBank"
+// ✅ EXERCISE BANK (somente o novo banco)
+// Ajuste o caminho se precisar:
+import exerciseBank from "../data/exerciseBank";
 
-const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
@@ -55,21 +55,44 @@ function getWeekdaysStrip(splitLen, currentIdx) {
   return out;
 }
 
-/* ---------------- GANCHO: resolver exercício no exerciseBank ---------------- */
+/* ---------------- exerciseBank: normalização + lookup ---------------- */
 function normalizeKey(s) {
   return String(s || "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ");
 }
 
+function getBankArray(bank) {
+  if (!bank) return [];
+  if (Array.isArray(bank)) return bank;
+  if (Array.isArray(bank.exercises)) return bank.exercises;
+  if (Array.isArray(bank.data)) return bank.data;
+
+  // Se vier como mapa/objeto (ex: { "supino reto": {} })
+  if (typeof bank === "object") {
+    const vals = Object.values(bank);
+    const filtered = vals.filter((v) => v && typeof v === "object" && !Array.isArray(v));
+    return filtered.length ? filtered : vals.filter(Boolean);
+  }
+
+  return [];
+}
+
+function pickName(e) {
+  return e?.name || e?.title || e?.exercise || e?.id || "Exercício";
+}
+function pickGroup(e) {
+  return e?.group || e?.muscleGroup || e?.category || e?.bodyPart || e?.target || "";
+}
+function pickLevel(e) {
+  return e?.level || e?.difficulty || e?.intensity || "";
+}
+
 /**
- * Tenta encontrar exercício no bank, independentemente do formato:
- * - array: [{ name, gif, video, instructions... }]
- * - objeto/map: { "supino reto": {...} } ou { byName: {...} }
- * - função: getByName(name) / getExercise(name) / bank(name)
+ * lookup por nome no bank (serve pro enrichWorkout anexar gif/instruções/etc)
  */
 function lookupInExerciseBank(name) {
   const key = normalizeKey(name);
@@ -77,7 +100,7 @@ function lookupInExerciseBank(name) {
 
   if (!bank) return null;
 
-  // 1) Se for função direto
+  // 1) Se for função
   if (typeof bank === "function") {
     try {
       const r = bank(name);
@@ -87,7 +110,7 @@ function lookupInExerciseBank(name) {
     }
   }
 
-  // 2) Se tiver getters comuns
+  // 2) getters comuns
   const getter =
     bank.getByName ||
     bank.getExercise ||
@@ -103,37 +126,31 @@ function lookupInExerciseBank(name) {
     }
   }
 
-  // 3) Se tiver mapas comuns
-  const maps = [
-    bank.byName,
-    bank.map,
-    bank.exercisesByName,
-    bank.exercises_map,
-    bank,
-  ].filter(Boolean);
+  // 3) mapas comuns
+  const maps = [bank.byName, bank.map, bank.exercisesByName, bank.exercises_map, bank].filter(Boolean);
 
   for (const m of maps) {
-    // objeto simples
     if (m && typeof m === "object" && !Array.isArray(m)) {
       if (m[key]) return m[key];
-      // tenta achar chave “parecida”
       const direct = m[normalizeKey(name)];
       if (direct) return direct;
     }
   }
 
-  // 4) Se for array
-  const arr = Array.isArray(bank) ? bank : Array.isArray(bank.exercises) ? bank.exercises : null;
-  if (arr) {
+  // 4) array
+  const arr = getBankArray(bank);
+  if (arr.length) {
     const exact =
-      arr.find((x) => normalizeKey(x?.name) === key) ||
+      arr.find((x) => normalizeKey(pickName(x)) === key) ||
       arr.find((x) => normalizeKey(x?.title) === key) ||
       arr.find((x) => normalizeKey(x?.id) === key);
 
     if (exact) return exact;
 
-    // tentativa “contém”
-    const loose = arr.find((x) => normalizeKey(x?.name).includes(key) || key.includes(normalizeKey(x?.name)));
+    const loose = arr.find((x) => {
+      const n = normalizeKey(pickName(x));
+      return n.includes(key) || key.includes(n);
+    });
     if (loose) return loose;
   }
 
@@ -141,15 +158,13 @@ function lookupInExerciseBank(name) {
 }
 
 /**
- * Enriquecimento: junta dados do treino (split) + banco (gif/instruções/etc).
- * Mantém o que você já tinha e só adiciona campos extras.
+ * Enriquecimento: junta dados do treino (split) + banco (gif/instruções/etc)
  */
 function enrichWorkout(list) {
   const base = Array.isArray(list) ? list : [];
   return base.map((ex) => {
     const bankEx = lookupInExerciseBank(ex?.name);
 
-    // Campos “prováveis” vindos do bank (você pode ajustar os nomes depois)
     const gif =
       bankEx?.gif ||
       bankEx?.GIF ||
@@ -176,11 +191,10 @@ function enrichWorkout(list) {
 
     const level = bankEx?.level || bankEx?.difficulty || bankEx?.intensity || null;
     const equipment = bankEx?.equipment || bankEx?.tools || null;
-    const muscles = bankEx?.muscles || bankEx?.primaryMuscles || null;
+    const muscles = bankEx?.muscles || bankEx?.primaryMuscles || bankEx?.targetMuscles || null;
 
     return {
-      ...ex,
-      // ✅ campos extras do bank:
+      ex,
       bank: bankEx || null,
       gif,
       video,
@@ -194,95 +208,21 @@ function enrichWorkout(list) {
 
 /* ---------------- banco de grupos musculares (custom) ---------------- */
 const MUSCLE_GROUPS = [
-  {
-    id: "peito_triceps",
-    name: "Peito + Tríceps",
-    muscles: ["Peito", "Tríceps"],
-    library: [
-      { name: "Supino reto", group: "Peito" },
-      { name: "Supino inclinado", group: "Peito" },
-      { name: "Crucifixo / Peck-deck", group: "Peito" },
-      { name: "Crossover", group: "Peito" },
-      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
-      { name: "Tríceps corda", group: "Tríceps" },
-      { name: "Tríceps francês", group: "Tríceps" },
-    ],
-  },
-  {
-    id: "costas_biceps",
-    name: "Costas + Bíceps",
-    muscles: ["Costas", "Bíceps"],
-    library: [
-      { name: "Puxada (barra/puxador)", group: "Costas" },
-      { name: "Remada (máquina/curvada)", group: "Costas" },
-      { name: "Remada unilateral", group: "Costas" },
-      { name: "Pulldown braço reto", group: "Costas" },
-      { name: "Face pull", group: "Ombro/escápulas" },
-      { name: "Rosca direta", group: "Bíceps" },
-      { name: "Rosca martelo", group: "Bíceps" },
-    ],
-  },
-  {
-    id: "pernas",
-    name: "Pernas (Quad + geral)",
-    muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
-    library: [
-      { name: "Agachamento", group: "Pernas" },
-      { name: "Leg press", group: "Pernas" },
-      { name: "Cadeira extensora", group: "Quadríceps" },
-      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
-      { name: "Panturrilha", group: "Panturrilha" },
-      { name: "Core (prancha)", group: "Core" },
-    ],
-  },
-  {
-    id: "posterior_gluteo",
-    name: "Posterior + Glúteo",
-    muscles: ["Posterior", "Glúteos", "Core"],
-    library: [
-      { name: "Terra romeno", group: "Posterior" },
-      { name: "Mesa flexora", group: "Posterior" },
-      { name: "Hip thrust", group: "Glúteo" },
-      { name: "Abdução", group: "Glúteo médio" },
-      { name: "Passada (foco glúteo)", group: "Glúteo" },
-      { name: "Core (dead bug)", group: "Core" },
-    ],
-  },
-  {
-    id: "ombro_core",
-    name: "Ombro + Core",
-    muscles: ["Ombros", "Core"],
-    library: [
-      { name: "Desenvolvimento", group: "Ombros" },
-      { name: "Elevação lateral", group: "Ombros" },
-      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
-      { name: "Encolhimento", group: "Trapézio" },
-      { name: "Pallof press", group: "Core" },
-      { name: "Abdominal", group: "Core" },
-    ],
-  },
-  {
-    id: "fullbody",
-    name: "Full body (saúde / base)",
-    muscles: ["Corpo todo"],
-    library: [
-      { name: "Agachamento (leve)", group: "Pernas" },
-      { name: "Supino (leve)", group: "Peito" },
-      { name: "Remada (leve)", group: "Costas" },
-      { name: "Desenvolvimento (leve)", group: "Ombros" },
-      { name: "Posterior (leve)", group: "Posterior" },
-      { name: "Core (prancha)", group: "Core" },
-    ],
-  },
+  { id: "peito_triceps", name: "Peito + Tríceps", muscles: ["Peito", "Tríceps"] },
+  { id: "costas_biceps", name: "Costas + Bíceps", muscles: ["Costas", "Bíceps"] },
+  { id: "pernas", name: "Pernas (Quad + geral)", muscles: ["Quadríceps", "Glúteos", "Panturrilha"] },
+  { id: "posterior_gluteo", name: "Posterior + Glúteo", muscles: ["Posterior", "Glúteos", "Core"] },
+  { id: "ombro_core", name: "Ombro + Core", muscles: ["Ombros", "Core"] },
+  { id: "fullbody", name: "Full body (saúde / base)", muscles: ["Corpo todo"] },
 ];
 
 function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
 
-/* ✅ garante volume: se vier pouco, completa com acessórios coerentes */
+/* ✅ garante volume */
 function ensureVolume(list, minCount = 7) {
-  const base = Array.isArray(list) ? [...list] : [];
+  const base = Array.isArray(list) ? [list] : [];
   if (base.length >= minCount) return base;
 
   const extras = [
@@ -302,80 +242,96 @@ function ensureVolume(list, minCount = 7) {
   return base;
 }
 
-function buildCustomPlan(email) {
+/* ---------------- seleção estável do bank (seed) ---------------- */
+function seededPick(arr, seed, limit) {
+  const a = Array.isArray(arr) ? [arr] : [];
+  if (!a.length) return [];
+
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+
+  const rand = () => ((h = (h + 0x6d2b79f5) | 0) >>> 0) / 4294967296;
+
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+
+  return a.slice(0, Math.max(0, limit || 0));
+}
+
+function matchesAnyTag(text, tags) {
+  const t = normalizeKey(text);
+  return tags.some((x) => t.includes(normalizeKey(x)));
+}
+
+function pickFromBankByTags({ tags, seedKey, limit }) {
+  const bankArr = getBankArray(exerciseBank);
+  if (!bankArr.length) return [];
+
+  const byGroup = bankArr.filter((e) => matchesAnyTag(pickGroup(e), tags));
+  const pool = byGroup.length ? byGroup : bankArr.filter((e) => matchesAnyTag(pickName(e), tags));
+  const finalPool = pool.length ? pool : bankArr;
+
+  return seededPick(finalPool, seedKey, limit);
+}
+
+/* ---------------- PLANO: somente novo banco ---------------- */
+function buildPlanOnlyFromBank(email) {
   const raw = localStorage.getItem(`custom_split_${email}`);
   const custom = safeJsonParse(raw, null);
-  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
+  const customOk = !!(custom && Array.isArray(custom.dayGroups) && custom.dayGroups.length);
 
-  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
+  const defaultDayGroups = ["peito_triceps", "costas_biceps", "pernas"];
+  const rawDays = Number((customOk ? custom.days : defaultDayGroups.length) || defaultDayGroups.length);
   const days = clamp(rawDays, 2, 6);
 
   const dayGroups = [];
   for (let i = 0; i < days; i++) {
-    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
+    const gid = customOk
+      ? custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody"
+      : defaultDayGroups[i] || defaultDayGroups[i % defaultDayGroups.length] || "fullbody";
+    dayGroups.push(gid);
   }
 
-  const prescriptions = custom.prescriptions || {};
+  const prescriptions = (customOk && custom.prescriptions) || {};
 
   const split = dayGroups.map((gid, idx) => {
     const g = groupById(gid);
     const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
 
-    // ✅ GANCHO REAL: gera exercícios a partir do EXERCISE_BANK
-const seedKey = `${email}__day_${idx}`;
+    const groupTags =
+      gid === "peito_triceps"
+        ? ["peito", "tríceps", "triceps"]
+        : gid === "costas_biceps"
+        ? ["costas", "bíceps", "biceps", "dorsal"]
+        : gid === "pernas"
+        ? ["pernas", "quadríceps", "quadriceps", "panturrilha", "glúteos", "gluteos"]
+        : gid === "posterior_gluteo"
+        ? ["posterior", "isquiotibiais", "glúteos", "gluteos", "core"]
+        : gid === "ombro_core"
+        ? ["ombros", "deltoide", "core", "abdômen", "abdomen"]
+        : ["full body", "corpo todo", "peito", "costas", "pernas", "ombros", "core"];
 
-// map do seu grupo (gid) -> tags do bank
-const groupTags =
-  gid === "peito_triceps" ? ["peito", "triceps"] :
-  gid === "costas_biceps" ? ["costas", "biceps"] :
-  gid === "pernas" ? ["quads", "panturrilha", "core"] :
-  gid === "posterior_gluteo" ? ["posterior", "gluteos", "core"] :
-  gid === "ombro_core" ? ["ombros", "core"] :
-  ["quads", "peito", "costas", "ombros", "posterior", "core"]; // fullbody
+    const seedKey = `${email}__day_${idx}`;
 
-// fallback se você não tiver pickFromBank
-function normalizeGroup(x) {
-  return String(x || "").trim().toLowerCase();
-}
-function seededPick(arr, seed, limit) {
-  // shuffle simples e estável
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
-  const r = () => ((h = (h + 0x6d2b79f5) | 0) >>> 0) / 4294967296;
+    const picked = pickFromBankByTags({ tags: groupTags, seedKey, limit: 8 });
 
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(r() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a.slice(0, limit);
-}
-
-const bankArray =
-  Array.isArray(exerciseBank) ? exerciseBank :
-  Array.isArray(exerciseBank?.exercises) ? exerciseBank.exercises :
-  Array.isArray(EXERCISE_BANK) ? EXERCISE_BANK :
-  [];
-
-const filtered = bankArray.filter((e) => groupTags.includes(normalizeGroup(e.group)));
-
-const picked = [
-  ...seededPick(filtered.filter((e) => (e.difficulty || e.level) === "facil"), seedKey + "_f", 4),
-  ...seededPick(filtered.filter((e) => (e.difficulty || e.level) === "medio"), seedKey + "_m", 4),
-];
-
-// transforma pro formato do seu split
-const baseList = ensureVolume(
-  picked.map((x) => ({ name: x.name, group: x.group })),
-  7
-);
+    const baseList = ensureVolume(
+      picked.map((x) => ({
+        name: pickName(x),
+        group: pickGroup(x) || g.name,
+        level: pickLevel(x) || null,
+      })),
+      7
+    );
 
     return baseList.map((ex) => ({
-      ...ex,
+      ex,
       sets: pres.sets,
       reps: pres.reps,
       rest: pres.rest,
-      method: `Split ${custom.splitId || ""} • ${g.name}`,
+      method: `Split ${customOk ? custom.splitId || "" : ""} • ${g.name}`,
     }));
   });
 
@@ -383,7 +339,7 @@ const baseList = ensureVolume(
     sets: "custom",
     reps: "custom",
     rest: "custom",
-    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
+    style: customOk ? `Personalizado • ${custom.splitId || `${days}x/sem`}` : `Banco • ${days}x/sem`,
   };
 
   return { base, split, meta: { days } };
@@ -407,41 +363,11 @@ export default function Treino() {
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  const plan = useMemo(() => buildCustomPlan(email), [email]);
+  // ✅ SEM FALLBACK ANTIGO: sempre usa o banco novo
+  const plan = useMemo(() => buildPlanOnlyFromBank(email), [email]);
 
-  const fallbackSplit = useMemo(() => {
-    const A = [
-      { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-      { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-      { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
-      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-      { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-      { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-    ];
-    const B = [
-      { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-      { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-      { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
-      { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-      { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-      { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
-    ];
-    const C = [
-      { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
-      { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
-      { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
-      { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
-      { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
-      { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-    ];
-    return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
-  }, []);
-
-  const base = plan?.base || fallbackSplit.base;
-  const split = plan?.split || fallbackSplit.split;
+  const base = plan.base;
+  const split = plan.split;
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
   const [viewIdx, setViewIdx] = useState(dayIndex);
@@ -449,7 +375,7 @@ export default function Treino() {
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
-  // ✅ AQUI É O “GANCHO”: pega o treino do split e adiciona info do exerciseBank
+  // ✅ GANCHO: anexa gif/instruções/etc do bank pelo nome
   const workout = useMemo(() => enrichWorkout(split[viewSafe] || []), [split, viewSafe]);
 
   const doneKey = `done_ex_${email}_${viewSafe}`;
@@ -459,7 +385,7 @@ export default function Treino() {
   const [loads, setLoads] = useState(() => loadLoads(email));
 
   function toggleDone(i) {
-    const next = { ...done, [i]: !done[i] };
+    const next = { done, [i]: !done[i] };
     setDone(next);
     localStorage.setItem(doneKey, JSON.stringify(next));
     setTapId(i);
@@ -469,8 +395,8 @@ export default function Treino() {
   function adjustLoad(exName, delta) {
     const k = keyForLoad(viewSafe, exName);
     const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
-    const next = { ...loads, [k]: nextVal };
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg
+    const next = { loads, [k]: nextVal };
     setLoads(next);
     saveLoads(email, next);
   }
@@ -488,7 +414,7 @@ export default function Treino() {
     const raw = localStorage.getItem(wkKey);
     const list = safeJsonParse(raw, []);
     const arr = Array.isArray(list) ? list : [];
-    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
+    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([arr, today]));
 
     nav("/dashboard");
   }
@@ -516,16 +442,8 @@ export default function Treino() {
             Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
           </div>
           <div style={styles.headerSub}>
-            {plan ? (
-              <>
-                Método: <b>{base.style}</b> • foco:{" "}
-                <b>{(split[viewSafe]?.[0]?.method || "Custom").split("•")[1] || "Personalizado"}</b>
-              </>
-            ) : (
-              <>
-                Método: <b>{base.style}</b>
-              </>
-            )}
+            Método: <b>{base.style}</b> • foco:{" "}
+            <b>{(split[viewSafe]?.[0]?.method || "Banco").split("•")[1] || "Banco"}</b>
           </div>
         </div>
 
@@ -545,8 +463,8 @@ export default function Treino() {
               <button
                 key={d.idx}
                 style={{
-                  ...styles.stripPill,
-                  ...(isActive ? styles.stripPillOn : styles.stripPillOff),
+                  styles.stripPill,
+                  (isActive ? styles.stripPillOn : styles.stripPillOff),
                 }}
                 type="button"
                 onClick={() => {
@@ -592,7 +510,7 @@ export default function Treino() {
         </div>
 
         <div style={styles.progressTrack}>
-          <div style={{ ...styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
+          <div style={{ styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
         </div>
 
         <div style={styles.progressHint}>
@@ -682,15 +600,11 @@ export default function Treino() {
                 <div style={{ minWidth: 0 }}>
                   <div style={styles.exName}>{ex.name}</div>
 
-                  {/* ✅ agora pode mostrar “nível” e “equipamento” se vier do bank */}
                   <div style={styles.exNote}>
                     {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
                     {ex.level ? ` • nível: ${ex.level}` : ""}
                     {ex.equipment ? ` • ${Array.isArray(ex.equipment) ? ex.equipment.join(", ") : ex.equipment}` : ""}
                   </div>
-
-                  {/* ✅ você pode usar ex.gif / ex.video depois na tela detalhe */}
-                  {/* ex.gif e ex.video já estão anexados aqui */}
 
                   <div style={styles.loadRow}>
                     <span style={styles.loadLabel}>Carga</span>
@@ -743,8 +657,8 @@ export default function Treino() {
                   onClick={() => toggleDone(i)}
                   aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
                   style={{
-                    ...styles.checkBtn,
-                    ...(isDone ? styles.checkOn : styles.checkOff),
+                    styles.checkBtn,
+                    (isDone ? styles.checkOn : styles.checkOff),
                     transform: tapId === i ? "scale(0.92)" : "scale(1)",
                   }}
                 >
@@ -801,7 +715,7 @@ export default function Treino() {
         <button
           type="button"
           style={{
-            ...styles.finishFab,
+            styles.finishFab,
             opacity: viewingIsToday ? 1 : 0.55,
             pointerEvents: viewingIsToday ? "auto" : "none",
           }}
@@ -829,7 +743,7 @@ function GearIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 15.6a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Z"
+        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
         stroke="white"
         strokeWidth="2.2"
         strokeLinecap="round"
@@ -837,7 +751,7 @@ function GearIcon() {
         opacity="0.95"
       />
       <path
-        d="M19.8 12.8c.05-.27.07-.54.07-.8s-.02-.53-.07-.8l1.78-1.32a.7.7 0 0 0 .18-.9l-1.55-2.68a.7.7 0 0 0-.85-.3l-2.08.84c-.43-.34-.9-.62-1.4-.83l-.33-2.2a.7.7 0 0 0-.69-.58h-3.1a.7.7 0 0 0-.69.58l-.33 2.2c-.5.21-.97.49-1.4.83l-2.08-.84a.7.7 0 0 0-.85.3L2.3 8.96a.7.7 0 0 0 .18.9l1.78 1.32c-.05.27-.07.54-.07.8s.02.53.07.8L2.48 14.1a.7.7 0 0 0-.18.9l1.55 2.68c.18.3.55.42.85.3l2.08-.84c.43.34.9.62 1.4.83l.33 2.2c.05.34.35.58.69.58h3.1c.34 0 .64-.24.69-.58l.33-2.2c.5-.21.97-.49 1.4-.83l2.08.84c.3.12.67 0 .85-.3l1.55-2.68a.7.7 0 0 0-.18-.9l-1.78-1.32Z"
+        d="M19.4 15a8.8 8.8 0 0 0 .3-1l2-1.2-2-3.4-2.3.8a9 9 0 0 0-.8-.6l-.4-2.4H9.8l-.4 2.4a9 9 0 0 0-.8.6l-2.3-.8-2 3.4 2 1.2a8.8 8.8 0 0 0 0 2l-2 1.2 2 3.4 2.3-.8a9 9 0 0 0 .8.6l.4 2.4h6.4l.4-2.4c.3-.2.6-.4.8-.6l2.3.8 2-3.4-2-1.2a8.8 8.8 0 0 0 .3-1Z"
         stroke="white"
         strokeWidth="1.7"
         strokeLinejoin="round"
@@ -1253,6 +1167,3 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
-
-
-
