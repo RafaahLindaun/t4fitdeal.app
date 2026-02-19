@@ -1,4 +1,4 @@
-// treino.jsx
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -26,14 +26,10 @@ function safeJsonParse(raw, fallback) {
     return fallback;
   }
 }
-
-// ✅ agora mostra 01–60 (não repete A/B/C)
-function dayLabel(i) {
-  const n = Number(i) + 1;
-  if (!Number.isFinite(n) || n <= 0) return "01";
-  return String(n).padStart(2, "0");
+function dayLetter(i) {
+  const letters = ["A", "B", "C", "D", "E", "F"];
+  return letters[i % letters.length] || "A";
 }
-
 function calcDayIndex(email) {
   const key = `treino_day_${email}`;
   const raw = localStorage.getItem(key);
@@ -47,13 +43,12 @@ function bumpDayIndex(email, max) {
   const next = (Number.isFinite(n) ? n : 0) + 1;
   localStorage.setItem(key, String(next % Math.max(max, 1)));
 }
-
 function getWeekdaysStrip(splitLen, currentIdx) {
   const out = [];
   const len = Math.max(splitLen, 1);
   for (let k = 0; k < 5; k++) {
     const idx = (currentIdx + k) % len;
-    out.push({ idx, label: `Treino ${dayLabel(idx)}`, isToday: k === 0 });
+    out.push({ idx, label: `Treino ${dayLetter(idx)}`, isToday: k === 0 });
   }
   return out;
 }
@@ -186,6 +181,7 @@ function buildCustomPlan(email) {
   const split = dayGroups.map((gid, idx) => {
     const g = groupById(gid);
     const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
+
     const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
 
     return baseList.map((ex) => ({
@@ -218,864 +214,6 @@ function keyForLoad(viewIdx, exName) {
   return `${viewIdx}__${String(exName || "").toLowerCase()}`;
 }
 
-/* ---------------- ✅ 60 TREINOS (fixos no arquivo) ---------------- */
-// helper curto (fica tudo “direto” no treino.jsx)
-function ex(name, group, sets, reps, rest, method) {
-  return { name, group, sets, reps, rest, method };
-}
-
-const PROGRAM_60 = {
-  base: {
-    style: "60 Treinos • Periodização (força + hipertrofia + condicionamento)",
-    sets: "var",
-    reps: "var",
-    rest: "var",
-  },
-
-  // 60 dias, cada um com 10 exercícios (metade vai ficar “bloqueada” no free)
-  split: [
-    // 01 — Push (Hipertrofia)
-    [
-      ex("Supino reto barra", "Peito", 4, "6–10", "90–120s", "Hipertrofia • RPE 7–9"),
-      ex("Supino inclinado halteres", "Peito", 4, "8–12", "75–90s", "Hipertrofia • controle"),
-      ex("Crossover alto→baixo", "Peito", 3, "12–15", "60s", "Tensão contínua"),
-      ex("Desenvolvimento militar", "Ombros", 4, "6–10", "90s", "Overhead base"),
-      ex("Elevação lateral cabo", "Ombros", 3, "12–20", "45–60s", "Alta repetição"),
-      ex("Tríceps testa barra W", "Tríceps", 3, "8–12", "60–75s", "Alongamento"),
-      ex("Tríceps corda", "Tríceps", 3, "12–15", "45–60s", "Pump"),
-      ex("Peck-deck (1s pico)", "Peito", 2, "15–20", "45s", "Pico de contração"),
-      ex("Flexão pausada (2s)", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "35–50s", "45s", "Estabilidade"),
-    ],
-
-    // 02 — Pull (Hipertrofia)
-    [
-      ex("Puxada na barra (pronada)", "Costas", 4, "6–10", "90–120s", "Hipertrofia • RPE 7–9"),
-      ex("Remada curvada barra", "Costas", 4, "6–10", "90–120s", "Base"),
-      ex("Remada baixa neutra", "Costas", 3, "10–12", "75s", "Controle escápulas"),
-      ex("Pulldown braço reto", "Costas", 3, "12–15", "60s", "Grande dorsal"),
-      ex("Face pull", "Ombro/escápulas", 3, "12–20", "45–60s", "Saúde ombro"),
-      ex("Rosca direta barra", "Bíceps", 3, "8–12", "60–75s", "Básico"),
-      ex("Rosca martelo alternada", "Bíceps", 3, "10–12", "60s", "Braquiorradial"),
-      ex("Rosca Scott máquina", "Bíceps", 2, "12–15", "45–60s", "Isolamento"),
-      ex("Hiperextensão lombar", "Posterior", 2, "12–15", "60s", "Lombar/Glúteo"),
-      ex("Dead bug", "Core", 3, "10–14/lado", "45s", "Anti-extensão"),
-    ],
-
-    // 03 — Pernas (Quad dominante)
-    [
-      ex("Agachamento livre", "Pernas", 5, "4–8", "120–180s", "Força técnica"),
-      ex("Leg press", "Pernas", 4, "10–15", "90s", "Volume"),
-      ex("Cadeira extensora", "Quadríceps", 3, "12–15", "60–75s", "Pico"),
-      ex("Afundo búlgaro", "Glúteo/Quadríceps", 3, "8–12/lado", "75–90s", "Unilateral"),
-      ex("Hack squat", "Pernas", 3, "8–12", "90s", "Amplitude"),
-      ex("Sissy squat assistido", "Quadríceps", 2, "12–20", "60s", "Finalizador"),
-      ex("Panturrilha em pé", "Panturrilha", 5, "8–12", "60s", "Pausas"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "12–20", "45–60s", "Sóleo"),
-      ex("Abdominal na polia", "Core", 3, "12–15", "45–60s", "Carga"),
-      ex("Alongamento quadríceps curto", "Mobilidade", 1, "60–90s", "—", "Soltar"),
-    ],
-
-    // 04 — Posterior/Glúteo
-    [
-      ex("Terra romeno", "Posterior", 5, "4–8", "120–180s", "Força • hinge"),
-      ex("Mesa flexora", "Posterior", 4, "8–12", "75–90s", "Controle"),
-      ex("Hip thrust", "Glúteo", 4, "6–10", "90–120s", "Pico 1s"),
-      ex("Good morning leve", "Posterior", 3, "10–12", "90s", "Técnica"),
-      ex("Abdução máquina", "Glúteo médio", 3, "15–25", "45–60s", "Alto volume"),
-      ex("Passada longa", "Glúteo", 3, "10–12/lado", "75–90s", "Unilateral"),
-      ex("Glute bridge unilateral", "Glúteo", 2, "12–15/lado", "60s", "Finalizador"),
-      ex("Nordic curl assistido", "Posterior", 2, "6–10", "90s", "Excêntrico"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45–60s", "Anti-rotação"),
-      ex("Respiração 90/90", "Mobilidade", 1, "2–3min", "—", "Recuperação"),
-    ],
-
-    // 05 — Ombro/Core (saúde + shape)
-    [
-      ex("Desenvolvimento halteres sentado", "Ombros", 4, "6–10", "90s", "Base"),
-      ex("Elevação lateral halteres", "Ombros", 4, "12–20", "45–60s", "Pump"),
-      ex("Reverse fly (peck deck)", "Ombro posterior", 3, "12–20", "45–60s", "Postural"),
-      ex("Encolhimento barra", "Trapézio", 4, "8–12", "75–90s", "Topo 1s"),
-      ex("Elevação frontal cabo", "Ombros", 2, "12–15", "45–60s", "Complementar"),
-      ex("Face pull alto", "Ombro/escápulas", 2, "15–25", "45s", "Manguito"),
-      ex("Prancha lateral", "Core", 3, "25–40s/lado", "45s", "Oblíquos"),
-      ex("Abdominal infra (reverse crunch)", "Core", 3, "10–15", "45–60s", "Controle"),
-      ex("Farmer walk", "Core/Grip", 3, "30–45m", "60–90s", "Bracing"),
-      ex("Alongamento peitoral curto", "Mobilidade", 1, "60–90s", "—", "Soltar"),
-    ],
-
-    // 06 — Full body (condicionamento + base)
-    [
-      ex("Agachamento goblet", "Pernas", 4, "10–15", "75s", "Base"),
-      ex("Supino máquina", "Peito", 4, "10–15", "75s", "Controle"),
-      ex("Remada máquina", "Costas", 4, "10–15", "75s", "Controle"),
-      ex("Levantamento terra kettlebell", "Posterior", 3, "10–12", "90s", "Hinge leve"),
-      ex("Desenvolvimento na máquina", "Ombros", 3, "10–12", "75s", "Seguro"),
-      ex("Puxada neutra", "Costas", 3, "10–12", "75s", "Amplitude"),
-      ex("Cadeira flexora", "Posterior", 3, "12–15", "60–75s", "Pump"),
-      ex("Cadeira extensora", "Quadríceps", 3, "12–15", "60–75s", "Pump"),
-      ex("Prancha com toque no ombro", "Core", 3, "16–24", "45s", "Estabilidade"),
-      ex("Cardio Z2 (esteira/bike)", "Cardio", 1, "18–25min", "—", "Condicionamento"),
-    ],
-
-    // 07 — Push (força)
-    [
-      ex("Supino reto (pausa 1s)", "Peito", 6, "3–5", "150–210s", "Força"),
-      ex("Supino inclinado barra", "Peito", 4, "5–8", "120s", "Força/hip"),
-      ex("Dips (paralelas) com carga", "Tríceps/Peito", 4, "5–8", "120s", "Força"),
-      ex("Desenvolvimento militar", "Ombros", 5, "3–6", "150s", "Força"),
-      ex("Elevação lateral (rest-pause)", "Ombros", 3, "12–20", "45s", "Intensidade"),
-      ex("Tríceps banco (pesado)", "Tríceps", 3, "6–10", "75–90s", "Básico"),
-      ex("Tríceps barra V", "Tríceps", 3, "10–12", "60s", "Volume"),
-      ex("Crucifixo inclinado cabo", "Peito", 2, "12–15", "60s", "Alongamento"),
-      ex("Flexão diamante", "Tríceps", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "40–60s", "45s", "Estabilidade"),
-    ],
-
-    // 08 — Pull (força)
-    [
-      ex("Barra fixa com carga", "Costas", 6, "3–5", "150–210s", "Força"),
-      ex("Remada T-bar", "Costas", 5, "4–6", "150s", "Força"),
-      ex("Remada unilateral halter (pesado)", "Costas", 4, "6–8/lado", "120s", "Força/controle"),
-      ex("Puxada supinada", "Costas", 3, "6–10", "90s", "Dorsal"),
-      ex("Face pull", "Ombro/escápulas", 3, "12–20", "60s", "Saúde"),
-      ex("Rosca direta (pesada)", "Bíceps", 4, "5–8", "90s", "Força"),
-      ex("Rosca martelo cruzada", "Bíceps", 3, "8–10", "75s", "Braquial"),
-      ex("Rosca inversa barra", "Bíceps/Antebraço", 2, "12–15", "60s", "Antebraço"),
-      ex("Pullover máquina", "Costas", 2, "12–15", "60s", "Alongamento"),
-      ex("Hollow hold", "Core", 3, "20–35s", "45s", "Anti-extensão"),
-    ],
-
-    // 09 — Pernas (força — agacho variante)
-    [
-      ex("Agachamento frontal", "Pernas", 6, "3–5", "150–210s", "Força"),
-      ex("Leg press (pesado)", "Pernas", 4, "6–10", "120s", "Força/volume"),
-      ex("Cadeira extensora (myo-reps)", "Quadríceps", 3, "12–20", "45–60s", "Intensidade"),
-      ex("Afundo no smith", "Glúteo/Quadríceps", 3, "8–12/lado", "90s", "Unilateral"),
-      ex("Adutor máquina", "Adutores", 3, "12–20", "60s", "Base quadril"),
-      ex("Panturrilha no leg press", "Panturrilha", 5, "10–15", "60s", "Pausas"),
-      ex("Panturrilha em pé (dropset)", "Panturrilha", 2, "12–20", "45s", "Dropset"),
-      ex("Abdominal declinado", "Core", 3, "10–15", "60s", "Carga"),
-      ex("Prancha lateral", "Core", 2, "30–45s/lado", "45s", "Oblíquos"),
-      ex("Mobilidade tornozelo", "Mobilidade", 1, "2–3min", "—", "Soltar"),
-    ],
-
-    // 10 — Posterior/Glúteo (força — hinge variante)
-    [
-      ex("Terra sumô", "Posterior/Glúteo", 6, "3–5", "150–210s", "Força"),
-      ex("RDL halteres", "Posterior", 4, "6–10", "120s", "Força/hip"),
-      ex("Mesa flexora (excêntrico 3s)", "Posterior", 4, "8–12", "90s", "Tempo"),
-      ex("Hip thrust (pesado)", "Glúteo", 5, "4–8", "120–150s", "Força"),
-      ex("Back extension (glúteo)", "Glúteo", 3, "10–15", "75s", "Controle"),
-      ex("Abdução cabo", "Glúteo médio", 3, "15–25", "45–60s", "Pump"),
-      ex("Pull-through cabo", "Posterior/Glúteo", 3, "10–12", "75–90s", "Hinge"),
-      ex("Flexora unilateral", "Posterior", 2, "12–15/lado", "60s", "Simetria"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45–60s", "Anti-rotação"),
-      ex("Respiração + alongamento posterior", "Mobilidade", 1, "2–4min", "—", "Recuperação"),
-    ],
-
-    // 11 — Upper (volume) — peito/costas misto
-    [
-      ex("Supino inclinado halteres", "Peito", 4, "8–12", "75–90s", "Volume"),
-      ex("Puxada neutra", "Costas", 4, "8–12", "75–90s", "Volume"),
-      ex("Supino reto máquina", "Peito", 3, "10–15", "75s", "Controle"),
-      ex("Remada baixa", "Costas", 3, "10–15", "75s", "Controle"),
-      ex("Crucifixo cabo", "Peito", 3, "12–20", "60s", "Pump"),
-      ex("Pulldown braço reto", "Costas", 3, "12–20", "60s", "Dorsal"),
-      ex("Elevação lateral (alto volume)", "Ombros", 4, "15–25", "45s", "Shape"),
-      ex("Tríceps francês halter", "Tríceps", 3, "10–12", "60s", "Alongamento"),
-      ex("Rosca alternada", "Bíceps", 3, "10–12", "60s", "Pump"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45–60s", "Carga"),
-    ],
-
-    // 12 — Lower (volume) — pernas geral
-    [
-      ex("Leg press (amplitude)", "Pernas", 5, "10–15", "90s", "Volume"),
-      ex("Agachamento no smith", "Pernas", 4, "8–12", "90s", "Controle"),
-      ex("Cadeira extensora", "Quadríceps", 4, "12–20", "60s", "Pump"),
-      ex("Mesa flexora", "Posterior", 4, "10–15", "75s", "Pump"),
-      ex("Stiff leve", "Posterior", 3, "12–15", "90s", "Técnica"),
-      ex("Hip thrust", "Glúteo", 4, "10–12", "90s", "Pico"),
-      ex("Panturrilha sentado", "Panturrilha", 4, "12–20", "45–60s", "Sóleo"),
-      ex("Panturrilha em pé", "Panturrilha", 3, "8–12", "60s", "Gastrocnêmio"),
-      ex("Abductor machine", "Glúteo médio", 3, "20–30", "45s", "Pump"),
-      ex("Prancha", "Core", 3, "40–60s", "45s", "Estabilidade"),
-    ],
-
-    // 13 — Push (técnicas: dropset/tempo)
-    [
-      ex("Supino reto (tempo 3-1-1)", "Peito", 4, "6–10", "120s", "Tempo"),
-      ex("Supino inclinado máquina", "Peito", 3, "10–12", "90s", "Controle"),
-      ex("Crossover (dropset)", "Peito", 2, "12–20", "45s", "Dropset"),
-      ex("Desenvolvimento arnold", "Ombros", 4, "8–12", "90s", "Volume"),
-      ex("Elevação lateral (myo-reps)", "Ombros", 3, "15–25", "45s", "Myo-reps"),
-      ex("Tríceps corda (rest-pause)", "Tríceps", 3, "12–20", "45s", "Rest-pause"),
-      ex("Tríceps testa cabo", "Tríceps", 2, "12–15", "60s", "Alongamento"),
-      ex("Peito no cabo (press unilateral)", "Peito", 2, "12–15/lado", "60s", "Unilateral"),
-      ex("Flexão inclinada", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha lateral", "Core", 3, "25–40s/lado", "45s", "Core"),
-    ],
-
-    // 14 — Pull (técnicas: cluster + pump)
-    [
-      ex("Remada curvada (cluster 2+2+2)", "Costas", 4, "6 total", "150s", "Cluster"),
-      ex("Puxada alta pronada", "Costas", 4, "8–12", "90s", "Volume"),
-      ex("Remada cavalinho", "Costas", 3, "10–12", "90s", "Controle"),
-      ex("Pullover cabo", "Costas", 3, "12–15", "60s", "Alongamento"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45s", "Saúde"),
-      ex("Rosca direta cabo", "Bíceps", 3, "10–12", "60s", "Tensão"),
-      ex("Rosca martelo corda", "Bíceps", 3, "12–15", "60s", "Pump"),
-      ex("Rosca concentrada", "Bíceps", 2, "12–15", "45–60s", "Isolamento"),
-      ex("Encolhimento halteres", "Trapézio", 3, "10–15", "75s", "Topo 1s"),
-      ex("Hollow hold", "Core", 3, "20–35s", "45s", "Core"),
-    ],
-
-    // 15 — Lower (técnicas: pausa + unilateral)
-    [
-      ex("Agachamento (pausa 2s)", "Pernas", 5, "4–6", "150–210s", "Pausa"),
-      ex("Leg press unilateral", "Pernas", 4, "8–12/lado", "90s", "Unilateral"),
-      ex("Cadeira extensora unilateral", "Quadríceps", 3, "12–15/lado", "60s", "Simetria"),
-      ex("Passada caminhando", "Glúteo/Quadríceps", 3, "12–16 passos", "90s", "Unilateral"),
-      ex("Mesa flexora unilateral", "Posterior", 3, "10–12/lado", "75s", "Simetria"),
-      ex("Hip thrust (pausa no topo)", "Glúteo", 4, "8–12", "90s", "Pico"),
-      ex("Panturrilha donkey", "Panturrilha", 4, "10–15", "60s", "Amplitude"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "15–25", "45s", "Sóleo"),
-      ex("Abdominal na bola", "Core", 3, "12–20", "45–60s", "Controle"),
-      ex("Mobilidade quadril", "Mobilidade", 1, "2–4min", "—", "Soltar"),
-    ],
-
-    // 16 — Deload ativo (corpo todo, leve)
-    [
-      ex("Agachamento leve (2–3 reps na reserva)", "Pernas", 3, "8–10", "90s", "Deload"),
-      ex("Supino leve", "Peito", 3, "8–10", "90s", "Deload"),
-      ex("Remada leve", "Costas", 3, "10–12", "75–90s", "Deload"),
-      ex("Desenvolvimento leve", "Ombros", 2, "10–12", "75s", "Deload"),
-      ex("Flexora leve", "Posterior", 2, "12–15", "60s", "Deload"),
-      ex("Extensora leve", "Quadríceps", 2, "12–15", "60s", "Deload"),
-      ex("Panturrilha leve", "Panturrilha", 3, "12–20", "45–60s", "Deload"),
-      ex("Pallof press", "Core", 3, "10–12/lado", "45s", "Core"),
-      ex("Caminhada inclinada", "Cardio", 1, "20–30min", "—", "Z2"),
-      ex("Alongamento geral", "Mobilidade", 1, "6–10min", "—", "Recuperação"),
-    ],
-
-    // 17 — Push (hipertrofia 2)
-    [
-      ex("Supino inclinado barra", "Peito", 4, "6–10", "90–120s", "Hipertrofia • RPE 7–9"),
-      ex("Supino reto halteres", "Peito", 4, "8–12", "75–90s", "Hipertrofia"),
-      ex("Crucifixo inclinado", "Peito", 3, "12–15", "60s", "Alongamento"),
-      ex("Desenvolvimento na máquina", "Ombros", 4, "8–12", "90s", "Seguro"),
-      ex("Elevação lateral (cabo atrás)", "Ombros", 3, "12–20", "45–60s", "Tensão"),
-      ex("Tríceps francês barra W", "Tríceps", 3, "8–12", "60–75s", "Alongamento"),
-      ex("Tríceps coice cabo", "Tríceps", 3, "12–15", "45–60s", "Pico"),
-      ex("Peck-deck", "Peito", 2, "15–20", "45s", "Pump"),
-      ex("Flexão com elástico", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "40–60s", "45s", "Core"),
-    ],
-
-    // 18 — Pull (hipertrofia 2)
-    [
-      ex("Puxada supinada", "Costas", 4, "6–10", "90–120s", "Hipertrofia"),
-      ex("Remada máquina articulada", "Costas", 4, "8–12", "90s", "Controle"),
-      ex("Remada unilateral cabo", "Costas", 3, "10–12/lado", "75s", "Unilateral"),
-      ex("Pullover máquina", "Costas", 3, "12–15", "60s", "Alongamento"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45–60s", "Saúde"),
-      ex("Rosca alternada (supinação)", "Bíceps", 3, "8–12", "60–75s", "Básico"),
-      ex("Rosca spider", "Bíceps", 3, "10–12", "60s", "Pico"),
-      ex("Rosca martelo banco inclinado", "Bíceps", 2, "12–15", "60s", "Alongamento"),
-      ex("Encolhimento máquina", "Trapézio", 3, "10–15", "75s", "Topo"),
-      ex("Dead bug", "Core", 3, "10–14/lado", "45s", "Core"),
-    ],
-
-    // 19 — Quad (hipertrofia 2)
-    [
-      ex("Hack squat", "Pernas", 4, "6–10", "120s", "Hipertrofia"),
-      ex("Agachamento no smith (calcanhar elevado)", "Quadríceps", 4, "8–12", "90s", "Quad foco"),
-      ex("Leg press pés juntos", "Quadríceps", 4, "10–15", "90s", "Quad foco"),
-      ex("Extensora (1.5 reps)", "Quadríceps", 3, "12–20", "60s", "Intensidade"),
-      ex("Afundo búlgaro", "Glúteo/Quadríceps", 3, "10–12/lado", "90s", "Unilateral"),
-      ex("Adutor máquina", "Adutores", 3, "15–25", "60s", "Quadril"),
-      ex("Panturrilha em pé", "Panturrilha", 4, "8–12", "60s", "Pausas"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "12–20", "45s", "Sóleo"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45–60s", "Carga"),
-      ex("Mobilidade tornozelo", "Mobilidade", 1, "2–3min", "—", "Soltar"),
-    ],
-
-    // 20 — Posterior/Glúteo (hipertrofia 2)
-    [
-      ex("Terra romeno halteres", "Posterior", 4, "8–12", "120s", "Hipertrofia"),
-      ex("Mesa flexora", "Posterior", 4, "10–15", "90s", "Pump"),
-      ex("Hip thrust", "Glúteo", 4, "8–12", "90–120s", "Pico 1s"),
-      ex("Cadeira abdutora", "Glúteo médio", 4, "15–30", "45–60s", "Pump"),
-      ex("Passada longa", "Glúteo", 3, "10–12/lado", "90s", "Unilateral"),
-      ex("Pull-through", "Posterior/Glúteo", 3, "12–15", "75s", "Hinge"),
-      ex("Flexora unilateral", "Posterior", 2, "12–15/lado", "60s", "Simetria"),
-      ex("Glute bridge", "Glúteo", 2, "15–20", "60s", "Finalizador"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45s", "Core"),
-      ex("Alongamento posterior", "Mobilidade", 1, "2–3min", "—", "Soltar"),
-    ],
-
-    // 21 — Ombro/Braços (shape)
-    [
-      ex("Desenvolvimento halteres", "Ombros", 4, "8–12", "90s", "Shape"),
-      ex("Elevação lateral (dropset)", "Ombros", 3, "12–25", "45s", "Dropset"),
-      ex("Reverse fly cabo", "Ombro posterior", 3, "12–20", "45–60s", "Postural"),
-      ex("Encolhimento halteres", "Trapézio", 3, "10–15", "75s", "Topo"),
-      ex("Rosca direta barra W", "Bíceps", 4, "8–12", "75s", "Volume"),
-      ex("Rosca martelo corda", "Bíceps", 3, "12–15", "60s", "Pump"),
-      ex("Tríceps corda", "Tríceps", 4, "10–15", "60s", "Volume"),
-      ex("Tríceps francês halter", "Tríceps", 3, "10–12", "60–75s", "Alongamento"),
-      ex("Prancha lateral", "Core", 3, "30–45s/lado", "45s", "Core"),
-      ex("Farmer walk", "Core/Grip", 2, "40–60m", "90s", "Bracing"),
-    ],
-
-    // 22 — Full body (metabólico)
-    [
-      ex("Agachamento goblet", "Pernas", 4, "12–15", "60–75s", "Metabólico"),
-      ex("Supino halteres", "Peito", 4, "10–12", "60–75s", "Metabólico"),
-      ex("Remada unilateral", "Costas", 4, "10–12/lado", "60–75s", "Metabólico"),
-      ex("Desenvolvimento arnold", "Ombros", 3, "10–12", "60s", "Metabólico"),
-      ex("Terra kettlebell", "Posterior", 3, "12–15", "75s", "Metabólico"),
-      ex("Cadeira extensora", "Quadríceps", 3, "15–20", "45–60s", "Pump"),
-      ex("Mesa flexora", "Posterior", 3, "15–20", "45–60s", "Pump"),
-      ex("Panturrilha sentado", "Panturrilha", 4, "15–25", "45s", "Sóleo"),
-      ex("Abdominal bicicleta", "Core", 3, "30–45", "45s", "Metabólico"),
-      ex("Cardio intervalado leve", "Cardio", 1, "10–14min", "—", "1:1 leve"),
-    ],
-
-    // 23 — Push (ênfase peitoral superior)
-    [
-      ex("Supino inclinado barra", "Peito", 5, "4–8", "120–150s", "Ênfase superior"),
-      ex("Supino inclinado halteres", "Peito", 4, "8–12", "90s", "Volume"),
-      ex("Crossover baixo→alto", "Peito", 3, "12–15", "60s", "Clavicular"),
-      ex("Crucifixo inclinado cabo", "Peito", 3, "12–20", "60s", "Alongamento"),
-      ex("Desenvolvimento militar", "Ombros", 4, "6–10", "90–120s", "Base"),
-      ex("Elevação lateral", "Ombros", 3, "12–20", "45–60s", "Pump"),
-      ex("Tríceps testa", "Tríceps", 3, "8–12", "60–75s", "Alongamento"),
-      ex("Tríceps na polia (barra)", "Tríceps", 2, "12–15", "60s", "Pump"),
-      ex("Flexão declinada", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "40–60s", "45s", "Core"),
-    ],
-
-    // 24 — Pull (ênfase dorsal)
-    [
-      ex("Puxada alta pegada aberta", "Costas", 5, "6–10", "120s", "Ênfase dorsal"),
-      ex("Remada unilateral halter", "Costas", 4, "8–12/lado", "90s", "Controle"),
-      ex("Remada baixa", "Costas", 4, "10–12", "75–90s", "Volume"),
-      ex("Pulldown braço reto", "Costas", 3, "12–20", "60s", "Dorsal"),
-      ex("Pullover cabo", "Costas", 2, "12–15", "60s", "Alongamento"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45–60s", "Saúde"),
-      ex("Rosca direta", "Bíceps", 3, "8–12", "60–75s", "Volume"),
-      ex("Rosca martelo", "Bíceps", 2, "12–15", "60s", "Pump"),
-      ex("Rosca inversa", "Antebraço", 2, "12–15", "60s", "Antebraço"),
-      ex("Dead bug", "Core", 3, "10–14/lado", "45s", "Core"),
-    ],
-
-    // 25 — Lower (glúteo foco)
-    [
-      ex("Hip thrust", "Glúteo", 5, "6–10", "120–150s", "Ênfase glúteo"),
-      ex("Agachamento sumô no smith", "Glúteo/Posterior", 4, "8–12", "90s", "Ênfase glúteo"),
-      ex("Passada longa", "Glúteo", 4, "10–12/lado", "90s", "Unilateral"),
-      ex("Abdução máquina", "Glúteo médio", 4, "15–30", "45–60s", "Pump"),
-      ex("Pull-through cabo", "Glúteo/Posterior", 3, "12–15", "75s", "Hinge"),
-      ex("Cadeira flexora", "Posterior", 3, "10–15", "75s", "Posterior"),
-      ex("Extensora (leve)", "Quadríceps", 2, "15–20", "60s", "Equilíbrio"),
-      ex("Panturrilha sentado", "Panturrilha", 4, "15–25", "45s", "Sóleo"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45s", "Core"),
-      ex("Alongamento glúteo/piriforme", "Mobilidade", 1, "2–3min", "—", "Soltar"),
-    ],
-
-    // 26 — Upper (braços foco)
-    [
-      ex("Supino máquina", "Peito", 3, "10–12", "75s", "Manutenção"),
-      ex("Remada máquina", "Costas", 3, "10–12", "75s", "Manutenção"),
-      ex("Elevação lateral", "Ombros", 3, "12–20", "45–60s", "Shape"),
-      ex("Tríceps corda (rest-pause)", "Tríceps", 4, "12–20", "45s", "Intensidade"),
-      ex("Tríceps francês", "Tríceps", 3, "10–12", "60–75s", "Alongamento"),
-      ex("Rosca direta barra", "Bíceps", 4, "8–12", "75s", "Volume"),
-      ex("Rosca alternada", "Bíceps", 3, "10–12", "60s", "Pump"),
-      ex("Rosca concentrada", "Bíceps", 2, "12–15", "45–60s", "Isolamento"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45–60s", "Carga"),
-      ex("Farmer walk", "Core/Grip", 2, "40–60m", "90s", "Bracing"),
-    ],
-
-    // 27 — Lower (posterior foco)
-    [
-      ex("Terra romeno", "Posterior", 5, "4–8", "150s", "Ênfase posterior"),
-      ex("Mesa flexora (tempo 3s)", "Posterior", 4, "8–12", "90s", "Tempo"),
-      ex("Good morning", "Posterior", 3, "8–12", "120s", "Técnica"),
-      ex("Hip thrust", "Glúteo", 4, "8–12", "90–120s", "Pico"),
-      ex("Pull-through", "Posterior/Glúteo", 3, "12–15", "75s", "Hinge"),
-      ex("Glute bridge unilateral", "Glúteo", 2, "12–15/lado", "60s", "Unilateral"),
-      ex("Panturrilha em pé", "Panturrilha", 4, "8–12", "60s", "Pausas"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "15–25", "45s", "Sóleo"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45s", "Core"),
-      ex("Mobilidade posterior", "Mobilidade", 1, "2–4min", "—", "Soltar"),
-    ],
-
-    // 28 — Full body (força moderada)
-    [
-      ex("Agachamento livre", "Pernas", 4, "4–6", "150s", "Força moderada"),
-      ex("Supino reto", "Peito", 4, "4–6", "150s", "Força moderada"),
-      ex("Remada curvada", "Costas", 4, "6–8", "120s", "Força moderada"),
-      ex("Desenvolvimento militar", "Ombros", 3, "6–8", "120s", "Força moderada"),
-      ex("Terra romeno", "Posterior", 3, "6–8", "150s", "Força moderada"),
-      ex("Extensora", "Quadríceps", 2, "12–15", "60s", "Acessório"),
-      ex("Flexora", "Posterior", 2, "12–15", "60s", "Acessório"),
-      ex("Panturrilha em pé", "Panturrilha", 4, "10–15", "60s", "Volume"),
-      ex("Prancha", "Core", 3, "40–60s", "45s", "Core"),
-      ex("Cardio Z2", "Cardio", 1, "15–25min", "—", "Base"),
-    ],
-
-    // 29 — Push (peito + tríceps, volume alto)
-    [
-      ex("Supino reto halteres", "Peito", 4, "8–12", "90s", "Volume alto"),
-      ex("Supino inclinado máquina", "Peito", 4, "10–15", "75–90s", "Volume"),
-      ex("Crossover", "Peito", 4, "12–20", "60s", "Pump"),
-      ex("Paralelas", "Tríceps/Peito", 3, "8–12", "90s", "Base"),
-      ex("Tríceps corda", "Tríceps", 4, "12–15", "45–60s", "Pump"),
-      ex("Tríceps francês", "Tríceps", 3, "10–12", "60–75s", "Alongamento"),
-      ex("Elevação lateral", "Ombros", 3, "15–25", "45s", "Shape"),
-      ex("Desenvolvimento máquina", "Ombros", 2, "10–12", "75s", "Seguro"),
-      ex("Flexão", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45s", "Core"),
-    ],
-
-    // 30 — Pull (costas + bíceps, volume alto)
-    [
-      ex("Puxada pronada", "Costas", 4, "8–12", "90s", "Volume alto"),
-      ex("Remada baixa", "Costas", 4, "10–15", "75–90s", "Volume"),
-      ex("Remada unilateral", "Costas", 3, "10–12/lado", "75s", "Unilateral"),
-      ex("Pullover cabo", "Costas", 3, "12–15", "60s", "Alongamento"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45–60s", "Saúde"),
-      ex("Rosca direta", "Bíceps", 4, "8–12", "75s", "Volume"),
-      ex("Rosca martelo", "Bíceps", 3, "10–12", "60s", "Volume"),
-      ex("Rosca Scott", "Bíceps", 2, "12–15", "60s", "Isolamento"),
-      ex("Encolhimento", "Trapézio", 3, "10–15", "75s", "Topo"),
-      ex("Hollow hold", "Core", 3, "20–35s", "45s", "Core"),
-    ],
-
-    // 31 — Pernas (quad + panturrilha, intensidade)
-    [
-      ex("Hack squat (pesado)", "Pernas", 5, "5–8", "150s", "Intensidade"),
-      ex("Leg press (dropset)", "Pernas", 3, "8–15", "90s", "Dropset"),
-      ex("Extensora (rest-pause)", "Quadríceps", 3, "12–20", "45–60s", "Rest-pause"),
-      ex("Afundo búlgaro", "Glúteo/Quadríceps", 3, "8–12/lado", "90s", "Unilateral"),
-      ex("Agachamento goblet", "Pernas", 2, "15–20", "60s", "Finalizador"),
-      ex("Adutor máquina", "Adutores", 3, "15–25", "60s", "Quadril"),
-      ex("Panturrilha em pé", "Panturrilha", 5, "8–12", "60s", "Pausas"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "15–25", "45s", "Sóleo"),
-      ex("Abdominal declinado", "Core", 3, "10–15", "60s", "Core"),
-      ex("Mobilidade quadril", "Mobilidade", 1, "2–4min", "—", "Soltar"),
-    ],
-
-    // 32 — Posterior/Glúteo (intensidade)
-    [
-      ex("Terra romeno (pesado)", "Posterior", 5, "5–8", "150s", "Intensidade"),
-      ex("Mesa flexora (myo-reps)", "Posterior", 3, "12–20", "45–60s", "Myo-reps"),
-      ex("Hip thrust (dropset)", "Glúteo", 3, "8–15", "90s", "Dropset"),
-      ex("Pull-through", "Posterior/Glúteo", 3, "12–15", "75s", "Hinge"),
-      ex("Abdução máquina", "Glúteo médio", 4, "15–30", "45s", "Pump"),
-      ex("Back extension", "Posterior/Glúteo", 3, "12–15", "75s", "Controle"),
-      ex("Flexora unilateral", "Posterior", 2, "12–15/lado", "60s", "Simetria"),
-      ex("Glute bridge", "Glúteo", 2, "15–20", "60s", "Finalizador"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45s", "Core"),
-      ex("Alongamento posterior", "Mobilidade", 1, "2–3min", "—", "Soltar"),
-    ],
-
-    // 33 — Ombro/Core (intensidade)
-    [
-      ex("Desenvolvimento militar", "Ombros", 5, "4–8", "120–150s", "Intensidade"),
-      ex("Elevação lateral (1.5 reps)", "Ombros", 4, "12–20", "45–60s", "Intensidade"),
-      ex("Reverse fly", "Ombro posterior", 4, "12–20", "45–60s", "Postural"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45s", "Saúde"),
-      ex("Encolhimento barra", "Trapézio", 4, "8–12", "75–90s", "Topo 1s"),
-      ex("Farmer walk", "Core/Grip", 3, "30–50m", "90s", "Bracing"),
-      ex("Prancha", "Core", 3, "45–70s", "45s", "Core"),
-      ex("Prancha lateral", "Core", 3, "30–45s/lado", "45s", "Core"),
-      ex("Abdominal infra", "Core", 3, "10–15", "45–60s", "Controle"),
-      ex("Mobilidade torácica", "Mobilidade", 1, "2–4min", "—", "Soltar"),
-    ],
-
-    // 34 — Full body (circuito)
-    [
-      ex("Agachamento goblet", "Pernas", 3, "12–15", "45s", "Circuito"),
-      ex("Supino halteres", "Peito", 3, "10–12", "45s", "Circuito"),
-      ex("Remada baixa", "Costas", 3, "10–12", "45s", "Circuito"),
-      ex("Desenvolvimento halteres", "Ombros", 3, "10–12", "45s", "Circuito"),
-      ex("Terra kettlebell", "Posterior", 3, "12–15", "45s", "Circuito"),
-      ex("Extensora", "Quadríceps", 2, "15–20", "30–45s", "Circuito"),
-      ex("Flexora", "Posterior", 2, "15–20", "30–45s", "Circuito"),
-      ex("Panturrilha", "Panturrilha", 3, "15–25", "30–45s", "Circuito"),
-      ex("Abdominal bicicleta", "Core", 3, "40–60", "30–45s", "Circuito"),
-      ex("Cardio (leve)", "Cardio", 1, "12–18min", "—", "Z2"),
-    ],
-
-    // 35 — Push (força 2)
-    [
-      ex("Supino reto (pesado)", "Peito", 6, "3–5", "180s", "Força"),
-      ex("Supino inclinado halteres (pesado)", "Peito", 4, "6–8", "120s", "Força/hip"),
-      ex("Dips com carga", "Tríceps/Peito", 4, "5–8", "120s", "Força"),
-      ex("Desenvolvimento militar", "Ombros", 5, "3–6", "150s", "Força"),
-      ex("Elevação lateral", "Ombros", 3, "12–20", "45–60s", "Pump"),
-      ex("Tríceps testa", "Tríceps", 3, "6–10", "90s", "Força"),
-      ex("Tríceps corda", "Tríceps", 3, "12–15", "60s", "Pump"),
-      ex("Crucifixo cabo", "Peito", 2, "12–15", "60s", "Alongamento"),
-      ex("Flexão diamante", "Tríceps", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "45–70s", "45s", "Core"),
-    ],
-
-    // 36 — Pull (força 2)
-    [
-      ex("Barra fixa com carga", "Costas", 6, "3–5", "180s", "Força"),
-      ex("Remada curvada (pesada)", "Costas", 5, "4–6", "150s", "Força"),
-      ex("Remada unilateral (pesada)", "Costas", 4, "6–8/lado", "120s", "Força"),
-      ex("Puxada supinada", "Costas", 3, "6–10", "90s", "Dorsal"),
-      ex("Face pull", "Ombro/escápulas", 3, "12–20", "60s", "Saúde"),
-      ex("Rosca direta (pesada)", "Bíceps", 4, "5–8", "90s", "Força"),
-      ex("Rosca martelo", "Bíceps", 3, "8–10", "75s", "Braquial"),
-      ex("Rosca inversa", "Antebraço", 2, "12–15", "60s", "Antebraço"),
-      ex("Pullover máquina", "Costas", 2, "12–15", "60s", "Alongamento"),
-      ex("Hollow hold", "Core", 3, "20–35s", "45s", "Core"),
-    ],
-
-    // 37 — Pernas (força 2)
-    [
-      ex("Agachamento frontal", "Pernas", 6, "3–5", "180s", "Força"),
-      ex("Leg press (pesado)", "Pernas", 4, "6–10", "120s", "Força/volume"),
-      ex("Extensora (pesada)", "Quadríceps", 3, "8–12", "75s", "Volume"),
-      ex("Afundo no smith", "Glúteo/Quadríceps", 3, "8–12/lado", "90s", "Unilateral"),
-      ex("Adutor máquina", "Adutores", 3, "12–20", "60s", "Quadril"),
-      ex("Panturrilha em pé", "Panturrilha", 5, "8–12", "60s", "Pausas"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "12–20", "45s", "Sóleo"),
-      ex("Abdominal polia", "Core", 3, "10–15", "60s", "Carga"),
-      ex("Prancha lateral", "Core", 2, "30–45s/lado", "45s", "Core"),
-      ex("Mobilidade tornozelo", "Mobilidade", 1, "2–3min", "—", "Soltar"),
-    ],
-
-    // 38 — Posterior/Glúteo (força 2)
-    [
-      ex("Terra sumô", "Posterior/Glúteo", 6, "3–5", "180s", "Força"),
-      ex("RDL barra", "Posterior", 4, "6–8", "150s", "Força/hip"),
-      ex("Mesa flexora", "Posterior", 4, "8–12", "90s", "Volume"),
-      ex("Hip thrust (pesado)", "Glúteo", 5, "4–8", "150s", "Força"),
-      ex("Back extension", "Posterior/Glúteo", 3, "10–15", "75s", "Controle"),
-      ex("Abdução máquina", "Glúteo médio", 3, "15–25", "45–60s", "Pump"),
-      ex("Pull-through", "Posterior/Glúteo", 3, "10–12", "75–90s", "Hinge"),
-      ex("Flexora unilateral", "Posterior", 2, "12–15/lado", "60s", "Simetria"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45–60s", "Core"),
-      ex("Respiração + alongamento", "Mobilidade", 1, "2–4min", "—", "Recuperação"),
-    ],
-
-    // 39 — Upper (volume 2)
-    [
-      ex("Supino inclinado", "Peito", 4, "8–12", "90s", "Volume"),
-      ex("Puxada neutra", "Costas", 4, "8–12", "90s", "Volume"),
-      ex("Supino máquina", "Peito", 3, "10–15", "75s", "Controle"),
-      ex("Remada máquina", "Costas", 3, "10–15", "75s", "Controle"),
-      ex("Crucifixo", "Peito", 3, "12–20", "60s", "Pump"),
-      ex("Pulldown braço reto", "Costas", 3, "12–20", "60s", "Dorsal"),
-      ex("Elevação lateral", "Ombros", 4, "15–25", "45s", "Shape"),
-      ex("Tríceps francês", "Tríceps", 3, "10–12", "60–75s", "Alongamento"),
-      ex("Rosca alternada", "Bíceps", 3, "10–12", "60s", "Pump"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45–60s", "Core"),
-    ],
-
-    // 40 — Lower (volume 2)
-    [
-      ex("Leg press", "Pernas", 5, "10–15", "90s", "Volume"),
-      ex("Agachamento smith", "Pernas", 4, "8–12", "90s", "Controle"),
-      ex("Extensora", "Quadríceps", 4, "12–20", "60s", "Pump"),
-      ex("Flexora", "Posterior", 4, "10–15", "75s", "Pump"),
-      ex("Stiff leve", "Posterior", 3, "12–15", "90s", "Técnica"),
-      ex("Hip thrust", "Glúteo", 4, "10–12", "90s", "Pico"),
-      ex("Panturrilha sentado", "Panturrilha", 4, "12–20", "45–60s", "Sóleo"),
-      ex("Panturrilha em pé", "Panturrilha", 3, "8–12", "60s", "Gastrocnêmio"),
-      ex("Abdução", "Glúteo médio", 3, "20–30", "45s", "Pump"),
-      ex("Prancha", "Core", 3, "45–70s", "45s", "Core"),
-    ],
-
-    // 41 — Push (técnicas 2)
-    [
-      ex("Supino reto (top set + back-off)", "Peito", 1, "4–6", "180s", "Top set"),
-      ex("Supino reto (back-off)", "Peito", 3, "8–10", "120s", "Back-off"),
-      ex("Supino inclinado halteres", "Peito", 3, "10–12", "90s", "Volume"),
-      ex("Crossover (myo-reps)", "Peito", 3, "12–20", "45–60s", "Myo-reps"),
-      ex("Desenvolvimento militar", "Ombros", 4, "6–10", "120s", "Base"),
-      ex("Elevação lateral (dropset)", "Ombros", 3, "12–25", "45s", "Dropset"),
-      ex("Tríceps corda (rest-pause)", "Tríceps", 3, "12–20", "45s", "Rest-pause"),
-      ex("Tríceps testa", "Tríceps", 2, "10–12", "75s", "Alongamento"),
-      ex("Flexão", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha lateral", "Core", 3, "30–45s/lado", "45s", "Core"),
-    ],
-
-    // 42 — Pull (técnicas 2)
-    [
-      ex("Barra fixa (cluster)", "Costas", 4, "6 total", "150–180s", "Cluster"),
-      ex("Remada T-bar", "Costas", 4, "8–10", "120s", "Volume"),
-      ex("Remada baixa", "Costas", 3, "10–12", "90s", "Controle"),
-      ex("Pullover cabo", "Costas", 3, "12–15", "60s", "Alongamento"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45–60s", "Saúde"),
-      ex("Rosca direta cabo", "Bíceps", 3, "10–12", "60s", "Tensão"),
-      ex("Rosca martelo corda", "Bíceps", 3, "12–15", "60s", "Pump"),
-      ex("Rosca concentrada", "Bíceps", 2, "12–15", "45–60s", "Isolamento"),
-      ex("Encolhimento", "Trapézio", 3, "10–15", "75s", "Topo"),
-      ex("Hollow hold", "Core", 3, "20–35s", "45s", "Core"),
-    ],
-
-    // 43 — Lower (técnicas 2)
-    [
-      ex("Agachamento (pausa 2s)", "Pernas", 5, "4–6", "180s", "Pausa"),
-      ex("Leg press unilateral", "Pernas", 4, "8–12/lado", "90s", "Unilateral"),
-      ex("Extensora (myo-reps)", "Quadríceps", 3, "12–20", "45–60s", "Myo-reps"),
-      ex("Passada caminhando", "Glúteo/Quadríceps", 3, "12–16 passos", "90s", "Unilateral"),
-      ex("Flexora unilateral", "Posterior", 3, "10–12/lado", "75s", "Simetria"),
-      ex("Hip thrust", "Glúteo", 4, "8–12", "90s", "Pico"),
-      ex("Panturrilha donkey", "Panturrilha", 4, "10–15", "60s", "Amplitude"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "15–25", "45s", "Sóleo"),
-      ex("Abdominal bola", "Core", 3, "12–20", "45–60s", "Controle"),
-      ex("Mobilidade quadril", "Mobilidade", 1, "2–4min", "—", "Soltar"),
-    ],
-
-    // 44 — Deload ativo 2
-    [
-      ex("Agachamento leve", "Pernas", 3, "8–10", "90s", "Deload"),
-      ex("Supino leve", "Peito", 3, "8–10", "90s", "Deload"),
-      ex("Remada leve", "Costas", 3, "10–12", "75–90s", "Deload"),
-      ex("Desenvolvimento leve", "Ombros", 2, "10–12", "75s", "Deload"),
-      ex("Flexora leve", "Posterior", 2, "12–15", "60s", "Deload"),
-      ex("Extensora leve", "Quadríceps", 2, "12–15", "60s", "Deload"),
-      ex("Panturrilha leve", "Panturrilha", 3, "12–20", "45–60s", "Deload"),
-      ex("Pallof press", "Core", 3, "10–12/lado", "45s", "Core"),
-      ex("Caminhada inclinada", "Cardio", 1, "20–30min", "—", "Z2"),
-      ex("Alongamento geral", "Mobilidade", 1, "6–10min", "—", "Recuperação"),
-    ],
-
-    // 45 — Push (hipertrofia 3)
-    [
-      ex("Supino reto barra", "Peito", 4, "6–10", "90–120s", "Hipertrofia"),
-      ex("Supino inclinado halteres", "Peito", 4, "8–12", "75–90s", "Hipertrofia"),
-      ex("Crossover", "Peito", 3, "12–15", "60s", "Pump"),
-      ex("Desenvolvimento militar", "Ombros", 4, "6–10", "90s", "Base"),
-      ex("Elevação lateral", "Ombros", 3, "12–20", "45–60s", "Pump"),
-      ex("Tríceps testa", "Tríceps", 3, "8–12", "60–75s", "Alongamento"),
-      ex("Tríceps corda", "Tríceps", 3, "12–15", "45–60s", "Pump"),
-      ex("Peck-deck", "Peito", 2, "15–20", "45s", "Pico"),
-      ex("Flexão pausada", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "35–50s", "45s", "Core"),
-    ],
-
-    // 46 — Pull (hipertrofia 3)
-    [
-      ex("Puxada pronada", "Costas", 4, "6–10", "90–120s", "Hipertrofia"),
-      ex("Remada curvada", "Costas", 4, "6–10", "90–120s", "Base"),
-      ex("Remada baixa", "Costas", 3, "10–12", "75s", "Controle"),
-      ex("Pulldown braço reto", "Costas", 3, "12–15", "60s", "Dorsal"),
-      ex("Face pull", "Ombro/escápulas", 3, "12–20", "45–60s", "Saúde"),
-      ex("Rosca direta", "Bíceps", 3, "8–12", "60–75s", "Básico"),
-      ex("Rosca martelo", "Bíceps", 3, "10–12", "60s", "Braquial"),
-      ex("Rosca Scott", "Bíceps", 2, "12–15", "45–60s", "Isolamento"),
-      ex("Hiperextensão lombar", "Posterior", 2, "12–15", "60s", "Lombar"),
-      ex("Dead bug", "Core", 3, "10–14/lado", "45s", "Core"),
-    ],
-
-    // 47 — Quad (hipertrofia 3)
-    [
-      ex("Agachamento livre", "Pernas", 5, "4–8", "120–180s", "Força técnica"),
-      ex("Leg press", "Pernas", 4, "10–15", "90s", "Volume"),
-      ex("Extensora", "Quadríceps", 3, "12–15", "60–75s", "Pico"),
-      ex("Afundo búlgaro", "Glúteo/Quadríceps", 3, "8–12/lado", "90s", "Unilateral"),
-      ex("Hack squat", "Pernas", 3, "8–12", "90s", "Amplitude"),
-      ex("Sissy squat assistido", "Quadríceps", 2, "12–20", "60s", "Finalizador"),
-      ex("Panturrilha em pé", "Panturrilha", 5, "8–12", "60s", "Pausas"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "12–20", "45–60s", "Sóleo"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45–60s", "Carga"),
-      ex("Alongamento quadríceps", "Mobilidade", 1, "60–90s", "—", "Soltar"),
-    ],
-
-    // 48 — Posterior/Glúteo (hipertrofia 3)
-    [
-      ex("Terra romeno", "Posterior", 5, "4–8", "120–180s", "Força hinge"),
-      ex("Mesa flexora", "Posterior", 4, "8–12", "75–90s", "Controle"),
-      ex("Hip thrust", "Glúteo", 4, "6–10", "90–120s", "Pico 1s"),
-      ex("Good morning leve", "Posterior", 3, "10–12", "90s", "Técnica"),
-      ex("Abdução", "Glúteo médio", 3, "15–25", "45–60s", "Volume"),
-      ex("Passada foco glúteo", "Glúteo", 3, "10–12/lado", "75–90s", "Unilateral"),
-      ex("Glute bridge unilateral", "Glúteo", 2, "12–15/lado", "60s", "Finalizador"),
-      ex("Nordic curl assistido", "Posterior", 2, "6–10", "90s", "Excêntrico"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45–60s", "Anti-rotação"),
-      ex("Respiração 90/90", "Mobilidade", 1, "2–3min", "—", "Recuperação"),
-    ],
-
-    // 49 — Ombro/Core (hipertrofia 3)
-    [
-      ex("Desenvolvimento", "Ombros", 4, "6–10", "90s", "Base"),
-      ex("Elevação lateral", "Ombros", 4, "12–20", "45–60s", "Pump"),
-      ex("Reverse fly", "Ombro posterior", 3, "12–20", "45–60s", "Postural"),
-      ex("Encolhimento", "Trapézio", 4, "8–12", "75–90s", "Topo 1s"),
-      ex("Pallof press", "Core", 3, "10–14/lado", "45–60s", "Core"),
-      ex("Abdominal", "Core", 3, "12–15", "45–60s", "Core"),
-      ex("Prancha lateral", "Core", 3, "25–40s/lado", "45s", "Core"),
-      ex("Farmer walk", "Core/Grip", 2, "40–60m", "90s", "Bracing"),
-      ex("Face pull", "Ombro/escápulas", 2, "15–25", "45s", "Saúde"),
-      ex("Alongamento peitoral", "Mobilidade", 1, "60–90s", "—", "Soltar"),
-    ],
-
-    // 50 — Full body (saúde/base 2)
-    [
-      ex("Agachamento (leve)", "Pernas", 4, "10–12", "75–90s", "Saúde/base"),
-      ex("Supino (leve)", "Peito", 4, "10–12", "75–90s", "Saúde/base"),
-      ex("Remada (leve)", "Costas", 4, "10–12", "75–90s", "Saúde/base"),
-      ex("Desenvolvimento (leve)", "Ombros", 3, "10–12", "75s", "Saúde/base"),
-      ex("Posterior (leve)", "Posterior", 3, "10–12", "90s", "Saúde/base"),
-      ex("Core (prancha)", "Core", 3, "40–60s", "45s", "Base"),
-      ex("Panturrilha", "Panturrilha", 4, "12–20", "45–60s", "Base"),
-      ex("Mobilidade quadril", "Mobilidade", 1, "3–5min", "—", "Soltar"),
-      ex("Mobilidade torácica", "Mobilidade", 1, "3–5min", "—", "Soltar"),
-      ex("Cardio Z2", "Cardio", 1, "20–35min", "—", "Base"),
-    ],
-
-    // 51 — Push (final block: densidade)
-    [
-      ex("Supino reto", "Peito", 4, "6–10", "75–90s", "Densidade"),
-      ex("Supino inclinado halteres", "Peito", 3, "8–12", "75–90s", "Densidade"),
-      ex("Crossover", "Peito", 3, "12–15", "45–60s", "Densidade"),
-      ex("Desenvolvimento", "Ombros", 3, "8–12", "75–90s", "Densidade"),
-      ex("Elevação lateral", "Ombros", 4, "15–25", "30–45s", "Densidade"),
-      ex("Tríceps corda", "Tríceps", 4, "10–15", "45–60s", "Densidade"),
-      ex("Tríceps francês", "Tríceps", 2, "10–12", "60s", "Alongamento"),
-      ex("Peck-deck", "Peito", 2, "15–20", "45s", "Pump"),
-      ex("Flexão", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "40–60s", "45s", "Core"),
-    ],
-
-    // 52 — Pull (densidade)
-    [
-      ex("Puxada pronada", "Costas", 4, "8–12", "75–90s", "Densidade"),
-      ex("Remada baixa", "Costas", 4, "10–12", "75–90s", "Densidade"),
-      ex("Remada unilateral", "Costas", 3, "10–12/lado", "60–75s", "Densidade"),
-      ex("Pulldown braço reto", "Costas", 3, "12–20", "45–60s", "Densidade"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–25", "45s", "Saúde"),
-      ex("Rosca direta", "Bíceps", 4, "8–12", "60–75s", "Densidade"),
-      ex("Rosca martelo", "Bíceps", 3, "12–15", "45–60s", "Pump"),
-      ex("Rosca Scott", "Bíceps", 2, "12–15", "45–60s", "Isolamento"),
-      ex("Encolhimento", "Trapézio", 3, "10–15", "60–75s", "Topo"),
-      ex("Dead bug", "Core", 3, "10–14/lado", "45s", "Core"),
-    ],
-
-    // 53 — Lower (densidade)
-    [
-      ex("Leg press", "Pernas", 5, "10–15", "75–90s", "Densidade"),
-      ex("Hack squat", "Pernas", 4, "8–12", "90s", "Densidade"),
-      ex("Extensora", "Quadríceps", 4, "12–20", "45–60s", "Pump"),
-      ex("Flexora", "Posterior", 4, "12–20", "45–60s", "Pump"),
-      ex("Hip thrust", "Glúteo", 4, "10–12", "90s", "Pico"),
-      ex("Abdução", "Glúteo médio", 3, "20–30", "45s", "Pump"),
-      ex("Panturrilha em pé", "Panturrilha", 5, "10–15", "45–60s", "Densidade"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "15–25", "45s", "Sóleo"),
-      ex("Abdominal polia", "Core", 3, "12–15", "45s", "Core"),
-      ex("Mobilidade quadril", "Mobilidade", 1, "2–4min", "—", "Soltar"),
-    ],
-
-    // 54 — Full body (intervalos)
-    [
-      ex("Agachamento goblet", "Pernas", 3, "12–15", "45s", "Intervalos"),
-      ex("Supino halteres", "Peito", 3, "10–12", "45s", "Intervalos"),
-      ex("Remada baixa", "Costas", 3, "10–12", "45s", "Intervalos"),
-      ex("Desenvolvimento halteres", "Ombros", 3, "10–12", "45s", "Intervalos"),
-      ex("Terra kettlebell", "Posterior", 3, "12–15", "45s", "Intervalos"),
-      ex("Extensora", "Quadríceps", 2, "15–20", "30–45s", "Intervalos"),
-      ex("Flexora", "Posterior", 2, "15–20", "30–45s", "Intervalos"),
-      ex("Panturrilha", "Panturrilha", 3, "15–25", "30–45s", "Intervalos"),
-      ex("Abdominal bicicleta", "Core", 3, "40–60", "30–45s", "Intervalos"),
-      ex("Cardio intervalado", "Cardio", 1, "12–16min", "—", "1:1"),
-    ],
-
-    // 55 — Push (pump final)
-    [
-      ex("Supino máquina", "Peito", 4, "10–15", "60–75s", "Pump"),
-      ex("Supino inclinado halteres", "Peito", 3, "12–15", "60s", "Pump"),
-      ex("Crossover", "Peito", 4, "15–25", "45–60s", "Pump"),
-      ex("Desenvolvimento máquina", "Ombros", 3, "10–12", "60–75s", "Pump"),
-      ex("Elevação lateral", "Ombros", 5, "15–30", "30–45s", "Pump"),
-      ex("Tríceps corda", "Tríceps", 4, "12–20", "45s", "Pump"),
-      ex("Tríceps barra V", "Tríceps", 3, "12–15", "45–60s", "Pump"),
-      ex("Peck-deck", "Peito", 2, "15–25", "45s", "Finalizador"),
-      ex("Flexão", "Peito", 2, "AMRAP", "60s", "Finalizador"),
-      ex("Prancha", "Core", 3, "45–70s", "45s", "Core"),
-    ],
-
-    // 56 — Pull (pump final)
-    [
-      ex("Puxada neutra", "Costas", 4, "10–15", "60–75s", "Pump"),
-      ex("Remada máquina", "Costas", 4, "10–15", "60–75s", "Pump"),
-      ex("Remada unilateral cabo", "Costas", 3, "12–15/lado", "60s", "Pump"),
-      ex("Pulldown braço reto", "Costas", 4, "15–25", "45–60s", "Pump"),
-      ex("Face pull", "Ombro/escápulas", 3, "15–30", "45s", "Saúde"),
-      ex("Rosca direta", "Bíceps", 4, "10–15", "60s", "Pump"),
-      ex("Rosca martelo", "Bíceps", 3, "12–15", "45–60s", "Pump"),
-      ex("Rosca concentrada", "Bíceps", 2, "12–15", "45s", "Isolamento"),
-      ex("Encolhimento", "Trapézio", 3, "12–20", "60s", "Topo"),
-      ex("Dead bug", "Core", 3, "10–14/lado", "45s", "Core"),
-    ],
-
-    // 57 — Lower (pump final)
-    [
-      ex("Leg press", "Pernas", 4, "12–20", "60–75s", "Pump"),
-      ex("Hack squat", "Pernas", 3, "10–15", "75s", "Pump"),
-      ex("Extensora", "Quadríceps", 4, "15–25", "45–60s", "Pump"),
-      ex("Flexora", "Posterior", 4, "15–25", "45–60s", "Pump"),
-      ex("Hip thrust", "Glúteo", 4, "12–15", "75–90s", "Pico"),
-      ex("Abdução", "Glúteo médio", 3, "20–35", "45s", "Pump"),
-      ex("Panturrilha em pé", "Panturrilha", 5, "12–20", "45s", "Pump"),
-      ex("Panturrilha sentado", "Panturrilha", 3, "15–30", "45s", "Sóleo"),
-      ex("Abdominal polia", "Core", 3, "12–20", "45s", "Core"),
-      ex("Mobilidade geral", "Mobilidade", 1, "4–8min", "—", "Soltar"),
-    ],
-
-    // 58 — Ombro/Braços (pump final)
-    [
-      ex("Desenvolvimento halteres", "Ombros", 3, "10–12", "60–75s", "Pump"),
-      ex("Elevação lateral", "Ombros", 5, "15–30", "30–45s", "Pump"),
-      ex("Reverse fly", "Ombro posterior", 4, "15–25", "45s", "Pump"),
-      ex("Face pull", "Ombro/escápulas", 3, "20–30", "45s", "Saúde"),
-      ex("Rosca direta", "Bíceps", 4, "10–15", "60s", "Pump"),
-      ex("Rosca martelo", "Bíceps", 3, "12–15", "45–60s", "Pump"),
-      ex("Tríceps corda", "Tríceps", 4, "12–20", "45s", "Pump"),
-      ex("Tríceps francês", "Tríceps", 3, "10–12", "60s", "Alongamento"),
-      ex("Prancha lateral", "Core", 3, "30–45s/lado", "45s", "Core"),
-      ex("Farmer walk", "Core/Grip", 2, "40–60m", "90s", "Bracing"),
-    ],
-
-    // 59 — Full body (recuperação ativa)
-    [
-      ex("Agachamento leve", "Pernas", 3, "10–12", "75–90s", "Recuperação"),
-      ex("Supino leve", "Peito", 3, "10–12", "75–90s", "Recuperação"),
-      ex("Remada leve", "Costas", 3, "10–12", "75–90s", "Recuperação"),
-      ex("Desenvolvimento leve", "Ombros", 2, "10–12", "75s", "Recuperação"),
-      ex("Flexora leve", "Posterior", 2, "12–15", "60s", "Recuperação"),
-      ex("Extensora leve", "Quadríceps", 2, "12–15", "60s", "Recuperação"),
-      ex("Panturrilha leve", "Panturrilha", 3, "12–20", "45–60s", "Recuperação"),
-      ex("Pallof press", "Core", 3, "10–12/lado", "45s", "Core"),
-      ex("Caminhada", "Cardio", 1, "25–40min", "—", "Z2"),
-      ex("Alongamento", "Mobilidade", 1, "8–12min", "—", "Soltar"),
-    ],
-
-    // 60 — Teste de performance (AMRAP controlado)
-    [
-      ex("Supino reto", "Peito", 3, "AMRAP (técnica)", "150s", "Teste • pare antes de falhar feio"),
-      ex("Barra fixa", "Costas", 3, "AMRAP", "150s", "Teste"),
-      ex("Agachamento", "Pernas", 3, "AMRAP (técnica)", "180s", "Teste"),
-      ex("Terra romeno", "Posterior", 3, "8–12", "150s", "Controle"),
-      ex("Desenvolvimento", "Ombros", 3, "8–12", "120s", "Controle"),
-      ex("Extensora", "Quadríceps", 2, "15–20", "60s", "Pump"),
-      ex("Flexora", "Posterior", 2, "15–20", "60s", "Pump"),
-      ex("Panturrilha", "Panturrilha", 4, "12–20", "45–60s", "Pump"),
-      ex("Prancha", "Core", 3, "45–75s", "45s", "Core"),
-      ex("Cardio leve", "Cardio", 1, "12–20min", "—", "Z2"),
-    ],
-  ],
-};
-
 export default function Treino() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -1083,10 +221,38 @@ export default function Treino() {
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // ✅ se existir plano custom, usa ele; se não, usa os 60 treinos fixos
   const plan = useMemo(() => buildCustomPlan(email), [email]);
 
-  const fallbackSplit = useMemo(() => PROGRAM_60, []);
+  const fallbackSplit = useMemo(() => {
+    const A = [
+      { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+      { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+      { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
+      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+      { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+      { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    ];
+    const B = [
+      { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+      { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+      { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
+      { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+      { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+      { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
+    ];
+    const C = [
+      { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
+      { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
+      { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
+      { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
+      { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+      { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    ];
+    return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
+  }, []);
 
   const base = plan?.base || fallbackSplit.base;
   const split = plan?.split || fallbackSplit.split;
@@ -1122,7 +288,7 @@ export default function Treino() {
     saveLoads(email, next);
   }
 
-  // ✅ sem reload + navega para dashboard
+  // ✅ CORRIGIDO: sem reload + navega para dashboard
   function finishWorkout() {
     if (!viewingIsToday) return;
 
@@ -1164,13 +330,13 @@ export default function Treino() {
         <div>
           <div style={styles.headerKicker}>Seu treino</div>
           <div style={styles.headerTitle}>
-            Treino {dayLabel(viewSafe)} {viewingIsToday ? "• hoje" : ""}
+            Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
           </div>
           <div style={styles.headerSub}>
             {plan ? (
               <>
                 Método: <b>{base.style}</b> • foco:{" "}
-                <b>{(split[viewSafe]?.[0]?.method || "Custom").split("•")[0] || "Personalizado"}</b>
+                <b>{(split[viewSafe]?.[0]?.method || "Custom").split("•")[1] || "Personalizado"}</b>
               </>
             ) : (
               <>
@@ -1180,6 +346,7 @@ export default function Treino() {
           </div>
         </div>
 
+        {/* ✅ MAIS APPLE + ÍCONE MELHOR */}
         <button
           style={styles.settingsBtn}
           onClick={() => nav("/conta")}
@@ -1230,7 +397,7 @@ export default function Treino() {
           <div style={{ minWidth: 0 }}>
             <div style={styles.bigGoTop}>Exercícios do dia</div>
             <div style={styles.bigGoSub}>
-              Abrir treino {dayLabel(viewSafe)} • {workout.length} exercícios
+              Abrir treino {dayLetter(viewSafe)} • {workout.length} exercícios
             </div>
           </div>
 
@@ -1240,7 +407,7 @@ export default function Treino() {
         </div>
 
         <div style={styles.bubbles}>
-          <span style={styles.bubble}>{viewingIsToday ? "Hoje" : `Dia ${dayLabel(viewSafe)}`}</span>
+          <span style={styles.bubble}>{viewingIsToday ? "Hoje" : `Dia ${dayLetter(viewSafe)}`}</span>
           <span style={styles.bubbleSoft}>
             {doneCount}/{workout.length} feitos
           </span>
@@ -1311,13 +478,15 @@ export default function Treino() {
 
             {!viewingIsToday ? (
               <div style={styles.viewHint}>
-                Você está visualizando <b>Treino {dayLabel(viewSafe)}</b>. Para concluir e avançar o ciclo, volte para{" "}
+                Você está visualizando <b>Treino {dayLetter(viewSafe)}</b>. Para concluir e avançar o ciclo, volte para{" "}
                 <b>Hoje</b>.
               </div>
             ) : null}
           </>
         ) : (
-          <div style={styles.lockHint}>Você está no Modo Gratuito. Assine para liberar treino completo e personalização.</div>
+          <div style={styles.lockHint}>
+            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
+          </div>
         )}
       </div>
 
@@ -1325,9 +494,9 @@ export default function Treino() {
       <div style={styles.sectionTitle}>Lista do treino - Resumido</div>
 
       <div style={styles.list}>
-        {previewList.map((exItem, i) => {
+        {previewList.map((ex, i) => {
           const isDone = !!done[i];
-          const loadKey = keyForLoad(viewSafe, exItem.name);
+          const loadKey = keyForLoad(viewSafe, ex.name);
           const curLoad = loads[loadKey] ?? 0;
 
           return (
@@ -1336,9 +505,9 @@ export default function Treino() {
                 <div style={styles.num}>{i + 1}</div>
 
                 <div style={{ minWidth: 0 }}>
-                  <div style={styles.exName}>{exItem.name}</div>
+                  <div style={styles.exName}>{ex.name}</div>
                   <div style={styles.exNote}>
-                    {exItem.group} • {exItem.sets} séries • {exItem.reps} • descanso {exItem.rest}
+                    {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
                   </div>
 
                   <div style={styles.loadRow}>
@@ -1349,7 +518,7 @@ export default function Treino() {
                         style={styles.loadBtn}
                         onClick={(e) => {
                           e.stopPropagation();
-                          adjustLoad(exItem.name, -2.5);
+                          adjustLoad(ex.name, -2.5);
                         }}
                         aria-label="Diminuir carga"
                       >
@@ -1365,7 +534,7 @@ export default function Treino() {
                         style={styles.loadBtn}
                         onClick={(e) => {
                           e.stopPropagation();
-                          adjustLoad(exItem.name, +2.5);
+                          adjustLoad(ex.name, +2.5);
                         }}
                         aria-label="Aumentar carga"
                       >
@@ -1378,7 +547,7 @@ export default function Treino() {
                       style={styles.loadMini}
                       onClick={(e) => {
                         e.stopPropagation();
-                        adjustLoad(exItem.name, +1);
+                        adjustLoad(ex.name, +1);
                       }}
                       title="Ajuste fino"
                     >
@@ -1419,13 +588,13 @@ export default function Treino() {
           <div style={styles.lockTitle}>Parte do treino bloqueada</div>
 
           <div style={styles.lockWrap}>
-            {lockedList.map((exItem, j) => (
+            {lockedList.map((ex, j) => (
               <div key={`l_${j}`} style={styles.exCard}>
                 <div style={styles.exTop}>
                   <div style={styles.numMuted}>{previewCount + j + 1}</div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={styles.exName}>{exItem.name}</div>
-                    <div style={styles.exNote}>{exItem.group} • + dicas e execução</div>
+                    <div style={styles.exName}>{ex.name}</div>
+                    <div style={styles.exNote}>{ex.group} • + dicas e execução</div>
                   </div>
                   <div style={styles.checkGhost} />
                 </div>
@@ -1445,7 +614,7 @@ export default function Treino() {
         </>
       ) : null}
 
-      {/* ✅ BOTÃO FLUTUANTE “CONCLUIR TREINO” */}
+      {/* ✅ BOTÃO FLUTUANTE “CONCLUIR TREINO” (premium + movimento) */}
       {paid ? (
         <button
           type="button"
@@ -1475,6 +644,7 @@ export default function Treino() {
 
 /* ---------- icons ---------- */
 function GearIcon() {
+  // ✅ ícone mais clean (Apple-like)
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -1516,7 +686,13 @@ function CheckRingIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="#111" strokeWidth="2.2" strokeOpacity="0.9" />
-      <path d="M7.5 12.3l2.8 2.9L16.8 9" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M7.5 12.3l2.8 2.9L16.8 9"
+        stroke="#111"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -1540,6 +716,7 @@ const styles = {
   headerTitle: { marginTop: 6, fontSize: 24, fontWeight: 950, letterSpacing: -0.6, lineHeight: 1.05 },
   headerSub: { marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.96, lineHeight: 1.3 },
 
+  // ✅ botão config mais Apple (glass + sombra + transição)
   settingsBtn: {
     width: 46,
     height: 46,
@@ -1829,9 +1006,11 @@ const styles = {
   },
   fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
 
+  /* ✅ FINISH FLOATING (pago) — SUBIDO pra não encostar no menu */
   finishFab: {
     position: "fixed",
     left: "50%",
+    // ✅ sobe um pouco + safe-area iOS
     bottom: "calc(112px + env(safe-area-inset-bottom))",
     transform: "translateX(-50%)",
     zIndex: 1100,
@@ -1899,7 +1078,11 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
         50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
       }
+
+      /* ✅ press apenas onde faz sentido (não quebra botões normais) */
       .apple-press:active { transform: translateY(1px) scale(.98); }
+
+      /* ✅ press do botão de config (glass) */
       .settings-press:active { transform: translateY(1px) scale(.97); }
     `;
     document.head.appendChild(style);
