@@ -1,11 +1,10 @@
+coloque o gancho pra mim na aba treino pois o exercisebank ja esta pronto
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// ✅ EXERCISE BANK (somente o novo banco)
-// Ajuste o caminho se precisar:
-import exerciseBank from "../data/exerciseBank";
-
+const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
@@ -55,174 +54,97 @@ function getWeekdaysStrip(splitLen, currentIdx) {
   return out;
 }
 
-/* ---------------- exerciseBank: normalização + lookup ---------------- */
-function normalizeKey(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
-}
-
-function getBankArray(bank) {
-  if (!bank) return [];
-  if (Array.isArray(bank)) return bank;
-  if (Array.isArray(bank.exercises)) return bank.exercises;
-  if (Array.isArray(bank.data)) return bank.data;
-
-  // Se vier como mapa/objeto (ex: { "supino reto": {} })
-  if (typeof bank === "object") {
-    const vals = Object.values(bank);
-    const filtered = vals.filter((v) => v && typeof v === "object" && !Array.isArray(v));
-    return filtered.length ? filtered : vals.filter(Boolean);
-  }
-
-  return [];
-}
-
-function pickName(e) {
-  return e?.name || e?.title || e?.exercise || e?.id || "Exercício";
-}
-function pickGroup(e) {
-  return e?.group || e?.muscleGroup || e?.category || e?.bodyPart || e?.target || "";
-}
-function pickLevel(e) {
-  return e?.level || e?.difficulty || e?.intensity || "";
-}
-
-/**
- * lookup por nome no bank (serve pro enrichWorkout anexar gif/instruções/etc)
- */
-function lookupInExerciseBank(name) {
-  const key = normalizeKey(name);
-  const bank = exerciseBank;
-
-  if (!bank) return null;
-
-  // 1) Se for função
-  if (typeof bank === "function") {
-    try {
-      const r = bank(name);
-      return r || null;
-    } catch {
-      return null;
-    }
-  }
-
-  // 2) getters comuns
-  const getter =
-    bank.getByName ||
-    bank.getExercise ||
-    bank.findByName ||
-    (bank.api && (bank.api.getByName || bank.api.getExercise));
-
-  if (typeof getter === "function") {
-    try {
-      const r = getter(name);
-      return r || null;
-    } catch {
-      // segue tentando
-    }
-  }
-
-  // 3) mapas comuns
-  const maps = [bank.byName, bank.map, bank.exercisesByName, bank.exercises_map, bank].filter(Boolean);
-
-  for (const m of maps) {
-    if (m && typeof m === "object" && !Array.isArray(m)) {
-      if (m[key]) return m[key];
-      const direct = m[normalizeKey(name)];
-      if (direct) return direct;
-    }
-  }
-
-  // 4) array
-  const arr = getBankArray(bank);
-  if (arr.length) {
-    const exact =
-      arr.find((x) => normalizeKey(pickName(x)) === key) ||
-      arr.find((x) => normalizeKey(x?.title) === key) ||
-      arr.find((x) => normalizeKey(x?.id) === key);
-
-    if (exact) return exact;
-
-    const loose = arr.find((x) => {
-      const n = normalizeKey(pickName(x));
-      return n.includes(key) || key.includes(n);
-    });
-    if (loose) return loose;
-  }
-
-  return null;
-}
-
-/**
- * Enriquecimento: junta dados do treino (split) + banco (gif/instruções/etc)
- */
-function enrichWorkout(list) {
-  const base = Array.isArray(list) ? list : [];
-  return base.map((ex) => {
-    const bankEx = lookupInExerciseBank(ex?.name);
-
-    const gif =
-      bankEx?.gif ||
-      bankEx?.GIF ||
-      bankEx?.gifUrl ||
-      bankEx?.gifURL ||
-      bankEx?.media?.gif ||
-      bankEx?.media?.GIF ||
-      null;
-
-    const video =
-      bankEx?.video ||
-      bankEx?.videoUrl ||
-      bankEx?.videoURL ||
-      bankEx?.media?.video ||
-      null;
-
-    const instructions =
-      bankEx?.instructions ||
-      bankEx?.howTo ||
-      bankEx?.steps ||
-      bankEx?.desc ||
-      bankEx?.description ||
-      null;
-
-    const level = bankEx?.level || bankEx?.difficulty || bankEx?.intensity || null;
-    const equipment = bankEx?.equipment || bankEx?.tools || null;
-    const muscles = bankEx?.muscles || bankEx?.primaryMuscles || bankEx?.targetMuscles || null;
-
-    return {
-      ex,
-      bank: bankEx || null,
-      gif,
-      video,
-      instructions,
-      level,
-      equipment,
-      muscles,
-    };
-  });
-}
-
 /* ---------------- banco de grupos musculares (custom) ---------------- */
 const MUSCLE_GROUPS = [
-  { id: "peito_triceps", name: "Peito + Tríceps", muscles: ["Peito", "Tríceps"] },
-  { id: "costas_biceps", name: "Costas + Bíceps", muscles: ["Costas", "Bíceps"] },
-  { id: "pernas", name: "Pernas (Quad + geral)", muscles: ["Quadríceps", "Glúteos", "Panturrilha"] },
-  { id: "posterior_gluteo", name: "Posterior + Glúteo", muscles: ["Posterior", "Glúteos", "Core"] },
-  { id: "ombro_core", name: "Ombro + Core", muscles: ["Ombros", "Core"] },
-  { id: "fullbody", name: "Full body (saúde / base)", muscles: ["Corpo todo"] },
+  {
+    id: "peito_triceps",
+    name: "Peito + Tríceps",
+    muscles: ["Peito", "Tríceps"],
+    library: [
+      { name: "Supino reto", group: "Peito" },
+      { name: "Supino inclinado", group: "Peito" },
+      { name: "Crucifixo / Peck-deck", group: "Peito" },
+      { name: "Crossover", group: "Peito" },
+      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
+      { name: "Tríceps corda", group: "Tríceps" },
+      { name: "Tríceps francês", group: "Tríceps" },
+    ],
+  },
+  {
+    id: "costas_biceps",
+    name: "Costas + Bíceps",
+    muscles: ["Costas", "Bíceps"],
+    library: [
+      { name: "Puxada (barra/puxador)", group: "Costas" },
+      { name: "Remada (máquina/curvada)", group: "Costas" },
+      { name: "Remada unilateral", group: "Costas" },
+      { name: "Pulldown braço reto", group: "Costas" },
+      { name: "Face pull", group: "Ombro/escápulas" },
+      { name: "Rosca direta", group: "Bíceps" },
+      { name: "Rosca martelo", group: "Bíceps" },
+    ],
+  },
+  {
+    id: "pernas",
+    name: "Pernas (Quad + geral)",
+    muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
+    library: [
+      { name: "Agachamento", group: "Pernas" },
+      { name: "Leg press", group: "Pernas" },
+      { name: "Cadeira extensora", group: "Quadríceps" },
+      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
+      { name: "Panturrilha", group: "Panturrilha" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
+  {
+    id: "posterior_gluteo",
+    name: "Posterior + Glúteo",
+    muscles: ["Posterior", "Glúteos", "Core"],
+    library: [
+      { name: "Terra romeno", group: "Posterior" },
+      { name: "Mesa flexora", group: "Posterior" },
+      { name: "Hip thrust", group: "Glúteo" },
+      { name: "Abdução", group: "Glúteo médio" },
+      { name: "Passada (foco glúteo)", group: "Glúteo" },
+      { name: "Core (dead bug)", group: "Core" },
+    ],
+  },
+  {
+    id: "ombro_core",
+    name: "Ombro + Core",
+    muscles: ["Ombros", "Core"],
+    library: [
+      { name: "Desenvolvimento", group: "Ombros" },
+      { name: "Elevação lateral", group: "Ombros" },
+      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
+      { name: "Encolhimento", group: "Trapézio" },
+      { name: "Pallof press", group: "Core" },
+      { name: "Abdominal", group: "Core" },
+    ],
+  },
+  {
+    id: "fullbody",
+    name: "Full body (saúde / base)",
+    muscles: ["Corpo todo"],
+    library: [
+      { name: "Agachamento (leve)", group: "Pernas" },
+      { name: "Supino (leve)", group: "Peito" },
+      { name: "Remada (leve)", group: "Costas" },
+      { name: "Desenvolvimento (leve)", group: "Ombros" },
+      { name: "Posterior (leve)", group: "Posterior" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
 ];
 
 function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
 
-/* ✅ garante volume */
+/* ✅ garante volume: se vier pouco, completa com acessórios coerentes */
 function ensureVolume(list, minCount = 7) {
-  const base = Array.isArray(list) ? [list] : [];
+  const base = Array.isArray(list) ? [...list] : [];
   if (base.length >= minCount) return base;
 
   const extras = [
@@ -242,96 +164,33 @@ function ensureVolume(list, minCount = 7) {
   return base;
 }
 
-/* ---------------- seleção estável do bank (seed) ---------------- */
-function seededPick(arr, seed, limit) {
-  const a = Array.isArray(arr) ? [arr] : [];
-  if (!a.length) return [];
-
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
-
-  const rand = () => ((h = (h + 0x6d2b79f5) | 0) >>> 0) / 4294967296;
-
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-
-  return a.slice(0, Math.max(0, limit || 0));
-}
-
-function matchesAnyTag(text, tags) {
-  const t = normalizeKey(text);
-  return tags.some((x) => t.includes(normalizeKey(x)));
-}
-
-function pickFromBankByTags({ tags, seedKey, limit }) {
-  const bankArr = getBankArray(exerciseBank);
-  if (!bankArr.length) return [];
-
-  const byGroup = bankArr.filter((e) => matchesAnyTag(pickGroup(e), tags));
-  const pool = byGroup.length ? byGroup : bankArr.filter((e) => matchesAnyTag(pickName(e), tags));
-  const finalPool = pool.length ? pool : bankArr;
-
-  return seededPick(finalPool, seedKey, limit);
-}
-
-/* ---------------- PLANO: somente novo banco ---------------- */
-function buildPlanOnlyFromBank(email) {
+function buildCustomPlan(email) {
   const raw = localStorage.getItem(`custom_split_${email}`);
   const custom = safeJsonParse(raw, null);
-  const customOk = !!(custom && Array.isArray(custom.dayGroups) && custom.dayGroups.length);
+  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
 
-  const defaultDayGroups = ["peito_triceps", "costas_biceps", "pernas"];
-  const rawDays = Number((customOk ? custom.days : defaultDayGroups.length) || defaultDayGroups.length);
+  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
   const days = clamp(rawDays, 2, 6);
 
   const dayGroups = [];
   for (let i = 0; i < days; i++) {
-    const gid = customOk
-      ? custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody"
-      : defaultDayGroups[i] || defaultDayGroups[i % defaultDayGroups.length] || "fullbody";
-    dayGroups.push(gid);
+    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
   }
 
-  const prescriptions = (customOk && custom.prescriptions) || {};
+  const prescriptions = custom.prescriptions || {};
 
   const split = dayGroups.map((gid, idx) => {
     const g = groupById(gid);
     const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
 
-    const groupTags =
-      gid === "peito_triceps"
-        ? ["peito", "tríceps", "triceps"]
-        : gid === "costas_biceps"
-        ? ["costas", "bíceps", "biceps", "dorsal"]
-        : gid === "pernas"
-        ? ["pernas", "quadríceps", "quadriceps", "panturrilha", "glúteos", "gluteos"]
-        : gid === "posterior_gluteo"
-        ? ["posterior", "isquiotibiais", "glúteos", "gluteos", "core"]
-        : gid === "ombro_core"
-        ? ["ombros", "deltoide", "core", "abdômen", "abdomen"]
-        : ["full body", "corpo todo", "peito", "costas", "pernas", "ombros", "core"];
-
-    const seedKey = `${email}__day_${idx}`;
-
-    const picked = pickFromBankByTags({ tags: groupTags, seedKey, limit: 8 });
-
-    const baseList = ensureVolume(
-      picked.map((x) => ({
-        name: pickName(x),
-        group: pickGroup(x) || g.name,
-        level: pickLevel(x) || null,
-      })),
-      7
-    );
+    const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
 
     return baseList.map((ex) => ({
-      ex,
+      ...ex,
       sets: pres.sets,
       reps: pres.reps,
       rest: pres.rest,
-      method: `Split ${customOk ? custom.splitId || "" : ""} • ${g.name}`,
+      method: `Split ${custom.splitId || ""} • ${g.name}`,
     }));
   });
 
@@ -339,7 +198,7 @@ function buildPlanOnlyFromBank(email) {
     sets: "custom",
     reps: "custom",
     rest: "custom",
-    style: customOk ? `Personalizado • ${custom.splitId || `${days}x/sem`}` : `Banco • ${days}x/sem`,
+    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
   };
 
   return { base, split, meta: { days } };
@@ -363,11 +222,41 @@ export default function Treino() {
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // ✅ SEM FALLBACK ANTIGO: sempre usa o banco novo
-  const plan = useMemo(() => buildPlanOnlyFromBank(email), [email]);
+  const plan = useMemo(() => buildCustomPlan(email), [email]);
 
-  const base = plan.base;
-  const split = plan.split;
+  const fallbackSplit = useMemo(() => {
+    const A = [
+      { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+      { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+      { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
+      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+      { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+      { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    ];
+    const B = [
+      { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+      { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+      { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
+      { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+      { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+      { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
+    ];
+    const C = [
+      { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
+      { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
+      { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
+      { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
+      { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+      { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    ];
+    return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
+  }, []);
+
+  const base = plan?.base || fallbackSplit.base;
+  const split = plan?.split || fallbackSplit.split;
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
   const [viewIdx, setViewIdx] = useState(dayIndex);
@@ -375,8 +264,7 @@ export default function Treino() {
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
-  // ✅ GANCHO: anexa gif/instruções/etc do bank pelo nome
-  const workout = useMemo(() => enrichWorkout(split[viewSafe] || []), [split, viewSafe]);
+  const workout = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
 
   const doneKey = `done_ex_${email}_${viewSafe}`;
   const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
@@ -385,7 +273,7 @@ export default function Treino() {
   const [loads, setLoads] = useState(() => loadLoads(email));
 
   function toggleDone(i) {
-    const next = { done, [i]: !done[i] };
+    const next = { ...done, [i]: !done[i] };
     setDone(next);
     localStorage.setItem(doneKey, JSON.stringify(next));
     setTapId(i);
@@ -395,27 +283,31 @@ export default function Treino() {
   function adjustLoad(exName, delta) {
     const k = keyForLoad(viewSafe, exName);
     const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg
-    const next = { loads, [k]: nextVal };
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
+    const next = { ...loads, [k]: nextVal };
     setLoads(next);
     saveLoads(email, next);
   }
 
+  // ✅ CORRIGIDO: sem reload + navega para dashboard
   function finishWorkout() {
     if (!viewingIsToday) return;
 
     bumpDayIndex(email, split.length);
 
+    // limpa progresso do dia atual
     localStorage.removeItem(doneKey);
     setDone({});
 
+    // salva histórico (dias treinados)
     const wkKey = `workout_${email}`;
     const today = todayKey();
     const raw = localStorage.getItem(wkKey);
     const list = safeJsonParse(raw, []);
     const arr = Array.isArray(list) ? list : [];
-    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([arr, today]));
+    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
 
+    // vai pro dashboard
     nav("/dashboard");
   }
 
@@ -442,12 +334,26 @@ export default function Treino() {
             Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
           </div>
           <div style={styles.headerSub}>
-            Método: <b>{base.style}</b> • foco:{" "}
-            <b>{(split[viewSafe]?.[0]?.method || "Banco").split("•")[1] || "Banco"}</b>
+            {plan ? (
+              <>
+                Método: <b>{base.style}</b> • foco:{" "}
+                <b>{(split[viewSafe]?.[0]?.method || "Custom").split("•")[1] || "Personalizado"}</b>
+              </>
+            ) : (
+              <>
+                Método: <b>{base.style}</b>
+              </>
+            )}
           </div>
         </div>
 
-        <button style={styles.settingsBtn} onClick={() => nav("/conta")} aria-label="Conta e configurações" type="button">
+        {/* ✅ MAIS APPLE + ÍCONE MELHOR */}
+        <button
+          style={styles.settingsBtn}
+          onClick={() => nav("/conta")}
+          aria-label="Conta e configurações"
+          type="button"
+        >
           <GearIcon />
         </button>
       </div>
@@ -463,8 +369,8 @@ export default function Treino() {
               <button
                 key={d.idx}
                 style={{
-                  styles.stripPill,
-                  (isActive ? styles.stripPillOn : styles.stripPillOff),
+                  ...styles.stripPill,
+                  ...(isActive ? styles.stripPillOn : styles.stripPillOff),
                 }}
                 type="button"
                 onClick={() => {
@@ -510,7 +416,7 @@ export default function Treino() {
         </div>
 
         <div style={styles.progressTrack}>
-          <div style={{ styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
+          <div style={{ ...styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
         </div>
 
         <div style={styles.progressHint}>
@@ -579,7 +485,9 @@ export default function Treino() {
             ) : null}
           </>
         ) : (
-          <div style={styles.lockHint}>Você está no Modo Gratuito. Assine para liberar treino completo e personalização.</div>
+          <div style={styles.lockHint}>
+            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
+          </div>
         )}
       </div>
 
@@ -599,11 +507,8 @@ export default function Treino() {
 
                 <div style={{ minWidth: 0 }}>
                   <div style={styles.exName}>{ex.name}</div>
-
                   <div style={styles.exNote}>
                     {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
-                    {ex.level ? ` • nível: ${ex.level}` : ""}
-                    {ex.equipment ? ` • ${Array.isArray(ex.equipment) ? ex.equipment.join(", ") : ex.equipment}` : ""}
                   </div>
 
                   <div style={styles.loadRow}>
@@ -657,8 +562,8 @@ export default function Treino() {
                   onClick={() => toggleDone(i)}
                   aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
                   style={{
-                    styles.checkBtn,
-                    (isDone ? styles.checkOn : styles.checkOff),
+                    ...styles.checkBtn,
+                    ...(isDone ? styles.checkOn : styles.checkOff),
                     transform: tapId === i ? "scale(0.92)" : "scale(1)",
                   }}
                 >
@@ -710,12 +615,12 @@ export default function Treino() {
         </>
       ) : null}
 
-      {/* BOTÃO CONCLUIR */}
+      {/* ✅ BOTÃO FLUTUANTE “CONCLUIR TREINO” (premium + movimento) */}
       {paid ? (
         <button
           type="button"
           style={{
-            styles.finishFab,
+            ...styles.finishFab,
             opacity: viewingIsToday ? 1 : 0.55,
             pointerEvents: viewingIsToday ? "auto" : "none",
           }}
@@ -740,10 +645,11 @@ export default function Treino() {
 
 /* ---------- icons ---------- */
 function GearIcon() {
+  // ✅ ícone mais clean (Apple-like)
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+        d="M12 15.6a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Z"
         stroke="white"
         strokeWidth="2.2"
         strokeLinecap="round"
@@ -751,7 +657,7 @@ function GearIcon() {
         opacity="0.95"
       />
       <path
-        d="M19.4 15a8.8 8.8 0 0 0 .3-1l2-1.2-2-3.4-2.3.8a9 9 0 0 0-.8-.6l-.4-2.4H9.8l-.4 2.4a9 9 0 0 0-.8.6l-2.3-.8-2 3.4 2 1.2a8.8 8.8 0 0 0 0 2l-2 1.2 2 3.4 2.3-.8a9 9 0 0 0 .8.6l.4 2.4h6.4l.4-2.4c.3-.2.6-.4.8-.6l2.3.8 2-3.4-2-1.2a8.8 8.8 0 0 0 .3-1Z"
+        d="M19.8 12.8c.05-.27.07-.54.07-.8s-.02-.53-.07-.8l1.78-1.32a.7.7 0 0 0 .18-.9l-1.55-2.68a.7.7 0 0 0-.85-.3l-2.08.84c-.43-.34-.9-.62-1.4-.83l-.33-2.2a.7.7 0 0 0-.69-.58h-3.1a.7.7 0 0 0-.69.58l-.33 2.2c-.5.21-.97.49-1.4.83l-2.08-.84a.7.7 0 0 0-.85.3L2.3 8.96a.7.7 0 0 0 .18.9l1.78 1.32c-.05.27-.07.54-.07.8s.02.53.07.8L2.48 14.1a.7.7 0 0 0-.18.9l1.55 2.68c.18.3.55.42.85.3l2.08-.84c.43.34.9.62 1.4.83l.33 2.2c.05.34.35.58.69.58h3.1c.34 0 .64-.24.69-.58l.33-2.2c.5-.21.97-.49 1.4-.83l2.08.84c.3.12.67 0 .85-.3l1.55-2.68a.7.7 0 0 0-.18-.9l-1.78-1.32Z"
         stroke="white"
         strokeWidth="1.7"
         strokeLinejoin="round"
@@ -760,6 +666,7 @@ function GearIcon() {
     </svg>
   );
 }
+
 function ArrowIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -767,6 +674,7 @@ function ArrowIcon() {
     </svg>
   );
 }
+
 function ArrowMiniIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -774,11 +682,18 @@ function ArrowMiniIcon() {
     </svg>
   );
 }
+
 function CheckRingIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="#111" strokeWidth="2.2" strokeOpacity="0.9" />
-      <path d="M7.5 12.3l2.8 2.9L16.8 9" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M7.5 12.3l2.8 2.9L16.8 9"
+        stroke="#111"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -802,6 +717,7 @@ const styles = {
   headerTitle: { marginTop: 6, fontSize: 24, fontWeight: 950, letterSpacing: -0.6, lineHeight: 1.05 },
   headerSub: { marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.96, lineHeight: 1.3 },
 
+  // ✅ botão config mais Apple (glass + sombra + transição)
   settingsBtn: {
     width: 46,
     height: 46,
@@ -1091,9 +1007,11 @@ const styles = {
   },
   fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
 
+  /* ✅ FINISH FLOATING (pago) — SUBIDO pra não encostar no menu */
   finishFab: {
     position: "fixed",
     left: "50%",
+    // ✅ sobe um pouco + safe-area iOS
     bottom: "calc(112px + env(safe-area-inset-bottom))",
     transform: "translateX(-50%)",
     zIndex: 1100,
@@ -1161,7 +1079,11 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
         50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
       }
+
+      /* ✅ press apenas onde faz sentido (não quebra botões normais) */
       .apple-press:active { transform: translateY(1px) scale(.98); }
+
+      /* ✅ press do botão de config (glass) */
       .settings-press:active { transform: translateY(1px) scale(.97); }
     `;
     document.head.appendChild(style);
