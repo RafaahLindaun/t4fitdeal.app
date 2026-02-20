@@ -1,6 +1,13 @@
+// ✅ COLE EM: src/pages/TreinoDetalhe.jsx
+// ✅ Agora o TreinoDetalhe puxa o plano do Treino.jsx (fonte única)
+// ✅ Mantém: bolinhas de séries + descanso automático + dock do cronômetro + GIFs por slug
+
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+// ✅ FONTE ÚNICA (Treino.jsx precisa exportar essas funções)
+import { getTreinoPlan, calcDayIndex, dayLetter } from "./Treino";
 
 /* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
@@ -25,16 +32,6 @@ function safeJsonParse(raw, fallback) {
   } catch {
     return fallback;
   }
-}
-function calcDayIndex(email) {
-  const key = `treino_day_${email}`;
-  const raw = localStorage.getItem(key);
-  const n = raw ? Number(raw) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-function dayLetter(i) {
-  const letters = ["A", "B", "C", "D", "E", "F"];
-  return letters[i % letters.length] || "A";
 }
 
 function stripAccents(s) {
@@ -103,244 +100,9 @@ function fmtMMSS(sec) {
   const s = Math.max(0, Math.floor(Number(sec || 0)));
   const m = Math.floor(s / 60);
   const r = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-}
-
-/* ---------------- banco (mesma ideia do Treino) ---------------- */
-const MUSCLE_GROUPS = [
-  {
-    id: "peito_triceps",
-    name: "Peito + Tríceps",
-    default: { sets: 4, reps: "6–12", rest: "75–120s" },
-    library: [
-      { name: "Supino reto", group: "Peito" },
-      { name: "Supino inclinado", group: "Peito" },
-      { name: "Crucifixo / Peck-deck", group: "Peito" },
-      { name: "Crossover", group: "Peito" },
-      { name: "Tríceps corda", group: "Tríceps" },
-      { name: "Tríceps francês", group: "Tríceps" },
-      { name: "Supino fechado", group: "Peito/Tríceps" },
-      { name: "Paralelas (mergulho)", group: "Tríceps/Peito" },
-    ],
-  },
-  {
-    id: "costas_biceps",
-    name: "Costas + Bíceps",
-    default: { sets: 4, reps: "8–12", rest: "75–120s" },
-    library: [
-      { name: "Puxada (barra/puxador)", group: "Costas" },
-      { name: "Remada (máquina/curvada)", group: "Costas" },
-      { name: "Remada unilateral", group: "Costas" },
-      { name: "Face pull", group: "Ombro/escápulas" },
-      { name: "Rosca direta", group: "Bíceps" },
-      { name: "Rosca martelo", group: "Bíceps" },
-    ],
-  },
-  {
-    id: "pernas",
-    name: "Pernas (Quad + geral)",
-    default: { sets: 4, reps: "8–15", rest: "75–150s" },
-    library: [
-      { name: "Agachamento", group: "Pernas" },
-      { name: "Leg press", group: "Pernas" },
-      { name: "Cadeira extensora", group: "Quadríceps" },
-      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
-      { name: "Panturrilha", group: "Panturrilha" },
-      { name: "Core (prancha)", group: "Core" },
-    ],
-  },
-  {
-    id: "posterior_gluteo",
-    name: "Posterior + Glúteo",
-    default: { sets: 4, reps: "8–12", rest: "75–150s" },
-    library: [
-      { name: "Terra romeno", group: "Posterior" },
-      { name: "Mesa flexora", group: "Posterior" },
-      { name: "Hip thrust", group: "Glúteo" },
-      { name: "Abdução", group: "Glúteo médio" },
-      { name: "Passada (foco glúteo)", group: "Glúteo" },
-      { name: "Core (dead bug)", group: "Core" },
-    ],
-  },
-  {
-    id: "ombro_core",
-    name: "Ombro + Core",
-    default: { sets: 3, reps: "10–15", rest: "60–90s" },
-    library: [
-      { name: "Desenvolvimento", group: "Ombros" },
-      { name: "Elevação lateral", group: "Ombros" },
-      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
-      { name: "Encolhimento", group: "Trapézio" },
-      { name: "Pallof press", group: "Core" },
-      { name: "Abdominal", group: "Core" },
-    ],
-  },
-  {
-    id: "fullbody",
-    name: "Full body (saúde / base)",
-    default: { sets: 3, reps: "10–15", rest: "45–90s" },
-    library: [
-      { name: "Agachamento (leve)", group: "Pernas" },
-      { name: "Supino (leve)", group: "Peito" },
-      { name: "Remada (leve)", group: "Costas" },
-      { name: "Desenvolvimento (leve)", group: "Ombros" },
-      { name: "Posterior (leve)", group: "Posterior" },
-      { name: "Core (prancha)", group: "Core" },
-    ],
-  },
-];
-
-function groupById(id) {
-  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
-}
-
-function ensureVolume(list, minCount = 7) {
-  const base = Array.isArray(list) ? [...list] : [];
-  if (base.length >= minCount) return base;
-
-  const extras = [
-    { name: "Aquecimento (5–8min)", group: "Preparação" },
-    { name: "Alongamento curto", group: "Mobilidade" },
-    { name: "Core (prancha)", group: "Core" },
-    { name: "Elevação lateral (leve)", group: "Ombros" },
-    { name: "Rosca direta (leve)", group: "Bíceps" },
-    { name: "Tríceps corda (leve)", group: "Tríceps" },
-    { name: "Panturrilha", group: "Panturrilha" },
-  ];
-
-  let i = 0;
-  while (base.length < minCount && i < extras.length) base.push(extras[i++]);
-  return base;
-}
-
-/* --- compatível com “novo TreinoPersonalize.jsx” (vários nomes possíveis) --- */
-function guessGroupFromName(name) {
-  const n = String(name || "").toLowerCase();
-  if (n.includes("supino") || n.includes("crucif") || n.includes("peck") || n.includes("crossover") || n.includes("flexão"))
-    return "Peito";
-  if (n.includes("tríce") || n.includes("triceps") || n.includes("corda") || n.includes("testa") || n.includes("mergulho"))
-    return "Tríceps";
-  if (n.includes("puxada") || n.includes("remada") || n.includes("pulldown") || n.includes("barra fixa") || n.includes("terra"))
-    return "Costas";
-  if (n.includes("rosca") || n.includes("bíce") || n.includes("biceps") || n.includes("martelo") || n.includes("scott"))
-    return "Bíceps";
-  if (n.includes("agacha") || n.includes("leg press") || n.includes("extensora") || n.includes("afundo") || n.includes("passada") || n.includes("búlgaro"))
-    return "Pernas";
-  if (n.includes("flexora") || n.includes("stiff") || n.includes("romeno") || n.includes("posterior") || n.includes("good morning"))
-    return "Posterior";
-  if (n.includes("hip thrust") || n.includes("glute") || n.includes("abdu") || n.includes("coice"))
-    return "Glúteo";
-  if (n.includes("panturrilha")) return "Panturrilha";
-  if (n.includes("ombro") || n.includes("lateral") || n.includes("desenvolvimento") || n.includes("arnold") || n.includes("face pull"))
-    return "Ombros";
-  if (n.includes("core") || n.includes("prancha") || n.includes("abdominal") || n.includes("dead bug") || n.includes("pallof"))
-    return "Core";
-  return "Treino";
-}
-
-function normalizeDayExercises(custom, days) {
-  const a1 = Array.isArray(custom?.dayExercises) ? custom.dayExercises : null;
-  const a2 = Array.isArray(custom?.daysExercises) ? custom.daysExercises : null;
-  const o1 = custom?.exercisesByDay && typeof custom.exercisesByDay === "object" ? custom.exercisesByDay : null;
-  const o2 =
-    custom?.selectedExercisesByDay && typeof custom.selectedExercisesByDay === "object"
-      ? custom.selectedExercisesByDay
-      : null;
-
-  const out = Array.from({ length: days }).map(() => []);
-
-  for (let i = 0; i < days; i++) {
-    let raw = null;
-
-    if (a1 && Array.isArray(a1[i])) raw = a1[i];
-    else if (a2 && Array.isArray(a2[i])) raw = a2[i];
-    else if (o1 && Array.isArray(o1[i])) raw = o1[i];
-    else if (o2 && Array.isArray(o2[i])) raw = o2[i];
-
-    if (!raw) continue;
-
-    out[i] = raw
-      .map((x) => {
-        if (!x) return null;
-        if (typeof x === "string") return { name: x, group: guessGroupFromName(x) };
-        if (typeof x === "object" && x.name) return { name: x.name, group: x.group || guessGroupFromName(x.name) };
-        return null;
-      })
-      .filter(Boolean);
-  }
-
-  return out;
-}
-
-function buildCustomPlan(email) {
-  const raw = localStorage.getItem(`custom_split_${email}`);
-  const custom = safeJsonParse(raw, null);
-  if (!custom) return null;
-
-  const rawDays = Number(custom.days || custom.dayGroups?.length || 0);
-  const days = clamp(rawDays || 0, 2, 6);
-
-  const dayGroups = Array.from({ length: days }).map((_, i) => custom?.dayGroups?.[i] || "fullbody");
-  const prescriptions = custom.prescriptions || {};
-  const pickedByDay = normalizeDayExercises(custom, days);
-
-  const split = dayGroups.map((gid, idx) => {
-    const g = groupById(gid);
-    const pres = prescriptions[idx] || g.default || { sets: 4, reps: "6–12", rest: "75–120s" };
-
-    const chosen = Array.isArray(pickedByDay[idx]) && pickedByDay[idx].length ? pickedByDay[idx] : null;
-    const baseList = chosen ? chosen : (g.library || []).slice(0, 10);
-    const list = ensureVolume(baseList, 7);
-
-    return list.map((ex) => ({
-      name: ex.name,
-      group: ex.group || guessGroupFromName(ex.name),
-      sets: pres.sets,
-      reps: pres.reps,
-      rest: pres.rest,
-      method: `Split ${custom.splitId || ""} • ${g.name}`,
-    }));
-  });
-
-  const base = {
-    sets: "custom",
-    reps: "custom",
-    rest: "custom",
-    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
-  };
-
-  return { base, split, meta: { days } };
-}
-
-function buildFallbackSplit() {
-  const A = [
-    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
-    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-  ];
-  const B = [
-    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
-    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
-  ];
-  const C = [
-    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
-    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
-    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
-    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
-    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
-    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-  ];
-  return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
+  const mm = String(m).padStart(2, "0");
+  const ss = String(r).padStart(2, "0");
+  return `${mm}:${ss}`;
 }
 
 /* ---------------- cargas ---------------- */
@@ -370,9 +132,15 @@ function detailFor(exName) {
   const n = String(exName || "").toLowerCase();
 
   if (n.includes("supino"))
-    return { area: "Peitoral, tríceps e deltoide anterior.", cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura." };
+    return {
+      area: "Peitoral, tríceps e deltoide anterior.",
+      cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura.",
+    };
   if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover"))
-    return { area: "Peitoral (isolamento).", cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta." };
+    return {
+      area: "Peitoral (isolamento).",
+      cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta.",
+    };
 
   if (n.includes("puxada") || n.includes("pulldown"))
     return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
@@ -539,19 +307,21 @@ export default function TreinoDetalhe() {
   const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // plano (custom ou fallback)
-  const plan = useMemo(() => buildCustomPlan(email), [email]);
-  const fallback = useMemo(() => buildFallbackSplit(), []);
-  const base = plan?.base || fallback.base;
-  const split = plan?.split || fallback.split;
+  // ✅ Plano vem do Treino.jsx (fonte única)
+  const treinoData = useMemo(() => getTreinoPlan(email), [email]);
+  const base = treinoData?.base;
+  const split = treinoData?.split || [];
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
 
   const dParam = Number(sp.get("d"));
   const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
-  const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
+  const viewSafe = useMemo(() => mod(viewIdx, split.length || 1), [viewIdx, split.length]);
 
+  // ✅ pega exatamente o que existe no plano (sem forçar volume aqui)
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
+
+  // opcional: esconder “aquecimento” se você usa isso como item técnico
   const workout = useMemo(
     () => workoutRaw.filter((ex) => !String(ex?.name || "").toLowerCase().includes("aquecimento")),
     [workoutRaw]
@@ -626,12 +396,12 @@ export default function TreinoDetalhe() {
       return;
     }
     const ex = p.ex;
-    const rest = ex?.rest ?? base.rest ?? "90s";
+    const rest = ex?.rest ?? base?.rest ?? "90s";
     const sec = parseRestToSeconds(rest);
     setRunning(false);
     setRestTotal(sec);
     setRestLeft(sec);
-  }, [page, pages, base.rest]);
+  }, [page, pages, base?.rest]);
 
   // tick
   useEffect(() => {
@@ -661,7 +431,7 @@ export default function TreinoDetalhe() {
     setRestLeft(restTotal);
   }
 
-  // ping no dock quando marca série (sem forçar aberto sempre)
+  // abrir “adicional” quando inicia automaticamente (sem forçar abrir sempre)
   function softPingTimer() {
     if (timerOpen) return;
     setTimerOpenPersist(true);
@@ -696,7 +466,7 @@ export default function TreinoDetalhe() {
     el.scrollTo({ left: w * i, behavior: "smooth" });
   }
 
-  // css global
+  // css
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "treino-detalhe-book-ui-v2";
@@ -764,6 +534,7 @@ export default function TreinoDetalhe() {
     const dy = y - dragStartY.current;
     if (Math.abs(dy) > 10) dragMoved.current = true;
 
+    // arrastar pra cima abre, pra baixo fecha
     if (dy < -26) {
       dragStartY.current = null;
       setTimerOpenPersist(true);
@@ -796,7 +567,7 @@ export default function TreinoDetalhe() {
           <div style={S.hTitle}>Treino {dayLetter(viewSafe)}</div>
 
           <div style={S.hLine}>
-            <span style={S.tagStrong}>{base.style}</span>
+            <span style={S.tagStrong}>{base?.style || "Treino"}</span>
             <span style={S.tagSoft}>{exCount} exercícios</span>
             <span style={S.tagSoft}>{progressText}</span>
           </div>
@@ -860,9 +631,9 @@ export default function TreinoDetalhe() {
           const k = keyForLoad(viewSafe, ex.name);
           const myLoad = loads[k] ?? "";
 
-          const sets = ex.sets ?? base.sets;
-          const reps = ex.reps ?? base.reps;
-          const rest = ex.rest ?? base.rest;
+          const sets = ex.sets ?? base?.sets ?? 4;
+          const reps = ex.reps ?? base?.reps ?? "6–12";
+          const rest = ex.rest ?? base?.rest ?? "90s";
 
           const done = getDone(ex.name, sets);
           const totalSets = clamp(Number(sets) || 4, 1, 12);
@@ -874,6 +645,7 @@ export default function TreinoDetalhe() {
 
             setDone(ex.name, nextDone);
 
+            // inicia descanso automático quando avança
             if (nextDone > done) {
               const sec = parseRestToSeconds(rest);
               setRestTotal(sec);
@@ -988,7 +760,7 @@ export default function TreinoDetalhe() {
         })}
       </div>
 
-      {/* DOCK: Cronômetro de descanso */}
+      {/* DOCK: botão “Cronômetro de descanso” (opcional) */}
       <div
         style={{ ...S.dock, ...(timerOpen ? S.dockOpen : S.dockClosed) }}
         onMouseDown={onDockPointerDown}
@@ -1056,7 +828,11 @@ export default function TreinoDetalhe() {
 
 /* ---------------- styles ---------------- */
 const S = {
-  page: { padding: 18, paddingBottom: "calc(44px + env(safe-area-inset-bottom))", background: BG },
+  page: {
+    padding: 18,
+    paddingBottom: "calc(44px + env(safe-area-inset-bottom))",
+    background: BG,
+  },
 
   head: {
     borderRadius: 28,
@@ -1090,7 +866,6 @@ const S = {
     placeItems: "center",
     flexShrink: 0,
   },
-
   hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
   hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
   hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
@@ -1104,7 +879,16 @@ const S = {
     fontWeight: 900,
     color: TEXT,
   },
-  tagSoft: { display: "inline-flex", padding: "8px 10px", borderRadius: 999, background: SOFT, border: `1px solid ${BORDER}`, fontSize: 12, fontWeight: 900, color: TEXT },
+  tagSoft: {
+    display: "inline-flex",
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: SOFT,
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 900,
+    color: TEXT,
+  },
   hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
   dotsNav: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
@@ -1152,12 +936,40 @@ const S = {
   },
 
   exerciseTop: { position: "relative", display: "flex", gap: 12, alignItems: "center" },
-  exerciseIndex: { width: 44, height: 44, borderRadius: 18, display: "grid", placeItems: "center", background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,106,0,.58))", color: "#fff", fontWeight: 950, fontSize: 15, boxShadow: "0 16px 42px rgba(255,106,0,.22)", flexShrink: 0 },
+  exerciseIndex: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,106,0,.58))",
+    color: "#fff",
+    fontWeight: 950,
+    fontSize: 15,
+    boxShadow: "0 16px 42px rgba(255,106,0,.22)",
+    flexShrink: 0,
+  },
   exerciseName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.35, lineHeight: 1.15 },
   exerciseGroup: { marginTop: 5, fontSize: 12, fontWeight: 850, color: MUTED },
-  execBtn: { padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,106,0,.10)", fontWeight: 950, color: TEXT, flexShrink: 0 },
+  execBtn: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "rgba(255,106,0,.10)",
+    fontWeight: 950,
+    color: TEXT,
+    flexShrink: 0,
+  },
 
-  gifWrap: { marginTop: 14, borderRadius: 22, border: `1px solid ${BORDER}`, background: "rgba(15,23,42,.03)", overflow: "hidden", position: "relative", minHeight: 180 },
+  gifWrap: {
+    marginTop: 14,
+    borderRadius: 22,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(15,23,42,.03)",
+    overflow: "hidden",
+    position: "relative",
+    minHeight: 180,
+  },
   gif: { width: "100%", height: 220, objectFit: "cover", display: "block" },
   gifFallback: {
     position: "absolute",
@@ -1166,19 +978,52 @@ const S = {
     display: "grid",
     placeItems: "center",
     textAlign: "center",
-    background: "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
+    background:
+      "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
     opacity: 0.0,
   },
-  gifFallbackBadge: { display: "inline-flex", padding: "6px 10px", borderRadius: 999, background: "rgba(11,11,12,.92)", color: "#fff", fontSize: 12, fontWeight: 950, marginBottom: 8 },
+  gifFallbackBadge: {
+    display: "inline-flex",
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "rgba(11,11,12,.92)",
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 950,
+    marginBottom: 8,
+  },
   gifFallbackText: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 320 },
 
   bigChips: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, position: "relative" },
-  chip: { borderRadius: 20, padding: 12, background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))", border: `1px solid ${BORDER}`, boxShadow: "0 14px 34px rgba(15,23,42,.05)", position: "relative", overflow: "hidden", minHeight: 72 },
+  chip: {
+    borderRadius: 20,
+    padding: 12,
+    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 34px rgba(15,23,42,.05)",
+    position: "relative",
+    overflow: "hidden",
+    minHeight: 72,
+  },
   chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
   chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
-  chipSheen: { position: "absolute", inset: 0, background: "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)", opacity: 0.42, pointerEvents: "none" },
+  chipSheen: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)",
+    opacity: 0.42,
+    pointerEvents: "none",
+  },
 
-  dotsBox: { marginTop: 14, borderRadius: 22, padding: 14, background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))", border: "1px solid rgba(255,106,0,.16)", boxShadow: "0 14px 40px rgba(15,23,42,.06)", position: "relative" },
+  dotsBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
+    border: "1px solid rgba(255,106,0,.16)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    position: "relative",
+  },
   dotsTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   dotsRowInner: { marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" },
   dotBtn: { width: 16, height: 16, borderRadius: 999, border: "none" },
@@ -1186,39 +1031,129 @@ const S = {
   dotBtnOff: { background: "rgba(15,23,42,.14)" },
   dotsMini: { marginTop: 10, fontSize: 12, fontWeight: 900, color: MUTED },
 
-  loadBox: { marginTop: 14, borderRadius: 22, padding: 14, background: "#fff", border: `1px solid ${BORDER}`, boxShadow: "0 14px 40px rgba(15,23,42,.06)", display: "grid", gridTemplateColumns: "1fr minmax(160px, 220px)", gap: 12, alignItems: "end" },
+  loadBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    display: "grid",
+    gridTemplateColumns: "1fr minmax(160px, 220px)",
+    gap: 12,
+    alignItems: "end",
+    position: "relative",
+  },
   loadLeft: { minWidth: 0 },
   loadRight: { minWidth: 0 },
   loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
   loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
   loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
-  input: { width: "100%", marginTop: 6, padding: "12px 12px", borderRadius: 16, border: `1px solid ${BORDER}`, outline: "none", fontSize: 14, fontWeight: 850, background: "rgba(255,255,255,.96)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)" },
+  input: {
+    width: "100%",
+    marginTop: 6,
+    padding: "12px 12px",
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    outline: "none",
+    fontSize: 14,
+    fontWeight: 850,
+    background: "rgba(255,255,255,.96)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)",
+  },
 
-  execPanel: { marginTop: 14, borderRadius: 22, padding: 14, background: "rgba(15,23,42,.03)", border: `1px solid ${BORDER}`, boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
+  execPanel: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "rgba(15,23,42,.03)",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    position: "relative",
+  },
   execTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   execArea: { marginTop: 10 },
   execCue: { marginTop: 10 },
   execLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
   execText: { marginTop: 6, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
 
-  navRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  navBtn: { padding: 14, borderRadius: 20, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
+  navRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" },
+  navBtn: {
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
   navBtnDisabled: { opacity: 0.55 },
 
-  endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
-  endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
-  endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5 },
-  endCta: { marginTop: 16, width: "100%", padding: 16, borderRadius: 22, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 18px 55px rgba(0,0,0,.18)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase", position: "relative" },
+  endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, position: "relative" },
+  endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5, position: "relative" },
+  endCta: {
+    marginTop: 16,
+    width: "100%",
+    padding: 16,
+    borderRadius: 22,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    position: "relative",
+  },
   endCtaIcon: { width: 40, height: 40, borderRadius: 16, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
-  endGhost: { marginTop: 10, width: "100%", padding: 14, borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950 },
-  endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  endGhost: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+  endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, position: "relative" },
 
-  lockCard: { borderRadius: 26, padding: 16, background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))", border: "1px solid rgba(255,106,0,.22)", boxShadow: "0 18px 60px rgba(15,23,42,.10)" },
+  /* Lock */
+  lockCard: {
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))",
+    border: "1px solid rgba(255,106,0,.22)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
+  },
   lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
   lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
-  lockBtn: { marginTop: 10, width: "100%", padding: 14, borderRadius: 20, border: "none", background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 18px 55px rgba(255,106,0,.22)" },
-  lockGhost: { marginTop: 10, width: "100%", padding: 14, borderRadius: 20, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.90)", color: TEXT, fontWeight: 950 },
+  lockBtn: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 20,
+    border: "none",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 18px 55px rgba(255,106,0,.22)",
+  },
+  lockGhost: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.90)",
+    color: TEXT,
+    fontWeight: 950,
+  },
 
+  /* Dock do cronômetro (fechado/aberto) */
   dock: {
     position: "fixed",
     left: 12,
@@ -1240,8 +1175,25 @@ const S = {
   dockClosed: { paddingBottom: 10 },
 
   dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  dockPill: { display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 999, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.18)", boxShadow: "0 14px 34px rgba(255,106,0,.10)" },
-  dockIcon: { width: 34, height: 34, borderRadius: 16, display: "grid", placeItems: "center", background: "rgba(255,255,255,.70)", border: "1px solid rgba(255,255,255,.55)" },
+  dockPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.18)",
+    boxShadow: "0 14px 34px rgba(255,106,0,.10)",
+  },
+  dockIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,255,255,.70)",
+    border: "1px solid rgba(255,255,255,.55)",
+  },
   dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
 
   dockMini: { display: "grid", justifyItems: "end", gap: 2 },
@@ -1253,10 +1205,45 @@ const S = {
   dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   dockBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" },
-  bigStart: { width: "100%", padding: 16, borderRadius: 22, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, boxShadow: "0 18px 55px rgba(0,0,0,.18)" },
+
+  bigStart: {
+    width: "100%",
+    padding: 16,
+    borderRadius: 22,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+  },
   bigStartIcon: { width: 42, height: 42, borderRadius: 18, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
-  smallPause: { padding: "14px 14px", borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
-  resetBtn: { width: 50, height: 50, borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(15,23,42,.04)", display: "grid", placeItems: "center", boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
+
+  smallPause: {
+    padding: "14px 14px",
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  resetBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(15,23,42,.04)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
   dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
 };
 
