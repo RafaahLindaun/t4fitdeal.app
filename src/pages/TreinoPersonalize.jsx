@@ -1,3 +1,10 @@
+// ✅ COLE EM: src/pages/Treino.jsx
+// - Puxa o treino diretamente do treino personalizado (quantidade exata: 2, 6, 10...)
+// - Suporta múltiplos formatos de plano salvo no localStorage
+// - Mantém modo grátis (prévia) vs premium (completo)
+// - Mantém cargas por exercício (localStorage) + concluir treino (avança ciclo)
+// - Navega para /treino/detalhe?d=<dia>
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -6,10 +13,17 @@ const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
-const BORDER = "rgba(15,23,42,.08)";
 
+/* ---------------- helpers ---------------- */
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
+}
+function mod(n, m) {
+  if (!m) return 0;
+  return ((n % m) + m) % m;
 }
 function safeJsonParse(raw, fallback) {
   try {
@@ -18,344 +32,1150 @@ function safeJsonParse(raw, fallback) {
     return fallback;
   }
 }
+function dayLetter(i) {
+  const letters = ["A", "B", "C", "D", "E", "F"];
+  return letters[i % letters.length] || "A";
+}
+function calcDayIndex(email) {
+  const key = `treino_day_${email}`;
+  const raw = localStorage.getItem(key);
+  const n = raw ? Number(raw) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+function bumpDayIndex(email, max) {
+  const key = `treino_day_${email}`;
+  const raw = localStorage.getItem(key);
+  const n = raw ? Number(raw) : 0;
+  const next = (Number.isFinite(n) ? n : 0) + 1;
+  localStorage.setItem(key, String(next % Math.max(max, 1)));
+}
+function getWeekdaysStrip(splitLen, currentIdx) {
+  const out = [];
+  const len = Math.max(splitLen, 1);
+  for (let k = 0; k < 5; k++) {
+    const idx = (currentIdx + k) % len;
+    out.push({ idx, label: `Treino ${dayLetter(idx)}`, isToday: k === 0 });
+  }
+  return out;
+}
 
+/* ---------------- banco (fallback por grupos) ---------------- */
 const MUSCLE_GROUPS = [
-  { id: "peito_triceps", name: "Peito + Tríceps" },
-  { id: "costas_biceps", name: "Costas + Bíceps" },
-  { id: "pernas", name: "Pernas (Quad + geral)" },
-  { id: "posterior_gluteo", name: "Posterior + Glúteo" },
-  { id: "ombro_core", name: "Ombro + Core" },
-  { id: "fullbody", name: "Full body (saúde / base)" },
+  {
+    id: "peito_triceps",
+    name: "Peito + Tríceps",
+    library: [
+      { name: "Supino reto", group: "Peito" },
+      { name: "Supino inclinado", group: "Peito" },
+      { name: "Crucifixo / Peck-deck", group: "Peito" },
+      { name: "Crossover", group: "Peito" },
+      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
+      { name: "Tríceps corda", group: "Tríceps" },
+      { name: "Tríceps francês", group: "Tríceps" },
+    ],
+  },
+  {
+    id: "costas_biceps",
+    name: "Costas + Bíceps",
+    library: [
+      { name: "Puxada (barra/puxador)", group: "Costas" },
+      { name: "Remada (máquina/curvada)", group: "Costas" },
+      { name: "Remada unilateral", group: "Costas" },
+      { name: "Pulldown braço reto", group: "Costas" },
+      { name: "Face pull", group: "Ombro/escápulas" },
+      { name: "Rosca direta", group: "Bíceps" },
+      { name: "Rosca martelo", group: "Bíceps" },
+    ],
+  },
+  {
+    id: "pernas",
+    name: "Pernas (Quad + geral)",
+    library: [
+      { name: "Agachamento", group: "Pernas" },
+      { name: "Leg press", group: "Pernas" },
+      { name: "Cadeira extensora", group: "Quadríceps" },
+      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
+      { name: "Panturrilha", group: "Panturrilha" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
+  {
+    id: "posterior_gluteo",
+    name: "Posterior + Glúteo",
+    library: [
+      { name: "Terra romeno", group: "Posterior" },
+      { name: "Mesa flexora", group: "Posterior" },
+      { name: "Hip thrust", group: "Glúteo" },
+      { name: "Abdução", group: "Glúteo médio" },
+      { name: "Passada (foco glúteo)", group: "Glúteo" },
+      { name: "Core (dead bug)", group: "Core" },
+    ],
+  },
+  {
+    id: "ombro_core",
+    name: "Ombro + Core",
+    library: [
+      { name: "Desenvolvimento", group: "Ombros" },
+      { name: "Elevação lateral", group: "Ombros" },
+      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
+      { name: "Encolhimento", group: "Trapézio" },
+      { name: "Pallof press", group: "Core" },
+      { name: "Abdominal", group: "Core" },
+    ],
+  },
+  {
+    id: "fullbody",
+    name: "Full body (saúde / base)",
+    library: [
+      { name: "Agachamento (leve)", group: "Pernas" },
+      { name: "Supino (leve)", group: "Peito" },
+      { name: "Remada (leve)", group: "Costas" },
+      { name: "Desenvolvimento (leve)", group: "Ombros" },
+      { name: "Posterior (leve)", group: "Posterior" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
 ];
 
-const PRESETS = [
-  { id: "Hipertrofia", sets: 4, reps: "6–12", rest: "75–120s" },
-  { id: "Força", sets: 5, reps: "3–6", rest: "120–180s" },
-  { id: "Saúde", sets: 3, reps: "10–15", rest: "60–90s" },
-];
+function groupById(id) {
+  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
+}
 
-export default function TreinoPersonalizar() {
+/* ---------------- normalização do plano (puxa exatamente o que foi salvo) ---------------- */
+function normalizeExercise(ex, defaults) {
+  // aceita:
+  // - string: "Supino reto"
+  // - objeto: {name, group, sets, reps, rest, ...}
+  if (typeof ex === "string") {
+    return {
+      name: ex,
+      group: "",
+      sets: defaults?.sets ?? 4,
+      reps: defaults?.reps ?? "6–12",
+      rest: defaults?.rest ?? "75–120s",
+      method: defaults?.method ?? "",
+    };
+  }
+
+  const obj = ex && typeof ex === "object" ? ex : {};
+  const name = String(obj.name || obj.title || obj.exercise || "").trim();
+
+  return {
+    ...obj,
+    name: name || "Exercício",
+    group: String(obj.group || obj.muscle || obj.muscleGroup || "").trim(),
+    sets: obj.sets ?? defaults?.sets ?? 4,
+    reps: obj.reps ?? defaults?.reps ?? "6–12",
+    rest: obj.rest ?? defaults?.rest ?? "75–120s",
+    method: obj.method ?? defaults?.method ?? "",
+  };
+}
+
+function normalizeDay(day, dayDefaults) {
+  // aceita:
+  // - array de exercícios
+  // - objeto com {exercises: []} / {items: []} / {list: []}
+  // - objeto com {title, exercises...}
+  if (Array.isArray(day)) {
+    return day.map((ex) => normalizeExercise(ex, dayDefaults));
+  }
+  if (day && typeof day === "object") {
+    const arr =
+      day.exercises ||
+      day.items ||
+      day.list ||
+      day.workout ||
+      day.treino ||
+      day.exs ||
+      [];
+    if (Array.isArray(arr)) return arr.map((ex) => normalizeExercise(ex, dayDefaults));
+  }
+  return [];
+}
+
+/**
+ * ✅ Carrega plano personalizado tentando formatos comuns.
+ * PRIORIDADE:
+ * 1) custom_split_<email> com split explícito (custom.split / custom.workouts / custom.days / custom.plan)
+ * 2) user.split (caso você salve no AuthContext)
+ * 3) fallback (banco MUSCLE_GROUPS via dayGroups)
+ *
+ * IMPORTANTE:
+ * - NÃO completa volume (sem ensureVolume aqui).
+ * - Se o usuário salvou 6 exercícios, retorna 6. Se salvou 2, retorna 2.
+ */
+function loadPersonalizedPlan(email, user) {
+  // (1) localStorage principal que você já usa
+  const raw = localStorage.getItem(`custom_split_${email}`);
+  const custom = safeJsonParse(raw, null);
+
+  // defaults do plano (pode existir prescriptions por dia)
+  const baseDefaults = {
+    sets: 4,
+    reps: "6–12",
+    rest: "75–120s",
+    style: "Personalizado",
+  };
+
+  // helper: prescriptions por dia (ex.: custom.prescriptions[idx] = {sets,reps,rest})
+  const getDayDefaults = (idx) => {
+    const pres = custom?.prescriptions?.[idx] || {};
+    return {
+      sets: pres.sets ?? baseDefaults.sets,
+      reps: pres.reps ?? baseDefaults.reps,
+      rest: pres.rest ?? baseDefaults.rest,
+      method:
+        pres.method ||
+        (custom?.splitId ? `Split ${custom.splitId}` : "") ||
+        (custom?.style ? String(custom.style) : ""),
+    };
+  };
+
+  // (1.a) se o custom já tiver split explícito com exercícios
+  const splitExplicit =
+    custom?.split ||
+    custom?.workouts ||
+    custom?.days ||
+    custom?.plan ||
+    custom?.treinos ||
+    null;
+
+  if (Array.isArray(splitExplicit) && splitExplicit.length > 0) {
+    const split = splitExplicit.map((day, idx) => normalizeDay(day, getDayDefaults(idx)));
+    const days = split.length;
+
+    const base = {
+      sets: "custom",
+      reps: "custom",
+      rest: "custom",
+      style: `Personalizado • ${custom?.splitId || `${days}x/sem`}`,
+    };
+
+    return { base, split, meta: { days } };
+  }
+
+  // (2) se você salvou no usuário (AuthContext) um split pronto
+  // ex.: user.split = [ [ex...], [ex...] ]
+  if (Array.isArray(user?.split) && user.split.length > 0) {
+    const split = user.split.map((day, idx) => normalizeDay(day, getDayDefaults(idx)));
+    const days = split.length;
+
+    const base = {
+      sets: "custom",
+      reps: "custom",
+      rest: "custom",
+      style: `Personalizado • ${custom?.splitId || `${days}x/sem`}`,
+    };
+
+    return { base, split, meta: { days } };
+  }
+
+  // (3) fallback por grupos (dayGroups), mas SEM completar volume e respeitando count se existir
+  if (custom && Array.isArray(custom.dayGroups) && custom.dayGroups.length > 0) {
+    const rawDays = Number(custom.days || custom.dayGroups.length || 3);
+    const days = clamp(rawDays, 2, 6);
+
+    const dayGroups = [];
+    for (let i = 0; i < days; i++) {
+      dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
+    }
+
+    // opcional: se tiver "exercisesPerDay" ou "countPerDay" no custom, respeita
+    // (isso é útil se você quiser controlar quantidade sem salvar lista explícita)
+    const perDay =
+      Number(custom.exercisesPerDay || custom.countPerDay || custom.perDay) || null;
+
+    const split = dayGroups.map((gid, idx) => {
+      const g = groupById(gid);
+      const dflt = getDayDefaults(idx);
+
+      const baseList = Array.isArray(g.library) ? [...g.library] : [];
+      const exact = Number.isFinite(perDay) && perDay > 0 ? baseList.slice(0, perDay) : baseList;
+
+      return exact.map((ex) => ({
+        ...normalizeExercise(ex, dflt),
+        method: `Split ${custom.splitId || ""} • ${g.name}`,
+      }));
+    });
+
+    const base = {
+      sets: "custom",
+      reps: "custom",
+      rest: "custom",
+      style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
+    };
+
+    return { base, split, meta: { days } };
+  }
+
+  return null;
+}
+
+/* ---------------- fallback padrão (sem depender do custom) ---------------- */
+function buildFallbackSplit() {
+  const A = [
+    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+  ];
+  const B = [
+    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
+    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+  ];
+  const C = [
+    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
+    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
+    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
+    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
+    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+  ];
+  return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
+}
+
+/* ---------------- carga/progressão (localStorage) ---------------- */
+function loadLoads(email) {
+  return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
+}
+function saveLoads(email, obj) {
+  localStorage.setItem(`loads_${email}`, JSON.stringify(obj));
+}
+function keyForLoad(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
+
+/* ---------------- Page ---------------- */
+export default function Treino() {
   const nav = useNavigate();
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
-  const key = `custom_split_${email}`;
 
-  const existing = useMemo(() => safeJsonParse(localStorage.getItem(key), null), [key]);
+  // ✅ plano personalizado (exato)
+  const plan = useMemo(() => loadPersonalizedPlan(email, user), [email, user]);
 
-  const [days, setDays] = useState(() => clamp(Number(existing?.days || 3), 2, 6));
-  const [splitId, setSplitId] = useState(() => String(existing?.splitId || "Hipertrofia"));
+  // fallback padrão
+  const fallbackSplit = useMemo(() => buildFallbackSplit(), []);
 
-  const [dayGroups, setDayGroups] = useState(() => {
-    const arr = Array.isArray(existing?.dayGroups) ? existing.dayGroups : [];
-    const out = [];
-    for (let i = 0; i < clamp(Number(existing?.days || 3), 2, 6); i++) out.push(arr[i] || arr[i % arr.length] || "fullbody");
-    return out;
-  });
+  const base = plan?.base || fallbackSplit.base;
+  const split = plan?.split || fallbackSplit.split;
 
-  const [prescriptions, setPrescriptions] = useState(() => {
-    // {0:{sets,reps,rest}, 1:{...}}
-    return existing?.prescriptions && typeof existing.prescriptions === "object" ? existing.prescriptions : {};
-  });
+  const dayIndex = useMemo(() => calcDayIndex(email), [email]);
+  const [viewIdx, setViewIdx] = useState(dayIndex);
 
-  // ao mudar days, ajusta dayGroups sem perder o que já foi setado
-  function applyDays(nextDays) {
-    const d = clamp(Number(nextDays), 2, 6);
-    setDays(d);
+  const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
+  const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
-    setDayGroups((prev) => {
-      const out = [];
-      for (let i = 0; i < d; i++) out.push(prev[i] || prev[i % prev.length] || "fullbody");
-      return out;
-    });
+  // ✅ pega o treino do dia EXATO (sem adicionar nada)
+  const workout = useMemo(() => {
+    const list = split?.[viewSafe] || [];
+    return Array.isArray(list) ? list : [];
+  }, [split, viewSafe]);
+
+  const doneKey = `done_ex_${email}_${viewSafe}`;
+  const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
+  const [tapId, setTapId] = useState(null);
+
+  const [loads, setLoads] = useState(() => loadLoads(email));
+
+  function toggleDone(i) {
+    const next = { ...done, [i]: !done[i] };
+    setDone(next);
+    localStorage.setItem(doneKey, JSON.stringify(next));
+    setTapId(i);
+    setTimeout(() => setTapId(null), 160);
   }
 
-  function presetFor(id) {
-    return PRESETS.find((p) => p.id === id) || PRESETS[0];
+  function adjustLoad(exName, delta) {
+    const k = keyForLoad(viewSafe, exName);
+    const cur = Number(loads[k] || 0);
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
+    const next = { ...loads, [k]: nextVal };
+    setLoads(next);
+    saveLoads(email, next);
   }
 
-  function applyPresetToAll(presetId) {
-    setSplitId(presetId);
-    const p = presetFor(presetId);
+  // ✅ conclui treino: avança o dia do ciclo, salva histórico, limpa progresso
+  function finishWorkout() {
+    if (!viewingIsToday) return;
 
-    const next = {};
-    for (let i = 0; i < days; i++) next[i] = { sets: p.sets, reps: p.reps, rest: p.rest };
-    setPrescriptions(next);
+    bumpDayIndex(email, split.length);
+
+    localStorage.removeItem(doneKey);
+    setDone({});
+
+    const wkKey = `workout_${email}`;
+    const today = todayKey();
+    const raw = localStorage.getItem(wkKey);
+    const list = safeJsonParse(raw, []);
+    const arr = Array.isArray(list) ? list : [];
+    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
+
+    nav("/dashboard");
   }
 
-  function setDayGroup(i, gid) {
-    setDayGroups((prev) => {
-      const n = [...prev];
-      n[i] = gid;
-      return n;
-    });
+  // modo grátis: prévia do treino (metade, no mínimo 2)
+  const previewCount = Math.max(2, Math.ceil(workout.length / 2));
+  const previewList = workout.slice(0, previewCount);
+  const lockedList = workout.slice(previewCount);
+
+  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
+
+  function openExercises() {
+    nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
   }
 
-  function setDayPrescription(i, patch) {
-    setPrescriptions((prev) => {
-      const cur = prev[i] || presetFor(splitId);
-      return { ...prev, [i]: { ...cur, ...patch } };
-    });
-  }
-
-  function save() {
-    const normalizedDays = clamp(days, 2, 6);
-    const dg = [];
-    for (let i = 0; i < normalizedDays; i++) dg.push(dayGroups[i] || "fullbody");
-
-    // garante prescription por dia
-    const p = presetFor(splitId);
-    const pr = {};
-    for (let i = 0; i < normalizedDays; i++) {
-      const cur = prescriptions[i] || {};
-      pr[i] = {
-        sets: Number(cur.sets || p.sets),
-        reps: String(cur.reps || p.reps),
-        rest: String(cur.rest || p.rest),
-      };
-    }
-
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        splitId,
-        days: normalizedDays,
-        dayGroups: dg,
-        prescriptions: pr,
-      })
-    );
-
-    nav("/treino");
-  }
-
-  function clearCustom() {
-    localStorage.removeItem(key);
-    nav("/treino");
-  }
-
-  if (!paid) {
-    return (
-      <div style={S.page}>
-        <div style={S.card}>
-          <div style={S.title}>Personalização</div>
-          <div style={S.sub}>Assine para liberar personalização do treino.</div>
-          <button style={S.primary} onClick={() => nav("/planos")} type="button">
-            Ver planos
-          </button>
-          <button style={S.ghost} onClick={() => nav("/treino")} type="button">
-            Voltar
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const doneCount = Object.values(done).filter(Boolean).length;
+  const progressPct = workout.length ? clamp(doneCount / workout.length, 0, 1) : 0;
 
   return (
-    <div style={S.page}>
-      <div style={S.header}>
-        <button style={S.back} onClick={() => nav("/treino")} type="button">
-          ←
-        </button>
+    <div style={styles.page}>
+      {/* HEADER */}
+      <div style={styles.header}>
         <div>
-          <div style={S.kicker}>Treino</div>
-          <div style={S.hTitle}>Personalizar split</div>
-          <div style={S.hSub}>Isso altera o Treino e o TreinoDetalhe automaticamente.</div>
-        </div>
-      </div>
-
-      <div style={S.card}>
-        <div style={S.row}>
-          <div>
-            <div style={S.label}>Dias por semana</div>
-            <div style={S.help}>Entre 2 e 6.</div>
+          <div style={styles.headerKicker}>Seu treino</div>
+          <div style={styles.headerTitle}>
+            Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
           </div>
 
-          <select value={days} onChange={(e) => applyDays(e.target.value)} style={S.select}>
-            {[2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n} dias
-              </option>
-            ))}
-          </select>
+          <div style={styles.headerSub}>
+            {plan ? (
+              <>
+                Método: <b>{base.style}</b>
+              </>
+            ) : (
+              <>
+                Método: <b>{base.style}</b> • fallback
+              </>
+            )}
+          </div>
         </div>
 
-        <div style={{ height: 12 }} />
+        <button
+          style={styles.settingsBtn}
+          onClick={() => nav("/conta")}
+          aria-label="Conta e configurações"
+          type="button"
+          className="settings-press"
+        >
+          <GearIcon />
+        </button>
+      </div>
 
-        <div style={S.label}>Preset (aplica sets/reps/rest)</div>
-        <div style={S.grid2}>
-          {PRESETS.map((p) => {
-            const on = splitId === p.id;
+      {/* PRÓXIMOS DIAS */}
+      <div style={styles.stripWrap}>
+        <div style={styles.stripTitle}>Próximos dias</div>
+        <div style={styles.stripRow}>
+          {strip.map((d) => {
+            const isActive = d.idx === viewSafe;
             return (
               <button
-                key={p.id}
+                key={d.idx}
+                style={{
+                  ...styles.stripPill,
+                  ...(isActive ? styles.stripPillOn : styles.stripPillOff),
+                }}
                 type="button"
-                onClick={() => applyPresetToAll(p.id)}
-                style={{ ...S.preset, ...(on ? S.presetOn : S.presetOff) }}
+                onClick={() => {
+                  if (isActive) {
+                    openExercises();
+                    return;
+                  }
+                  setViewIdx(d.idx);
+                  const nextKey = `done_ex_${email}_${d.idx}`;
+                  setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
+                }}
               >
-                <div style={S.presetTitle}>{p.id}</div>
-                <div style={S.presetSub}>
-                  {p.sets} séries • {p.reps} • {p.rest}
-                </div>
+                {d.label}
+                {d.isToday ? " • hoje" : ""}
               </button>
             );
           })}
         </div>
       </div>
 
-      {Array.from({ length: days }).map((_, i) => {
-        const curGroup = dayGroups[i] || "fullbody";
-        const curPres = prescriptions[i] || presetFor(splitId);
-
-        return (
-          <div key={i} style={S.card}>
-            <div style={S.dayTitle}>Dia {i + 1}</div>
-
-            <div style={S.row}>
-              <div style={{ minWidth: 0 }}>
-                <div style={S.label}>Grupo muscular</div>
-                <div style={S.help}>Isso define os exercícios do dia.</div>
-              </div>
-
-              <select value={curGroup} onChange={(e) => setDayGroup(i, e.target.value)} style={S.select}>
-                {MUSCLE_GROUPS.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={S.grid3}>
-              <div>
-                <div style={S.label}>Séries</div>
-                <input
-                  value={curPres.sets}
-                  onChange={(e) => setDayPrescription(i, { sets: clamp(Number(e.target.value || 0), 1, 12) })}
-                  style={S.input}
-                  inputMode="numeric"
-                />
-              </div>
-
-              <div>
-                <div style={S.label}>Reps</div>
-                <input value={curPres.reps} onChange={(e) => setDayPrescription(i, { reps: e.target.value })} style={S.input} />
-              </div>
-
-              <div>
-                <div style={S.label}>Descanso</div>
-                <input value={curPres.rest} onChange={(e) => setDayPrescription(i, { rest: e.target.value })} style={S.input} />
-              </div>
+      {/* EXERCÍCIOS DO DIA */}
+      <button style={styles.bigGo} onClick={() => openExercises()} type="button">
+        <div style={styles.bigGoRow}>
+          <div style={{ minWidth: 0 }}>
+            <div style={styles.bigGoTop}>Exercícios do dia</div>
+            <div style={styles.bigGoSub}>
+              Abrir treino {dayLetter(viewSafe)} • {workout.length} exercícios
             </div>
           </div>
-        );
-      })}
 
-      <div style={{ height: 10 }} />
+          <div style={styles.bigGoIcon}>
+            <ArrowIcon />
+          </div>
+        </div>
 
-      <div style={S.actions}>
-        <button style={S.primary} onClick={save} type="button">
-          Salvar
-        </button>
-        <button style={S.ghost} onClick={clearCustom} type="button" title="Volta pro treino padrão">
-          Remover custom
-        </button>
+        <div style={styles.bubbles}>
+          <span style={styles.bubble}>{viewingIsToday ? "Hoje" : `Dia ${dayLetter(viewSafe)}`}</span>
+          <span style={styles.bubbleSoft}>
+            {doneCount}/{workout.length} feitos
+          </span>
+          <span style={styles.bubbleSoft}>Toque pra abrir</span>
+        </div>
+
+        <div style={styles.progressTrack}>
+          <div style={{ ...styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
+        </div>
+
+        <div style={styles.progressHint}>
+          Progresso do dia: <b>{Math.round(progressPct * 100)}%</b>
+        </div>
+      </button>
+
+      {/* METAS */}
+      <div style={styles.card}>
+        <div style={styles.cardTop}>
+          <div>
+            <div style={styles.cardTitle}>METAS</div>
+            <div style={styles.cardSub}>Pronto para conquistar seus objetivos?</div>
+          </div>
+          <button style={styles.cardBtn} onClick={() => nav("/metas")} type="button" className="apple-press">
+            Abrir
+          </button>
+        </div>
       </div>
 
-      <div style={{ height: 30 }} />
+      {/* CARDIO */}
+      <div style={styles.card}>
+        <div style={styles.cardTop}>
+          <div>
+            <div style={styles.cardTitle}>Hora do cardio</div>
+            <div style={styles.cardSub}>Acelere seus ganhos.</div>
+          </div>
+          <button style={styles.cardBtn} onClick={() => nav("/cardio")} type="button" className="apple-press">
+            Abrir
+          </button>
+        </div>
+      </div>
+
+      {/* RESUMO */}
+      <div style={styles.card}>
+        <div style={styles.summaryTitle}>Resumo</div>
+
+        <div style={styles.summaryLine}>
+          Exercícios hoje: <b>{workout.length}</b>
+        </div>
+
+        <div style={styles.summaryLine}>
+          Séries/Reps/Descanso (base do dia):{" "}
+          <b>
+            {(workout[0]?.sets ?? base.sets ?? 4) + " • " + (workout[0]?.reps ?? base.reps ?? "6–12") + " • " + (workout[0]?.rest ?? base.rest ?? "75–120s")}
+          </b>
+        </div>
+
+        {paid ? (
+          <>
+            <div style={styles.summaryActions}>
+              <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button" className="apple-press">
+                Personalizar
+              </button>
+
+              <button style={styles.cardBtnAlt} onClick={() => openExercises()} type="button" className="apple-press">
+                Abrir detalhes
+              </button>
+            </div>
+
+            {!viewingIsToday ? (
+              <div style={styles.viewHint}>
+                Você está visualizando <b>Treino {dayLetter(viewSafe)}</b>. Para concluir e avançar o ciclo, volte para{" "}
+                <b>Hoje</b>.
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div style={styles.lockHint}>
+            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
+          </div>
+        )}
+      </div>
+
+      {/* LISTA */}
+      <div style={styles.sectionTitle}>Lista do treino - Resumido</div>
+
+      <div style={styles.list}>
+        {previewList.map((ex, i) => {
+          const isDone = !!done[i];
+          const loadKey = keyForLoad(viewSafe, ex.name);
+          const curLoad = loads[loadKey] ?? 0;
+
+          return (
+            <div key={`${ex.name}_${i}`} style={styles.exCard}>
+              <div style={styles.exTop}>
+                <div style={styles.num}>{i + 1}</div>
+
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={styles.exName}>{ex.name}</div>
+                  <div style={styles.exNote}>
+                    {(ex.group || "—")} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
+                  </div>
+
+                  <div style={styles.loadRow}>
+                    <span style={styles.loadLabel}>Carga</span>
+
+                    <div style={styles.loadPill}>
+                      <button
+                        type="button"
+                        style={styles.loadBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          adjustLoad(ex.name, -2.5);
+                        }}
+                        aria-label="Diminuir carga"
+                        className="apple-press"
+                      >
+                        −
+                      </button>
+
+                      <div style={styles.loadValue}>
+                        <b>{Number(curLoad || 0).toFixed(1)}</b> kg
+                      </div>
+
+                      <button
+                        type="button"
+                        style={styles.loadBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          adjustLoad(ex.name, +2.5);
+                        }}
+                        aria-label="Aumentar carga"
+                        className="apple-press"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      style={styles.loadMini}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        adjustLoad(ex.name, +1);
+                      }}
+                      title="Ajuste fino"
+                      className="apple-press"
+                    >
+                      +1
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleDone(i)}
+                  aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
+                  style={{
+                    ...styles.checkBtn,
+                    ...(isDone ? styles.checkOn : styles.checkOff),
+                    transform: tapId === i ? "scale(0.92)" : "scale(1)",
+                  }}
+                  className="apple-press"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M20 7L10 17l-5-5"
+                      stroke={isDone ? "#111" : "#64748b"}
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* BLOQUEADO (modo grátis) */}
+      {!paid && lockedList.length > 0 ? (
+        <>
+          <div style={styles.lockTitle}>Parte do treino bloqueada</div>
+
+          <div style={styles.lockWrap}>
+            {lockedList.map((ex, j) => (
+              <div key={`l_${ex.name}_${j}`} style={styles.exCard}>
+                <div style={styles.exTop}>
+                  <div style={styles.numMuted}>{previewCount + j + 1}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={styles.exName}>{ex.name}</div>
+                    <div style={styles.exNote}>{ex.group || "—"} • + dicas e execução</div>
+                  </div>
+                  <div style={styles.checkGhost} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button style={styles.fab} onClick={() => nav("/planos")} type="button" className="apple-press">
+            <span style={styles.fabIcon} aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12h12" stroke="#111" strokeWidth="2.6" strokeLinecap="round" />
+                <path d="M13 6l6 6-6 6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span style={styles.fabText}>Começar agora</span>
+          </button>
+        </>
+      ) : null}
+
+      {/* CONCLUIR TREINO (premium) */}
+      {paid ? (
+        <button
+          type="button"
+          style={{
+            ...styles.finishFab,
+            opacity: viewingIsToday ? 1 : 0.55,
+            pointerEvents: viewingIsToday ? "auto" : "none",
+          }}
+          onClick={finishWorkout}
+          disabled={!viewingIsToday}
+          title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
+          className="apple-press"
+        >
+          <span style={styles.finishFabIcon} aria-hidden="true">
+            <CheckRingIcon />
+          </span>
+          <span style={styles.finishFabText}>Concluir treino</span>
+          <span style={styles.finishFabArrow} aria-hidden="true">
+            <ArrowMiniIcon />
+          </span>
+        </button>
+      ) : null}
+
+      <div style={{ height: 140 }} />
     </div>
   );
 }
 
-const S = {
-  page: { padding: 18, background: BG, minHeight: "100vh" },
+/* ---------- icons ---------- */
+function GearIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 15.6a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Z"
+        stroke="white"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.95"
+      />
+      <path
+        d="M19.8 12.8c.05-.27.07-.54.07-.8s-.02-.53-.07-.8l1.78-1.32a.7.7 0 0 0 .18-.9l-1.55-2.68a.7.7 0 0 0-.85-.3l-2.08.84c-.43-.34-.9-.62-1.4-.83l-.33-2.2a.7.7 0 0 0-.69-.58h-3.1a.7.7 0 0 0-.69.58l-.33 2.2c-.5.21-.97.49-1.4.83l-2.08-.84a.7.7 0 0 0-.85.3L2.3 8.96a.7.7 0 0 0 .18.9l1.78 1.32c-.05.27-.07.54-.07.8s.02.53.07.8L2.48 14.1a.7.7 0 0 0-.18.9l1.55 2.68c.18.3.55.42.85.3l2.08-.84c.43.34.9.62 1.4.83l.33 2.2c.05.34.35.58.69.58h3.1c.34 0 .64-.24.69-.58l.33-2.2c.5-.21.97-.49 1.4-.83l2.08.84c.3.12.67 0 .85-.3l1.55-2.68a.7.7 0 0 0-.18-.9l-1.78-1.32Z"
+        stroke="white"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+        opacity="0.92"
+      />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 18l6-6-6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ArrowMiniIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M10 17l5-5-5-5" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckRingIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="#111" strokeWidth="2.2" strokeOpacity="0.9" />
+      <path d="M7.5 12.3l2.8 2.9L16.8 9" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ---------------- styles ---------------- */
+const styles = {
+  page: { padding: 18, paddingBottom: 190, background: BG },
 
   header: {
     borderRadius: 24,
     padding: 16,
-    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,255,255,.95))",
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
+    background: "linear-gradient(135deg, rgba(255,106,0,.92), rgba(255,106,0,.62))",
+    color: "#fff",
+    boxShadow: "0 18px 55px rgba(15,23,42,.14)",
     display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: 12,
-    alignItems: "center",
   },
-  back: {
+  headerKicker: { fontSize: 12, fontWeight: 900, opacity: 0.95 },
+  headerTitle: { marginTop: 6, fontSize: 24, fontWeight: 950, letterSpacing: -0.6, lineHeight: 1.05 },
+  headerSub: { marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.96, lineHeight: 1.3 },
+
+  settingsBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,.28)",
+    background: "rgba(255,255,255,.18)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 18px 46px rgba(0,0,0,.14)",
+    transition: "transform .14s ease, background .14s ease, border-color .14s ease",
+    flexShrink: 0,
+  },
+
+  stripWrap: { marginTop: 12 },
+  stripTitle: { fontSize: 12, fontWeight: 900, color: MUTED, marginBottom: 8 },
+  stripRow: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
+  stripPill: {
+    border: "none",
+    padding: "10px 12px",
+    borderRadius: 999,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+    transition: "transform .12s ease",
+  },
+  stripPillOn: { background: "rgba(255,106,0,.16)", color: TEXT, border: "1px solid rgba(255,106,0,.22)" },
+  stripPillOff: { background: "rgba(15,23,42,.04)", color: "#334155", border: "1px solid rgba(15,23,42,.06)" },
+
+  bigGo: {
+    marginTop: 12,
+    width: "100%",
+    borderRadius: 26,
+    padding: 18,
+    border: "none",
+    textAlign: "left",
+    background: "linear-gradient(135deg, rgba(255,106,0,.18), rgba(255,255,255,.95))",
+    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
+    borderLeft: "1px solid rgba(255,106,0,.22)",
+    borderTop: "1px solid rgba(15,23,42,.06)",
+    position: "relative",
+    transition: "transform .12s ease",
+    animation: "softFloat 3.6s ease-in-out infinite",
+  },
+  bigGoRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  bigGoTop: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
+  bigGoSub: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+  bigGoIcon: {
     width: 44,
     height: 44,
     borderRadius: 16,
-    border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.92)",
-    fontWeight: 950,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 14px 34px rgba(255,106,0,.22)",
+    flexShrink: 0,
   },
-  kicker: { fontSize: 11, fontWeight: 900, color: MUTED, textTransform: "uppercase", letterSpacing: 0.8 },
-  hTitle: { marginTop: 6, fontSize: 20, fontWeight: 950, color: TEXT, letterSpacing: -0.6 },
-  hSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  bubbles: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" },
+  bubble: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.18)",
+    border: "1px solid rgba(255,106,0,.22)",
+    fontWeight: 950,
+    fontSize: 12,
+    color: TEXT,
+  },
+  bubbleSoft: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(15,23,42,.04)",
+    border: "1px solid rgba(15,23,42,.06)",
+    fontWeight: 900,
+    fontSize: 12,
+    color: "#334155",
+  },
+
+  progressTrack: {
+    marginTop: 12,
+    height: 10,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.08)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
+    transition: "width .25s ease",
+    boxShadow: "0 10px 24px rgba(255,106,0,.18)",
+  },
+  progressHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
   card: {
-    marginTop: 12,
+    marginTop: 14,
     borderRadius: 24,
     padding: 16,
     background: "#fff",
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
   },
+  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  cardTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  cardSub: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.4 },
 
-  title: { fontSize: 18, fontWeight: 950, color: TEXT },
-  sub: { marginTop: 6, fontSize: 13, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-
-  dayTitle: { fontSize: 14, fontWeight: 950, color: TEXT, marginBottom: 10 },
-
-  row: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" },
-  label: { fontSize: 12, fontWeight: 900, color: MUTED },
-  help: { marginTop: 4, fontSize: 12, fontWeight: 800, color: "#475569" },
-
-  select: {
-    padding: "12px 12px",
+  cardBtn: {
+    padding: "12px 14px",
     borderRadius: 16,
-    border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.98)",
-    fontWeight: 900,
+    border: "1px solid rgba(255,106,0,.28)",
+    background: "rgba(255,106,0,.10)",
     color: TEXT,
-    minWidth: 150,
+    fontWeight: 950,
   },
-  input: {
-    width: "100%",
-    marginTop: 6,
-    padding: "12px 12px",
-    borderRadius: 16,
-    border: `1px solid ${BORDER}`,
-    fontWeight: 900,
-    color: TEXT,
-    outline: "none",
-    background: "rgba(255,255,255,.98)",
-  },
-
-  grid2: { marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 },
-  preset: { borderRadius: 18, padding: 12, border: `1px solid ${BORDER}`, textAlign: "left" },
-  presetOn: { background: "rgba(255,106,0,.14)", border: "1px solid rgba(255,106,0,.28)" },
-  presetOff: { background: "rgba(15,23,42,.03)" },
-  presetTitle: { fontSize: 13, fontWeight: 950, color: TEXT },
-  presetSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-
-  grid3: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 },
-
-  actions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  primary: {
+  cardBtnAlt: {
     padding: 14,
-    borderRadius: 20,
+    borderRadius: 18,
+    border: "1px solid rgba(255,106,0,.28)",
+    background: "rgba(255,106,0,.10)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+
+  summaryTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
+  summaryLine: { marginTop: 8, fontSize: 13, fontWeight: 850, color: MUTED },
+  summaryActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+
+  customBtn: {
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "#fff",
+    color: TEXT,
+    fontWeight: 950,
+  },
+
+  viewHint: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 18,
+    background: "rgba(15,23,42,.03)",
+    border: "1px solid rgba(15,23,42,.06)",
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+  },
+
+  lockHint: {
+    marginTop: 12,
+    padding: "12px 12px",
+    borderRadius: 18,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.18)",
+    color: TEXT,
+    fontWeight: 850,
+    fontSize: 12,
+    lineHeight: 1.35,
+  },
+
+  sectionTitle: { marginTop: 16, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.6 },
+  list: { marginTop: 12, display: "grid", gap: 12 },
+
+  exCard: {
+    borderRadius: 22,
+    padding: 14,
+    background: "#fff",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
+  },
+  exTop: { display: "flex", gap: 12, alignItems: "flex-start" },
+
+  num: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, rgba(255,106,0,.95), rgba(255,106,0,.60))",
+    color: "#fff",
+    fontWeight: 950,
+    fontSize: 15,
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  numMuted: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(15,23,42,.06)",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 15,
+    flexShrink: 0,
+  },
+
+  exName: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
+  exNote: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
+
+  loadRow: { marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  loadLabel: { fontSize: 12, fontWeight: 950, color: MUTED },
+  loadPill: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(15,23,42,.04)",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  loadBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
     border: "none",
+    background: "rgba(255,106,0,.18)",
+    fontWeight: 950,
+    color: TEXT,
+  },
+  loadValue: { minWidth: 96, textAlign: "center", fontSize: 12, fontWeight: 900, color: TEXT },
+  loadMini: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,106,0,.25)",
+    background: "rgba(255,106,0,.10)",
+    fontWeight: 950,
+    color: TEXT,
+  },
+
+  checkBtn: {
+    marginLeft: "auto",
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    border: "none",
+    display: "grid",
+    placeItems: "center",
+    transition: "transform .12s ease, box-shadow .12s ease, background .12s ease",
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  checkOn: { background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", boxShadow: "0 14px 34px rgba(255,106,0,.22)" },
+  checkOff: { background: "rgba(15,23,42,.06)", boxShadow: "none" },
+  checkGhost: { marginLeft: "auto", width: 44, height: 44, borderRadius: 16, background: "rgba(15,23,42,.06)" },
+
+  lockTitle: { marginTop: 14, fontSize: 14, fontWeight: 950, color: TEXT },
+  lockWrap: { marginTop: 10, filter: "blur(2.8px)", opacity: 0.65, pointerEvents: "none", display: "grid", gap: 12 },
+
+  fab: {
+    position: "fixed",
+    left: "50%",
+    transform: "translateX(-50%)",
+    bottom: 160,
+    zIndex: 999,
+    minHeight: 56,
+    padding: "14px 18px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.35)",
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     color: "#111",
     fontWeight: 950,
-    boxShadow: "0 18px 55px rgba(255,106,0,.22)",
+    letterSpacing: -0.2,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    boxShadow: "0 22px 70px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.28)",
+    animation: "pulseGlow 1.8s ease-in-out infinite",
+    willChange: "transform",
   },
-  ghost: {
-    padding: 14,
-    borderRadius: 20,
-    border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
+  fabIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    flexShrink: 0,
+    background: "rgba(255,255,255,.88)",
+    border: "1px solid rgba(255,255,255,.55)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
+  },
+  fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
+
+  finishFab: {
+    position: "fixed",
+    left: "50%",
+    bottom: "calc(112px + env(safe-area-inset-bottom))",
+    transform: "translateX(-50%)",
+    zIndex: 1100,
+    minHeight: 58,
+    padding: "14px 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.40)",
+    background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
+    color: "#111",
     fontWeight: 950,
+    letterSpacing: -0.2,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    boxShadow: "0 26px 90px rgba(255,106,0,.38), inset 0 1px 0 rgba(255,255,255,.30)",
+    animation: "finishFloat 3.2s ease-in-out infinite",
+    willChange: "transform",
+  },
+  finishFabIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    flexShrink: 0,
+    background: "rgba(255,255,255,.90)",
+    border: "1px solid rgba(255,255,255,.60)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 14px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.55)",
+  },
+  finishFabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
+  finishFabArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,255,255,.32)",
+    border: "1px solid rgba(255,255,255,.35)",
   },
 };
+
+// animações CSS inline
+if (typeof document !== "undefined") {
+  const id = "fitdeal-treino-keyframes";
+  if (!document.getElementById(id)) {
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes pulseGlow {
+        0%, 100% { transform: translateX(-50%) scale(1); }
+        50% { transform: translateX(-50%) scale(1.03); }
+      }
+      @keyframes softFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-2px); }
+      }
+      @keyframes finishFloat {
+        0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
+        50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
+      }
+      .apple-press:active { transform: translateY(1px) scale(.98); }
+      .settings-press:active { transform: translateY(1px) scale(.97); }
+    `;
+    document.head.appendChild(style);
+  }
+}
