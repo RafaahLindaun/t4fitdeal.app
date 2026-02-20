@@ -121,11 +121,15 @@ function fmtMMSS(sec) {
   const ss = String(r).padStart(2, "0");
   return `${mm}:${ss}`;
 }
-/* ---------------- banco (MESMO do Treino) ---------------- */
+/* ---------------- banco (COMPLETO do TreinoPersonalize) ---------------- */
+/**
+ * ✅ Cole este bloco no TreinoDetalhe.jsx substituindo o “banco” atual.
+ * Não altera nada do resto do arquivo.
+ */
 
 /**
- * ✅ Catálogo completo (copiado do TreinoPersonalize.jsx)
- * (não altera nada do resto — só adiciona opções de exercícios)
+ * ✅ Catálogo grande (20+ por “membro muscular” / foco)
+ * (mesmo do TreinoPersonalize.jsx)
  */
 const EXERCISE_CATALOG = {
   peito: [
@@ -390,42 +394,51 @@ const EXERCISE_CATALOG = {
   ],
 };
 
+/* ---------------- banco (MESMO do TreinoPersonalize) ---------------- */
 const MUSCLE_GROUPS = [
   {
     id: "peito_triceps",
     name: "Peito + Tríceps",
-    muscles: ["Peito", "Tríceps"],
+    muscles: ["Peito", "Tríceps", "Ombro ant."],
     library: [
+      // ✅ base (já existia)
       { name: "Supino reto", group: "Peito" },
       { name: "Supino inclinado", group: "Peito" },
       { name: "Crucifixo / Peck-deck", group: "Peito" },
       { name: "Crossover", group: "Peito" },
-      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
       { name: "Tríceps corda", group: "Tríceps" },
       { name: "Tríceps francês", group: "Tríceps" },
 
-      // ✅ ADICIONADOS (Peito + Tríceps + Ombro)
+      // ✅ + todos os exercícios do catalog (Peito)
       ...EXERCISE_CATALOG.peito.map((name) => ({ name, group: "Peito" })),
+
+      // ✅ + todos os exercícios do catalog (Tríceps)
       ...EXERCISE_CATALOG.triceps.map((name) => ({ name, group: "Tríceps" })),
+
+      // ✅ + todos os exercícios do catalog (Ombro)
       ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
     ],
   },
   {
     id: "costas_biceps",
     name: "Costas + Bíceps",
-    muscles: ["Costas", "Bíceps"],
+    muscles: ["Costas", "Bíceps", "Ombro post."],
     library: [
+      // ✅ base (já existia)
       { name: "Puxada (barra/puxador)", group: "Costas" },
       { name: "Remada (máquina/curvada)", group: "Costas" },
       { name: "Remada unilateral", group: "Costas" },
-      { name: "Pulldown braço reto", group: "Costas" },
       { name: "Face pull", group: "Ombro/escápulas" },
       { name: "Rosca direta", group: "Bíceps" },
       { name: "Rosca martelo", group: "Bíceps" },
 
-      // ✅ ADICIONADOS (Costas + Bíceps + Ombro)
+      // ✅ + todos os exercícios do catalog (Costas)
       ...EXERCISE_CATALOG.costas.map((name) => ({ name, group: "Costas" })),
+
+      // ✅ + todos os exercícios do catalog (Bíceps)
       ...EXERCISE_CATALOG.biceps.map((name) => ({ name, group: "Bíceps" })),
+
+      // ✅ + todos os exercícios do catalog (Ombro)
       ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
     ],
   },
@@ -434,6 +447,7 @@ const MUSCLE_GROUPS = [
     name: "Pernas (Quad + geral)",
     muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
     library: [
+      // ✅ base (já existia)
       { name: "Agachamento", group: "Pernas" },
       { name: "Leg press", group: "Pernas" },
       { name: "Cadeira extensora", group: "Quadríceps" },
@@ -441,10 +455,16 @@ const MUSCLE_GROUPS = [
       { name: "Panturrilha", group: "Panturrilha" },
       { name: "Core (prancha)", group: "Core" },
 
-      // ✅ ADICIONADOS (Quadríceps + Glúteo + Panturrilha + Core)
+      // ✅ + todos os exercícios do catalog (Quadríceps)
       ...EXERCISE_CATALOG.quadriceps.map((name) => ({ name, group: "Quadríceps" })),
+
+      // ✅ + todos os exercícios do catalog (Glúteo)
       ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
+
+      // ✅ + todos os exercícios do catalog (Panturrilha)
       ...EXERCISE_CATALOG.panturrilha.map((name) => ({ name, group: "Panturrilha" })),
+
+      // ✅ + todos os exercícios do catalog (Core)
       ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
     ],
   },
@@ -453,6 +473,7 @@ const MUSCLE_GROUPS = [
     name: "Posterior + Glúteo",
     muscles: ["Posterior", "Glúteos", "Core"],
     library: [
+      // ✅ base (já existia)
       { name: "Terra romeno", group: "Posterior" },
       { name: "Mesa flexora", group: "Posterior" },
       { name: "Hip thrust", group: "Glúteo" },
@@ -460,34 +481,42 @@ const MUSCLE_GROUPS = [
       { name: "Passada (foco glúteo)", group: "Glúteo" },
       { name: "Core (dead bug)", group: "Core" },
 
-      // ✅ ADICIONADOS (Posterior + Glúteo + Core)
+      // ✅ + todos os exercícios do catalog (Posterior)
       ...EXERCISE_CATALOG.posterior.map((name) => ({ name, group: "Posterior" })),
+
+      // ✅ + todos os exercícios do catalog (Glúteo)
       ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
+
+      // ✅ + todos os exercícios do catalog (Core)
       ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
     ],
   },
   {
     id: "ombro_core",
     name: "Ombro + Core",
-    muscles: ["Ombros", "Core"],
+    muscles: ["Ombros", "Trapézio", "Core"],
     library: [
+      // ✅ base (já existia)
       { name: "Desenvolvimento", group: "Ombros" },
       { name: "Elevação lateral", group: "Ombros" },
-      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
+      { name: "Posterior (reverse)", group: "Ombro posterior" },
       { name: "Encolhimento", group: "Trapézio" },
       { name: "Pallof press", group: "Core" },
       { name: "Abdominal", group: "Core" },
 
-      // ✅ ADICIONADOS (Ombro + Core)
+      // ✅ + todos os exercícios do catalog (Ombro)
       ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
+
+      // ✅ + todos os exercícios do catalog (Core)
       ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
     ],
   },
   {
     id: "fullbody",
-    name: "Full body (saúde / base)",
+    name: "Full body (seguro / saúde)",
     muscles: ["Corpo todo"],
     library: [
+      // ✅ base (já existia)
       { name: "Agachamento (leve)", group: "Pernas" },
       { name: "Supino (leve)", group: "Peito" },
       { name: "Remada (leve)", group: "Costas" },
@@ -495,44 +524,20 @@ const MUSCLE_GROUPS = [
       { name: "Posterior (leve)", group: "Posterior" },
       { name: "Core (prancha)", group: "Core" },
 
-      // ✅ ADICIONADOS (tudo do catálogo)
+      // ✅ + tudo de todo mundo
       ...EXERCISE_CATALOG.quadriceps.map((name) => ({ name, group: "Quadríceps" })),
-      ...EXERCISE_CATALOG.posterior.map((name) => ({ name, group: "Posterior" })),
-      ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
-      ...EXERCISE_CATALOG.panturrilha.map((name) => ({ name, group: "Panturrilha" })),
       ...EXERCISE_CATALOG.peito.map((name) => ({ name, group: "Peito" })),
       ...EXERCISE_CATALOG.costas.map((name) => ({ name, group: "Costas" })),
       ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
+      ...EXERCISE_CATALOG.posterior.map((name) => ({ name, group: "Posterior" })),
+      ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
+      ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
+      ...EXERCISE_CATALOG.panturrilha.map((name) => ({ name, group: "Panturrilha" })),
       ...EXERCISE_CATALOG.biceps.map((name) => ({ name, group: "Bíceps" })),
       ...EXERCISE_CATALOG.triceps.map((name) => ({ name, group: "Tríceps" })),
-      ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
     ],
   },
 ];
-
-function groupById(id) {
-  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
-}
-
-/** garante volume */
-function ensureVolume(list, minCount = 7) {
-  const base = Array.isArray(list) ? [...list] : [];
-  if (base.length >= minCount) return base;
-
-  const extras = [
-    { name: "Aquecimento (5–8min)", group: "Preparação" },
-    { name: "Alongamento curto", group: "Mobilidade" },
-    { name: "Core (prancha)", group: "Core" },
-    { name: "Elevação lateral (leve)", group: "Ombros" },
-    { name: "Rosca direta (leve)", group: "Bíceps" },
-    { name: "Tríceps corda (leve)", group: "Tríceps" },
-    { name: "Panturrilha", group: "Panturrilha" },
-  ];
-
-  let i = 0;
-  while (base.length < minCount && i < extras.length) base.push(extras[i++]);
-  return base;
-}
 
 function buildCustomPlan(email) {
   const raw = localStorage.getItem(`custom_split_${email}`);
@@ -1761,5 +1766,6 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
 
 
