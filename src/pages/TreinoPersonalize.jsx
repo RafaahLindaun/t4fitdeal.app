@@ -1,301 +1,139 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+
+// ✅ COLE EM: src/pages/TreinoDetalhe.jsx
+// + Controle de séries (bolinhas 1/4) por exercício
+// + Ao marcar série: inicia descanso automaticamente
+// + Cronômetro vira “balão/mini botão” (dock) e abre ao clicar ou arrastar pra cima
+// + O cronômetro pode ficar fechado (opcional), estilo “adicional”
+//
+// ✅ GIFs:
+// /public/gifs/<slug>.gif  (slug automático)
+// ex: "Supino reto" -> /public/gifs/supino-reto.gif
+
+import { useMemo, useRef, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+/* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
-const ORANGE_SOFT = "rgba(255,106,0,.12)";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
+const INK = "rgba(15,23,42,.86)";
+const BORDER = "rgba(15,23,42,.08)";
+const SOFT = "rgba(15,23,42,.04)";
 
-const SPLITS = [
-  { id: "AB", days: 2, label: "AB (2 dias)" },
-  { id: "ABC", days: 3, label: "ABC (3 dias)" },
-  { id: "ABCD", days: 4, label: "ABCD (4 dias)" },
-  { id: "ABCDE", days: 5, label: "ABCDE (5 dias)" },
-  { id: "ABCDEF", days: 6, label: "ABCDEF (6 dias)" },
-];
+/* ---------------- helpers ---------------- */
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
+}
+function mod(n, m) {
+  if (!m) return 0;
+  return ((n % m) + m) % m;
+}
+function safeJsonParse(raw, fallback) {
+  try {
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function calcDayIndex(email) {
+  const key = `treino_day_${email}`;
+  const raw = localStorage.getItem(key);
+  const n = raw ? Number(raw) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+function dayLetter(i) {
+  const letters = ["A", "B", "C", "D", "E", "F"];
+  return letters[i % letters.length] || "A";
+}
 
-/**
- * ✅ Catálogo grande (20+ por “membro muscular” / foco)
- * Você pode expandir quando quiser — a UI já aguenta.
- */
-const EXERCISE_CATALOG = {
-  peito: [
-    "Supino reto com barra",
-    "Supino reto com halteres",
-    "Supino inclinado com barra",
-    "Supino inclinado com halteres",
-    "Supino declinado",
-    "Supino máquina",
-    "Supino inclinado máquina",
-    "Crucifixo reto com halteres",
-    "Crucifixo inclinado com halteres",
-    "Peck-deck",
-    "Crossover na polia (alto)",
-    "Crossover na polia (médio)",
-    "Crossover na polia (baixo)",
-    "Flexão de braço tradicional",
-    "Flexão inclinada (banco)",
-    "Flexão declinada (pé elevado)",
-    "Flexão com pegada fechada",
-    "Pullover com halter",
-    "Pullover na polia",
-    "Squeeze press (halter)",
-    "Supino com pausa (controle)",
-    "Chest press unilateral",
-    "Crossover unilateral",
-    "Isometria de peitoral na polia",
-  ],
-  triceps: [
-    "Tríceps corda",
-    "Tríceps barra reta",
-    "Tríceps barra V",
-    "Tríceps francês (halter)",
-    "Tríceps francês unilateral",
-    "Tríceps testa (barra W)",
-    "Tríceps testa (halter)",
-    "Tríceps banco (mergulho)",
-    "Mergulho nas paralelas (assistido)",
-    "Mergulho nas paralelas (livre)",
-    "Tríceps coice (halter)",
-    "Tríceps na polia acima da cabeça (corda)",
-    "Tríceps na polia acima da cabeça (barra)",
-    "Skull crusher no banco inclinado",
-    "Supino fechado (barra)",
-    "Supino fechado (halter)",
-    "Tríceps no cross unilateral",
-    "Extensão de tríceps no cabo sentado",
-    "Extensão de tríceps com elástico",
-    "Kickback no cabo",
-    "Diamond push-up (flexão diamante)",
-    "Tríceps máquina (press)",
-    "Tríceps com pegada reversa no cabo",
-    "Extensão de tríceps na polia deitado",
-  ],
-  costas: [
-    "Puxada frente (puxador)",
-    "Puxada neutra (triângulo)",
-    "Puxada supinada",
-    "Puxada unilateral no cabo",
-    "Barra fixa pronada",
-    "Barra fixa supinada",
-    "Remada baixa no cabo",
-    "Remada baixa neutra",
-    "Remada unilateral com halter",
-    "Remada curvada com barra",
-    "Remada curvada com halteres",
-    "Remada máquina (hammer)",
-    "Remada articulada (serrote máquina)",
-    "Remada cavalinho (T-bar)",
-    "Pulldown braço reto",
-    "Pullover na polia (costas)",
-    "Remada alta no cabo",
-    "Encolhimento (pegada aberta) para trapézio",
-    "Face pull (escápulas/postura)",
-    "Remada no smith",
-    "Remada no banco inclinado (halter)",
-    "Good morning leve (técnica/postura)",
-    "Hiperextensão lombar",
-    "Pull-up assistido",
-  ],
-  biceps: [
-    "Rosca direta (barra)",
-    "Rosca direta (barra W)",
-    "Rosca alternada (halter)",
-    "Rosca martelo (halter)",
-    "Rosca martelo cruzada",
-    "Rosca concentrada",
-    "Rosca Scott (barra)",
-    "Rosca Scott (halter)",
-    "Rosca Scott (máquina)",
-    "Rosca na polia (barra)",
-    "Rosca na polia (corda)",
-    "Rosca 21",
-    "Rosca inclinada (halter)",
-    "Rosca spider",
-    "Rosca reversa (barra)",
-    "Rosca reversa (halter)",
-    "Rosca Zottman",
-    "Rosca no cabo unilateral",
-    "Rosca bayesian (cabo atrás)",
-    "Rosca em pé com elástico",
-    "Chin-up (barra supinada)",
-    "Rosca no banco inclinado unilateral",
-    "Rosca martelo no cabo",
-    "Isometria de bíceps (90 graus)",
-  ],
-  quadriceps: [
-    "Agachamento livre",
-    "Agachamento no smith",
-    "Agachamento frontal",
-    "Agachamento goblet",
-    "Leg press 45°",
-    "Leg press horizontal",
-    "Hack squat",
-    "Cadeira extensora",
-    "Passada caminhando",
-    "Afundo no smith",
-    "Afundo com halteres",
-    "Bulgarian split squat",
-    "Step-up (banco)",
-    "Agachamento sumô leve",
-    "Sissy squat (controle)",
-    "Agachamento com pausa",
-    "Leg press (pés baixos)",
-    "Agachamento na caixa",
-    "Cadeira abdutora (apoio de quadril)",
-    "Cadeira adutora",
-    "Lunge reverso",
-    "Agachamento no TRX (iniciante)",
-    "Wall sit (isometria)",
-    "Extensora unilateral",
-  ],
-  posterior: [
-    "Terra romeno (barra)",
-    "Stiff com halteres",
-    "Mesa flexora",
-    "Cadeira flexora",
-    "Flexora unilateral",
-    "Levantamento terra (técnica)",
-    "Good morning (leve)",
-    "Hiperextensão",
-    "Nordic curl (assistido)",
-    "Ponte de posterior no solo",
-    "Pull-through no cabo",
-    "Deadlift romeno unilateral",
-    "Swing com kettlebell (leve)",
-    "Flexão de joelho no cabo (unilateral)",
-    "Glute ham raise (assistido)",
-    "Stiff no smith",
-    "Terra romeno no cabo",
-    "Hiperextensão com foco glúteo/posterior",
-    "Flexora sentada",
-    "Curl de posterior com elástico",
-    "Isometria de posterior (ponte)",
-    "RDL com pausa",
-    "Mesa flexora com drop-set (avançado)",
-    "Flexora 1.5 reps",
-  ],
-  gluteo: [
-    "Hip thrust (barra)",
-    "Hip thrust (máquina)",
-    "Glute bridge",
-    "Glute bridge unilateral",
-    "Abdução na máquina",
-    "Abdução no cabo (unilateral)",
-    "Passada (foco glúteo)",
-    "Bulgarian (foco glúteo)",
-    "Agachamento sumô",
-    "Pull-through no cabo",
-    "Kickback no cabo",
-    "Kickback na máquina",
-    "Step-up alto (glúteo)",
-    "Extensão de quadril no banco",
-    "Levantamento terra romeno (ênfase glúteo)",
-    "Agachamento no smith (pés à frente)",
-    "Elevação pélvica com pausa",
-    "Lunge reverso longo",
-    "Abdução com elástico",
-    "Caminhada lateral com elástico",
-    "Frog pumps",
-    "Hip thrust unilateral (halter)",
-    "Kickback com elástico",
-    "Isometria glúteo (ponte 30–60s)",
-  ],
-  panturrilha: [
-    "Panturrilha em pé na máquina",
-    "Panturrilha sentado",
-    "Panturrilha no leg press",
-    "Panturrilha unilateral em pé",
-    "Panturrilha unilateral sentado",
-    "Panturrilha no smith",
-    "Panturrilha com halter (em degrau)",
-    "Panturrilha no hack squat",
-    "Panturrilha no step (peso corpo)",
-    "Panturrilha com pausa em alongamento",
-    "Panturrilha com pausa no pico",
-    "Panturrilha isométrica (pico)",
-    "Panturrilha no leg press unilateral",
-    "Panturrilha no banco (improvisado)",
-    "Panturrilha com elástico",
-    "Panturrilha em pé com barra",
-    "Panturrilha 1.5 reps",
-    "Panturrilha sentado 1.5 reps",
-    "Panturrilha dropset (avançado)",
-    "Panturrilha em tempo (3-1-2)",
-    "Panturrilha com amplitude máxima",
-    "Panturrilha na máquina inclinada",
-    "Panturrilha no step com carga",
-    "Panturrilha no smith unilateral",
-  ],
-  ombro: [
-    "Desenvolvimento com halteres",
-    "Desenvolvimento com barra",
-    "Desenvolvimento máquina",
-    "Arnold press",
-    "Elevação lateral",
-    "Elevação lateral no cabo",
-    "Elevação lateral sentado",
-    "Elevação frontal (halter)",
-    "Elevação frontal (barra)",
-    "Elevação frontal no cabo",
-    "Reverse fly (posterior)",
-    "Reverse fly na máquina",
-    "Face pull",
-    "Remada alta (barra leve)",
-    "Remada alta no cabo",
-    "Crucifixo inverso no cabo",
-    "Landmine press",
-    "Desenvolvimento unilateral no cabo",
-    "Y-raise (leve)",
-    "W-raise (postura)",
-    "Trap 3 raise",
-    "Isometria lateral (30s)",
-    "Desenvolvimento com pausa",
-    "Elevação lateral 1.5 reps",
-  ],
-  core: [
-    "Prancha",
-    "Prancha lateral",
-    "Dead bug",
-    "Hollow hold",
-    "Abdominal infra (elevação de pernas)",
-    "Abdominal infra (banco)",
-    "Abdominal na polia",
-    "Crunch",
-    "Crunch na bola",
-    "Bicicleta no solo",
-    "Russian twist",
-    "Pallof press",
-    "Woodchopper (cabo)",
-    "Mountain climber (controlado)",
-    "Bird dog",
-    "Plank com toque no ombro",
-    "Prancha com elevação de perna",
-    "Farmer carry (core)",
-    "Suitcase carry (core)",
-    "V-up (avançado)",
-    "Toe touches",
-    "Rollout (ab wheel)",
-    "Abdominal máquina",
-    "Isometria anti-rotação (cabo)",
-  ],
-};
+function stripAccents(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+function slugifyExercise(name) {
+  const base = stripAccents(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s/g, "-");
+  return base || "exercicio";
+}
+function gifForExercise(name) {
+  const slug = slugifyExercise(name);
+  return `/gifs/${slug}.GIF`;
+}
+function gifCandidates(name) {
+  const slug = slugifyExercise(name);
+  return [`/gifs/${slug}.GIF`, `/gifs/${slug}.gif`];
+}
 
+function ExerciseGif({ name }) {
+  const [idx, setIdx] = useState(0);
+  const sources = useMemo(() => gifCandidates(name), [name]);
+  const src = sources[idx] || sources[0];
+
+  return (
+    <img
+      src={src}
+      alt={`${name} (gif)`}
+      style={S.gif}
+      onError={(e) => {
+        if (idx < sources.length - 1) {
+          setIdx((p) => p + 1);
+          return;
+        }
+        e.currentTarget.style.display = "none";
+        const parent = e.currentTarget.parentElement;
+        if (parent) parent.setAttribute("data-gif-missing", "1");
+      }}
+    />
+  );
+}
+/** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
+function parseRestToSeconds(restText) {
+  const raw = String(restText || "").toLowerCase().trim();
+  if (!raw) return 90;
+
+  const minMatch = raw.match(/(\d+)\s*min/);
+  if (minMatch) return clamp(Number(minMatch[1]) * 60, 15, 600);
+
+  const sMatch = raw.match(/(\d+)\s*s/);
+  if (sMatch) return clamp(Number(sMatch[1]), 10, 600);
+
+  const range = raw.match(/(\d+)\s*[-–]\s*(\d+)/);
+  if (range) return clamp(Number(range[1]), 10, 600);
+
+  const n = raw.match(/(\d+)/);
+  if (n) return clamp(Number(n[1]), 10, 600);
+
+  return 90;
+}
+
+function fmtMMSS(sec) {
+  const s = Math.max(0, Math.floor(Number(sec || 0)));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(r).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+/* ---------------- banco (MESMO do Treino) ---------------- */
 const MUSCLE_GROUPS = [
   {
     id: "peito_triceps",
     name: "Peito + Tríceps",
-    muscles: ["Peito", "Tríceps", "Ombro ant."],
-    default: { sets: 4, reps: "6–12", rest: "75–120s" },
-    // UI usa isso pra decidir quais listas mostrar no picker
-    pickerKeys: ["peito", "triceps", "ombro"],
+    muscles: ["Peito", "Tríceps"],
     library: [
       { name: "Supino reto", group: "Peito" },
       { name: "Supino inclinado", group: "Peito" },
       { name: "Crucifixo / Peck-deck", group: "Peito" },
       { name: "Crossover", group: "Peito" },
+      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
       { name: "Tríceps corda", group: "Tríceps" },
       { name: "Tríceps francês", group: "Tríceps" },
     ],
@@ -303,13 +141,12 @@ const MUSCLE_GROUPS = [
   {
     id: "costas_biceps",
     name: "Costas + Bíceps",
-    muscles: ["Costas", "Bíceps", "Ombro post."],
-    default: { sets: 4, reps: "8–12", rest: "75–120s" },
-    pickerKeys: ["costas", "biceps", "ombro"],
+    muscles: ["Costas", "Bíceps"],
     library: [
       { name: "Puxada (barra/puxador)", group: "Costas" },
       { name: "Remada (máquina/curvada)", group: "Costas" },
       { name: "Remada unilateral", group: "Costas" },
+      { name: "Pulldown braço reto", group: "Costas" },
       { name: "Face pull", group: "Ombro/escápulas" },
       { name: "Rosca direta", group: "Bíceps" },
       { name: "Rosca martelo", group: "Bíceps" },
@@ -319,8 +156,6 @@ const MUSCLE_GROUPS = [
     id: "pernas",
     name: "Pernas (Quad + geral)",
     muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
-    default: { sets: 4, reps: "8–15", rest: "75–150s" },
-    pickerKeys: ["quadriceps", "gluteo", "panturrilha", "core"],
     library: [
       { name: "Agachamento", group: "Pernas" },
       { name: "Leg press", group: "Pernas" },
@@ -334,8 +169,6 @@ const MUSCLE_GROUPS = [
     id: "posterior_gluteo",
     name: "Posterior + Glúteo",
     muscles: ["Posterior", "Glúteos", "Core"],
-    default: { sets: 4, reps: "8–12", rest: "75–150s" },
-    pickerKeys: ["posterior", "gluteo", "core"],
     library: [
       { name: "Terra romeno", group: "Posterior" },
       { name: "Mesa flexora", group: "Posterior" },
@@ -348,13 +181,11 @@ const MUSCLE_GROUPS = [
   {
     id: "ombro_core",
     name: "Ombro + Core",
-    muscles: ["Ombros", "Trapézio", "Core"],
-    default: { sets: 3, reps: "10–15", rest: "60–90s" },
-    pickerKeys: ["ombro", "core"],
+    muscles: ["Ombros", "Core"],
     library: [
       { name: "Desenvolvimento", group: "Ombros" },
       { name: "Elevação lateral", group: "Ombros" },
-      { name: "Posterior (reverse)", group: "Ombro posterior" },
+      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
       { name: "Encolhimento", group: "Trapézio" },
       { name: "Pallof press", group: "Core" },
       { name: "Abdominal", group: "Core" },
@@ -362,10 +193,8 @@ const MUSCLE_GROUPS = [
   },
   {
     id: "fullbody",
-    name: "Full body (seguro / saúde)",
+    name: "Full body (saúde / base)",
     muscles: ["Corpo todo"],
-    default: { sets: 3, reps: "10–15", rest: "45–90s" },
-    pickerKeys: ["quadriceps", "peito", "costas", "ombro", "posterior", "gluteo", "core", "panturrilha"],
     library: [
       { name: "Agachamento (leve)", group: "Pernas" },
       { name: "Supino (leve)", group: "Peito" },
@@ -377,95 +206,497 @@ const MUSCLE_GROUPS = [
   },
 ];
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
+function groupById(id) {
+  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
 
-function dayLetter(i) {
-  const letters = ["A", "B", "C", "D", "E", "F"];
-  return letters[i % letters.length] || "A";
+/** garante volume */
+function ensureVolume(list, minCount = 7) {
+  const base = Array.isArray(list) ? [...list] : [];
+  if (base.length >= minCount) return base;
+
+  const extras = [
+    { name: "Aquecimento (5–8min)", group: "Preparação" },
+    { name: "Alongamento curto", group: "Mobilidade" },
+    { name: "Core (prancha)", group: "Core" },
+    { name: "Elevação lateral (leve)", group: "Ombros" },
+    { name: "Rosca direta (leve)", group: "Bíceps" },
+    { name: "Tríceps corda (leve)", group: "Tríceps" },
+    { name: "Panturrilha", group: "Panturrilha" },
+  ];
+
+  let i = 0;
+  while (base.length < minCount && i < extras.length) base.push(extras[i++]);
+  return base;
 }
 
-function pickDefaultSplit(days) {
-  if (days <= 2) return ["fullbody", "fullbody"];
-  if (days === 3) return ["peito_triceps", "costas_biceps", "pernas"];
-  if (days === 4) return ["peito_triceps", "pernas", "costas_biceps", "posterior_gluteo"];
-  if (days === 5) return ["peito_triceps", "costas_biceps", "pernas", "ombro_core", "posterior_gluteo"];
-  return ["peito_triceps", "costas_biceps", "pernas", "ombro_core", "posterior_gluteo", "fullbody"];
-}
+function buildCustomPlan(email) {
+  const raw = localStorage.getItem(`custom_split_${email}`);
+  const custom = safeJsonParse(raw, null);
+  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
 
-function calcWeeklyVolume(daysConfig) {
-  const volume = {};
-  for (const day of daysConfig) {
-    const sets = Number(day?.prescription?.sets || 0) || 0;
-    const g = day?.groupObj;
-    if (!g) continue;
-    const muscles = Array.isArray(g.muscles) ? g.muscles : [];
-    const share = muscles.length ? sets / muscles.length : 0;
-    for (const m of muscles) {
-      volume[m] = (volume[m] || 0) + share;
-    }
+  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
+  const days = clamp(rawDays, 2, 6);
+
+  const dayGroups = [];
+  for (let i = 0; i < days; i++) {
+    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
   }
-  const out = {};
-  Object.keys(volume).forEach((k) => (out[k] = Math.round(volume[k] * 10) / 10));
-  return out;
-}
 
-function prettyKeyLabel(k) {
-  const map = {
-    peito: "Peito",
-    triceps: "Tríceps",
-    costas: "Costas",
-    biceps: "Bíceps",
-    quadriceps: "Quadríceps",
-    posterior: "Posterior",
-    gluteo: "Glúteo",
-    panturrilha: "Panturrilha",
-    ombro: "Ombro",
-    core: "Core",
+  const prescriptions = custom.prescriptions || {};
+
+  const split = dayGroups.map((gid, idx) => {
+    const g = groupById(gid);
+    const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
+
+    const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
+
+    return baseList.map((ex) => ({
+      ...ex,
+      sets: pres.sets,
+      reps: pres.reps,
+      rest: pres.rest,
+      method: `Split ${custom.splitId || ""} • ${g.name}`,
+    }));
+  });
+
+  const base = {
+    sets: "custom",
+    reps: "custom",
+    rest: "custom",
+    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
   };
-  return map[k] || k;
+
+  return { base, split, meta: { days } };
 }
 
-function uniq(arr) {
-  const s = new Set();
-  const out = [];
-  for (const x of arr || []) {
-    const key = String(x || "").trim();
-    if (!key) continue;
-    if (s.has(key)) continue;
-    s.add(key);
-    out.push(key);
-  }
-  return out;
+function buildFallbackSplit() {
+  const A = [
+    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+  ];
+  const B = [
+    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
+    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
+  ];
+  const C = [
+    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
+    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
+    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
+    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
+    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+  ];
+  return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
 }
 
-/* ---------------------- APP ---------------------- */
-export default function TreinoPersonalize() {
+/* ---------------- cargas ---------------- */
+function loadLoads(email) {
+  return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
+}
+function saveLoads(email, obj) {
+  localStorage.setItem(`loads_${email}`, JSON.stringify(obj));
+}
+function keyForLoad(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
+
+/* ---------------- progresso de séries ---------------- */
+function loadSetsProg(email) {
+  return safeJsonParse(localStorage.getItem(`setsprog_${email}`), {});
+}
+function saveSetsProg(email, obj) {
+  localStorage.setItem(`setsprog_${email}`, JSON.stringify(obj));
+}
+function keyForSetProg(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
+
+/* ---------------- detalhes por nome ---------------- */
+function detailFor(exName) {
+  const n = String(exName || "").toLowerCase();
+
+  if (n.includes("supino"))
+    return { area: "Peitoral, tríceps e deltoide anterior.", cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura." };
+  if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover"))
+    return { area: "Peitoral (isolamento).", cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta." };
+
+  if (n.includes("puxada") || n.includes("pulldown"))
+    return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
+  if (n.includes("remada"))
+    return { area: "Costas médias/dorsal e estabilização.", cue: "Coluna firme. Puxe com cotovelos. Segure 1s no final. Volte controlando." };
+  if (n.includes("face pull"))
+    return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco." };
+
+  if (n.includes("rosca"))
+    return { area: "Bíceps e antebraço.", cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle." };
+  if (n.includes("tríceps") || n.includes("triceps"))
+    return { area: "Tríceps.", cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar." };
+  if (n.includes("paralelas") || n.includes("mergulho"))
+    return { area: "Tríceps e peito.", cue: "Desça controlando. Tronco levemente inclinado. Suba sem balançar." };
+
+  if (n.includes("agacha"))
+    return { area: "Quadríceps, glúteos e core.", cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte." };
+  if (n.includes("leg press"))
+    return { area: "Quadríceps e glúteos.", cue: "Amplitude segura. Não trave joelho. Controle na descida." };
+  if (n.includes("terra") || n.includes("romeno"))
+    return { area: "Posterior e glúteos.", cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura." };
+  if (n.includes("extensora"))
+    return { area: "Quadríceps (isolamento).", cue: "Segure 1s em cima. Volte lento sem bater o peso." };
+  if (n.includes("flexora"))
+    return { area: "Posterior (isolamento).", cue: "Controle total. Segure 1s contraindo. Evite levantar quadril." };
+  if (n.includes("panturrilha"))
+    return { area: "Panturrilha.", cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa." };
+  if (n.includes("afundo") || n.includes("passada"))
+    return { area: "Glúteos e quadríceps.", cue: "Passo firme. Tronco estável. Desça controlando e suba sem tombar." };
+  if (n.includes("abdu"))
+    return { area: "Glúteo médio.", cue: "Movimento controlado. Sem girar o tronco. Sinta o lado do glúteo." };
+  if (n.includes("hip thrust"))
+    return { area: "Glúteos.", cue: "Queixo neutro. Suba contraindo. Segure 1s no topo sem hiperextender lombar." };
+
+  if (n.includes("prancha"))
+    return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
+  if (n.includes("abdominal"))
+    return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
+
+  return { area: "Músculos relacionados ao movimento.", cue: "Postura firme. Controle na descida. Execução limpa sem roubar." };
+}
+
+function suggestLoadRange(exName, pesoKg, objetivo) {
+  const kg = Number(pesoKg || 0) || 70;
+  const n = String(exName || "").toLowerCase();
+  let base = 0.35;
+
+  if (n.includes("supino")) base = 0.55;
+  if (n.includes("agacha")) base = 0.7;
+  if (n.includes("leg press")) base = 0.8;
+  if (n.includes("remada")) base = 0.5;
+  if (n.includes("puxada")) base = 0.45;
+  if (n.includes("terra") || n.includes("romeno")) base = 0.75;
+  if (n.includes("desenvolvimento")) base = 0.35;
+  if (n.includes("elevação lateral") || n.includes("elevacao lateral")) base = 0.12;
+  if (n.includes("rosca")) base = 0.2;
+  if (n.includes("tríceps") || n.includes("triceps")) base = 0.22;
+  if (n.includes("panturrilha")) base = 0.35;
+
+  const goal = String(objetivo || "").toLowerCase();
+  const isForca = goal.includes("forc");
+  const isHip = goal.includes("hip");
+  const mult = isForca ? 1.12 : isHip ? 1.0 : 0.92;
+
+  const mid = kg * base * mult;
+  const low = Math.max(2, Math.round(mid * 0.85));
+  const high = Math.max(low + 1, Math.round(mid * 1.05));
+  return `${low}–${high}kg`;
+}
+
+/* ---------------- icons ---------------- */
+function IconChevronLeft() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconArrowRight() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M10 17l5-5-5-5" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconPause() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 6v12" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M16 6v12" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconPlay() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 7l10 5-10 5V7Z" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconReset() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M20 12a8 8 0 1 1-2.3-5.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 4v6h-6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 7.2v5.2l3.2 1.7" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 20.2a8.2 8.2 0 1 1 8.2-8.2" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ---------------- UI bits ---------------- */
+function Chip({ label, value }) {
+  return (
+    <div style={S.chip}>
+      <div style={S.chipLabel}>{label}</div>
+      <div style={S.chipValue}>{value}</div>
+      <div style={S.chipSheen} aria-hidden="true" />
+    </div>
+  );
+}
+
+function SetDots({ total, done, onToggle }) {
+  const n = clamp(Number(total || 0) || 0, 1, 12);
+  const d = clamp(Number(done || 0) || 0, 0, n);
+
+  return (
+    <div style={S.dotsBox}>
+      <div style={S.dotsTitle}>Séries feitas</div>
+      <div style={S.dotsRowInner}>
+        {Array.from({ length: n }).map((_, i) => {
+          const filled = i < d;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onToggle(i)}
+              style={{ ...S.dotBtn, ...(filled ? S.dotBtnOn : S.dotBtnOff) }}
+              className="td-press"
+              aria-label={`Marcar série ${i + 1} de ${n}`}
+            />
+          );
+        })}
+      </div>
+      <div style={S.dotsMini}>
+        {d}/{n}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Page ---------------- */
+export default function TreinoDetalhe() {
   const nav = useNavigate();
+  const [sp] = useSearchParams();
   const { user } = useAuth();
+
   const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
-  const storageKey = `custom_split_${email}`;
 
-  // --------- não pagante ----------
+  // plano
+  const plan = useMemo(() => buildCustomPlan(email), [email]);
+  const fallback = useMemo(() => buildFallbackSplit(), []);
+  const base = plan?.base || fallback.base;
+  const split = plan?.split || fallback.split;
+
+  const dayIndex = useMemo(() => calcDayIndex(email), [email]);
+
+  const dParam = Number(sp.get("d"));
+  const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
+  const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
+
+  const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
+  const workout = useMemo(
+    () => workoutRaw.filter((ex) => !String(ex?.name || "").toLowerCase().includes("aquecimento")),
+    [workoutRaw]
+  );
+
+  const pages = useMemo(() => {
+    const exPages = workout.map((ex, i) => ({
+      type: "exercise",
+      key: `${i}_${ex.name}`,
+      ex,
+      index: i,
+    }));
+    return [...exPages, { type: "cardio", key: "end_cardio" }];
+  }, [workout]);
+
+  // cargas
+  const [loads, setLoads] = useState(() => loadLoads(email));
+  function setLoad(exName, v) {
+    const k = keyForLoad(viewSafe, exName);
+    const next = { ...loads, [k]: v };
+    setLoads(next);
+    saveLoads(email, next);
+  }
+
+  // séries feitas (persistente)
+  const [setsProg, setSetsProg] = useState(() => loadSetsProg(email));
+  function getDone(exName, setsTotal) {
+    const key = keyForSetProg(viewSafe, exName);
+    const val = setsProg[key];
+    const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
+    return clamp(Number(val || 0) || 0, 0, n);
+  }
+  function setDone(exName, nextDone) {
+    const key = keyForSetProg(viewSafe, exName);
+    const next = { ...setsProg, [key]: nextDone };
+    setSetsProg(next);
+    saveSetsProg(email, next);
+  }
+
+  // pager
+  const scrollerRef = useRef(null);
+  const [page, setPage] = useState(0);
+
+  // dica “arraste”
+  const hintKey = `td_swipe_hint_${email}`;
+  const [showHint, setShowHint] = useState(() => localStorage.getItem(hintKey) !== "1");
+
+  // cronômetro: estado + UI (dock fechado/aberto)
+  const timerKey = `td_timer_open_${email}`;
+  const [timerOpen, setTimerOpen] = useState(() => localStorage.getItem(timerKey) === "1");
+
+  const [restTotal, setRestTotal] = useState(90);
+  const [restLeft, setRestLeft] = useState(90);
+  const [running, setRunning] = useState(false);
+
+  // drag pra abrir/fechar
+  const dragStartY = useRef(null);
+  const dragMoved = useRef(false);
+
+  function setTimerOpenPersist(v) {
+    setTimerOpen(v);
+    localStorage.setItem(timerKey, v ? "1" : "0");
+  }
+
+  // quando muda de página: muda o descanso padrão
+  useEffect(() => {
+    const p = pages[page];
+    if (!p || p.type !== "exercise") {
+      setRunning(false);
+      setRestTotal(90);
+      setRestLeft(90);
+      return;
+    }
+    const ex = p.ex;
+    const rest = ex?.rest ?? base.rest ?? "90s";
+    const sec = parseRestToSeconds(rest);
+    setRunning(false);
+    setRestTotal(sec);
+    setRestLeft(sec);
+  }, [page, pages, base.rest]);
+
+  // tick
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => {
+      setRestLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  useEffect(() => {
+    if (restLeft === 0 && running) setRunning(false);
+  }, [restLeft, running]);
+
+  function startTimer() {
+    if (restLeft <= 0) setRestLeft(restTotal);
+    setRunning(true);
+
+    if (showHint) {
+      localStorage.setItem(hintKey, "1");
+      setShowHint(false);
+    }
+  }
+  function pauseTimer() {
+    setRunning(false);
+  }
+  function resetTimer() {
+    setRunning(false);
+    setRestLeft(restTotal);
+  }
+
+  // abrir “adicional” quando inicia automaticamente (mas não forçar abrir se usuário não quiser)
+  function softPingTimer() {
+    // só dá uma animadinha no dock (aqui: abre por 1.2s e volta se tava fechado)
+    if (timerOpen) return;
+    setTimerOpenPersist(true);
+    window.setTimeout(() => setTimerOpenPersist(false), 1200);
+  }
+
+  // scroll -> página
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const w = el.clientWidth || 1;
+      const idx = Math.round(el.scrollLeft / w);
+      const safe = clamp(idx, 0, pages.length - 1);
+      setPage(safe);
+
+      if (showHint && Math.abs(el.scrollLeft) > 20) {
+        localStorage.setItem(hintKey, "1");
+        setShowHint(false);
+      }
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [pages.length, showHint, hintKey]);
+
+  function goTo(i) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    el.scrollTo({ left: w * i, behavior: "smooth" });
+  }
+
+  // css
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "treino-detalhe-book-ui-v2";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes tdSheen {
+        0%, 35%   { transform: translateX(-70%); opacity: .18; }
+        55%, 100% { transform: translateX(140%); opacity: .18; }
+      }
+      @keyframes tdPop {
+        0%,100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+      }
+      .td-press { transition: transform .12s ease, filter .12s ease; }
+      .td-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
+      input:focus {
+        border-color: rgba(255,106,0,.38) !important;
+        box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
   if (!paid) {
     return (
       <div style={S.page}>
-        <HeaderBrand title="Personalizar treino" subtitle="Disponível somente para assinantes." onBack={() => nav("/treino")} />
-
         <div style={S.lockCard}>
-          <div style={S.lockIcon}>🔒</div>
-          <div style={S.lockTitle}>Recurso exclusivo</div>
-          <div style={S.lockText}>
-            Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, volume semanal e seleção de exercícios.
-          </div>
-
-          <button style={S.cta} onClick={() => nav("/planos")}>
+          <div style={S.lockTitle}>Treino em modo “livro”</div>
+          <div style={S.lockText}>Assine para liberar páginas, GIFs, marcação de séries e cronômetro opcional.</div>
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
             Ver planos
           </button>
-
-          <button style={S.ghost} onClick={() => nav("/treino")}>
+          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="td-press">
             Voltar
           </button>
         </div>
@@ -473,1103 +704,757 @@ export default function TreinoPersonalize() {
     );
   }
 
-  // --------- pagante ----------
-  const saved = useMemo(() => {
-    const raw = localStorage.getItem(storageKey);
-    return raw ? JSON.parse(raw) : null;
-  }, [storageKey]);
+  const pNow = pages[page];
+  const isExercise = pNow?.type === "exercise";
+  const exNow = isExercise ? pNow.ex : null;
 
-  const initialDays = saved?.days || Number(user?.frequencia || 4) || 4;
-  const initialSplit =
-    saved?.splitId ||
-    (initialDays === 2 ? "AB" : initialDays === 3 ? "ABC" : initialDays === 4 ? "ABCD" : initialDays === 5 ? "ABCDE" : "ABCDEF");
+  const exCount = workout.length;
+  const totalPages = pages.length;
+  const progressText = `${page + 1}/${totalPages}`;
 
-  const [daysPerWeek, setDaysPerWeek] = useState(clamp(initialDays, 2, 6));
-  const [splitId, setSplitId] = useState(initialSplit);
+  // drag handlers do dock
+  function onDockPointerDown(e) {
+    dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
+    dragMoved.current = false;
+  }
+  function onDockPointerMove(e) {
+    if (dragStartY.current == null) return;
+    const y = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
+    if (y == null) return;
 
-  const [dayGroups, setDayGroups] = useState(() => {
-    const base = saved?.dayGroups;
-    if (Array.isArray(base) && base.length) return base;
-    return pickDefaultSplit(clamp(initialDays, 2, 6));
-  });
+    const dy = y - dragStartY.current;
+    if (Math.abs(dy) > 10) dragMoved.current = true;
 
-  const [prescriptions, setPrescriptions] = useState(() => {
-    const base = saved?.prescriptions;
-    if (base && typeof base === "object") return base;
-
-    const obj = {};
-    const baseGroups = pickDefaultSplit(clamp(initialDays, 2, 6));
-    for (let i = 0; i < baseGroups.length; i++) {
-      const g = MUSCLE_GROUPS.find((x) => x.id === baseGroups[i]);
-      obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+    // arrastar pra cima abre, pra baixo fecha
+    if (dy < -26) {
+      dragStartY.current = null;
+      setTimerOpenPersist(true);
     }
-    return obj;
-  });
-
-  // ✅ NOVO: exercícios escolhidos por dia
-  const [dayExercises, setDayExercises] = useState(() => {
-    const base = saved?.dayExercises;
-    if (base && typeof base === "object") return base;
-
-    // default: usa a library do grupo (primeiros 8) como base
-    const out = {};
-    const n = clamp(initialDays, 2, 6);
-    const baseGroups = pickDefaultSplit(n);
-    for (let i = 0; i < n; i++) {
-      const g = MUSCLE_GROUPS.find((x) => x.id === baseGroups[i]);
-      const list = (g?.library || []).map((x) => x.name);
-      out[i] = uniq(list).slice(0, 8);
+    if (dy > 26) {
+      dragStartY.current = null;
+      setTimerOpenPersist(false);
     }
-    return out;
-  });
-
-  // sheet (picker)
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerDayIndex, setPickerDayIndex] = useState(0);
-
-  function ensureDaysConfig(nextDays) {
-    const n = clamp(nextDays, 2, 6);
-
-    setDayGroups((prev) => {
-      const base = Array.isArray(prev) ? [...prev] : [];
-      if (base.length === n) return base;
-      if (base.length < n) {
-        const add = pickDefaultSplit(n).slice(base.length);
-        return [...base, ...add];
-      }
-      return base.slice(0, n);
-    });
-
-    setPrescriptions((prev) => {
-      const out = { ...(prev || {}) };
-      for (let i = 0; i < n; i++) {
-        if (!out[i]) {
-          const gid = (Array.isArray(dayGroups) && dayGroups[i]) || pickDefaultSplit(n)[i];
-          const g = MUSCLE_GROUPS.find((x) => x.id === gid);
-          out[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
-        }
-      }
-      Object.keys(out).forEach((k) => {
-        const idx = Number(k);
-        if (idx >= n) delete out[k];
-      });
-      return out;
-    });
-
-    // ✅ garante dayExercises
-    setDayExercises((prev) => {
-      const out = { ...(prev || {}) };
-      for (let i = 0; i < n; i++) {
-        if (!out[i] || !Array.isArray(out[i])) {
-          const gid = (Array.isArray(dayGroups) && dayGroups[i]) || pickDefaultSplit(n)[i];
-          const g = MUSCLE_GROUPS.find((x) => x.id === gid);
-          const list = (g?.library || []).map((x) => x.name);
-          out[i] = uniq(list).slice(0, 8);
-        }
-      }
-      Object.keys(out).forEach((k) => {
-        const idx = Number(k);
-        if (idx >= n) delete out[k];
-      });
-      return out;
-    });
   }
-
-  function changeSplit(nextSplitId) {
-    setSplitId(nextSplitId);
-    const d = SPLITS.find((s) => s.id === nextSplitId)?.days || daysPerWeek;
-    setDaysPerWeek(d);
-    ensureDaysConfig(d);
+  function onDockPointerUp() {
+    dragStartY.current = null;
   }
-
-  function changeDays(d) {
-    const next = clamp(d, 2, 6);
-    setDaysPerWeek(next);
-
-    const map = next === 2 ? "AB" : next === 3 ? "ABC" : next === 4 ? "ABCD" : next === 5 ? "ABCDE" : "ABCDEF";
-    setSplitId(map);
-    ensureDaysConfig(next);
-  }
-
-  function setDayGroup(dayIndex, groupId) {
-    setDayGroups((prev) => {
-      const arr = [...prev];
-      arr[dayIndex] = groupId;
-      return arr;
-    });
-
-    setPrescriptions((prev) => {
-      const out = { ...(prev || {}) };
-      const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
-      out[dayIndex] = {
-        sets: out[dayIndex]?.sets ?? g?.default?.sets ?? 4,
-        reps: out[dayIndex]?.reps ?? g?.default?.reps ?? "6–12",
-        rest: out[dayIndex]?.rest ?? g?.default?.rest ?? "75–120s",
-      };
-      return out;
-    });
-
-    // ✅ quando troca grupo: preenche seleção de exercícios com base no grupo (não apaga se já existe e tem coisa)
-    setDayExercises((prev) => {
-      const out = { ...(prev || {}) };
-      if (Array.isArray(out[dayIndex]) && out[dayIndex].length >= 5) return out;
-
-      const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
-      const list = (g?.library || []).map((x) => x.name);
-      out[dayIndex] = uniq(list).slice(0, 8);
-      return out;
-    });
-  }
-
-  function setPrescription(dayIndex, patch) {
-    setPrescriptions((prev) => {
-      const out = { ...(prev || {}) };
-      out[dayIndex] = { ...(out[dayIndex] || {}), ...patch };
-      return out;
-    });
-  }
-
-  const daysConfig = useMemo(() => {
-    const n = clamp(daysPerWeek, 2, 6);
-    const arr = [];
-    for (let i = 0; i < n; i++) {
-      const gid = dayGroups[i] || pickDefaultSplit(n)[i];
-      const groupObj = MUSCLE_GROUPS.find((x) => x.id === gid);
-      arr.push({
-        dayIndex: i,
-        letter: dayLetter(i),
-        groupId: gid,
-        groupObj,
-        prescription: prescriptions[i] || groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s" },
-        chosenExercises: Array.isArray(dayExercises?.[i]) ? dayExercises[i] : [],
-      });
-    }
-    return arr;
-  }, [daysPerWeek, dayGroups, prescriptions, dayExercises]);
-
-  const weeklyVolume = useMemo(() => calcWeeklyVolume(daysConfig), [daysConfig]);
-
-  function save() {
-    const payload = {
-      splitId,
-      days: daysPerWeek,
-      dayGroups,
-      prescriptions,
-      dayExercises, // ✅ novo
-      updatedAt: Date.now(),
-    };
-    localStorage.setItem(storageKey, JSON.stringify(payload));
-    nav("/treino", { replace: true });
-  }
-
-  function reset() {
-    const d = clamp(Number(user?.frequencia || 4) || 4, 2, 6);
-    const sid = d === 2 ? "AB" : d === 3 ? "ABC" : d === 4 ? "ABCD" : d === 5 ? "ABCDE" : "ABCDEF";
-    setDaysPerWeek(d);
-    setSplitId(sid);
-
-    const groups = pickDefaultSplit(d);
-    setDayGroups(groups);
-
-    const obj = {};
-    for (let i = 0; i < groups.length; i++) {
-      const g = MUSCLE_GROUPS.find((x) => x.id === groups[i]);
-      obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
-    }
-    setPrescriptions(obj);
-
-    // ✅ reset exercícios
-    const ex = {};
-    for (let i = 0; i < groups.length; i++) {
-      const g = MUSCLE_GROUPS.find((x) => x.id === groups[i]);
-      ex[i] = uniq((g?.library || []).map((x) => x.name)).slice(0, 8);
-    }
-    setDayExercises(ex);
-
-    localStorage.removeItem(storageKey);
-  }
-
-  function openPicker(dayIndex) {
-    setPickerDayIndex(dayIndex);
-    setPickerOpen(true);
-  }
-
-  function closePicker() {
-    setPickerOpen(false);
-  }
-
-  function updateDayExercises(dayIndex, list) {
-    setDayExercises((prev) => {
-      const out = { ...(prev || {}) };
-      out[dayIndex] = uniq(list).slice(0, 40); // limite alto, mas controlado
-      return out;
-    });
+  function onDockClick() {
+    // se foi drag, não alterna no click
+    if (dragMoved.current) return;
+    setTimerOpenPersist(!timerOpen);
   }
 
   return (
     <div style={S.page}>
-      <div style={S.bgGlow} />
+      {/* TOP HEADER */}
+      <div style={S.head}>
+        <div style={S.headGlow} aria-hidden="true" />
 
-      <HeaderBrand title="Personalizar treino" subtitle="Split, volume e exercícios do seu jeito." onBack={() => nav("/treino")} />
-
-      {/* CARD: Split */}
-      <div style={S.card}>
-        <div style={S.cardTitle}>1) Split</div>
-
-        <div style={S.splitRow}>
-          {SPLITS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => changeSplit(s.id)}
-              style={{
-                ...S.pill,
-                ...(splitId === s.id ? S.pillOn : S.pillOff),
-              }}
-            >
-              {s.id}
-            </button>
-          ))}
-        </div>
-
-        <div style={S.smallNote}>
-          Dias/semana:
-          <div style={S.daysRow}>
-            {[2, 3, 4, 5, 6].map((d) => (
-              <button
-                key={d}
-                onClick={() => changeDays(d)}
-                style={{
-                  ...S.dayBtn,
-                  ...(daysPerWeek === d ? S.dayOn : S.dayOff),
-                }}
-              >
-                {d}x
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* CARD: Dias */}
-      <div style={S.card}>
-        <div style={S.cardTitle}>2) Músculos por dia</div>
-
-        <div style={S.daysGrid}>
-          {daysConfig.map((d) => (
-            <div key={d.dayIndex} style={S.dayCard}>
-              <div style={S.dayTop}>
-                <div style={S.badge}>{d.letter}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={S.dayLabel}>Dia {d.letter}</div>
-                  <div style={S.daySub}>Escolha o foco do dia</div>
-                </div>
-
-                {/* ✅ Apple button */}
-                <button style={S.appleBtn} onClick={() => openPicker(d.dayIndex)}>
-                  <span style={S.appleBtnDot} />
-                  Escolher exercícios
-                </button>
-              </div>
-
-              <select value={d.groupId} onChange={(e) => setDayGroup(d.dayIndex, e.target.value)} style={S.select}>
-                {MUSCLE_GROUPS.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-
-              <div style={S.musclesLine}>{d.groupObj?.muscles?.join(" • ") || "—"}</div>
-
-              <div style={S.presRow}>
-                <div style={S.presBox}>
-                  <div style={S.presLabel}>Séries</div>
-                  <input
-                    type="number"
-                    min={1}
-                    max={8}
-                    value={d.prescription.sets}
-                    onChange={(e) => setPrescription(d.dayIndex, { sets: clamp(Number(e.target.value || 1), 1, 8) })}
-                    style={S.input}
-                  />
-                </div>
-
-                <div style={S.presBox}>
-                  <div style={S.presLabel}>Reps</div>
-                  <input
-                    value={d.prescription.reps}
-                    onChange={(e) => setPrescription(d.dayIndex, { reps: e.target.value })}
-                    placeholder="ex: 6–12"
-                    style={S.input}
-                  />
-                </div>
-
-                <div style={S.presBox}>
-                  <div style={S.presLabel}>Descanso</div>
-                  <input
-                    value={d.prescription.rest}
-                    onChange={(e) => setPrescription(d.dayIndex, { rest: e.target.value })}
-                    placeholder="ex: 75–120s"
-                    style={S.input}
-                  />
-                </div>
-              </div>
-
-              {/* ✅ selecionados */}
-              <div style={S.pickPreview}>
-                <div style={S.pickPreviewTop}>
-                  <div style={S.previewTitle}>Seu treino (exercícios escolhidos)</div>
-                  <div style={S.previewCount}>{(d.chosenExercises || []).length} itens</div>
-                </div>
-
-                {(d.chosenExercises || []).length === 0 ? (
-                  <div style={S.previewEmpty}>Nenhum exercício escolhido. Toque em “Escolher exercícios”.</div>
-                ) : (
-                  <div style={S.previewChips}>
-                    {d.chosenExercises.slice(0, 10).map((name) => (
-                      <div key={name} style={S.chip}>
-                        {name}
-                      </div>
-                    ))}
-                    {d.chosenExercises.length > 10 ? <div style={S.moreChip}>+{d.chosenExercises.length - 10}</div> : null}
-                  </div>
-                )}
-              </div>
-
-              {/* antiga prévia (agora só como “sugestões”) */}
-              <div style={S.previewBox}>
-                <div style={S.previewTitle}>Sugestões do grupo</div>
-                <div style={S.previewList}>
-                  {(d.groupObj?.library || []).slice(0, 6).map((x, i) => (
-                    <div key={i} style={S.previewItem}>
-                      <span style={S.dot} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={S.previewName}>{x.name}</div>
-                        <div style={S.previewSub}>{x.group}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CARD: Volume semanal */}
-      <div style={S.card}>
-        <div style={S.cardTitle}>3) Volume semanal (estimativa)</div>
-        <div style={S.volGrid}>
-          {Object.keys(weeklyVolume).length === 0 ? (
-            <div style={S.volEmpty}>Defina os dias acima para ver o volume.</div>
-          ) : (
-            Object.entries(weeklyVolume).map(([m, v]) => (
-              <div key={m} style={S.volCard}>
-                <div style={S.volName}>{m}</div>
-                <div style={S.volVal}>{v} sets/sem</div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div style={S.volTip}>
-          Dica: consistência + progressão de carga (sem pressa) é o que mais “vende resultado” pro usuário comum.
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={S.actions}>
-        <button style={S.save} onClick={save}>
-          Salvar
+        <button style={S.back} onClick={() => nav("/treino")} aria-label="Voltar" type="button" className="td-press">
+          <IconChevronLeft />
         </button>
-        <button style={S.reset} onClick={reset}>
-          Restaurar padrão
-        </button>
-      </div>
 
-      <div style={{ height: 140 }} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={S.hKicker}>Treino detalhado</div>
+          <div style={S.hTitle}>Treino {dayLetter(viewSafe)}</div>
 
-      {/* ✅ SHEET: Picker */}
-      <ExercisePickerSheet
-        open={pickerOpen}
-        onClose={closePicker}
-        day={daysConfig[pickerDayIndex]}
-        dayIndex={pickerDayIndex}
-        onApply={(list) => updateDayExercises(pickerDayIndex, list)}
-      />
-    </div>
-  );
-}
-
-/* ---------------------- COMPONENTS ---------------------- */
-
-function HeaderBrand({ title, subtitle, onBack }) {
-  return (
-    <div style={S.head}>
-      <button style={S.back} onClick={onBack}>
-        ←
-      </button>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-        <div style={S.brandMark}>
-          <div style={S.brandInner} />
-        </div>
-
-        <div style={{ minWidth: 0 }}>
-          <div style={S.brandTop}>
-            <span style={S.brandName}>fitdeal</span>
-            <span style={S.brandBadge}>PRO</span>
+          <div style={S.hLine}>
+            <span style={S.tagStrong}>{base.style}</span>
+            <span style={S.tagSoft}>{exCount} exercícios</span>
+            <span style={S.tagSoft}>{progressText}</span>
           </div>
 
-          <div style={S.hTitle}>{title}</div>
-          <div style={S.hSub}>{subtitle}</div>
+          <div style={S.hMeta}>
+            {showHint ? "Arraste para o lado (estilo livro)." : "Toque nas bolinhas para marcar séries e iniciar descanso."}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
-  const group = day?.groupObj;
-  const groupName = group?.name || `Dia ${day?.letter || ""}`;
-  const pickerKeys = Array.isArray(group?.pickerKeys) ? group.pickerKeys : [];
-
-  const [tab, setTab] = useState(() => pickerKeys[0] || "peito");
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState(() => (Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []));
-
-  // quando troca de dia/abre sheet: sincroniza
-  useMemo(() => {
-    if (open) {
-      setSelected(Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []);
-      setQ("");
-      setTab(pickerKeys[0] || "peito");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, dayIndex]);
-
-  const list = useMemo(() => {
-    const base = (EXERCISE_CATALOG[tab] || []).map((name) => ({ name, key: tab }));
-    const term = String(q || "").trim().toLowerCase();
-    if (!term) return base;
-
-    return base.filter((x) => x.name.toLowerCase().includes(term));
-  }, [tab, q]);
-
-  const selectedSet = useMemo(() => new Set((selected || []).map((x) => String(x))), [selected]);
-
-  function add(name) {
-    setSelected((prev) => uniq([...(prev || []), name]));
-  }
-
-  function remove(name) {
-    setSelected((prev) => (prev || []).filter((x) => x !== name));
-  }
-
-  function clearAll() {
-    setSelected([]);
-  }
-
-  function apply() {
-    onApply(uniq(selected));
-    onClose();
-  }
-
-  if (!open) return null;
-
-  return (
-    <div style={S.sheetOverlay} onMouseDown={onClose}>
-      <div style={S.sheet} onMouseDown={(e) => e.stopPropagation()}>
-        {/* Top */}
-        <div style={S.sheetTop}>
-          <div style={{ minWidth: 0 }}>
-            <div style={S.sheetTitle}>Escolher exercícios</div>
-            <div style={S.sheetSub}>
-              {groupName} • Dia {day?.letter || ""} • toque para adicionar
-            </div>
-          </div>
-
-          <button style={S.sheetClose} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-
-        {/* Search */}
-        <div style={S.searchWrap}>
-          <div style={S.searchIcon}>⌕</div>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar exercício..."
-            style={S.search}
+      {/* Dots (páginas) */}
+      <div style={S.dotsNav}>
+        {pages.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => goTo(i)}
+            style={{ ...S.dotNav, ...(i === page ? S.dotNavOn : S.dotNavOff) }}
+            aria-label={`Ir para página ${i + 1}`}
+            className="td-press"
           />
-          {q ? (
-            <button style={S.searchClear} onClick={() => setQ("")}>
-              Limpar
-            </button>
-          ) : null}
-        </div>
+        ))}
+      </div>
 
-        {/* Tabs */}
-        <div style={S.tabsRow}>
-          {pickerKeys.map((k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              style={{
-                ...S.tab,
-                ...(tab === k ? S.tabOn : S.tabOff),
-              }}
-            >
-              {prettyKeyLabel(k)}
-            </button>
-          ))}
-        </div>
-
-        {/* Selected bar */}
-        <div style={S.selectedBar}>
-          <div style={S.selectedLeft}>
-            <div style={S.selectedTitle}>Selecionados</div>
-            <div style={S.selectedCount}>{selected.length} exercícios</div>
-          </div>
-
-          <button style={S.clearBtn} onClick={clearAll} disabled={selected.length === 0}>
-            Limpar
-          </button>
-        </div>
-
-        {/* Selected chips */}
-        {selected.length ? (
-          <div style={S.selectedChips}>
-            {selected.slice(0, 20).map((name) => (
-              <button key={name} style={S.selChip} onClick={() => remove(name)} title="Remover">
-                <span style={S.selChipDot} />
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                <span style={S.selChipX}>×</span>
-              </button>
-            ))}
-            {selected.length > 20 ? <div style={S.moreSel}>+{selected.length - 20}</div> : null}
-          </div>
-        ) : (
-          <div style={S.selectedEmpty}>Nenhum selecionado ainda. Adicione abaixo 👇</div>
-        )}
-
-        {/* List */}
-        <div style={S.list}>
-          {list.map((item) => {
-            const isOn = selectedSet.has(item.name);
+      {/* PAGER */}
+      <div ref={scrollerRef} style={S.pager} aria-label="Treino em páginas">
+        {pages.map((p, idx) => {
+          if (p.type === "cardio") {
             return (
-              <div key={item.name} style={S.row}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={S.rowName}>{item.name}</div>
-                  <div style={S.rowSub}>{prettyKeyLabel(tab)}</div>
-                </div>
+              <div key={p.key} style={S.pageItem}>
+                <div style={S.cardPage}>
+                  <div style={S.cardGlow} aria-hidden="true" />
 
-                {!isOn ? (
-                  <button style={S.addBtn} onClick={() => add(item.name)}>
-                    + Adicionar
+                  <div style={S.endKicker}>Final do treino</div>
+                  <div style={S.endTitle}>Bora pro cardio?</div>
+                  <div style={S.endSub}>
+                    Um cardio leve/moderado (10–20min) fecha bem o dia e ajuda consistência.
+                  </div>
+
+                  <button type="button" onClick={() => nav("/cardio")} style={S.endCta} className="td-press">
+                    Ir para Cardio
+                    <span style={S.endCtaIcon} aria-hidden="true">
+                      <IconArrowRight />
+                    </span>
                   </button>
-                ) : (
-                  <button style={S.addBtnOn} onClick={() => remove(item.name)}>
-                    ✓ Adicionado
+
+                  <button type="button" onClick={() => nav("/treino")} style={S.endGhost} className="td-press">
+                    Voltar ao Treino
                   </button>
-                )}
+
+                  <div style={S.endNote}>Dica: sem tempo? 10 min leve > nada.</div>
+                </div>
               </div>
             );
-          })}
+          }
 
-          {list.length === 0 ? (
-            <div style={S.listEmpty}>Nada encontrado. Tente outro termo.</div>
-          ) : null}
+          const ex = p.ex;
+          const det = detailFor(ex.name);
+          const peso = user?.peso ?? user?.weight ?? 70;
+          const objetivo = user?.objetivo ?? user?.goal ?? "";
+          const suggested = suggestLoadRange(ex.name, peso, objetivo);
+
+          const k = keyForLoad(viewSafe, ex.name);
+          const myLoad = loads[k] ?? "";
+
+          const sets = ex.sets ?? base.sets;
+          const reps = ex.reps ?? base.reps;
+          const rest = ex.rest ?? base.rest;
+
+          const done = getDone(ex.name, sets);
+          const totalSets = clamp(Number(sets) || 4, 1, 12);
+
+          const gifSrc = gifForExercise(ex.name);
+
+          function toggleSet(i) {
+            // i é o índice clicado (0-based). Se clicar numa já feita, volta até ela.
+            let nextDone = 0;
+            if (i < done) nextDone = i; // volta
+            else nextDone = i + 1; // avança
+
+            setDone(ex.name, nextDone);
+
+            // inicia descanso automático quando avança (feito de verdade)
+            if (nextDone > done) {
+              // ajusta o timer pra rest do exercício atual
+              const sec = parseRestToSeconds(rest);
+              setRestTotal(sec);
+              setRestLeft(sec);
+              setRunning(true);
+
+              // opcional: dá um “ping” (não força abrir sempre)
+              softPingTimer();
+            }
+          }
+
+          return (
+            <div key={p.key} style={S.pageItem}>
+              <div style={S.cardPage}>
+                <div style={S.cardGlow} aria-hidden="true" />
+                <div style={S.cardSheen} aria-hidden="true" />
+
+                <div style={S.exerciseTop}>
+                  <div style={S.exerciseIndex}>{idx + 1}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={S.exerciseName}>{ex.name}</div>
+                    <div style={S.exerciseGroup}>{ex.group}</div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById(`exec_${idx}`);
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    style={S.execBtn}
+                    className="td-press"
+                  >
+                    Execução
+                  </button>
+                </div>
+
+                {/* GIF */}
+                <div style={S.gifWrap}>
+                  <ExerciseGif name={ex.name} />
+        
+                  <div style={S.gifFallback} aria-hidden="true">
+                    <div style={S.gifFallbackBadge}>GIF</div>
+                    <div style={S.gifFallbackText}>Adicione: /public/gifs/{slugifyExercise(ex.name)}.gif</div>
+                  </div>
+                </div>
+
+                {/* Chips */}
+                <div style={S.bigChips}>
+                  <Chip label="Séries" value={String(sets)} />
+                  <Chip label="Repetições" value={String(reps)} />
+                  <Chip label="Descanso" value={String(rest)} />
+                </div>
+
+                {/* Séries (bolinhas) */}
+                <SetDots total={totalSets} done={done} onToggle={toggleSet} />
+
+                {/* Carga */}
+                <div style={S.loadBox}>
+                  <div style={S.loadLeft}>
+                    <div style={S.loadLabel}>Carga sugerida</div>
+                    <div style={S.loadVal}>{suggested}</div>
+                    <div style={S.loadHint}>Boa = mantém forma e controle.</div>
+                  </div>
+
+                  <div style={S.loadRight}>
+                    <div style={S.loadLabel}>Sua carga</div>
+                    <input
+                      value={myLoad}
+                      onChange={(e) => setLoad(ex.name, e.target.value)}
+                      placeholder="Ex.: 40kg"
+                      style={S.input}
+                      inputMode="text"
+                    />
+                  </div>
+                </div>
+
+                {/* Execução */}
+                <div id={`exec_${idx}`} style={S.execPanel}>
+                  <div style={S.execTitle}>Execução — o que focar</div>
+                  <div style={S.execArea}>
+                    <div style={S.execLabel}>Área trabalhada</div>
+                    <div style={S.execText}>{det.area}</div>
+                  </div>
+                  <div style={S.execCue}>
+                    <div style={S.execLabel}>Dica prática</div>
+                    <div style={S.execText}>{det.cue}</div>
+                  </div>
+                </div>
+
+                <div style={S.navRow}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(Math.max(0, idx - 1))}
+                    style={{ ...S.navBtn, ...(idx === 0 ? S.navBtnDisabled : null) }}
+                    className="td-press"
+                    disabled={idx === 0}
+                  >
+                    ← Anterior
+                  </button>
+                  <button type="button" onClick={() => goTo(Math.min(pages.length - 1, idx + 1))} style={S.navBtn} className="td-press">
+                    Próximo →
+                  </button>
+                </div>
+
+                <div style={{ height: 120 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DOCK: botão “Cronômetro de descanso” (opcional) */}
+      <div
+        style={{ ...S.dock, ...(timerOpen ? S.dockOpen : S.dockClosed) }}
+        onMouseDown={onDockPointerDown}
+        onMouseMove={onDockPointerMove}
+        onMouseUp={onDockPointerUp}
+        onTouchStart={onDockPointerDown}
+        onTouchMove={onDockPointerMove}
+        onTouchEnd={onDockPointerUp}
+        onClick={onDockClick}
+        role="button"
+        aria-label="Cronômetro de descanso"
+      >
+        <div style={S.dockHeader}>
+          <div style={S.dockPill}>
+            <span style={S.dockIcon} aria-hidden="true">
+              <IconClock />
+            </span>
+            <span style={S.dockTitle}>Cronômetro de descanso</span>
+          </div>
+
+          <div style={S.dockMini}>
+            <span style={S.dockMiniTime}>{fmtMMSS(restLeft)}</span>
+            <span style={S.dockMiniState}>{running ? "rodando" : "parado"}</span>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div style={S.sheetActions}>
-          <button style={S.sheetGhost} onClick={onClose}>
-            Voltar
-          </button>
-          <button style={S.sheetMain} onClick={apply}>
-            Aplicar ao Dia {day?.letter || ""}
-          </button>
-        </div>
+        {/* Conteúdo abre/fecha */}
+        {timerOpen && (
+          <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
+            <div style={S.dockBigTime}>{fmtMMSS(restLeft)}</div>
+            <div style={S.dockSub}>
+              {isExercise ? (
+                <>
+                  Exercício atual: <b style={{ color: TEXT }}>{exNow?.name}</b>
+                </>
+              ) : (
+                <>Final — bora pro cardio.</>
+              )}
+            </div>
 
-        <div style={S.safeBottom} />
+            <div style={S.dockBtns}>
+              <button type="button" onClick={startTimer} style={S.bigStart} className="td-press" disabled={!isExercise}>
+                {running ? "Rodando..." : restLeft === 0 ? "Recomeçar" : "Começar"}
+                <span style={S.bigStartIcon} aria-hidden="true">
+                  <IconPlay />
+                </span>
+              </button>
+
+              <button type="button" onClick={pauseTimer} style={S.smallPause} className="td-press" disabled={!running}>
+                <IconPause />
+                Pausar
+              </button>
+
+              <button type="button" onClick={resetTimer} style={S.resetBtn} className="td-press">
+                <IconReset />
+              </button>
+            </div>
+
+            <div style={S.dockHint}>Dica: arraste pra cima pra abrir, pra baixo pra fechar.</div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* -------------------- styles (Apple clean + glass) -------------------- */
+/* ---------------- styles ---------------- */
 const S = {
-  page: { padding: 18, paddingBottom: 120, background: BG, minHeight: "100vh", position: "relative", overflowX: "hidden" },
-
-  bgGlow: {
-    position: "absolute",
-    inset: -140,
-    pointerEvents: "none",
-    background:
-      "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.16), rgba(248,250,252,0) 60%), radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
-    opacity: 0.95,
+  page: {
+    padding: 18,
+    paddingBottom: "calc(44px + env(safe-area-inset-bottom))",
+    background: BG,
   },
 
   head: {
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 16,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 16px 50px rgba(15,23,42,.08)",
+    background: "linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.88))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 20px 80px rgba(15,23,42,.10)",
     display: "flex",
     gap: 12,
-    alignItems: "center",
+    alignItems: "flex-start",
     position: "relative",
-    zIndex: 1,
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
+    overflow: "hidden",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+  },
+  headGlow: {
+    position: "absolute",
+    inset: -40,
+    background:
+      "radial-gradient(600px 260px at 20% 10%, rgba(255,106,0,.18), transparent 55%), radial-gradient(520px 260px at 92% 0%, rgba(15,23,42,.10), transparent 58%)",
+    pointerEvents: "none",
   },
   back: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    border: "none",
-    background: "rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
-    fontSize: 16,
-    flexShrink: 0,
-  },
-
-  brandMark: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    boxShadow: "0 14px 30px rgba(255,106,0,.20)",
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(255,255,255,.72)",
+    boxShadow: "0 16px 44px rgba(15,23,42,.08)",
     display: "grid",
     placeItems: "center",
     flexShrink: 0,
   },
-  brandInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 6,
-    background: "rgba(255,255,255,.92)",
-  },
-  brandTop: { display: "flex", gap: 8, alignItems: "center" },
-  brandName: { fontWeight: 950, letterSpacing: -0.4, color: TEXT, fontSize: 14 },
-  brandBadge: {
-    fontSize: 10,
-    fontWeight: 950,
-    padding: "4px 8px",
+  hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
+  hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+  tagStrong: {
+    display: "inline-flex",
+    padding: "8px 10px",
     borderRadius: 999,
-    background: ORANGE_SOFT,
-    border: "1px solid rgba(255,106,0,.25)",
-    color: ORANGE,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.20)",
+    fontSize: 12,
+    fontWeight: 900,
+    color: TEXT,
   },
+  tagSoft: {
+    display: "inline-flex",
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: SOFT,
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 900,
+    color: TEXT,
+  },
+  hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
-  hTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  hSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+  dotsNav: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
+  dotNav: { width: 10, height: 10, borderRadius: 999, border: "none" },
+  dotNavOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotNavOff: { background: "rgba(15,23,42,.14)" },
 
-  card: {
+  pager: {
     marginTop: 12,
-    borderRadius: 24,
+    borderRadius: 28,
+    overflowX: "auto",
+    overflowY: "hidden",
+    display: "flex",
+    scrollSnapType: "x mandatory",
+    WebkitOverflowScrolling: "touch",
+    gap: 12,
+    paddingBottom: 2,
+  },
+  pageItem: { scrollSnapAlign: "start", flex: "0 0 100%" },
+
+  cardPage: {
+    borderRadius: 28,
     padding: 16,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    background: "linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.94))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 70px rgba(15,23,42,.06)",
     position: "relative",
-    zIndex: 1,
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
+    overflow: "hidden",
+    minHeight: "calc(100vh - 290px)",
   },
-  cardTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-
-  splitRow: { marginTop: 12, display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  pill: {
-    border: "none",
-    padding: "10px 12px",
-    borderRadius: 999,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-    transition: "transform .12s ease",
+  cardGlow: {
+    position: "absolute",
+    inset: -40,
+    background:
+      "radial-gradient(620px 260px at 18% 0%, rgba(255,106,0,.14), transparent 60%), radial-gradient(520px 240px at 95% 0%, rgba(15,23,42,.10), transparent 62%)",
+    pointerEvents: "none",
   },
-  pillOn: { background: "rgba(255,106,0,.14)", border: "1px solid rgba(255,106,0,.35)", color: ORANGE },
-  pillOff: { background: "rgba(15,23,42,.04)", border: "1px solid rgba(15,23,42,.06)", color: TEXT },
-
-  smallNote: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
-  daysRow: { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 },
-  dayBtn: { padding: 12, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", fontWeight: 950 },
-  dayOn: { background: ORANGE, color: "#111", border: "none", boxShadow: "0 14px 34px rgba(255,106,0,.22)" },
-  dayOff: { background: "#fff", color: TEXT },
-
-  daysGrid: { marginTop: 12, display: "grid", gap: 12 },
-  dayCard: {
-    borderRadius: 22,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,106,0,.06))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 10px 30px rgba(15,23,42,.06)",
+  cardSheen: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.22) 22%, transparent 50%)",
+    transform: "translateX(-70%)",
+    animation: "tdSheen 6.2s ease-in-out infinite",
+    pointerEvents: "none",
   },
-  dayTop: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" },
-  badge: {
+
+  exerciseTop: { position: "relative", display: "flex", gap: 12, alignItems: "center" },
+  exerciseIndex: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(255,106,0,.95), rgba(255,106,0,.60))",
+    borderRadius: 18,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,106,0,.58))",
     color: "#fff",
     fontWeight: 950,
-    display: "grid",
-    placeItems: "center",
+    fontSize: 15,
+    boxShadow: "0 16px 42px rgba(255,106,0,.22)",
+    flexShrink: 0,
   },
-  dayLabel: { fontSize: 14, fontWeight: 950, color: TEXT },
-  daySub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED },
-
-  appleBtn: {
-    marginLeft: "auto",
+  exerciseName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.35, lineHeight: 1.15 },
+  exerciseGroup: { marginTop: 5, fontSize: 12, fontWeight: 850, color: MUTED },
+  execBtn: {
     padding: "10px 12px",
     borderRadius: 16,
-    border: "1px solid rgba(255,106,0,.25)",
-    background: "rgba(255,255,255,.70)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "rgba(255,106,0,.10)",
     fontWeight: 950,
     color: TEXT,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    boxShadow: "0 12px 26px rgba(255,106,0,.12)",
-  },
-  appleBtnDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 10px 20px rgba(255,106,0,.25)",
+    flexShrink: 0,
   },
 
-  select: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    outline: "none",
-    fontWeight: 900,
-    color: TEXT,
-    background: "#fff",
-  },
-  musclesLine: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  presRow: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 },
-  presBox: { borderRadius: 18, padding: 12, background: "#fff", border: "1px solid rgba(15,23,42,.06)" },
-  presLabel: { fontSize: 11, fontWeight: 950, color: MUTED },
-  input: {
-    marginTop: 6,
-    width: "100%",
-    padding: "12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,.10)",
-    outline: "none",
-    fontWeight: 900,
-    color: TEXT,
-  },
-
-  pickPreview: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(255,106,0,.08)",
-    border: "1px solid rgba(255,106,0,.18)",
-  },
-  pickPreviewTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  previewTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.9 },
-  previewCount: { fontSize: 12, fontWeight: 950, color: ORANGE },
-  previewEmpty: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  previewChips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 },
-  chip: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,.75)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 900,
-    fontSize: 12,
-    color: TEXT,
-    maxWidth: "100%",
+  gifWrap: {
+    marginTop: 14,
+    borderRadius: 22,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(15,23,42,.03)",
     overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+    position: "relative",
+    minHeight: 180,
   },
-  moreChip: {
-    padding: "8px 10px",
+  gif: { width: "100%", height: 220, objectFit: "cover", display: "block" },
+  gifFallback: {
+    position: "absolute",
+    inset: 0,
+    padding: 14,
+    display: "grid",
+    placeItems: "center",
+    textAlign: "center",
+    background:
+      "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
+    opacity: 0.0,
+  },
+  gifFallbackBadge: {
+    display: "inline-flex",
+    padding: "6px 10px",
     borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 950,
+    background: "rgba(11,11,12,.92)",
+    color: "#fff",
     fontSize: 12,
-    color: TEXT,
+    fontWeight: 950,
+    marginBottom: 8,
+  },
+  gifFallbackText: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 320 },
+
+  bigChips: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, position: "relative" },
+  chip: {
+    borderRadius: 20,
+    padding: 12,
+    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 34px rgba(15,23,42,.05)",
+    position: "relative",
+    overflow: "hidden",
+    minHeight: 72,
+  },
+  chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+  chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
+  chipSheen: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)",
+    opacity: 0.42,
+    pointerEvents: "none",
   },
 
-  previewBox: {
-    marginTop: 12,
-    borderRadius: 18,
+  dotsBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
+    border: "1px solid rgba(255,106,0,.16)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    position: "relative",
+  },
+  dotsTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dotsRowInner: { marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" },
+  dotBtn: { width: 16, height: 16, borderRadius: 999, border: "none" },
+  dotBtnOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotBtnOff: { background: "rgba(15,23,42,.14)" },
+  dotsMini: { marginTop: 10, fontSize: 12, fontWeight: 900, color: MUTED },
+
+  loadBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    display: "grid",
+    gridTemplateColumns: "1fr minmax(160px, 220px)",
+    gap: 12,
+    alignItems: "end",
+    position: "relative",
+  },
+  loadLeft: { minWidth: 0 },
+  loadRight: { minWidth: 0 },
+  loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
+  loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
+  input: {
+    width: "100%",
+    marginTop: 6,
+    padding: "12px 12px",
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    outline: "none",
+    fontSize: 14,
+    fontWeight: 850,
+    background: "rgba(255,255,255,.96)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)",
+  },
+
+  execPanel: {
+    marginTop: 14,
+    borderRadius: 22,
     padding: 14,
     background: "rgba(15,23,42,.03)",
-    border: "1px solid rgba(15,23,42,.06)",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    position: "relative",
   },
-  previewList: { marginTop: 10, display: "grid", gap: 8 },
-  previewItem: { display: "flex", gap: 10, alignItems: "flex-start" },
-  dot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, marginTop: 4, flexShrink: 0 },
-  previewName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
-  previewSub: { marginTop: 2, fontSize: 11, fontWeight: 800, color: MUTED },
+  execTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  execArea: { marginTop: 10 },
+  execCue: { marginTop: 10 },
+  execLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  execText: { marginTop: 6, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
 
-  volGrid: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  volCard: { borderRadius: 18, padding: 12, background: "#fff", border: "1px solid rgba(15,23,42,.06)" },
-  volName: { fontSize: 12, fontWeight: 950, color: MUTED },
-  volVal: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-  volEmpty: { fontSize: 12, fontWeight: 800, color: MUTED },
-  volTip: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  actions: { marginTop: 12, display: "grid", gap: 10, position: "relative", zIndex: 1 },
-  save: {
-    width: "100%",
+  navRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" },
+  navBtn: {
     padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 18px 50px rgba(255,106,0,.22)",
-  },
-  reset: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
+    borderRadius: 20,
     border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
+    background: "rgba(255,255,255,.92)",
     color: TEXT,
     fontWeight: 950,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
+  navBtnDisabled: { opacity: 0.55 },
 
-  lockCard: {
-    marginTop: 12,
-    borderRadius: 24,
-    padding: 18,
-    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(15,23,42,.03))",
-    border: "1px solid rgba(255,106,0,.22)",
-    boxShadow: "0 18px 55px rgba(15,23,42,.12)",
-    textAlign: "center",
-  },
-  lockIcon: { fontSize: 34 },
-  lockTitle: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT },
-  lockText: { marginTop: 8, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.45 },
-  cta: {
-    marginTop: 14,
+  endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase", position: "relative" },
+  endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, position: "relative" },
+  endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5, position: "relative" },
+  endCta: {
+    marginTop: 16,
     width: "100%",
-    padding: 14,
-    borderRadius: 18,
+    padding: 16,
+    borderRadius: 22,
     border: "none",
-    background: ORANGE,
-    color: "#111",
+    background: "#0B0B0C",
+    color: "#fff",
     fontWeight: 950,
-    boxShadow: "0 18px 45px rgba(255,106,0,.22)",
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    position: "relative",
   },
-  ghost: {
+  endCtaIcon: { width: 40, height: 40, borderRadius: 16, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+  endGhost: {
     marginTop: 10,
     width: "100%",
     padding: 14,
-    borderRadius: 18,
+    borderRadius: 22,
     border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
+    background: "rgba(255,255,255,.92)",
     color: TEXT,
     fontWeight: 950,
   },
+  endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, position: "relative" },
 
-  /* -------- Sheet -------- */
-  sheetOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(2,6,23,.38)",
-    zIndex: 999,
-    display: "grid",
-    alignItems: "end",
-  },
-  sheet: {
-    width: "100%",
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    background: "rgba(255,255,255,.88)",
-    borderTop: "1px solid rgba(255,255,255,.55)",
-    boxShadow: "0 -26px 80px rgba(0,0,0,.28)",
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
-    padding: 14,
-    maxHeight: "88vh",
-    overflow: "hidden",
-  },
-  sheetTop: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" },
-  sheetTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  sheetSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  sheetClose: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.75)",
-    fontWeight: 950,
-    color: TEXT,
-  },
-
-  searchWrap: {
-    marginTop: 12,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.75)",
-    padding: 12,
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  searchIcon: { fontWeight: 950, color: MUTED },
-  search: {
-    border: "none",
-    outline: "none",
-    width: "100%",
-    background: "transparent",
-    fontWeight: 900,
-    color: TEXT,
-  },
-  searchClear: {
-    border: "none",
-    background: ORANGE_SOFT,
-    color: ORANGE,
-    fontWeight: 950,
-    padding: "8px 10px",
-    borderRadius: 999,
-  },
-
-  tabsRow: { marginTop: 12, display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  tab: {
-    border: "none",
-    padding: "10px 12px",
-    borderRadius: 999,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-  },
-  tabOn: { background: "rgba(255,106,0,.16)", border: "1px solid rgba(255,106,0,.30)", color: ORANGE },
-  tabOff: { background: "rgba(15,23,42,.05)", border: "1px solid rgba(15,23,42,.06)", color: TEXT },
-
-  selectedBar: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(255,106,0,.08)",
-    border: "1px solid rgba(255,106,0,.18)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  selectedLeft: { display: "flex", flexDirection: "column" },
-  selectedTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
-  selectedCount: { marginTop: 4, fontSize: 12, fontWeight: 900, color: ORANGE },
-  clearBtn: {
+  /* Lock */
+  lockCard: {
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))",
     border: "1px solid rgba(255,106,0,.22)",
-    background: "rgba(255,255,255,.70)",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 12px",
-    borderRadius: 16,
-    opacity: 1,
+    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
   },
-
-  selectedChips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 96, overflow: "auto" },
-  selChip: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.75)",
-    padding: "10px 12px",
-    fontWeight: 950,
-    color: TEXT,
-    maxWidth: "100%",
-  },
-  selChipDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE },
-  selChipX: { marginLeft: 2, color: MUTED, fontWeight: 950 },
-  moreSel: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 950,
-    color: TEXT,
-  },
-  selectedEmpty: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
-
-  list: {
-    marginTop: 12,
+  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
+  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  lockBtn: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
     borderRadius: 20,
-    border: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.70)",
-    overflow: "auto",
-    maxHeight: "36vh",
-  },
-  row: {
-    padding: 14,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    borderBottom: "1px solid rgba(15,23,42,.06)",
-  },
-  rowName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
-  rowSub: { marginTop: 4, fontSize: 11, fontWeight: 800, color: MUTED },
-
-    addBtn: {
-    border: "none",
-    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    color: "#111",
-    fontWeight: 950,
-    padding: "10px 12px",
-    borderRadius: 999,
-    boxShadow: "0 14px 30px rgba(255,106,0,.18)",
-    whiteSpace: "nowrap",
-  },
-  addBtnOn: {
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 12px",
-    borderRadius: 999,
-    whiteSpace: "nowrap",
-  },
-
-  listEmpty: { padding: 16, fontSize: 12, fontWeight: 800, color: MUTED },
-
-  sheetActions: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  sheetGhost: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.75)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  sheetMain: {
-    padding: 14,
-    borderRadius: 18,
     border: "none",
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     color: "#111",
     fontWeight: 950,
-    boxShadow: "0 18px 50px rgba(255,106,0,.22)",
+    boxShadow: "0 18px 55px rgba(255,106,0,.22)",
+  },
+  lockGhost: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.90)",
+    color: TEXT,
+    fontWeight: 950,
   },
 
-  safeBottom: { height: "calc(10px + env(safe-area-inset-bottom))" },
+  /* Dock do cronômetro (fechado/aberto) */
+  dock: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    bottom: "calc(12px + env(safe-area-inset-bottom))",
+    zIndex: 999,
+    borderRadius: 26,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.20)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    overflow: "hidden",
+    cursor: "pointer",
+    animation: "tdPop 6s ease-in-out infinite",
+  },
+  dockOpen: { paddingBottom: 14 },
+  dockClosed: { paddingBottom: 10 },
+
+  dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  dockPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.18)",
+    boxShadow: "0 14px 34px rgba(255,106,0,.10)",
+  },
+  dockIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,255,255,.70)",
+    border: "1px solid rgba(255,255,255,.55)",
+  },
+  dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
+
+  dockMini: { display: "grid", justifyItems: "end", gap: 2 },
+  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dockMiniState: { fontSize: 11, fontWeight: 900, color: MUTED },
+
+  dockBody: { marginTop: 12, cursor: "default" },
+  dockBigTime: { fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0 },
+  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  dockBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" },
+
+  bigStart: {
+    width: "100%",
+    padding: 16,
+    borderRadius: 22,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+  },
+  bigStartIcon: { width: 42, height: 42, borderRadius: 18, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+
+  smallPause: {
+    padding: "14px 14px",
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  resetBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(15,23,42,.04)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
 };
+
+/* 🔧 se GIF não existir, mostra fallback */
+if (typeof window !== "undefined") {
+  const id = "td-gif-missing-style";
+  if (!document.getElementById(id)) {
+    const st = document.createElement("style");
+    st.id = id;
+    st.innerHTML = `
+      [data-gif-missing="1"] img { display: none !important; }
+      [data-gif-missing="1"] > div { opacity: 1 !important; }
+    `;
+    document.head.appendChild(st);
+  }
+}
+
