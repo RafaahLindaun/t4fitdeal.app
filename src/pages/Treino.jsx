@@ -1,9 +1,6 @@
 // ✅ COLE EM: src/pages/Treino.jsx
-// - Puxa o treino diretamente do treino personalizado (quantidade exata: 2, 6, 10...)
-// - Suporta múltiplos formatos de plano salvo no localStorage
-// - Mantém modo grátis (prévia) vs premium (completo)
-// - Mantém cargas por exercício (localStorage) + concluir treino (avança ciclo)
-// - Navega para /treino/detalhe?d=<dia>
+// Ajustado para puxar o treino EXATO salvo no TreinoPersonalizer (inclusive exercícios novos)
+// TreinoDetalhe deve puxar deste arquivo via getTreinoPlan(email)
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -59,285 +56,6 @@ function getWeekdaysStrip(splitLen, currentIdx) {
   return out;
 }
 
-/* ---------------- banco (fallback por grupos) ---------------- */
-const MUSCLE_GROUPS = [
-  {
-    id: "peito_triceps",
-    name: "Peito + Tríceps",
-    library: [
-      { name: "Supino reto", group: "Peito" },
-      { name: "Supino inclinado", group: "Peito" },
-      { name: "Crucifixo / Peck-deck", group: "Peito" },
-      { name: "Crossover", group: "Peito" },
-      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
-      { name: "Tríceps corda", group: "Tríceps" },
-      { name: "Tríceps francês", group: "Tríceps" },
-    ],
-  },
-  {
-    id: "costas_biceps",
-    name: "Costas + Bíceps",
-    library: [
-      { name: "Puxada (barra/puxador)", group: "Costas" },
-      { name: "Remada (máquina/curvada)", group: "Costas" },
-      { name: "Remada unilateral", group: "Costas" },
-      { name: "Pulldown braço reto", group: "Costas" },
-      { name: "Face pull", group: "Ombro/escápulas" },
-      { name: "Rosca direta", group: "Bíceps" },
-      { name: "Rosca martelo", group: "Bíceps" },
-    ],
-  },
-  {
-    id: "pernas",
-    name: "Pernas (Quad + geral)",
-    library: [
-      { name: "Agachamento", group: "Pernas" },
-      { name: "Leg press", group: "Pernas" },
-      { name: "Cadeira extensora", group: "Quadríceps" },
-      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
-      { name: "Panturrilha", group: "Panturrilha" },
-      { name: "Core (prancha)", group: "Core" },
-    ],
-  },
-  {
-    id: "posterior_gluteo",
-    name: "Posterior + Glúteo",
-    library: [
-      { name: "Terra romeno", group: "Posterior" },
-      { name: "Mesa flexora", group: "Posterior" },
-      { name: "Hip thrust", group: "Glúteo" },
-      { name: "Abdução", group: "Glúteo médio" },
-      { name: "Passada (foco glúteo)", group: "Glúteo" },
-      { name: "Core (dead bug)", group: "Core" },
-    ],
-  },
-  {
-    id: "ombro_core",
-    name: "Ombro + Core",
-    library: [
-      { name: "Desenvolvimento", group: "Ombros" },
-      { name: "Elevação lateral", group: "Ombros" },
-      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
-      { name: "Encolhimento", group: "Trapézio" },
-      { name: "Pallof press", group: "Core" },
-      { name: "Abdominal", group: "Core" },
-    ],
-  },
-  {
-    id: "fullbody",
-    name: "Full body (saúde / base)",
-    library: [
-      { name: "Agachamento (leve)", group: "Pernas" },
-      { name: "Supino (leve)", group: "Peito" },
-      { name: "Remada (leve)", group: "Costas" },
-      { name: "Desenvolvimento (leve)", group: "Ombros" },
-      { name: "Posterior (leve)", group: "Posterior" },
-      { name: "Core (prancha)", group: "Core" },
-    ],
-  },
-];
-
-function groupById(id) {
-  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
-}
-
-/* ---------------- normalização do plano (puxa exatamente o que foi salvo) ---------------- */
-function normalizeExercise(ex, defaults) {
-  // aceita:
-  // - string: "Supino reto"
-  // - objeto: {name, group, sets, reps, rest, ...}
-  if (typeof ex === "string") {
-    return {
-      name: ex,
-      group: "",
-      sets: defaults?.sets ?? 4,
-      reps: defaults?.reps ?? "6–12",
-      rest: defaults?.rest ?? "75–120s",
-      method: defaults?.method ?? "",
-    };
-  }
-
-  const obj = ex && typeof ex === "object" ? ex : {};
-  const name = String(obj.name || obj.title || obj.exercise || "").trim();
-
-  return {
-    ...obj,
-    name: name || "Exercício",
-    group: String(obj.group || obj.muscle || obj.muscleGroup || "").trim(),
-    sets: obj.sets ?? defaults?.sets ?? 4,
-    reps: obj.reps ?? defaults?.reps ?? "6–12",
-    rest: obj.rest ?? defaults?.rest ?? "75–120s",
-    method: obj.method ?? defaults?.method ?? "",
-  };
-}
-
-function normalizeDay(day, dayDefaults) {
-  // aceita:
-  // - array de exercícios
-  // - objeto com {exercises: []} / {items: []} / {list: []}
-  // - objeto com {title, exercises...}
-  if (Array.isArray(day)) {
-    return day.map((ex) => normalizeExercise(ex, dayDefaults));
-  }
-  if (day && typeof day === "object") {
-    const arr =
-      day.exercises ||
-      day.items ||
-      day.list ||
-      day.workout ||
-      day.treino ||
-      day.exs ||
-      [];
-    if (Array.isArray(arr)) return arr.map((ex) => normalizeExercise(ex, dayDefaults));
-  }
-  return [];
-}
-
-/**
- * ✅ Carrega plano personalizado tentando formatos comuns.
- * PRIORIDADE:
- * 1) custom_split_<email> com split explícito (custom.split / custom.workouts / custom.days / custom.plan)
- * 2) user.split (caso você salve no AuthContext)
- * 3) fallback (banco MUSCLE_GROUPS via dayGroups)
- *
- * IMPORTANTE:
- * - NÃO completa volume (sem ensureVolume aqui).
- * - Se o usuário salvou 6 exercícios, retorna 6. Se salvou 2, retorna 2.
- */
-function loadPersonalizedPlan(email, user) {
-  // (1) localStorage principal que você já usa
-  const raw = localStorage.getItem(`custom_split_${email}`);
-  const custom = safeJsonParse(raw, null);
-
-  // defaults do plano (pode existir prescriptions por dia)
-  const baseDefaults = {
-    sets: 4,
-    reps: "6–12",
-    rest: "75–120s",
-    style: "Personalizado",
-  };
-
-  // helper: prescriptions por dia (ex.: custom.prescriptions[idx] = {sets,reps,rest})
-  const getDayDefaults = (idx) => {
-    const pres = custom?.prescriptions?.[idx] || {};
-    return {
-      sets: pres.sets ?? baseDefaults.sets,
-      reps: pres.reps ?? baseDefaults.reps,
-      rest: pres.rest ?? baseDefaults.rest,
-      method:
-        pres.method ||
-        (custom?.splitId ? `Split ${custom.splitId}` : "") ||
-        (custom?.style ? String(custom.style) : ""),
-    };
-  };
-
-  // (1.a) se o custom já tiver split explícito com exercícios
-  const splitExplicit =
-    custom?.split ||
-    custom?.workouts ||
-    custom?.days ||
-    custom?.plan ||
-    custom?.treinos ||
-    null;
-
-  if (Array.isArray(splitExplicit) && splitExplicit.length > 0) {
-    const split = splitExplicit.map((day, idx) => normalizeDay(day, getDayDefaults(idx)));
-    const days = split.length;
-
-    const base = {
-      sets: "custom",
-      reps: "custom",
-      rest: "custom",
-      style: `Personalizado • ${custom?.splitId || `${days}x/sem`}`,
-    };
-
-    return { base, split, meta: { days } };
-  }
-
-  // (2) se você salvou no usuário (AuthContext) um split pronto
-  // ex.: user.split = [ [ex...], [ex...] ]
-  if (Array.isArray(user?.split) && user.split.length > 0) {
-    const split = user.split.map((day, idx) => normalizeDay(day, getDayDefaults(idx)));
-    const days = split.length;
-
-    const base = {
-      sets: "custom",
-      reps: "custom",
-      rest: "custom",
-      style: `Personalizado • ${custom?.splitId || `${days}x/sem`}`,
-    };
-
-    return { base, split, meta: { days } };
-  }
-
-  // (3) fallback por grupos (dayGroups), mas SEM completar volume e respeitando count se existir
-  if (custom && Array.isArray(custom.dayGroups) && custom.dayGroups.length > 0) {
-    const rawDays = Number(custom.days || custom.dayGroups.length || 3);
-    const days = clamp(rawDays, 2, 6);
-
-    const dayGroups = [];
-    for (let i = 0; i < days; i++) {
-      dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
-    }
-
-    // opcional: se tiver "exercisesPerDay" ou "countPerDay" no custom, respeita
-    // (isso é útil se você quiser controlar quantidade sem salvar lista explícita)
-    const perDay =
-      Number(custom.exercisesPerDay || custom.countPerDay || custom.perDay) || null;
-
-    const split = dayGroups.map((gid, idx) => {
-      const g = groupById(gid);
-      const dflt = getDayDefaults(idx);
-
-      const baseList = Array.isArray(g.library) ? [...g.library] : [];
-      const exact = Number.isFinite(perDay) && perDay > 0 ? baseList.slice(0, perDay) : baseList;
-
-      return exact.map((ex) => ({
-        ...normalizeExercise(ex, dflt),
-        method: `Split ${custom.splitId || ""} • ${g.name}`,
-      }));
-    });
-
-    const base = {
-      sets: "custom",
-      reps: "custom",
-      rest: "custom",
-      style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
-    };
-
-    return { base, split, meta: { days } };
-  }
-
-  return null;
-}
-
-/* ---------------- fallback padrão (sem depender do custom) ---------------- */
-function buildFallbackSplit() {
-  const A = [
-    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
-    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-  ];
-  const B = [
-    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
-    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-  ];
-  const C = [
-    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
-    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
-    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
-    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
-    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
-  ];
-  return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
-}
-
 /* ---------------- carga/progressão (localStorage) ---------------- */
 function loadLoads(email) {
   return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
@@ -349,6 +67,117 @@ function keyForLoad(viewIdx, exName) {
   return `${viewIdx}__${String(exName || "").toLowerCase()}`;
 }
 
+/* ---------------- normalização (NUNCA DESCARTA exercício novo) ---------------- */
+function normalizeExercise(ex) {
+  // Objeto completo (preferido)
+  if (ex && typeof ex === "object") {
+    const name = String(ex.name || "").trim();
+    if (!name) return null;
+    return {
+      name,
+      group: ex.group ? String(ex.group) : "",
+      sets: ex.sets ?? undefined,
+      reps: ex.reps ?? undefined,
+      rest: ex.rest ?? undefined,
+      method: ex.method ?? undefined,
+    };
+  }
+
+  // String (fallback): mantém o nome, sem excluir
+  if (typeof ex === "string") {
+    const name = ex.trim();
+    if (!name) return null;
+    return { name, group: "", sets: undefined, reps: undefined, rest: undefined, method: undefined };
+  }
+
+  return null;
+}
+
+function normalizeSplit(split) {
+  if (!Array.isArray(split)) return null;
+  const out = split
+    .map((day) => (Array.isArray(day) ? day.map(normalizeExercise).filter(Boolean) : []))
+    .filter((day) => Array.isArray(day));
+  return out.length ? out : null;
+}
+
+/* ---------------- fallback (só se não existir plano salvo) ---------------- */
+function buildFallbackPlan() {
+  const A = [
+    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+  ];
+  const B = [
+    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
+    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
+  ];
+  const C = [
+    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
+    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
+    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
+    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
+    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+  ];
+
+  return {
+    base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" },
+    split: [A, B, C],
+  };
+}
+
+/* ---------------- ✅ FONTE ÚNICA: TreinoPlan (puxado pelo TreinoDetalhe também) ----------------
+   Prioridade:
+   1) treino_plan_${email}  (recomendado pro Personalizer)
+   2) custom_split_${email} (se você já usa esse, e ele tiver "split" dentro)
+   3) fallback padrão
+*/
+export function getTreinoPlan(email) {
+  const e = String(email || "anon").toLowerCase();
+
+  // 1) chave principal
+  const planKey = `treino_plan_${e}`;
+  const savedPlan = safeJsonParse(localStorage.getItem(planKey), null);
+
+  const savedSplit1 = normalizeSplit(savedPlan?.split);
+  if (savedSplit1) {
+    return {
+      base: savedPlan?.base || savedPlan?.meta?.base || {},
+      split: savedSplit1,
+      source: "treino_plan",
+      updatedAt: savedPlan?.updatedAt || savedPlan?.meta?.updatedAt || null,
+    };
+  }
+
+  // 2) compatibilidade com chave antiga (se tiver split)
+  const legacyKey = `custom_split_${e}`;
+  const legacy = safeJsonParse(localStorage.getItem(legacyKey), null);
+  const savedSplit2 = normalizeSplit(legacy?.split);
+  if (savedSplit2) {
+    return {
+      base: legacy?.base || {},
+      split: savedSplit2,
+      source: "custom_split.split",
+      updatedAt: legacy?.updatedAt || null,
+    };
+  }
+
+  // 3) fallback
+  const fb = buildFallbackPlan();
+  return { base: fb.base, split: fb.split, source: "fallback", updatedAt: null };
+}
+
 /* ---------------- Page ---------------- */
 export default function Treino() {
   const nav = useNavigate();
@@ -357,26 +186,17 @@ export default function Treino() {
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // ✅ plano personalizado (exato)
-  const plan = useMemo(() => loadPersonalizedPlan(email, user), [email, user]);
-
-  // fallback padrão
-  const fallbackSplit = useMemo(() => buildFallbackSplit(), []);
-
-  const base = plan?.base || fallbackSplit.base;
-  const split = plan?.split || fallbackSplit.split;
+  const plan = useMemo(() => getTreinoPlan(email), [email]);
+  const base = plan?.base || {};
+  const split = plan?.split || [];
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
   const [viewIdx, setViewIdx] = useState(dayIndex);
 
-  const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
-  const viewingIsToday = viewSafe === mod(dayIndex, split.length);
+  const viewSafe = useMemo(() => mod(viewIdx, split.length || 1), [viewIdx, split.length]);
+  const viewingIsToday = viewSafe === mod(dayIndex, split.length || 1);
 
-  // ✅ pega o treino do dia EXATO (sem adicionar nada)
-  const workout = useMemo(() => {
-    const list = split?.[viewSafe] || [];
-    return Array.isArray(list) ? list : [];
-  }, [split, viewSafe]);
+  const workout = useMemo(() => split?.[viewSafe] || [], [split, viewSafe]);
 
   const doneKey = `done_ex_${email}_${viewSafe}`;
   const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
@@ -401,15 +221,17 @@ export default function Treino() {
     saveLoads(email, next);
   }
 
-  // ✅ conclui treino: avança o dia do ciclo, salva histórico, limpa progresso
+  // ✅ sem reload + navega para dashboard
   function finishWorkout() {
     if (!viewingIsToday) return;
 
-    bumpDayIndex(email, split.length);
+    bumpDayIndex(email, split.length || 1);
 
+    // limpa progresso do dia atual
     localStorage.removeItem(doneKey);
     setDone({});
 
+    // salva histórico (dias treinados)
     const wkKey = `workout_${email}`;
     const today = todayKey();
     const raw = localStorage.getItem(wkKey);
@@ -417,15 +239,15 @@ export default function Treino() {
     const arr = Array.isArray(list) ? list : [];
     if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
 
+    // vai pro dashboard
     nav("/dashboard");
   }
 
-  // modo grátis: prévia do treino (metade, no mínimo 2)
   const previewCount = Math.max(2, Math.ceil(workout.length / 2));
   const previewList = workout.slice(0, previewCount);
   const lockedList = workout.slice(previewCount);
 
-  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
+  const strip = useMemo(() => getWeekdaysStrip(split.length || 1, mod(dayIndex, split.length || 1)), [split.length, dayIndex]);
 
   function openExercises() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
@@ -433,6 +255,14 @@ export default function Treino() {
 
   const doneCount = Object.values(done).filter(Boolean).length;
   const progressPct = workout.length ? clamp(doneCount / workout.length, 0, 1) : 0;
+
+  const methodLabel = useMemo(() => {
+    const first = workout?.[0];
+    const fromMethod = String(first?.method || "").split("•")[1]?.trim();
+    const style = base?.style ? String(base.style) : "Personalizado";
+    const focus = fromMethod || "";
+    return { style, focus };
+  }, [workout, base]);
 
   return (
     <div style={styles.page}>
@@ -443,27 +273,18 @@ export default function Treino() {
           <div style={styles.headerTitle}>
             Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
           </div>
-
           <div style={styles.headerSub}>
-            {plan ? (
+            Método: <b>{methodLabel.style}</b>
+            {methodLabel.focus ? (
               <>
-                Método: <b>{base.style}</b>
+                {" "}
+                • foco: <b>{methodLabel.focus}</b>
               </>
-            ) : (
-              <>
-                Método: <b>{base.style}</b> • fallback
-              </>
-            )}
+            ) : null}
           </div>
         </div>
 
-        <button
-          style={styles.settingsBtn}
-          onClick={() => nav("/conta")}
-          aria-label="Conta e configurações"
-          type="button"
-          className="settings-press"
-        >
+        <button style={styles.settingsBtn} onClick={() => nav("/conta")} aria-label="Conta e configurações" type="button">
           <GearIcon />
         </button>
       </div>
@@ -474,6 +295,7 @@ export default function Treino() {
         <div style={styles.stripRow}>
           {strip.map((d) => {
             const isActive = d.idx === viewSafe;
+
             return (
               <button
                 key={d.idx}
@@ -487,6 +309,7 @@ export default function Treino() {
                     openExercises();
                     return;
                   }
+
                   setViewIdx(d.idx);
                   const nextKey = `done_ex_${email}_${d.idx}`;
                   setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
@@ -532,14 +355,14 @@ export default function Treino() {
         </div>
       </button>
 
-      {/* METAS */}
+      {/* CARD: METAS */}
       <div style={styles.card}>
         <div style={styles.cardTop}>
           <div>
             <div style={styles.cardTitle}>METAS</div>
             <div style={styles.cardSub}>Pronto para conquistar seus objetivos?</div>
           </div>
-          <button style={styles.cardBtn} onClick={() => nav("/metas")} type="button" className="apple-press">
+          <button style={styles.cardBtn} onClick={() => nav("/metas")} type="button">
             Abrir
           </button>
         </div>
@@ -552,7 +375,7 @@ export default function Treino() {
             <div style={styles.cardTitle}>Hora do cardio</div>
             <div style={styles.cardSub}>Acelere seus ganhos.</div>
           </div>
-          <button style={styles.cardBtn} onClick={() => nav("/cardio")} type="button" className="apple-press">
+          <button style={styles.cardBtn} onClick={() => nav("/cardio")} type="button">
             Abrir
           </button>
         </div>
@@ -566,21 +389,22 @@ export default function Treino() {
           Exercícios hoje: <b>{workout.length}</b>
         </div>
 
-        <div style={styles.summaryLine}>
-          Séries/Reps/Descanso (base do dia):{" "}
-          <b>
-            {(workout[0]?.sets ?? base.sets ?? 4) + " • " + (workout[0]?.reps ?? base.reps ?? "6–12") + " • " + (workout[0]?.rest ?? base.rest ?? "75–120s")}
-          </b>
-        </div>
-
         {paid ? (
           <>
+            <div style={styles.summaryLine}>
+              Séries/Reps/Descanso:{" "}
+              <b>
+                {workout[0]?.sets ?? base?.sets ?? 4} • {workout[0]?.reps ?? base?.reps ?? "6–12"} •{" "}
+                {workout[0]?.rest ?? base?.rest ?? "75–120s"}
+              </b>
+            </div>
+
             <div style={styles.summaryActions}>
-              <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button" className="apple-press">
+              <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button">
                 Personalizar
               </button>
 
-              <button style={styles.cardBtnAlt} onClick={() => openExercises()} type="button" className="apple-press">
+              <button style={styles.cardBtnAlt} onClick={() => openExercises()} type="button">
                 Abrir detalhes
               </button>
             </div>
@@ -593,9 +417,7 @@ export default function Treino() {
             ) : null}
           </>
         ) : (
-          <div style={styles.lockHint}>
-            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
-          </div>
+          <div style={styles.lockHint}>Você está no Modo Gratuito. Assine para liberar treino completo e personalização.</div>
         )}
       </div>
 
@@ -609,14 +431,15 @@ export default function Treino() {
           const curLoad = loads[loadKey] ?? 0;
 
           return (
-            <div key={`${ex.name}_${i}`} style={styles.exCard}>
+            <div key={i} style={styles.exCard}>
               <div style={styles.exTop}>
                 <div style={styles.num}>{i + 1}</div>
 
-                <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={styles.exName}>{ex.name}</div>
                   <div style={styles.exNote}>
-                    {(ex.group || "—")} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
+                    {ex.group || "—"} • {ex.sets ?? base?.sets ?? 4} séries • {ex.reps ?? base?.reps ?? "6–12"} • descanso{" "}
+                    {ex.rest ?? base?.rest ?? "75–120s"}
                   </div>
 
                   <div style={styles.loadRow}>
@@ -631,7 +454,6 @@ export default function Treino() {
                           adjustLoad(ex.name, -2.5);
                         }}
                         aria-label="Diminuir carga"
-                        className="apple-press"
                       >
                         −
                       </button>
@@ -648,7 +470,6 @@ export default function Treino() {
                           adjustLoad(ex.name, +2.5);
                         }}
                         aria-label="Aumentar carga"
-                        className="apple-press"
                       >
                         +
                       </button>
@@ -662,7 +483,6 @@ export default function Treino() {
                         adjustLoad(ex.name, +1);
                       }}
                       title="Ajuste fino"
-                      className="apple-press"
                     >
                       +1
                     </button>
@@ -678,9 +498,8 @@ export default function Treino() {
                     ...(isDone ? styles.checkOn : styles.checkOff),
                     transform: tapId === i ? "scale(0.92)" : "scale(1)",
                   }}
-                  className="apple-press"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path
                       d="M20 7L10 17l-5-5"
                       stroke={isDone ? "#111" : "#64748b"}
@@ -696,14 +515,14 @@ export default function Treino() {
         })}
       </div>
 
-      {/* BLOQUEADO (modo grátis) */}
+      {/* BLOQUEADO */}
       {!paid && lockedList.length > 0 ? (
         <>
           <div style={styles.lockTitle}>Parte do treino bloqueada</div>
 
           <div style={styles.lockWrap}>
             {lockedList.map((ex, j) => (
-              <div key={`l_${ex.name}_${j}`} style={styles.exCard}>
+              <div key={`l_${j}`} style={styles.exCard}>
                 <div style={styles.exTop}>
                   <div style={styles.numMuted}>{previewCount + j + 1}</div>
                   <div style={{ minWidth: 0 }}>
@@ -716,7 +535,7 @@ export default function Treino() {
             ))}
           </div>
 
-          <button style={styles.fab} onClick={() => nav("/planos")} type="button" className="apple-press">
+          <button style={styles.fab} onClick={() => nav("/planos")} type="button">
             <span style={styles.fabIcon} aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M5 12h12" stroke="#111" strokeWidth="2.6" strokeLinecap="round" />
@@ -740,7 +559,6 @@ export default function Treino() {
           onClick={finishWorkout}
           disabled={!viewingIsToday}
           title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
-          className="apple-press"
         >
           <span style={styles.finishFabIcon} aria-hidden="true">
             <CheckRingIcon />
@@ -836,7 +654,6 @@ const styles = {
     placeItems: "center",
     boxShadow: "0 18px 46px rgba(0,0,0,.14)",
     transition: "transform .14s ease, background .14s ease, border-color .14s ease",
-    flexShrink: 0,
   },
 
   stripWrap: { marginTop: 12 },
@@ -1065,7 +882,6 @@ const styles = {
     placeItems: "center",
     transition: "transform .12s ease, box-shadow .12s ease, background .12s ease",
     marginTop: 2,
-    flexShrink: 0,
   },
   checkOn: { background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", boxShadow: "0 14px 34px rgba(255,106,0,.22)" },
   checkOff: { background: "rgba(15,23,42,.06)", boxShadow: "none" },
@@ -1080,18 +896,22 @@ const styles = {
     transform: "translateX(-50%)",
     bottom: 160,
     zIndex: 999,
+
     minHeight: 56,
     padding: "14px 18px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,.35)",
+
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     color: "#111",
     fontWeight: 950,
     letterSpacing: -0.2,
+
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
+
     boxShadow: "0 22px 70px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.28)",
     animation: "pulseGlow 1.8s ease-in-out infinite",
     willChange: "transform",
@@ -1101,10 +921,12 @@ const styles = {
     height: 38,
     borderRadius: 999,
     flexShrink: 0,
+
     background: "rgba(255,255,255,.88)",
     border: "1px solid rgba(255,255,255,.55)",
     display: "grid",
     placeItems: "center",
+
     boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
   },
   fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
@@ -1115,18 +937,22 @@ const styles = {
     bottom: "calc(112px + env(safe-area-inset-bottom))",
     transform: "translateX(-50%)",
     zIndex: 1100,
+
     minHeight: 58,
     padding: "14px 16px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,.40)",
+
     background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
     color: "#111",
     fontWeight: 950,
     letterSpacing: -0.2,
+
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
+
     boxShadow: "0 26px 90px rgba(255,106,0,.38), inset 0 1px 0 rgba(255,255,255,.30)",
     animation: "finishFloat 3.2s ease-in-out infinite",
     willChange: "transform",
@@ -1136,10 +962,12 @@ const styles = {
     height: 40,
     borderRadius: 999,
     flexShrink: 0,
+
     background: "rgba(255,255,255,.90)",
     border: "1px solid rgba(255,255,255,.60)",
     display: "grid",
     placeItems: "center",
+
     boxShadow: "0 14px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.55)",
   },
   finishFabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
@@ -1173,8 +1001,6 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
         50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
       }
-      .apple-press:active { transform: translateY(1px) scale(.98); }
-      .settings-press:active { transform: translateY(1px) scale(.97); }
     `;
     document.head.appendChild(style);
   }
