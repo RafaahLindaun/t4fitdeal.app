@@ -1,23 +1,17 @@
-// ✅ COLE EM: src/pages/Treino.jsx
-// - Puxa o treino diretamente do treino personalizado (quantidade exata: 2, 6, 10...)
-// - Suporta múltiplos formatos de plano salvo no localStorage
-// - Mantém modo grátis (prévia) vs premium (completo)
-// - Mantém cargas por exercício (localStorage) + concluir treino (avança ciclo)
-// - Navega para /treino/detalhe?d=<dia>
-
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+/* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
+const INK = "rgba(15,23,42,.86)";
+const BORDER = "rgba(15,23,42,.08)";
+const SOFT = "rgba(15,23,42,.04)";
 
 /* ---------------- helpers ---------------- */
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -32,56 +26,111 @@ function safeJsonParse(raw, fallback) {
     return fallback;
   }
 }
-function dayLetter(i) {
-  const letters = ["A", "B", "C", "D", "E", "F"];
-  return letters[i % letters.length] || "A";
-}
 function calcDayIndex(email) {
   const key = `treino_day_${email}`;
   const raw = localStorage.getItem(key);
   const n = raw ? Number(raw) : 0;
   return Number.isFinite(n) ? n : 0;
 }
-function bumpDayIndex(email, max) {
-  const key = `treino_day_${email}`;
-  const raw = localStorage.getItem(key);
-  const n = raw ? Number(raw) : 0;
-  const next = (Number.isFinite(n) ? n : 0) + 1;
-  localStorage.setItem(key, String(next % Math.max(max, 1)));
-}
-function getWeekdaysStrip(splitLen, currentIdx) {
-  const out = [];
-  const len = Math.max(splitLen, 1);
-  for (let k = 0; k < 5; k++) {
-    const idx = (currentIdx + k) % len;
-    out.push({ idx, label: `Treino ${dayLetter(idx)}`, isToday: k === 0 });
-  }
-  return out;
+function dayLetter(i) {
+  const letters = ["A", "B", "C", "D", "E", "F"];
+  return letters[i % letters.length] || "A";
 }
 
-/* ---------------- banco (fallback por grupos) ---------------- */
+function stripAccents(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+function slugifyExercise(name) {
+  const base = stripAccents(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s/g, "-");
+  return base || "exercicio";
+}
+function gifCandidates(name) {
+  const slug = slugifyExercise(name);
+  return [`/gifs/${slug}.GIF`, `/gifs/${slug}.gif`];
+}
+
+function ExerciseGif({ name }) {
+  const [idx, setIdx] = useState(0);
+  const sources = useMemo(() => gifCandidates(name), [name]);
+  const src = sources[idx] || sources[0];
+
+  return (
+    <img
+      src={src}
+      alt={`${name} (gif)`}
+      style={S.gif}
+      onError={(e) => {
+        if (idx < sources.length - 1) {
+          setIdx((p) => p + 1);
+          return;
+        }
+        e.currentTarget.style.display = "none";
+        const parent = e.currentTarget.parentElement;
+        if (parent) parent.setAttribute("data-gif-missing", "1");
+      }}
+    />
+  );
+}
+
+/** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
+function parseRestToSeconds(restText) {
+  const raw = String(restText || "").toLowerCase().trim();
+  if (!raw) return 90;
+
+  const minMatch = raw.match(/(\d+)\s*min/);
+  if (minMatch) return clamp(Number(minMatch[1]) * 60, 15, 600);
+
+  const sMatch = raw.match(/(\d+)\s*s/);
+  if (sMatch) return clamp(Number(sMatch[1]), 10, 600);
+
+  const range = raw.match(/(\d+)\s*[-–]\s*(\d+)/);
+  if (range) return clamp(Number(range[1]), 10, 600);
+
+  const n = raw.match(/(\d+)/);
+  if (n) return clamp(Number(n[1]), 10, 600);
+
+  return 90;
+}
+
+function fmtMMSS(sec) {
+  const s = Math.max(0, Math.floor(Number(sec || 0)));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+}
+
+/* ---------------- banco (mesma ideia do Treino) ---------------- */
 const MUSCLE_GROUPS = [
   {
     id: "peito_triceps",
     name: "Peito + Tríceps",
+    default: { sets: 4, reps: "6–12", rest: "75–120s" },
     library: [
       { name: "Supino reto", group: "Peito" },
       { name: "Supino inclinado", group: "Peito" },
       { name: "Crucifixo / Peck-deck", group: "Peito" },
       { name: "Crossover", group: "Peito" },
-      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
       { name: "Tríceps corda", group: "Tríceps" },
       { name: "Tríceps francês", group: "Tríceps" },
+      { name: "Supino fechado", group: "Peito/Tríceps" },
+      { name: "Paralelas (mergulho)", group: "Tríceps/Peito" },
     ],
   },
   {
     id: "costas_biceps",
     name: "Costas + Bíceps",
+    default: { sets: 4, reps: "8–12", rest: "75–120s" },
     library: [
       { name: "Puxada (barra/puxador)", group: "Costas" },
       { name: "Remada (máquina/curvada)", group: "Costas" },
       { name: "Remada unilateral", group: "Costas" },
-      { name: "Pulldown braço reto", group: "Costas" },
       { name: "Face pull", group: "Ombro/escápulas" },
       { name: "Rosca direta", group: "Bíceps" },
       { name: "Rosca martelo", group: "Bíceps" },
@@ -90,6 +139,7 @@ const MUSCLE_GROUPS = [
   {
     id: "pernas",
     name: "Pernas (Quad + geral)",
+    default: { sets: 4, reps: "8–15", rest: "75–150s" },
     library: [
       { name: "Agachamento", group: "Pernas" },
       { name: "Leg press", group: "Pernas" },
@@ -102,6 +152,7 @@ const MUSCLE_GROUPS = [
   {
     id: "posterior_gluteo",
     name: "Posterior + Glúteo",
+    default: { sets: 4, reps: "8–12", rest: "75–150s" },
     library: [
       { name: "Terra romeno", group: "Posterior" },
       { name: "Mesa flexora", group: "Posterior" },
@@ -114,6 +165,7 @@ const MUSCLE_GROUPS = [
   {
     id: "ombro_core",
     name: "Ombro + Core",
+    default: { sets: 3, reps: "10–15", rest: "60–90s" },
     library: [
       { name: "Desenvolvimento", group: "Ombros" },
       { name: "Elevação lateral", group: "Ombros" },
@@ -126,6 +178,7 @@ const MUSCLE_GROUPS = [
   {
     id: "fullbody",
     name: "Full body (saúde / base)",
+    default: { sets: 3, reps: "10–15", rest: "45–90s" },
     library: [
       { name: "Agachamento (leve)", group: "Pernas" },
       { name: "Supino (leve)", group: "Peito" },
@@ -141,177 +194,124 @@ function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
 
-/* ---------------- normalização do plano (puxa exatamente o que foi salvo) ---------------- */
-function normalizeExercise(ex, defaults) {
-  // aceita:
-  // - string: "Supino reto"
-  // - objeto: {name, group, sets, reps, rest, ...}
-  if (typeof ex === "string") {
-    return {
-      name: ex,
-      group: "",
-      sets: defaults?.sets ?? 4,
-      reps: defaults?.reps ?? "6–12",
-      rest: defaults?.rest ?? "75–120s",
-      method: defaults?.method ?? "",
-    };
-  }
+function ensureVolume(list, minCount = 7) {
+  const base = Array.isArray(list) ? [...list] : [];
+  if (base.length >= minCount) return base;
 
-  const obj = ex && typeof ex === "object" ? ex : {};
-  const name = String(obj.name || obj.title || obj.exercise || "").trim();
+  const extras = [
+    { name: "Aquecimento (5–8min)", group: "Preparação" },
+    { name: "Alongamento curto", group: "Mobilidade" },
+    { name: "Core (prancha)", group: "Core" },
+    { name: "Elevação lateral (leve)", group: "Ombros" },
+    { name: "Rosca direta (leve)", group: "Bíceps" },
+    { name: "Tríceps corda (leve)", group: "Tríceps" },
+    { name: "Panturrilha", group: "Panturrilha" },
+  ];
 
-  return {
-    ...obj,
-    name: name || "Exercício",
-    group: String(obj.group || obj.muscle || obj.muscleGroup || "").trim(),
-    sets: obj.sets ?? defaults?.sets ?? 4,
-    reps: obj.reps ?? defaults?.reps ?? "6–12",
-    rest: obj.rest ?? defaults?.rest ?? "75–120s",
-    method: obj.method ?? defaults?.method ?? "",
-  };
+  let i = 0;
+  while (base.length < minCount && i < extras.length) base.push(extras[i++]);
+  return base;
 }
 
-function normalizeDay(day, dayDefaults) {
-  // aceita:
-  // - array de exercícios
-  // - objeto com {exercises: []} / {items: []} / {list: []}
-  // - objeto com {title, exercises...}
-  if (Array.isArray(day)) {
-    return day.map((ex) => normalizeExercise(ex, dayDefaults));
-  }
-  if (day && typeof day === "object") {
-    const arr =
-      day.exercises ||
-      day.items ||
-      day.list ||
-      day.workout ||
-      day.treino ||
-      day.exs ||
-      [];
-    if (Array.isArray(arr)) return arr.map((ex) => normalizeExercise(ex, dayDefaults));
-  }
-  return [];
+/* --- compatível com “novo TreinoPersonalize.jsx” (vários nomes possíveis) --- */
+function guessGroupFromName(name) {
+  const n = String(name || "").toLowerCase();
+  if (n.includes("supino") || n.includes("crucif") || n.includes("peck") || n.includes("crossover") || n.includes("flexão"))
+    return "Peito";
+  if (n.includes("tríce") || n.includes("triceps") || n.includes("corda") || n.includes("testa") || n.includes("mergulho"))
+    return "Tríceps";
+  if (n.includes("puxada") || n.includes("remada") || n.includes("pulldown") || n.includes("barra fixa") || n.includes("terra"))
+    return "Costas";
+  if (n.includes("rosca") || n.includes("bíce") || n.includes("biceps") || n.includes("martelo") || n.includes("scott"))
+    return "Bíceps";
+  if (n.includes("agacha") || n.includes("leg press") || n.includes("extensora") || n.includes("afundo") || n.includes("passada") || n.includes("búlgaro"))
+    return "Pernas";
+  if (n.includes("flexora") || n.includes("stiff") || n.includes("romeno") || n.includes("posterior") || n.includes("good morning"))
+    return "Posterior";
+  if (n.includes("hip thrust") || n.includes("glute") || n.includes("abdu") || n.includes("coice"))
+    return "Glúteo";
+  if (n.includes("panturrilha")) return "Panturrilha";
+  if (n.includes("ombro") || n.includes("lateral") || n.includes("desenvolvimento") || n.includes("arnold") || n.includes("face pull"))
+    return "Ombros";
+  if (n.includes("core") || n.includes("prancha") || n.includes("abdominal") || n.includes("dead bug") || n.includes("pallof"))
+    return "Core";
+  return "Treino";
 }
 
-/**
- * ✅ Carrega plano personalizado tentando formatos comuns.
- * PRIORIDADE:
- * 1) custom_split_<email> com split explícito (custom.split / custom.workouts / custom.days / custom.plan)
- * 2) user.split (caso você salve no AuthContext)
- * 3) fallback (banco MUSCLE_GROUPS via dayGroups)
- *
- * IMPORTANTE:
- * - NÃO completa volume (sem ensureVolume aqui).
- * - Se o usuário salvou 6 exercícios, retorna 6. Se salvou 2, retorna 2.
- */
-function loadPersonalizedPlan(email, user) {
-  // (1) localStorage principal que você já usa
+function normalizeDayExercises(custom, days) {
+  const a1 = Array.isArray(custom?.dayExercises) ? custom.dayExercises : null;
+  const a2 = Array.isArray(custom?.daysExercises) ? custom.daysExercises : null;
+  const o1 = custom?.exercisesByDay && typeof custom.exercisesByDay === "object" ? custom.exercisesByDay : null;
+  const o2 =
+    custom?.selectedExercisesByDay && typeof custom.selectedExercisesByDay === "object"
+      ? custom.selectedExercisesByDay
+      : null;
+
+  const out = Array.from({ length: days }).map(() => []);
+
+  for (let i = 0; i < days; i++) {
+    let raw = null;
+
+    if (a1 && Array.isArray(a1[i])) raw = a1[i];
+    else if (a2 && Array.isArray(a2[i])) raw = a2[i];
+    else if (o1 && Array.isArray(o1[i])) raw = o1[i];
+    else if (o2 && Array.isArray(o2[i])) raw = o2[i];
+
+    if (!raw) continue;
+
+    out[i] = raw
+      .map((x) => {
+        if (!x) return null;
+        if (typeof x === "string") return { name: x, group: guessGroupFromName(x) };
+        if (typeof x === "object" && x.name) return { name: x.name, group: x.group || guessGroupFromName(x.name) };
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  return out;
+}
+
+function buildCustomPlan(email) {
   const raw = localStorage.getItem(`custom_split_${email}`);
   const custom = safeJsonParse(raw, null);
+  if (!custom) return null;
 
-  // defaults do plano (pode existir prescriptions por dia)
-  const baseDefaults = {
-    sets: 4,
-    reps: "6–12",
-    rest: "75–120s",
-    style: "Personalizado",
+  const rawDays = Number(custom.days || custom.dayGroups?.length || 0);
+  const days = clamp(rawDays || 0, 2, 6);
+
+  const dayGroups = Array.from({ length: days }).map((_, i) => custom?.dayGroups?.[i] || "fullbody");
+  const prescriptions = custom.prescriptions || {};
+  const pickedByDay = normalizeDayExercises(custom, days);
+
+  const split = dayGroups.map((gid, idx) => {
+    const g = groupById(gid);
+    const pres = prescriptions[idx] || g.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+
+    const chosen = Array.isArray(pickedByDay[idx]) && pickedByDay[idx].length ? pickedByDay[idx] : null;
+    const baseList = chosen ? chosen : (g.library || []).slice(0, 10);
+    const list = ensureVolume(baseList, 7);
+
+    return list.map((ex) => ({
+      name: ex.name,
+      group: ex.group || guessGroupFromName(ex.name),
+      sets: pres.sets,
+      reps: pres.reps,
+      rest: pres.rest,
+      method: `Split ${custom.splitId || ""} • ${g.name}`,
+    }));
+  });
+
+  const base = {
+    sets: "custom",
+    reps: "custom",
+    rest: "custom",
+    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
   };
 
-  // helper: prescriptions por dia (ex.: custom.prescriptions[idx] = {sets,reps,rest})
-  const getDayDefaults = (idx) => {
-    const pres = custom?.prescriptions?.[idx] || {};
-    return {
-      sets: pres.sets ?? baseDefaults.sets,
-      reps: pres.reps ?? baseDefaults.reps,
-      rest: pres.rest ?? baseDefaults.rest,
-      method:
-        pres.method ||
-        (custom?.splitId ? `Split ${custom.splitId}` : "") ||
-        (custom?.style ? String(custom.style) : ""),
-    };
-  };
-
-  // (1.a) se o custom já tiver split explícito com exercícios
-  const splitExplicit =
-    custom?.split ||
-    custom?.workouts ||
-    custom?.days ||
-    custom?.plan ||
-    custom?.treinos ||
-    null;
-
-  if (Array.isArray(splitExplicit) && splitExplicit.length > 0) {
-    const split = splitExplicit.map((day, idx) => normalizeDay(day, getDayDefaults(idx)));
-    const days = split.length;
-
-    const base = {
-      sets: "custom",
-      reps: "custom",
-      rest: "custom",
-      style: `Personalizado • ${custom?.splitId || `${days}x/sem`}`,
-    };
-
-    return { base, split, meta: { days } };
-  }
-
-  // (2) se você salvou no usuário (AuthContext) um split pronto
-  // ex.: user.split = [ [ex...], [ex...] ]
-  if (Array.isArray(user?.split) && user.split.length > 0) {
-    const split = user.split.map((day, idx) => normalizeDay(day, getDayDefaults(idx)));
-    const days = split.length;
-
-    const base = {
-      sets: "custom",
-      reps: "custom",
-      rest: "custom",
-      style: `Personalizado • ${custom?.splitId || `${days}x/sem`}`,
-    };
-
-    return { base, split, meta: { days } };
-  }
-
-  // (3) fallback por grupos (dayGroups), mas SEM completar volume e respeitando count se existir
-  if (custom && Array.isArray(custom.dayGroups) && custom.dayGroups.length > 0) {
-    const rawDays = Number(custom.days || custom.dayGroups.length || 3);
-    const days = clamp(rawDays, 2, 6);
-
-    const dayGroups = [];
-    for (let i = 0; i < days; i++) {
-      dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
-    }
-
-    // opcional: se tiver "exercisesPerDay" ou "countPerDay" no custom, respeita
-    // (isso é útil se você quiser controlar quantidade sem salvar lista explícita)
-    const perDay =
-      Number(custom.exercisesPerDay || custom.countPerDay || custom.perDay) || null;
-
-    const split = dayGroups.map((gid, idx) => {
-      const g = groupById(gid);
-      const dflt = getDayDefaults(idx);
-
-      const baseList = Array.isArray(g.library) ? [...g.library] : [];
-      const exact = Number.isFinite(perDay) && perDay > 0 ? baseList.slice(0, perDay) : baseList;
-
-      return exact.map((ex) => ({
-        ...normalizeExercise(ex, dflt),
-        method: `Split ${custom.splitId || ""} • ${g.name}`,
-      }));
-    });
-
-    const base = {
-      sets: "custom",
-      reps: "custom",
-      rest: "custom",
-      style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
-    };
-
-    return { base, split, meta: { days } };
-  }
-
-  return null;
+  return { base, split, meta: { days } };
 }
 
-/* ---------------- fallback padrão (sem depender do custom) ---------------- */
 function buildFallbackSplit() {
   const A = [
     { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
@@ -320,13 +320,16 @@ function buildFallbackSplit() {
     { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
     { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
     { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
   ];
   const B = [
     { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
     { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
     { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
     { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
     { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
   ];
   const C = [
     { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
@@ -334,11 +337,13 @@ function buildFallbackSplit() {
     { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
     { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
     { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
   ];
   return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
 }
 
-/* ---------------- carga/progressão (localStorage) ---------------- */
+/* ---------------- cargas ---------------- */
 function loadLoads(email) {
   return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
 }
@@ -349,833 +354,922 @@ function keyForLoad(viewIdx, exName) {
   return `${viewIdx}__${String(exName || "").toLowerCase()}`;
 }
 
-/* ---------------- Page ---------------- */
-export default function Treino() {
-  const nav = useNavigate();
-  const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
+/* ---------------- progresso de séries ---------------- */
+function loadSetsProg(email) {
+  return safeJsonParse(localStorage.getItem(`setsprog_${email}`), {});
+}
+function saveSetsProg(email, obj) {
+  localStorage.setItem(`setsprog_${email}`, JSON.stringify(obj));
+}
+function keyForSetProg(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
 
+/* ---------------- detalhes por nome ---------------- */
+function detailFor(exName) {
+  const n = String(exName || "").toLowerCase();
+
+  if (n.includes("supino"))
+    return { area: "Peitoral, tríceps e deltoide anterior.", cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura." };
+  if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover"))
+    return { area: "Peitoral (isolamento).", cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta." };
+
+  if (n.includes("puxada") || n.includes("pulldown"))
+    return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
+  if (n.includes("remada"))
+    return { area: "Costas médias/dorsal e estabilização.", cue: "Coluna firme. Puxe com cotovelos. Segure 1s no final. Volte controlando." };
+  if (n.includes("face pull"))
+    return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco." };
+
+  if (n.includes("rosca"))
+    return { area: "Bíceps e antebraço.", cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle." };
+  if (n.includes("tríceps") || n.includes("triceps"))
+    return { area: "Tríceps.", cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar." };
+  if (n.includes("paralelas") || n.includes("mergulho"))
+    return { area: "Tríceps e peito.", cue: "Desça controlando. Tronco levemente inclinado. Suba sem balançar." };
+
+  if (n.includes("agacha"))
+    return { area: "Quadríceps, glúteos e core.", cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte." };
+  if (n.includes("leg press"))
+    return { area: "Quadríceps e glúteos.", cue: "Amplitude segura. Não trave joelho. Controle na descida." };
+  if (n.includes("terra") || n.includes("romeno"))
+    return { area: "Posterior e glúteos.", cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura." };
+  if (n.includes("extensora"))
+    return { area: "Quadríceps (isolamento).", cue: "Segure 1s em cima. Volte lento sem bater o peso." };
+  if (n.includes("flexora"))
+    return { area: "Posterior (isolamento).", cue: "Controle total. Segure 1s contraindo. Evite levantar quadril." };
+  if (n.includes("panturrilha"))
+    return { area: "Panturrilha.", cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa." };
+  if (n.includes("afundo") || n.includes("passada"))
+    return { area: "Glúteos e quadríceps.", cue: "Passo firme. Tronco estável. Desça controlando e suba sem tombar." };
+  if (n.includes("abdu"))
+    return { area: "Glúteo médio.", cue: "Movimento controlado. Sem girar o tronco. Sinta o lado do glúteo." };
+  if (n.includes("hip thrust"))
+    return { area: "Glúteos.", cue: "Queixo neutro. Suba contraindo. Segure 1s no topo sem hiperextender lombar." };
+
+  if (n.includes("prancha"))
+    return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
+  if (n.includes("abdominal"))
+    return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
+
+  return { area: "Músculos relacionados ao movimento.", cue: "Postura firme. Controle na descida. Execução limpa sem roubar." };
+}
+
+function suggestLoadRange(exName, pesoKg, objetivo) {
+  const kg = Number(pesoKg || 0) || 70;
+  const n = String(exName || "").toLowerCase();
+  let base = 0.35;
+
+  if (n.includes("supino")) base = 0.55;
+  if (n.includes("agacha")) base = 0.7;
+  if (n.includes("leg press")) base = 0.8;
+  if (n.includes("remada")) base = 0.5;
+  if (n.includes("puxada")) base = 0.45;
+  if (n.includes("terra") || n.includes("romeno")) base = 0.75;
+  if (n.includes("desenvolvimento")) base = 0.35;
+  if (n.includes("elevação lateral") || n.includes("elevacao lateral")) base = 0.12;
+  if (n.includes("rosca")) base = 0.2;
+  if (n.includes("tríceps") || n.includes("triceps")) base = 0.22;
+  if (n.includes("panturrilha")) base = 0.35;
+
+  const goal = String(objetivo || "").toLowerCase();
+  const isForca = goal.includes("forc");
+  const isHip = goal.includes("hip");
+  const mult = isForca ? 1.12 : isHip ? 1.0 : 0.92;
+
+  const mid = kg * base * mult;
+  const low = Math.max(2, Math.round(mid * 0.85));
+  const high = Math.max(low + 1, Math.round(mid * 1.05));
+  return `${low}–${high}kg`;
+}
+
+/* ---------------- icons ---------------- */
+function IconChevronLeft() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconArrowRight() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M10 17l5-5-5-5" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconPause() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 6v12" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M16 6v12" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconPlay() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 7l10 5-10 5V7Z" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconReset() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M20 12a8 8 0 1 1-2.3-5.6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 4v6h-6" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 7.2v5.2l3.2 1.7" stroke={INK} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 20.2a8.2 8.2 0 1 1 8.2-8.2" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ---------------- UI bits ---------------- */
+function Chip({ label, value }) {
+  return (
+    <div style={S.chip}>
+      <div style={S.chipLabel}>{label}</div>
+      <div style={S.chipValue}>{value}</div>
+      <div style={S.chipSheen} aria-hidden="true" />
+    </div>
+  );
+}
+
+function SetDots({ total, done, onToggle }) {
+  const n = clamp(Number(total || 0) || 0, 1, 12);
+  const d = clamp(Number(done || 0) || 0, 0, n);
+
+  return (
+    <div style={S.dotsBox}>
+      <div style={S.dotsTitle}>Séries feitas</div>
+      <div style={S.dotsRowInner}>
+        {Array.from({ length: n }).map((_, i) => {
+          const filled = i < d;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onToggle(i)}
+              style={{ ...S.dotBtn, ...(filled ? S.dotBtnOn : S.dotBtnOff) }}
+              className="td-press"
+              aria-label={`Marcar série ${i + 1} de ${n}`}
+            />
+          );
+        })}
+      </div>
+      <div style={S.dotsMini}>
+        {d}/{n}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Page ---------------- */
+export default function TreinoDetalhe() {
+  const nav = useNavigate();
+  const [sp] = useSearchParams();
+  const { user } = useAuth();
+
+  const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // ✅ plano personalizado (exato)
-  const plan = useMemo(() => loadPersonalizedPlan(email, user), [email, user]);
-
-  // fallback padrão
-  const fallbackSplit = useMemo(() => buildFallbackSplit(), []);
-
-  const base = plan?.base || fallbackSplit.base;
-  const split = plan?.split || fallbackSplit.split;
+  // plano (custom ou fallback)
+  const plan = useMemo(() => buildCustomPlan(email), [email]);
+  const fallback = useMemo(() => buildFallbackSplit(), []);
+  const base = plan?.base || fallback.base;
+  const split = plan?.split || fallback.split;
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
-  const [viewIdx, setViewIdx] = useState(dayIndex);
 
+  const dParam = Number(sp.get("d"));
+  const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
-  const viewingIsToday = viewSafe === mod(dayIndex, split.length);
 
-  // ✅ pega o treino do dia EXATO (sem adicionar nada)
-  const workout = useMemo(() => {
-    const list = split?.[viewSafe] || [];
-    return Array.isArray(list) ? list : [];
-  }, [split, viewSafe]);
+  const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
+  const workout = useMemo(
+    () => workoutRaw.filter((ex) => !String(ex?.name || "").toLowerCase().includes("aquecimento")),
+    [workoutRaw]
+  );
 
-  const doneKey = `done_ex_${email}_${viewSafe}`;
-  const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
-  const [tapId, setTapId] = useState(null);
+  const pages = useMemo(() => {
+    const exPages = workout.map((ex, i) => ({
+      type: "exercise",
+      key: `${i}_${ex.name}`,
+      ex,
+      index: i,
+    }));
+    return [...exPages, { type: "cardio", key: "end_cardio" }];
+  }, [workout]);
 
+  // cargas
   const [loads, setLoads] = useState(() => loadLoads(email));
-
-  function toggleDone(i) {
-    const next = { ...done, [i]: !done[i] };
-    setDone(next);
-    localStorage.setItem(doneKey, JSON.stringify(next));
-    setTapId(i);
-    setTimeout(() => setTapId(null), 160);
-  }
-
-  function adjustLoad(exName, delta) {
+  function setLoad(exName, v) {
     const k = keyForLoad(viewSafe, exName);
-    const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
-    const next = { ...loads, [k]: nextVal };
+    const next = { ...loads, [k]: v };
     setLoads(next);
     saveLoads(email, next);
   }
 
-  // ✅ conclui treino: avança o dia do ciclo, salva histórico, limpa progresso
-  function finishWorkout() {
-    if (!viewingIsToday) return;
-
-    bumpDayIndex(email, split.length);
-
-    localStorage.removeItem(doneKey);
-    setDone({});
-
-    const wkKey = `workout_${email}`;
-    const today = todayKey();
-    const raw = localStorage.getItem(wkKey);
-    const list = safeJsonParse(raw, []);
-    const arr = Array.isArray(list) ? list : [];
-    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
-
-    nav("/dashboard");
+  // séries feitas (persistente)
+  const [setsProg, setSetsProg] = useState(() => loadSetsProg(email));
+  function getDone(exName, setsTotal) {
+    const key = keyForSetProg(viewSafe, exName);
+    const val = setsProg[key];
+    const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
+    return clamp(Number(val || 0) || 0, 0, n);
+  }
+  function setDone(exName, nextDone) {
+    const key = keyForSetProg(viewSafe, exName);
+    const next = { ...setsProg, [key]: nextDone };
+    setSetsProg(next);
+    saveSetsProg(email, next);
   }
 
-  // modo grátis: prévia do treino (metade, no mínimo 2)
-  const previewCount = Math.max(2, Math.ceil(workout.length / 2));
-  const previewList = workout.slice(0, previewCount);
-  const lockedList = workout.slice(previewCount);
+  // pager
+  const scrollerRef = useRef(null);
+  const [page, setPage] = useState(0);
 
-  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
+  // dica “arraste”
+  const hintKey = `td_swipe_hint_${email}`;
+  const [showHint, setShowHint] = useState(() => localStorage.getItem(hintKey) !== "1");
 
-  function openExercises() {
-    nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
+  // cronômetro: estado + UI (dock fechado/aberto)
+  const timerKey = `td_timer_open_${email}`;
+  const [timerOpen, setTimerOpen] = useState(() => localStorage.getItem(timerKey) === "1");
+
+  const [restTotal, setRestTotal] = useState(90);
+  const [restLeft, setRestLeft] = useState(90);
+  const [running, setRunning] = useState(false);
+
+  // drag pra abrir/fechar
+  const dragStartY = useRef(null);
+  const dragMoved = useRef(false);
+
+  function setTimerOpenPersist(v) {
+    setTimerOpen(v);
+    localStorage.setItem(timerKey, v ? "1" : "0");
   }
 
-  const doneCount = Object.values(done).filter(Boolean).length;
-  const progressPct = workout.length ? clamp(doneCount / workout.length, 0, 1) : 0;
+  // quando muda de página: muda o descanso padrão
+  useEffect(() => {
+    const p = pages[page];
+    if (!p || p.type !== "exercise") {
+      setRunning(false);
+      setRestTotal(90);
+      setRestLeft(90);
+      return;
+    }
+    const ex = p.ex;
+    const rest = ex?.rest ?? base.rest ?? "90s";
+    const sec = parseRestToSeconds(rest);
+    setRunning(false);
+    setRestTotal(sec);
+    setRestLeft(sec);
+  }, [page, pages, base.rest]);
+
+  // tick
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setRestLeft((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  useEffect(() => {
+    if (restLeft === 0 && running) setRunning(false);
+  }, [restLeft, running]);
+
+  function startTimer() {
+    if (restLeft <= 0) setRestLeft(restTotal);
+    setRunning(true);
+
+    if (showHint) {
+      localStorage.setItem(hintKey, "1");
+      setShowHint(false);
+    }
+  }
+  function pauseTimer() {
+    setRunning(false);
+  }
+  function resetTimer() {
+    setRunning(false);
+    setRestLeft(restTotal);
+  }
+
+  // ping no dock quando marca série (sem forçar aberto sempre)
+  function softPingTimer() {
+    if (timerOpen) return;
+    setTimerOpenPersist(true);
+    window.setTimeout(() => setTimerOpenPersist(false), 1200);
+  }
+
+  // scroll -> página
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const w = el.clientWidth || 1;
+      const idx = Math.round(el.scrollLeft / w);
+      const safe = clamp(idx, 0, pages.length - 1);
+      setPage(safe);
+
+      if (showHint && Math.abs(el.scrollLeft) > 20) {
+        localStorage.setItem(hintKey, "1");
+        setShowHint(false);
+      }
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [pages.length, showHint, hintKey]);
+
+  function goTo(i) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    el.scrollTo({ left: w * i, behavior: "smooth" });
+  }
+
+  // css global
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "treino-detalhe-book-ui-v2";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes tdSheen {
+        0%, 35%   { transform: translateX(-70%); opacity: .18; }
+        55%, 100% { transform: translateX(140%); opacity: .18; }
+      }
+      @keyframes tdPop {
+        0%,100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+      }
+      .td-press { transition: transform .12s ease, filter .12s ease; }
+      .td-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
+      input:focus {
+        border-color: rgba(255,106,0,.38) !important;
+        box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
+  if (!paid) {
+    return (
+      <div style={S.page}>
+        <div style={S.lockCard}>
+          <div style={S.lockTitle}>Treino em modo “livro”</div>
+          <div style={S.lockText}>Assine para liberar páginas, GIFs, marcação de séries e cronômetro opcional.</div>
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
+            Ver planos
+          </button>
+          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="td-press">
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const pNow = pages[page];
+  const isExercise = pNow?.type === "exercise";
+  const exNow = isExercise ? pNow.ex : null;
+
+  const exCount = workout.length;
+  const totalPages = pages.length;
+  const progressText = `${page + 1}/${totalPages}`;
+
+  // drag handlers do dock
+  function onDockPointerDown(e) {
+    dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
+    dragMoved.current = false;
+  }
+  function onDockPointerMove(e) {
+    if (dragStartY.current == null) return;
+    const y = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
+    if (y == null) return;
+
+    const dy = y - dragStartY.current;
+    if (Math.abs(dy) > 10) dragMoved.current = true;
+
+    if (dy < -26) {
+      dragStartY.current = null;
+      setTimerOpenPersist(true);
+    }
+    if (dy > 26) {
+      dragStartY.current = null;
+      setTimerOpenPersist(false);
+    }
+  }
+  function onDockPointerUp() {
+    dragStartY.current = null;
+  }
+  function onDockClick() {
+    if (dragMoved.current) return;
+    setTimerOpenPersist(!timerOpen);
+  }
 
   return (
-    <div style={styles.page}>
-      {/* HEADER */}
-      <div style={styles.header}>
-        <div>
-          <div style={styles.headerKicker}>Seu treino</div>
-          <div style={styles.headerTitle}>
-            Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
-          </div>
+    <div style={S.page}>
+      {/* TOP HEADER */}
+      <div style={S.head}>
+        <div style={S.headGlow} aria-hidden="true" />
 
-          <div style={styles.headerSub}>
-            {plan ? (
-              <>
-                Método: <b>{base.style}</b>
-              </>
-            ) : (
-              <>
-                Método: <b>{base.style}</b> • fallback
-              </>
-            )}
-          </div>
-        </div>
-
-        <button
-          style={styles.settingsBtn}
-          onClick={() => nav("/conta")}
-          aria-label="Conta e configurações"
-          type="button"
-          className="settings-press"
-        >
-          <GearIcon />
+        <button style={S.back} onClick={() => nav("/treino")} aria-label="Voltar" type="button" className="td-press">
+          <IconChevronLeft />
         </button>
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={S.hKicker}>Treino detalhado</div>
+          <div style={S.hTitle}>Treino {dayLetter(viewSafe)}</div>
+
+          <div style={S.hLine}>
+            <span style={S.tagStrong}>{base.style}</span>
+            <span style={S.tagSoft}>{exCount} exercícios</span>
+            <span style={S.tagSoft}>{progressText}</span>
+          </div>
+
+          <div style={S.hMeta}>
+            {showHint ? "Arraste para o lado (estilo livro)." : "Toque nas bolinhas para marcar séries e iniciar descanso."}
+          </div>
+        </div>
       </div>
 
-      {/* PRÓXIMOS DIAS */}
-      <div style={styles.stripWrap}>
-        <div style={styles.stripTitle}>Próximos dias</div>
-        <div style={styles.stripRow}>
-          {strip.map((d) => {
-            const isActive = d.idx === viewSafe;
+      {/* Dots (páginas) */}
+      <div style={S.dotsNav}>
+        {pages.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => goTo(i)}
+            style={{ ...S.dotNav, ...(i === page ? S.dotNavOn : S.dotNavOff) }}
+            aria-label={`Ir para página ${i + 1}`}
+            className="td-press"
+          />
+        ))}
+      </div>
+
+      {/* PAGER */}
+      <div ref={scrollerRef} style={S.pager} aria-label="Treino em páginas">
+        {pages.map((p, idx) => {
+          if (p.type === "cardio") {
             return (
-              <button
-                key={d.idx}
-                style={{
-                  ...styles.stripPill,
-                  ...(isActive ? styles.stripPillOn : styles.stripPillOff),
-                }}
-                type="button"
-                onClick={() => {
-                  if (isActive) {
-                    openExercises();
-                    return;
-                  }
-                  setViewIdx(d.idx);
-                  const nextKey = `done_ex_${email}_${d.idx}`;
-                  setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
-                }}
-              >
-                {d.label}
-                {d.isToday ? " • hoje" : ""}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+              <div key={p.key} style={S.pageItem}>
+                <div style={S.cardPage}>
+                  <div style={S.cardGlow} aria-hidden="true" />
 
-      {/* EXERCÍCIOS DO DIA */}
-      <button style={styles.bigGo} onClick={() => openExercises()} type="button">
-        <div style={styles.bigGoRow}>
-          <div style={{ minWidth: 0 }}>
-            <div style={styles.bigGoTop}>Exercícios do dia</div>
-            <div style={styles.bigGoSub}>
-              Abrir treino {dayLetter(viewSafe)} • {workout.length} exercícios
-            </div>
-          </div>
+                  <div style={S.endKicker}>Final do treino</div>
+                  <div style={S.endTitle}>Bora pro cardio?</div>
+                  <div style={S.endSub}>Um cardio leve/moderado (10–20min) fecha bem o dia e ajuda consistência.</div>
 
-          <div style={styles.bigGoIcon}>
-            <ArrowIcon />
-          </div>
-        </div>
+                  <button type="button" onClick={() => nav("/cardio")} style={S.endCta} className="td-press">
+                    Ir para Cardio
+                    <span style={S.endCtaIcon} aria-hidden="true">
+                      <IconArrowRight />
+                    </span>
+                  </button>
 
-        <div style={styles.bubbles}>
-          <span style={styles.bubble}>{viewingIsToday ? "Hoje" : `Dia ${dayLetter(viewSafe)}`}</span>
-          <span style={styles.bubbleSoft}>
-            {doneCount}/{workout.length} feitos
-          </span>
-          <span style={styles.bubbleSoft}>Toque pra abrir</span>
-        </div>
+                  <button type="button" onClick={() => nav("/treino")} style={S.endGhost} className="td-press">
+                    Voltar ao Treino
+                  </button>
 
-        <div style={styles.progressTrack}>
-          <div style={{ ...styles.progressFill, width: `${Math.round(progressPct * 100)}%` }} />
-        </div>
-
-        <div style={styles.progressHint}>
-          Progresso do dia: <b>{Math.round(progressPct * 100)}%</b>
-        </div>
-      </button>
-
-      {/* METAS */}
-      <div style={styles.card}>
-        <div style={styles.cardTop}>
-          <div>
-            <div style={styles.cardTitle}>METAS</div>
-            <div style={styles.cardSub}>Pronto para conquistar seus objetivos?</div>
-          </div>
-          <button style={styles.cardBtn} onClick={() => nav("/metas")} type="button" className="apple-press">
-            Abrir
-          </button>
-        </div>
-      </div>
-
-      {/* CARDIO */}
-      <div style={styles.card}>
-        <div style={styles.cardTop}>
-          <div>
-            <div style={styles.cardTitle}>Hora do cardio</div>
-            <div style={styles.cardSub}>Acelere seus ganhos.</div>
-          </div>
-          <button style={styles.cardBtn} onClick={() => nav("/cardio")} type="button" className="apple-press">
-            Abrir
-          </button>
-        </div>
-      </div>
-
-      {/* RESUMO */}
-      <div style={styles.card}>
-        <div style={styles.summaryTitle}>Resumo</div>
-
-        <div style={styles.summaryLine}>
-          Exercícios hoje: <b>{workout.length}</b>
-        </div>
-
-        <div style={styles.summaryLine}>
-          Séries/Reps/Descanso (base do dia):{" "}
-          <b>
-            {(workout[0]?.sets ?? base.sets ?? 4) + " • " + (workout[0]?.reps ?? base.reps ?? "6–12") + " • " + (workout[0]?.rest ?? base.rest ?? "75–120s")}
-          </b>
-        </div>
-
-        {paid ? (
-          <>
-            <div style={styles.summaryActions}>
-              <button style={styles.customBtn} onClick={() => nav("/treino/personalizar")} type="button" className="apple-press">
-                Personalizar
-              </button>
-
-              <button style={styles.cardBtnAlt} onClick={() => openExercises()} type="button" className="apple-press">
-                Abrir detalhes
-              </button>
-            </div>
-
-            {!viewingIsToday ? (
-              <div style={styles.viewHint}>
-                Você está visualizando <b>Treino {dayLetter(viewSafe)}</b>. Para concluir e avançar o ciclo, volte para{" "}
-                <b>Hoje</b>.
+                  <div style={S.endNote}>Dica: sem tempo? 10 min leve &gt; nada.</div>
+                </div>
               </div>
-            ) : null}
-          </>
-        ) : (
-          <div style={styles.lockHint}>
-            Você está no Modo Gratuito. Assine para liberar treino completo e personalização.
-          </div>
-        )}
-      </div>
+            );
+          }
 
-      {/* LISTA */}
-      <div style={styles.sectionTitle}>Lista do treino - Resumido</div>
+          const ex = p.ex;
+          const det = detailFor(ex.name);
+          const peso = user?.peso ?? user?.weight ?? 70;
+          const objetivo = user?.objetivo ?? user?.goal ?? "";
+          const suggested = suggestLoadRange(ex.name, peso, objetivo);
 
-      <div style={styles.list}>
-        {previewList.map((ex, i) => {
-          const isDone = !!done[i];
-          const loadKey = keyForLoad(viewSafe, ex.name);
-          const curLoad = loads[loadKey] ?? 0;
+          const k = keyForLoad(viewSafe, ex.name);
+          const myLoad = loads[k] ?? "";
+
+          const sets = ex.sets ?? base.sets;
+          const reps = ex.reps ?? base.reps;
+          const rest = ex.rest ?? base.rest;
+
+          const done = getDone(ex.name, sets);
+          const totalSets = clamp(Number(sets) || 4, 1, 12);
+
+          function toggleSet(i) {
+            let nextDone = 0;
+            if (i < done) nextDone = i; // volta
+            else nextDone = i + 1; // avança
+
+            setDone(ex.name, nextDone);
+
+            if (nextDone > done) {
+              const sec = parseRestToSeconds(rest);
+              setRestTotal(sec);
+              setRestLeft(sec);
+              setRunning(true);
+              softPingTimer();
+            }
+          }
 
           return (
-            <div key={`${ex.name}_${i}`} style={styles.exCard}>
-              <div style={styles.exTop}>
-                <div style={styles.num}>{i + 1}</div>
+            <div key={p.key} style={S.pageItem}>
+              <div style={S.cardPage}>
+                <div style={S.cardGlow} aria-hidden="true" />
+                <div style={S.cardSheen} aria-hidden="true" />
 
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={styles.exName}>{ex.name}</div>
-                  <div style={styles.exNote}>
-                    {(ex.group || "—")} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
+                <div style={S.exerciseTop}>
+                  <div style={S.exerciseIndex}>{idx + 1}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={S.exerciseName}>{ex.name}</div>
+                    <div style={S.exerciseGroup}>{ex.group}</div>
                   </div>
 
-                  <div style={styles.loadRow}>
-                    <span style={styles.loadLabel}>Carga</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById(`exec_${idx}`);
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    style={S.execBtn}
+                    className="td-press"
+                  >
+                    Execução
+                  </button>
+                </div>
 
-                    <div style={styles.loadPill}>
-                      <button
-                        type="button"
-                        style={styles.loadBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          adjustLoad(ex.name, -2.5);
-                        }}
-                        aria-label="Diminuir carga"
-                        className="apple-press"
-                      >
-                        −
-                      </button>
-
-                      <div style={styles.loadValue}>
-                        <b>{Number(curLoad || 0).toFixed(1)}</b> kg
-                      </div>
-
-                      <button
-                        type="button"
-                        style={styles.loadBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          adjustLoad(ex.name, +2.5);
-                        }}
-                        aria-label="Aumentar carga"
-                        className="apple-press"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      style={styles.loadMini}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        adjustLoad(ex.name, +1);
-                      }}
-                      title="Ajuste fino"
-                      className="apple-press"
-                    >
-                      +1
-                    </button>
+                {/* GIF */}
+                <div style={S.gifWrap}>
+                  <ExerciseGif name={ex.name} />
+                  <div style={S.gifFallback} aria-hidden="true">
+                    <div style={S.gifFallbackBadge}>GIF</div>
+                    <div style={S.gifFallbackText}>Adicione: /public/gifs/{slugifyExercise(ex.name)}.gif</div>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => toggleDone(i)}
-                  aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
-                  style={{
-                    ...styles.checkBtn,
-                    ...(isDone ? styles.checkOn : styles.checkOff),
-                    transform: tapId === i ? "scale(0.92)" : "scale(1)",
-                  }}
-                  className="apple-press"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      d="M20 7L10 17l-5-5"
-                      stroke={isDone ? "#111" : "#64748b"}
-                      strokeWidth="2.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                {/* Chips */}
+                <div style={S.bigChips}>
+                  <Chip label="Séries" value={String(sets)} />
+                  <Chip label="Repetições" value={String(reps)} />
+                  <Chip label="Descanso" value={String(rest)} />
+                </div>
+
+                {/* Séries (bolinhas) */}
+                <SetDots total={totalSets} done={done} onToggle={toggleSet} />
+
+                {/* Carga */}
+                <div style={S.loadBox}>
+                  <div style={S.loadLeft}>
+                    <div style={S.loadLabel}>Carga sugerida</div>
+                    <div style={S.loadVal}>{suggested}</div>
+                    <div style={S.loadHint}>Boa = mantém forma e controle.</div>
+                  </div>
+
+                  <div style={S.loadRight}>
+                    <div style={S.loadLabel}>Sua carga</div>
+                    <input
+                      value={myLoad}
+                      onChange={(e) => setLoad(ex.name, e.target.value)}
+                      placeholder="Ex.: 40kg"
+                      style={S.input}
+                      inputMode="text"
                     />
-                  </svg>
-                </button>
+                  </div>
+                </div>
+
+                {/* Execução */}
+                <div id={`exec_${idx}`} style={S.execPanel}>
+                  <div style={S.execTitle}>Execução — o que focar</div>
+                  <div style={S.execArea}>
+                    <div style={S.execLabel}>Área trabalhada</div>
+                    <div style={S.execText}>{det.area}</div>
+                  </div>
+                  <div style={S.execCue}>
+                    <div style={S.execLabel}>Dica prática</div>
+                    <div style={S.execText}>{det.cue}</div>
+                  </div>
+                </div>
+
+                <div style={S.navRow}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(Math.max(0, idx - 1))}
+                    style={{ ...S.navBtn, ...(idx === 0 ? S.navBtnDisabled : null) }}
+                    className="td-press"
+                    disabled={idx === 0}
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goTo(Math.min(pages.length - 1, idx + 1))}
+                    style={S.navBtn}
+                    className="td-press"
+                  >
+                    Próximo →
+                  </button>
+                </div>
+
+                <div style={{ height: 120 }} />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* BLOQUEADO (modo grátis) */}
-      {!paid && lockedList.length > 0 ? (
-        <>
-          <div style={styles.lockTitle}>Parte do treino bloqueada</div>
-
-          <div style={styles.lockWrap}>
-            {lockedList.map((ex, j) => (
-              <div key={`l_${ex.name}_${j}`} style={styles.exCard}>
-                <div style={styles.exTop}>
-                  <div style={styles.numMuted}>{previewCount + j + 1}</div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={styles.exName}>{ex.name}</div>
-                    <div style={styles.exNote}>{ex.group || "—"} • + dicas e execução</div>
-                  </div>
-                  <div style={styles.checkGhost} />
-                </div>
-              </div>
-            ))}
+      {/* DOCK: Cronômetro de descanso */}
+      <div
+        style={{ ...S.dock, ...(timerOpen ? S.dockOpen : S.dockClosed) }}
+        onMouseDown={onDockPointerDown}
+        onMouseMove={onDockPointerMove}
+        onMouseUp={onDockPointerUp}
+        onTouchStart={onDockPointerDown}
+        onTouchMove={onDockPointerMove}
+        onTouchEnd={onDockPointerUp}
+        onClick={onDockClick}
+        role="button"
+        aria-label="Cronômetro de descanso"
+      >
+        <div style={S.dockHeader}>
+          <div style={S.dockPill}>
+            <span style={S.dockIcon} aria-hidden="true">
+              <IconClock />
+            </span>
+            <span style={S.dockTitle}>Cronômetro de descanso</span>
           </div>
 
-          <button style={styles.fab} onClick={() => nav("/planos")} type="button" className="apple-press">
-            <span style={styles.fabIcon} aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12h12" stroke="#111" strokeWidth="2.6" strokeLinecap="round" />
-                <path d="M13 6l6 6-6 6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            <span style={styles.fabText}>Começar agora</span>
-          </button>
-        </>
-      ) : null}
+          <div style={S.dockMini}>
+            <span style={S.dockMiniTime}>{fmtMMSS(restLeft)}</span>
+            <span style={S.dockMiniState}>{running ? "rodando" : "parado"}</span>
+          </div>
+        </div>
 
-      {/* CONCLUIR TREINO (premium) */}
-      {paid ? (
-        <button
-          type="button"
-          style={{
-            ...styles.finishFab,
-            opacity: viewingIsToday ? 1 : 0.55,
-            pointerEvents: viewingIsToday ? "auto" : "none",
-          }}
-          onClick={finishWorkout}
-          disabled={!viewingIsToday}
-          title={!viewingIsToday ? "Volte para hoje para concluir o treino" : "Concluir treino"}
-          className="apple-press"
-        >
-          <span style={styles.finishFabIcon} aria-hidden="true">
-            <CheckRingIcon />
-          </span>
-          <span style={styles.finishFabText}>Concluir treino</span>
-          <span style={styles.finishFabArrow} aria-hidden="true">
-            <ArrowMiniIcon />
-          </span>
-        </button>
-      ) : null}
+        {timerOpen && (
+          <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
+            <div style={S.dockBigTime}>{fmtMMSS(restLeft)}</div>
+            <div style={S.dockSub}>
+              {isExercise ? (
+                <>
+                  Exercício atual: <b style={{ color: TEXT }}>{exNow?.name}</b>
+                </>
+              ) : (
+                <>Final — bora pro cardio.</>
+              )}
+            </div>
 
-      <div style={{ height: 140 }} />
+            <div style={S.dockBtns}>
+              <button type="button" onClick={startTimer} style={S.bigStart} className="td-press" disabled={!isExercise}>
+                {running ? "Rodando..." : restLeft === 0 ? "Recomeçar" : "Começar"}
+                <span style={S.bigStartIcon} aria-hidden="true">
+                  <IconPlay />
+                </span>
+              </button>
+
+              <button type="button" onClick={pauseTimer} style={S.smallPause} className="td-press" disabled={!running}>
+                <IconPause />
+                Pausar
+              </button>
+
+              <button type="button" onClick={resetTimer} style={S.resetBtn} className="td-press">
+                <IconReset />
+              </button>
+            </div>
+
+            <div style={S.dockHint}>Dica: arraste pra cima pra abrir, pra baixo pra fechar.</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-/* ---------- icons ---------- */
-function GearIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 15.6a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2Z"
-        stroke="white"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.95"
-      />
-      <path
-        d="M19.8 12.8c.05-.27.07-.54.07-.8s-.02-.53-.07-.8l1.78-1.32a.7.7 0 0 0 .18-.9l-1.55-2.68a.7.7 0 0 0-.85-.3l-2.08.84c-.43-.34-.9-.62-1.4-.83l-.33-2.2a.7.7 0 0 0-.69-.58h-3.1a.7.7 0 0 0-.69.58l-.33 2.2c-.5.21-.97.49-1.4.83l-2.08-.84a.7.7 0 0 0-.85.3L2.3 8.96a.7.7 0 0 0 .18.9l1.78 1.32c-.05.27-.07.54-.07.8s.02.53.07.8L2.48 14.1a.7.7 0 0 0-.18.9l1.55 2.68c.18.3.55.42.85.3l2.08-.84c.43.34.9.62 1.4.83l.33 2.2c.05.34.35.58.69.58h3.1c.34 0 .64-.24.69-.58l.33-2.2c.5-.21.97-.49 1.4-.83l2.08.84c.3.12.67 0 .85-.3l1.55-2.68a.7.7 0 0 0-.18-.9l-1.78-1.32Z"
-        stroke="white"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-        opacity="0.92"
-      />
-    </svg>
-  );
-}
-
-function ArrowIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 18l6-6-6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ArrowMiniIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M10 17l5-5-5-5" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CheckRingIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="#111" strokeWidth="2.2" strokeOpacity="0.9" />
-      <path d="M7.5 12.3l2.8 2.9L16.8 9" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 /* ---------------- styles ---------------- */
-const styles = {
-  page: { padding: 18, paddingBottom: 190, background: BG },
+const S = {
+  page: { padding: 18, paddingBottom: "calc(44px + env(safe-area-inset-bottom))", background: BG },
 
-  header: {
-    borderRadius: 24,
+  head: {
+    borderRadius: 28,
     padding: 16,
-    background: "linear-gradient(135deg, rgba(255,106,0,.92), rgba(255,106,0,.62))",
-    color: "#fff",
-    boxShadow: "0 18px 55px rgba(15,23,42,.14)",
+    background: "linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.88))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 20px 80px rgba(15,23,42,.10)",
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
     gap: 12,
+    alignItems: "flex-start",
+    position: "relative",
+    overflow: "hidden",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
   },
-  headerKicker: { fontSize: 12, fontWeight: 900, opacity: 0.95 },
-  headerTitle: { marginTop: 6, fontSize: 24, fontWeight: 950, letterSpacing: -0.6, lineHeight: 1.05 },
-  headerSub: { marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.96, lineHeight: 1.3 },
-
-  settingsBtn: {
+  headGlow: {
+    position: "absolute",
+    inset: -40,
+    background:
+      "radial-gradient(600px 260px at 20% 10%, rgba(255,106,0,.18), transparent 55%), radial-gradient(520px 260px at 92% 0%, rgba(15,23,42,.10), transparent 58%)",
+    pointerEvents: "none",
+  },
+  back: {
     width: 46,
     height: 46,
     borderRadius: 18,
-    border: "1px solid rgba(255,255,255,.28)",
-    background: "rgba(255,255,255,.18)",
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
+    border: `1px solid ${BORDER}`,
+    background: "rgba(255,255,255,.72)",
+    boxShadow: "0 16px 44px rgba(15,23,42,.08)",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 18px 46px rgba(0,0,0,.14)",
-    transition: "transform .14s ease, background .14s ease, border-color .14s ease",
     flexShrink: 0,
   },
 
-  stripWrap: { marginTop: 12 },
-  stripTitle: { fontSize: 12, fontWeight: 900, color: MUTED, marginBottom: 8 },
-  stripRow: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  stripPill: {
-    border: "none",
-    padding: "10px 12px",
-    borderRadius: 999,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-    transition: "transform .12s ease",
-  },
-  stripPillOn: { background: "rgba(255,106,0,.16)", color: TEXT, border: "1px solid rgba(255,106,0,.22)" },
-  stripPillOff: { background: "rgba(15,23,42,.04)", color: "#334155", border: "1px solid rgba(15,23,42,.06)" },
-
-  bigGo: {
-    marginTop: 12,
-    width: "100%",
-    borderRadius: 26,
-    padding: 18,
-    border: "none",
-    textAlign: "left",
-    background: "linear-gradient(135deg, rgba(255,106,0,.18), rgba(255,255,255,.95))",
-    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
-    borderLeft: "1px solid rgba(255,106,0,.22)",
-    borderTop: "1px solid rgba(15,23,42,.06)",
-    position: "relative",
-    transition: "transform .12s ease",
-    animation: "softFloat 3.6s ease-in-out infinite",
-  },
-  bigGoRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  bigGoTop: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  bigGoSub: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  bigGoIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    display: "grid",
-    placeItems: "center",
-    boxShadow: "0 14px 34px rgba(255,106,0,.22)",
-    flexShrink: 0,
-  },
-
-  bubbles: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" },
-  bubble: {
+  hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
+  hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+  tagStrong: {
+    display: "inline-flex",
     padding: "8px 10px",
     borderRadius: 999,
-    background: "rgba(255,106,0,.18)",
-    border: "1px solid rgba(255,106,0,.22)",
-    fontWeight: 950,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.20)",
     fontSize: 12,
-    color: TEXT,
-  },
-  bubbleSoft: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.04)",
-    border: "1px solid rgba(15,23,42,.06)",
     fontWeight: 900,
-    fontSize: 12,
-    color: "#334155",
+    color: TEXT,
   },
+  tagSoft: { display: "inline-flex", padding: "8px 10px", borderRadius: 999, background: SOFT, border: `1px solid ${BORDER}`, fontSize: 12, fontWeight: 900, color: TEXT },
+  hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
-  progressTrack: {
+  dotsNav: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
+  dotNav: { width: 10, height: 10, borderRadius: 999, border: "none" },
+  dotNavOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotNavOff: { background: "rgba(15,23,42,.14)" },
+
+  pager: {
     marginTop: 12,
-    height: 10,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.08)",
-    overflow: "hidden",
+    borderRadius: 28,
+    overflowX: "auto",
+    overflowY: "hidden",
+    display: "flex",
+    scrollSnapType: "x mandatory",
+    WebkitOverflowScrolling: "touch",
+    gap: 12,
+    paddingBottom: 2,
   },
-  progressFill: {
-    height: "100%",
-    borderRadius: 999,
-    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
-    transition: "width .25s ease",
-    boxShadow: "0 10px 24px rgba(255,106,0,.18)",
-  },
-  progressHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
+  pageItem: { scrollSnapAlign: "start", flex: "0 0 100%" },
 
-  card: {
-    marginTop: 14,
-    borderRadius: 24,
+  cardPage: {
+    borderRadius: 28,
     padding: 16,
-    background: "#fff",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    background: "linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.94))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 70px rgba(15,23,42,.06)",
+    position: "relative",
+    overflow: "hidden",
+    minHeight: "calc(100vh - 290px)",
   },
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  cardTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  cardSub: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.4 },
+  cardGlow: {
+    position: "absolute",
+    inset: -40,
+    background:
+      "radial-gradient(620px 260px at 18% 0%, rgba(255,106,0,.14), transparent 60%), radial-gradient(520px 240px at 95% 0%, rgba(15,23,42,.10), transparent 62%)",
+    pointerEvents: "none",
+  },
+  cardSheen: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.22) 22%, transparent 50%)",
+    transform: "translateX(-70%)",
+    animation: "tdSheen 6.2s ease-in-out infinite",
+    pointerEvents: "none",
+  },
 
-  cardBtn: {
-    padding: "12px 14px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,106,0,.28)",
-    background: "rgba(255,106,0,.10)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  cardBtnAlt: {
+  exerciseTop: { position: "relative", display: "flex", gap: 12, alignItems: "center" },
+  exerciseIndex: { width: 44, height: 44, borderRadius: 18, display: "grid", placeItems: "center", background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,106,0,.58))", color: "#fff", fontWeight: 950, fontSize: 15, boxShadow: "0 16px 42px rgba(255,106,0,.22)", flexShrink: 0 },
+  exerciseName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.35, lineHeight: 1.15 },
+  exerciseGroup: { marginTop: 5, fontSize: 12, fontWeight: 850, color: MUTED },
+  execBtn: { padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,106,0,.10)", fontWeight: 950, color: TEXT, flexShrink: 0 },
+
+  gifWrap: { marginTop: 14, borderRadius: 22, border: `1px solid ${BORDER}`, background: "rgba(15,23,42,.03)", overflow: "hidden", position: "relative", minHeight: 180 },
+  gif: { width: "100%", height: 220, objectFit: "cover", display: "block" },
+  gifFallback: {
+    position: "absolute",
+    inset: 0,
     padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.28)",
-    background: "rgba(255,106,0,.10)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-
-  summaryTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  summaryLine: { marginTop: 8, fontSize: 13, fontWeight: 850, color: MUTED },
-  summaryActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-
-  customBtn: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    color: TEXT,
-    fontWeight: 950,
-  },
-
-  viewHint: {
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 18,
-    background: "rgba(15,23,42,.03)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontSize: 12,
-    fontWeight: 850,
-    color: MUTED,
-    lineHeight: 1.35,
-  },
-
-  lockHint: {
-    marginTop: 12,
-    padding: "12px 12px",
-    borderRadius: 18,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.18)",
-    color: TEXT,
-    fontWeight: 850,
-    fontSize: 12,
-    lineHeight: 1.35,
-  },
-
-  sectionTitle: { marginTop: 16, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.6 },
-  list: { marginTop: 12, display: "grid", gap: 12 },
-
-  exCard: {
-    borderRadius: 22,
-    padding: 14,
-    background: "#fff",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
-  },
-  exTop: { display: "flex", gap: 12, alignItems: "flex-start" },
-
-  num: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
     display: "grid",
     placeItems: "center",
-    background: "linear-gradient(135deg, rgba(255,106,0,.95), rgba(255,106,0,.60))",
-    color: "#fff",
-    fontWeight: 950,
-    fontSize: 15,
-    flexShrink: 0,
-    marginTop: 2,
+    textAlign: "center",
+    background: "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
+    opacity: 0.0,
   },
-  numMuted: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
-    fontSize: 15,
-    flexShrink: 0,
-  },
+  gifFallbackBadge: { display: "inline-flex", padding: "6px 10px", borderRadius: 999, background: "rgba(11,11,12,.92)", color: "#fff", fontSize: 12, fontWeight: 950, marginBottom: 8 },
+  gifFallbackText: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 320 },
 
-  exName: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  exNote: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
+  bigChips: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, position: "relative" },
+  chip: { borderRadius: 20, padding: 12, background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))", border: `1px solid ${BORDER}`, boxShadow: "0 14px 34px rgba(15,23,42,.05)", position: "relative", overflow: "hidden", minHeight: 72 },
+  chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+  chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
+  chipSheen: { position: "absolute", inset: 0, background: "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)", opacity: 0.42, pointerEvents: "none" },
 
-  loadRow: { marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  loadLabel: { fontSize: 12, fontWeight: 950, color: MUTED },
-  loadPill: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.04)",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  loadBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    border: "none",
-    background: "rgba(255,106,0,.18)",
-    fontWeight: 950,
-    color: TEXT,
-  },
-  loadValue: { minWidth: 96, textAlign: "center", fontSize: 12, fontWeight: 900, color: TEXT },
-  loadMini: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,106,0,.25)",
-    background: "rgba(255,106,0,.10)",
-    fontWeight: 950,
-    color: TEXT,
-  },
+  dotsBox: { marginTop: 14, borderRadius: 22, padding: 14, background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))", border: "1px solid rgba(255,106,0,.16)", boxShadow: "0 14px 40px rgba(15,23,42,.06)", position: "relative" },
+  dotsTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dotsRowInner: { marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" },
+  dotBtn: { width: 16, height: 16, borderRadius: 999, border: "none" },
+  dotBtnOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
+  dotBtnOff: { background: "rgba(15,23,42,.14)" },
+  dotsMini: { marginTop: 10, fontSize: 12, fontWeight: 900, color: MUTED },
 
-  checkBtn: {
-    marginLeft: "auto",
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    border: "none",
-    display: "grid",
-    placeItems: "center",
-    transition: "transform .12s ease, box-shadow .12s ease, background .12s ease",
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  checkOn: { background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", boxShadow: "0 14px 34px rgba(255,106,0,.22)" },
-  checkOff: { background: "rgba(15,23,42,.06)", boxShadow: "none" },
-  checkGhost: { marginLeft: "auto", width: 44, height: 44, borderRadius: 16, background: "rgba(15,23,42,.06)" },
+  loadBox: { marginTop: 14, borderRadius: 22, padding: 14, background: "#fff", border: `1px solid ${BORDER}`, boxShadow: "0 14px 40px rgba(15,23,42,.06)", display: "grid", gridTemplateColumns: "1fr minmax(160px, 220px)", gap: 12, alignItems: "end" },
+  loadLeft: { minWidth: 0 },
+  loadRight: { minWidth: 0 },
+  loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
+  loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
+  input: { width: "100%", marginTop: 6, padding: "12px 12px", borderRadius: 16, border: `1px solid ${BORDER}`, outline: "none", fontSize: 14, fontWeight: 850, background: "rgba(255,255,255,.96)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)" },
 
-  lockTitle: { marginTop: 14, fontSize: 14, fontWeight: 950, color: TEXT },
-  lockWrap: { marginTop: 10, filter: "blur(2.8px)", opacity: 0.65, pointerEvents: "none", display: "grid", gap: 12 },
+  execPanel: { marginTop: 14, borderRadius: 22, padding: 14, background: "rgba(15,23,42,.03)", border: `1px solid ${BORDER}`, boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
+  execTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  execArea: { marginTop: 10 },
+  execCue: { marginTop: 10 },
+  execLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  execText: { marginTop: 6, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
 
-  fab: {
+  navRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  navBtn: { padding: 14, borderRadius: 20, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
+  navBtnDisabled: { opacity: 0.55 },
+
+  endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
+  endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5 },
+  endCta: { marginTop: 16, width: "100%", padding: 16, borderRadius: 22, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 18px 55px rgba(0,0,0,.18)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  endCtaIcon: { width: 40, height: 40, borderRadius: 16, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+  endGhost: { marginTop: 10, width: "100%", padding: 14, borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950 },
+  endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  lockCard: { borderRadius: 26, padding: 16, background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))", border: "1px solid rgba(255,106,0,.22)", boxShadow: "0 18px 60px rgba(15,23,42,.10)" },
+  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
+  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  lockBtn: { marginTop: 10, width: "100%", padding: 14, borderRadius: 20, border: "none", background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 18px 55px rgba(255,106,0,.22)" },
+  lockGhost: { marginTop: 10, width: "100%", padding: 14, borderRadius: 20, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.90)", color: TEXT, fontWeight: 950 },
+
+  dock: {
     position: "fixed",
-    left: "50%",
-    transform: "translateX(-50%)",
-    bottom: 160,
+    left: 12,
+    right: 12,
+    bottom: "calc(12px + env(safe-area-inset-bottom))",
     zIndex: 999,
-    minHeight: 56,
-    padding: "14px 18px",
-    borderRadius: 999,
+    borderRadius: 26,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
     border: "1px solid rgba(255,255,255,.35)",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    letterSpacing: -0.2,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    boxShadow: "0 22px 70px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.28)",
-    animation: "pulseGlow 1.8s ease-in-out infinite",
-    willChange: "transform",
+    boxShadow: "0 28px 90px rgba(0,0,0,.20)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    overflow: "hidden",
+    cursor: "pointer",
+    animation: "tdPop 6s ease-in-out infinite",
   },
-  fabIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 999,
-    flexShrink: 0,
-    background: "rgba(255,255,255,.88)",
-    border: "1px solid rgba(255,255,255,.55)",
-    display: "grid",
-    placeItems: "center",
-    boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
-  },
-  fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
+  dockOpen: { paddingBottom: 14 },
+  dockClosed: { paddingBottom: 10 },
 
-  finishFab: {
-    position: "fixed",
-    left: "50%",
-    bottom: "calc(112px + env(safe-area-inset-bottom))",
-    transform: "translateX(-50%)",
-    zIndex: 1100,
-    minHeight: 58,
-    padding: "14px 16px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,.40)",
-    background: "linear-gradient(135deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
-    color: "#111",
-    fontWeight: 950,
-    letterSpacing: -0.2,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    boxShadow: "0 26px 90px rgba(255,106,0,.38), inset 0 1px 0 rgba(255,255,255,.30)",
-    animation: "finishFloat 3.2s ease-in-out infinite",
-    willChange: "transform",
-  },
-  finishFabIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    flexShrink: 0,
-    background: "rgba(255,255,255,.90)",
-    border: "1px solid rgba(255,255,255,.60)",
-    display: "grid",
-    placeItems: "center",
-    boxShadow: "0 14px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.55)",
-  },
-  finishFabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
-  finishFabArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(255,255,255,.32)",
-    border: "1px solid rgba(255,255,255,.35)",
-  },
+  dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  dockPill: { display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 999, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.18)", boxShadow: "0 14px 34px rgba(255,106,0,.10)" },
+  dockIcon: { width: 34, height: 34, borderRadius: 16, display: "grid", placeItems: "center", background: "rgba(255,255,255,.70)", border: "1px solid rgba(255,255,255,.55)" },
+  dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
+
+  dockMini: { display: "grid", justifyItems: "end", gap: 2 },
+  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dockMiniState: { fontSize: 11, fontWeight: 900, color: MUTED },
+
+  dockBody: { marginTop: 12, cursor: "default" },
+  dockBigTime: { fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0 },
+  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  dockBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" },
+  bigStart: { width: "100%", padding: 16, borderRadius: 22, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, boxShadow: "0 18px 55px rgba(0,0,0,.18)" },
+  bigStartIcon: { width: 42, height: 42, borderRadius: 18, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+  smallPause: { padding: "14px 14px", borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, display: "inline-flex", alignItems: "center", gap: 10, boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
+  resetBtn: { width: 50, height: 50, borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(15,23,42,.04)", display: "grid", placeItems: "center", boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
+  dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
 };
 
-// animações CSS inline
-if (typeof document !== "undefined") {
-  const id = "fitdeal-treino-keyframes";
+/* 🔧 se GIF não existir, mostra fallback */
+if (typeof window !== "undefined") {
+  const id = "td-gif-missing-style";
   if (!document.getElementById(id)) {
-    const style = document.createElement("style");
-    style.id = id;
-    style.innerHTML = `
-      @keyframes pulseGlow {
-        0%, 100% { transform: translateX(-50%) scale(1); }
-        50% { transform: translateX(-50%) scale(1.03); }
-      }
-      @keyframes softFloat {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-2px); }
-      }
-      @keyframes finishFloat {
-        0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
-        50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
-      }
-      .apple-press:active { transform: translateY(1px) scale(.98); }
-      .settings-press:active { transform: translateY(1px) scale(.97); }
+    const st = document.createElement("style");
+    st.id = id;
+    st.innerHTML = `
+      [data-gif-missing="1"] img { display: none !important; }
+      [data-gif-missing="1"] > div { opacity: 1 !important; }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(st);
   }
 }
