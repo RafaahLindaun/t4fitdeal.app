@@ -1,4 +1,4 @@
- ✅ COLE EM: src/pages/TreinoDetalhe.jsx
+ // ✅ COLE EM: src/pages/TreinoDetalhe.jsx
 // + Controle de séries (bolinhas 1/4) por exercício
 // + Ao marcar série: inicia descanso automaticamente
 // + Cronômetro vira “balão/mini botão” (dock) e abre ao clicar ou arrastar pra cima
@@ -1789,4 +1789,5 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
 
