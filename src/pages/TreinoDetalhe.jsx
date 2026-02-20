@@ -1,3 +1,5 @@
+agora esse aqui é o treinodetalhe.jsx nao mude nd apenas acrescente todos os exercicios de todos grupos musculares que estao no treinopersonalize.jsx
+
 
 // ✅ COLE EM: src/pages/TreinoDetalhe.jsx
 // + Controle de séries (bolinhas 1/4) por exercício
@@ -538,6 +540,30 @@ const MUSCLE_GROUPS = [
     ],
   },
 ];
+
+function groupById(id) {
+  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
+}
+
+/** garante volume */
+function ensureVolume(list, minCount = 7) {
+  const base = Array.isArray(list) ? [...list] : [];
+  if (base.length >= minCount) return base;
+
+  const extras = [
+    { name: "Aquecimento (5–8min)", group: "Preparação" },
+    { name: "Alongamento curto", group: "Mobilidade" },
+    { name: "Core (prancha)", group: "Core" },
+    { name: "Elevação lateral (leve)", group: "Ombros" },
+    { name: "Rosca direta (leve)", group: "Bíceps" },
+    { name: "Tríceps corda (leve)", group: "Tríceps" },
+    { name: "Panturrilha", group: "Panturrilha" },
+  ];
+
+  let i = 0;
+  while (base.length < minCount && i < extras.length) base.push(extras[i++]);
+  return base;
+}
 
 function buildCustomPlan(email) {
   const raw = localStorage.getItem(`custom_split_${email}`);
@@ -1766,6 +1792,3 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
-
-
-
