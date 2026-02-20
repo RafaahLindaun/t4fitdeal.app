@@ -1,13 +1,17 @@
+
 // ✅ COLE EM: src/pages/TreinoDetalhe.jsx
-// ✅ Agora o TreinoDetalhe puxa o plano do Treino.jsx (fonte única)
-// ✅ Mantém: bolinhas de séries + descanso automático + dock do cronômetro + GIFs por slug
+// + Controle de séries (bolinhas 1/4) por exercício
+// + Ao marcar série: inicia descanso automaticamente
+// + Cronômetro vira “balão/mini botão” (dock) e abre ao clicar ou arrastar pra cima
+// + O cronômetro pode ficar fechado (opcional), estilo “adicional”
+//
+// ✅ GIFs:
+// /public/gifs/<slug>.gif  (slug automático)
+// ex: "Supino reto" -> /public/gifs/supino-reto.gif
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-// ✅ FONTE ÚNICA (Treino.jsx precisa exportar essas funções)
-import { getTreinoPlan, calcDayIndex, dayLetter } from "./Treino";
 
 /* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
@@ -33,6 +37,16 @@ function safeJsonParse(raw, fallback) {
     return fallback;
   }
 }
+function calcDayIndex(email) {
+  const key = `treino_day_${email}`;
+  const raw = localStorage.getItem(key);
+  const n = raw ? Number(raw) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+function dayLetter(i) {
+  const letters = ["A", "B", "C", "D", "E", "F"];
+  return letters[i % letters.length] || "A";
+}
 
 function stripAccents(s) {
   return String(s || "")
@@ -47,6 +61,10 @@ function slugifyExercise(name) {
     .trim()
     .replace(/\s/g, "-");
   return base || "exercicio";
+}
+function gifForExercise(name) {
+  const slug = slugifyExercise(name);
+  return `/gifs/${slug}.GIF`;
 }
 function gifCandidates(name) {
   const slug = slugifyExercise(name);
@@ -75,7 +93,6 @@ function ExerciseGif({ name }) {
     />
   );
 }
-
 /** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
 function parseRestToSeconds(restText) {
   const raw = String(restText || "").toLowerCase().trim();
@@ -105,6 +122,185 @@ function fmtMMSS(sec) {
   return `${mm}:${ss}`;
 }
 
+/* ---------------- banco (MESMO do Treino) ---------------- */
+const MUSCLE_GROUPS = [
+  {
+    id: "peito_triceps",
+    name: "Peito + Tríceps",
+    muscles: ["Peito", "Tríceps"],
+    library: [
+      { name: "Supino reto", group: "Peito" },
+      { name: "Supino inclinado", group: "Peito" },
+      { name: "Crucifixo / Peck-deck", group: "Peito" },
+      { name: "Crossover", group: "Peito" },
+      { name: "Paralelas (ou mergulho)", group: "Tríceps/Peito" },
+      { name: "Tríceps corda", group: "Tríceps" },
+      { name: "Tríceps francês", group: "Tríceps" },
+    ],
+  },
+  {
+    id: "costas_biceps",
+    name: "Costas + Bíceps",
+    muscles: ["Costas", "Bíceps"],
+    library: [
+      { name: "Puxada (barra/puxador)", group: "Costas" },
+      { name: "Remada (máquina/curvada)", group: "Costas" },
+      { name: "Remada unilateral", group: "Costas" },
+      { name: "Pulldown braço reto", group: "Costas" },
+      { name: "Face pull", group: "Ombro/escápulas" },
+      { name: "Rosca direta", group: "Bíceps" },
+      { name: "Rosca martelo", group: "Bíceps" },
+    ],
+  },
+  {
+    id: "pernas",
+    name: "Pernas (Quad + geral)",
+    muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
+    library: [
+      { name: "Agachamento", group: "Pernas" },
+      { name: "Leg press", group: "Pernas" },
+      { name: "Cadeira extensora", group: "Quadríceps" },
+      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
+      { name: "Panturrilha", group: "Panturrilha" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
+  {
+    id: "posterior_gluteo",
+    name: "Posterior + Glúteo",
+    muscles: ["Posterior", "Glúteos", "Core"],
+    library: [
+      { name: "Terra romeno", group: "Posterior" },
+      { name: "Mesa flexora", group: "Posterior" },
+      { name: "Hip thrust", group: "Glúteo" },
+      { name: "Abdução", group: "Glúteo médio" },
+      { name: "Passada (foco glúteo)", group: "Glúteo" },
+      { name: "Core (dead bug)", group: "Core" },
+    ],
+  },
+  {
+    id: "ombro_core",
+    name: "Ombro + Core",
+    muscles: ["Ombros", "Core"],
+    library: [
+      { name: "Desenvolvimento", group: "Ombros" },
+      { name: "Elevação lateral", group: "Ombros" },
+      { name: "Posterior (reverse fly)", group: "Ombro posterior" },
+      { name: "Encolhimento", group: "Trapézio" },
+      { name: "Pallof press", group: "Core" },
+      { name: "Abdominal", group: "Core" },
+    ],
+  },
+  {
+    id: "fullbody",
+    name: "Full body (saúde / base)",
+    muscles: ["Corpo todo"],
+    library: [
+      { name: "Agachamento (leve)", group: "Pernas" },
+      { name: "Supino (leve)", group: "Peito" },
+      { name: "Remada (leve)", group: "Costas" },
+      { name: "Desenvolvimento (leve)", group: "Ombros" },
+      { name: "Posterior (leve)", group: "Posterior" },
+      { name: "Core (prancha)", group: "Core" },
+    ],
+  },
+];
+
+function groupById(id) {
+  return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
+}
+
+/** garante volume */
+function ensureVolume(list, minCount = 7) {
+  const base = Array.isArray(list) ? [...list] : [];
+  if (base.length >= minCount) return base;
+
+  const extras = [
+    { name: "Aquecimento (5–8min)", group: "Preparação" },
+    { name: "Alongamento curto", group: "Mobilidade" },
+    { name: "Core (prancha)", group: "Core" },
+    { name: "Elevação lateral (leve)", group: "Ombros" },
+    { name: "Rosca direta (leve)", group: "Bíceps" },
+    { name: "Tríceps corda (leve)", group: "Tríceps" },
+    { name: "Panturrilha", group: "Panturrilha" },
+  ];
+
+  let i = 0;
+  while (base.length < minCount && i < extras.length) base.push(extras[i++]);
+  return base;
+}
+
+function buildCustomPlan(email) {
+  const raw = localStorage.getItem(`custom_split_${email}`);
+  const custom = safeJsonParse(raw, null);
+  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
+
+  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
+  const days = clamp(rawDays, 2, 6);
+
+  const dayGroups = [];
+  for (let i = 0; i < days; i++) {
+    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
+  }
+
+  const prescriptions = custom.prescriptions || {};
+
+  const split = dayGroups.map((gid, idx) => {
+    const g = groupById(gid);
+    const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
+
+    const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
+
+    return baseList.map((ex) => ({
+      ...ex,
+      sets: pres.sets,
+      reps: pres.reps,
+      rest: pres.rest,
+      method: `Split ${custom.splitId || ""} • ${g.name}`,
+    }));
+  });
+
+  const base = {
+    sets: "custom",
+    reps: "custom",
+    rest: "custom",
+    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
+  };
+
+  return { base, split, meta: { days } };
+}
+
+function buildFallbackSplit() {
+  const A = [
+    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
+    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+  ];
+  const B = [
+    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
+    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
+    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
+    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
+  ];
+  const C = [
+    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
+    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
+    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
+    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
+    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
+    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
+  ];
+  return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
+}
+
 /* ---------------- cargas ---------------- */
 function loadLoads(email) {
   return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
@@ -132,15 +328,9 @@ function detailFor(exName) {
   const n = String(exName || "").toLowerCase();
 
   if (n.includes("supino"))
-    return {
-      area: "Peitoral, tríceps e deltoide anterior.",
-      cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura.",
-    };
+    return { area: "Peitoral, tríceps e deltoide anterior.", cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura." };
   if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover"))
-    return {
-      area: "Peitoral (isolamento).",
-      cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta.",
-    };
+    return { area: "Peitoral (isolamento).", cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta." };
 
   if (n.includes("puxada") || n.includes("pulldown"))
     return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
@@ -307,21 +497,19 @@ export default function TreinoDetalhe() {
   const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // ✅ Plano vem do Treino.jsx (fonte única)
-  const treinoData = useMemo(() => getTreinoPlan(email), [email]);
-  const base = treinoData?.base;
-  const split = treinoData?.split || [];
+  // plano
+  const plan = useMemo(() => buildCustomPlan(email), [email]);
+  const fallback = useMemo(() => buildFallbackSplit(), []);
+  const base = plan?.base || fallback.base;
+  const split = plan?.split || fallback.split;
 
   const dayIndex = useMemo(() => calcDayIndex(email), [email]);
 
   const dParam = Number(sp.get("d"));
   const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
-  const viewSafe = useMemo(() => mod(viewIdx, split.length || 1), [viewIdx, split.length]);
+  const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
 
-  // ✅ pega exatamente o que existe no plano (sem forçar volume aqui)
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
-
-  // opcional: esconder “aquecimento” se você usa isso como item técnico
   const workout = useMemo(
     () => workoutRaw.filter((ex) => !String(ex?.name || "").toLowerCase().includes("aquecimento")),
     [workoutRaw]
@@ -396,17 +584,19 @@ export default function TreinoDetalhe() {
       return;
     }
     const ex = p.ex;
-    const rest = ex?.rest ?? base?.rest ?? "90s";
+    const rest = ex?.rest ?? base.rest ?? "90s";
     const sec = parseRestToSeconds(rest);
     setRunning(false);
     setRestTotal(sec);
     setRestLeft(sec);
-  }, [page, pages, base?.rest]);
+  }, [page, pages, base.rest]);
 
   // tick
   useEffect(() => {
     if (!running) return;
-    const t = setInterval(() => setRestLeft((prev) => Math.max(0, prev - 1)), 1000);
+    const t = setInterval(() => {
+      setRestLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
     return () => clearInterval(t);
   }, [running]);
 
@@ -431,8 +621,9 @@ export default function TreinoDetalhe() {
     setRestLeft(restTotal);
   }
 
-  // abrir “adicional” quando inicia automaticamente (sem forçar abrir sempre)
+  // abrir “adicional” quando inicia automaticamente (mas não forçar abrir se usuário não quiser)
   function softPingTimer() {
+    // só dá uma animadinha no dock (aqui: abre por 1.2s e volta se tava fechado)
     if (timerOpen) return;
     setTimerOpenPersist(true);
     window.setTimeout(() => setTimerOpenPersist(false), 1200);
@@ -548,6 +739,7 @@ export default function TreinoDetalhe() {
     dragStartY.current = null;
   }
   function onDockClick() {
+    // se foi drag, não alterna no click
     if (dragMoved.current) return;
     setTimerOpenPersist(!timerOpen);
   }
@@ -567,7 +759,7 @@ export default function TreinoDetalhe() {
           <div style={S.hTitle}>Treino {dayLetter(viewSafe)}</div>
 
           <div style={S.hLine}>
-            <span style={S.tagStrong}>{base?.style || "Treino"}</span>
+            <span style={S.tagStrong}>{base.style}</span>
             <span style={S.tagSoft}>{exCount} exercícios</span>
             <span style={S.tagSoft}>{progressText}</span>
           </div>
@@ -603,7 +795,9 @@ export default function TreinoDetalhe() {
 
                   <div style={S.endKicker}>Final do treino</div>
                   <div style={S.endTitle}>Bora pro cardio?</div>
-                  <div style={S.endSub}>Um cardio leve/moderado (10–20min) fecha bem o dia e ajuda consistência.</div>
+                  <div style={S.endSub}>
+                    Um cardio leve/moderado (10–20min) fecha bem o dia e ajuda consistência.
+                  </div>
 
                   <button type="button" onClick={() => nav("/cardio")} style={S.endCta} className="td-press">
                     Ir para Cardio
@@ -616,7 +810,7 @@ export default function TreinoDetalhe() {
                     Voltar ao Treino
                   </button>
 
-                  <div style={S.endNote}>Dica: sem tempo? 10 min leve &gt; nada.</div>
+                  <div style={S.endNote}>Dica: sem tempo? 10 min leve > nada.</div>
                 </div>
               </div>
             );
@@ -631,26 +825,32 @@ export default function TreinoDetalhe() {
           const k = keyForLoad(viewSafe, ex.name);
           const myLoad = loads[k] ?? "";
 
-          const sets = ex.sets ?? base?.sets ?? 4;
-          const reps = ex.reps ?? base?.reps ?? "6–12";
-          const rest = ex.rest ?? base?.rest ?? "90s";
+          const sets = ex.sets ?? base.sets;
+          const reps = ex.reps ?? base.reps;
+          const rest = ex.rest ?? base.rest;
 
           const done = getDone(ex.name, sets);
           const totalSets = clamp(Number(sets) || 4, 1, 12);
 
+          const gifSrc = gifForExercise(ex.name);
+
           function toggleSet(i) {
+            // i é o índice clicado (0-based). Se clicar numa já feita, volta até ela.
             let nextDone = 0;
             if (i < done) nextDone = i; // volta
             else nextDone = i + 1; // avança
 
             setDone(ex.name, nextDone);
 
-            // inicia descanso automático quando avança
+            // inicia descanso automático quando avança (feito de verdade)
             if (nextDone > done) {
+              // ajusta o timer pra rest do exercício atual
               const sec = parseRestToSeconds(rest);
               setRestTotal(sec);
               setRestLeft(sec);
               setRunning(true);
+
+              // opcional: dá um “ping” (não força abrir sempre)
               softPingTimer();
             }
           }
@@ -684,6 +884,7 @@ export default function TreinoDetalhe() {
                 {/* GIF */}
                 <div style={S.gifWrap}>
                   <ExerciseGif name={ex.name} />
+        
                   <div style={S.gifFallback} aria-hidden="true">
                     <div style={S.gifFallbackBadge}>GIF</div>
                     <div style={S.gifFallbackText}>Adicione: /public/gifs/{slugifyExercise(ex.name)}.gif</div>
@@ -743,12 +944,7 @@ export default function TreinoDetalhe() {
                   >
                     ← Anterior
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => goTo(Math.min(pages.length - 1, idx + 1))}
-                    style={S.navBtn}
-                    className="td-press"
-                  >
+                  <button type="button" onClick={() => goTo(Math.min(pages.length - 1, idx + 1))} style={S.navBtn} className="td-press">
                     Próximo →
                   </button>
                 </div>
@@ -787,6 +983,7 @@ export default function TreinoDetalhe() {
           </div>
         </div>
 
+        {/* Conteúdo abre/fecha */}
         {timerOpen && (
           <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
             <div style={S.dockBigTime}>{fmtMMSS(restLeft)}</div>
@@ -1260,3 +1457,4 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
