@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useRef } from "react";
 
 type Item = {
   to: string;
@@ -12,6 +13,7 @@ const ORANGE = "#FF6A00";
 
 export default function BottomMenu() {
   const { pathname } = useLocation();
+  const nav = useNavigate();
 
   const items: Item[] = [
     {
@@ -46,6 +48,51 @@ export default function BottomMenu() {
 
   const treinoActive = pathname.startsWith("/treino");
 
+  // ✅ Long-press Apple-like: segura no botão central -> vai direto pro TreinoDetalhe
+  const pressTimerRef = useRef<number | null>(null);
+  const didLongPressRef = useRef(false);
+
+  function vibrate(ms = 14) {
+    try {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        // @ts-ignore
+        navigator.vibrate(ms);
+      }
+    } catch {}
+  }
+
+  function clearPressTimer() {
+    if (pressTimerRef.current != null) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  }
+
+  function startLongPress() {
+    didLongPressRef.current = false;
+    clearPressTimer();
+
+    // tempo “discreto” tipo iOS
+    pressTimerRef.current = window.setTimeout(() => {
+      didLongPressRef.current = true;
+      vibrate(18);
+      // ✅ vai direto pro detalhe (sem mexer no visual)
+      nav("/treino/detalhe", { state: { from: "/treino" } });
+    }, 420);
+  }
+
+  function endLongPress() {
+    clearPressTimer();
+  }
+
+  function cancelClickIfLongPress(e: any) {
+    if (didLongPressRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      didLongPressRef.current = false;
+    }
+  }
+
   return (
     <nav style={styles.nav}>
       <div style={styles.inner}>
@@ -67,6 +114,13 @@ export default function BottomMenu() {
           ...styles.centerBtn,
           ...(treinoActive ? styles.centerBtnActive : null),
         }}
+        onMouseDown={startLongPress}
+        onMouseUp={endLongPress}
+        onMouseLeave={endLongPress}
+        onTouchStart={startLongPress}
+        onTouchEnd={endLongPress}
+        onTouchCancel={endLongPress}
+        onClick={cancelClickIfLongPress}
       >
         <div style={styles.centerIconWrap}>
           {/* ✅ SOMENTE SVG: evita “quadrado quebrado” de imagem/placeholder */}
@@ -288,96 +342,25 @@ function UserIcon({ active }: { active: boolean }) {
 
 /* ✅ Pesinho (diagonal, igual ao ícone do card) — sem PNG (não quebra) */
 function DumbbellIcon({ active }: { active: boolean }) {
-  // Mantém o mesmo “branco” do botão central.
-  // Se quiser futuramente variar por active, é só trocar o stroke abaixo.
   const stroke = "rgba(255,255,255,.95)";
   const fillSoftA = "rgba(255,255,255,.10)";
   const fillSoftB = "rgba(255,255,255,.06)";
 
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      {/* Tudo gira junto pra ficar diagonal como no card */}
       <g transform="rotate(-32 12 12)">
-        {/* Barra central (haste) */}
-        <path
-          d="M9.2 12h5.6"
-          stroke={stroke}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M9.2 12h5.6" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8.55 10.4v3.2" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M15.45 10.4v3.2" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
 
-        {/* Colares/pegadores (perto da barra) */}
-        <path
-          d="M8.55 10.4v3.2"
-          stroke={stroke}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
-        <path
-          d="M15.45 10.4v3.2"
-          stroke={stroke}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
+        <rect x="4.45" y="8.9" width="2.75" height="6.2" rx="1.25" fill={fillSoftA} stroke={stroke} strokeWidth="2.2" />
+        <rect x="16.8" y="8.9" width="2.75" height="6.2" rx="1.25" fill={fillSoftA} stroke={stroke} strokeWidth="2.2" />
 
-        {/* Pesos externos (as “placas” maiores) */}
-        <rect
-          x="4.45"
-          y="8.9"
-          width="2.75"
-          height="6.2"
-          rx="1.25"
-          fill={fillSoftA}
-          stroke={stroke}
-          strokeWidth="2.2"
-        />
-        <rect
-          x="16.8"
-          y="8.9"
-          width="2.75"
-          height="6.2"
-          rx="1.25"
-          fill={fillSoftA}
-          stroke={stroke}
-          strokeWidth="2.2"
-        />
+        <rect x="7.45" y="10.05" width="1.55" height="3.9" rx="0.78" fill={fillSoftB} stroke={stroke} strokeWidth="2.0" />
+        <rect x="15.0" y="10.05" width="1.55" height="3.9" rx="0.78" fill={fillSoftB} stroke={stroke} strokeWidth="2.0" />
 
-        {/* Pesos internos (placas menores, coladas no meio) */}
-        <rect
-          x="7.45"
-          y="10.05"
-          width="1.55"
-          height="3.9"
-          rx="0.78"
-          fill={fillSoftB}
-          stroke={stroke}
-          strokeWidth="2.0"
-        />
-        <rect
-          x="15.0"
-          y="10.05"
-          width="1.55"
-          height="3.9"
-          rx="0.78"
-          fill={fillSoftB}
-          stroke={stroke}
-          strokeWidth="2.0"
-        />
-
-        {/* “Tampas” nas extremidades (toque do ícone do card) */}
-        <path
-          d="M3.9 10.1v3.8"
-          stroke={stroke}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
-        <path
-          d="M20.1 10.1v3.8"
-          stroke={stroke}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
+        <path d="M3.9 10.1v3.8" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M20.1 10.1v3.8" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
       </g>
     </svg>
   );
