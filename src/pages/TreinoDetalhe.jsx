@@ -35,6 +35,26 @@ function safeJsonParse(raw, fallback) {
   } catch {
     return fallback;
   }
+ function normalizeName(s) {
+  return stripAccents(String(s || ""))
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqStrings(arr) {
+  const out = [];
+  const seen = new Set();
+  for (const x of arr || []) {
+    const v = String(x || "").trim();
+    if (!v) continue;
+    const k = normalizeName(v);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(v);
+  }
+  return out;
+}
 }
 function calcDayIndex(email) {
   const key = `treino_day_${email}`;
@@ -576,19 +596,32 @@ function buildCustomPlan(email) {
   }
 
   const prescriptions = custom.prescriptions || {};
+  const dayExercises = custom.dayExercises && typeof custom.dayExercises === "object" ? custom.dayExercises : {};
 
   const split = dayGroups.map((gid, idx) => {
     const g = groupById(gid);
     const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
 
-    const baseList = ensureVolume((g.library || []).slice(0, 9), 7);
+    const chosenNames = uniqStrings(Array.isArray(dayExercises?.[idx]) ? dayExercises[idx] : []);
+
+    // tenta achar o "grupo" (label) pelo library quando bater nome, senão usa o nome do split
+    const libMap = new Map((g.library || []).map((x) => [normalizeName(x.name), x.group]));
+    const groupFallbackLabel = g.name;
+
+    const chosenList = chosenNames.map((name) => ({
+      name,
+      group: libMap.get(normalizeName(name)) || groupFallbackLabel,
+    }));
+
+    // se não tiver escolhido, usa library padrão + ensureVolume (comporta o app antigo)
+    const baseList = chosenList.length ? chosenList : ensureVolume((g.library || []).slice(0, 9), 7);
 
     return baseList.map((ex) => ({
       ...ex,
       sets: pres.sets,
       reps: pres.reps,
       rest: pres.rest,
-      method: `Split ${custom.splitId || ""} • ${g.name}`,
+      method: `Split ${custom.splitId || ""} • ${g.name}`.trim(),
     }));
   });
 
@@ -1789,5 +1822,6 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
 
 
