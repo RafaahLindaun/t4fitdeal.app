@@ -28,14 +28,15 @@ function clamp(n, a, b) {
 function mod(n, m) {
   if (!m) return 0;
   return ((n % m) + m) % m;
-}
-function safeJsonParse(raw, fallback) {
+}function safeJsonParse(raw, fallback) {
   try {
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
   }
- function normalizeName(s) {
+}
+
+function normalizeName(s) {
   return stripAccents(String(s || ""))
     .toLowerCase()
     .replace(/\s+/g, " ")
@@ -54,7 +55,6 @@ function uniqStrings(arr) {
     out.push(v);
   }
   return out;
-}
 }
 function calcDayIndex(email) {
   const key = `treino_day_${email}`;
@@ -1822,6 +1822,7 @@ if (typeof window !== "undefined") {
     document.head.appendChild(st);
   }
 }
+
 
 
 
