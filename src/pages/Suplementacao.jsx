@@ -448,7 +448,8 @@ export default function Suplementacao() {
   const email = (user?.email || "anon").toLowerCase();
 
   // Paywall (opcional)
-  const hasNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "
+  const paid = localStorage.getItem(`paid_${email}`) === "1";
+const hasNutriPlus = paid && localStorage.getItem(`nutri_plus_${email}`) === "1";
 
   const goal = useMemo(() => getGoal(user), [user]);
   const level = useMemo(() => getLevel(user), [user]);
