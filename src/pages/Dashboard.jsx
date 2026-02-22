@@ -3,11 +3,9 @@
 // - Sem balão / sem pill
 // - Tipografia firme, estética clean
 // - Sem mexer no resto do layout
-import { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-// ✅ Coloque seu logo em: /src/assets/fitdeal-mark.png
 import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
@@ -1050,4 +1048,5 @@ const styles = {
   lockedSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
   lockedChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 };
+
 
