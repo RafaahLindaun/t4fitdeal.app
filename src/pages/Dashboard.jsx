@@ -48,15 +48,7 @@ function calcStreak(opens, workoutSet) {
   }
   return s;
 }
-
-/* ----------------- METAS (balões) ----------------- */
-function safeJsonParse(raw, fallback) {
-  try {
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-  function TypeLoop({
+function TypeLoop({
   text = "fitdeal",
   speed = 140,      // devagar
   hold = 900,       // pausa no final
@@ -101,6 +93,13 @@ function safeJsonParse(raw, fallback) {
 
   return <>{out}</>;
 }
+/* ----------------- METAS (balões) ----------------- */
+function safeJsonParse(raw, fallback) {
+  try {
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function labelFromGoal(g) {
@@ -1048,5 +1047,6 @@ const styles = {
   lockedSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
   lockedChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 };
+
 
 
