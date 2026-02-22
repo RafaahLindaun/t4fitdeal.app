@@ -448,7 +448,7 @@ export default function Suplementacao() {
   const email = (user?.email || "anon").toLowerCase();
 
   // Paywall (opcional)
-  const paid = localStorage.getItem(`paid_${email}`) === "1";
+  const hasNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "
 
   const goal = useMemo(() => getGoal(user), [user]);
   const level = useMemo(() => getLevel(user), [user]);
@@ -599,7 +599,7 @@ export default function Suplementacao() {
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOn]);
 
-  if (!paid) {
+  if (!hasNutriPlus) {
     return (
       <div style={S.page}>
         <div style={S.head}>
