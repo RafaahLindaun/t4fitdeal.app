@@ -50,16 +50,21 @@ function calcStreak(opens, workoutSet) {
 }
 function TypeLoop({
   text = "fitdeal",
-  speed = 140,      // devagar
-  hold = 900,       // pausa no final
-  eraseSpeed = 70,  // apagar mais rápido (fica bonito)
+  speed = 140,
+  hold = 900,
+  eraseSpeed = 70,
   startDelay = 250,
+  loops = 2,        // ✅ quantas vezes repetir
+  endState = "full" // "full" = para com o texto completo | "empty" = para vazio
 }) {
   const [out, setOut] = useState("");
-  const [phase, setPhase] = useState("delay"); // delay | typing | hold | erasing
+  const [phase, setPhase] = useState("delay"); // delay | typing | hold | erasing | done
   const [i, setI] = useState(0);
+  const [cycle, setCycle] = useState(0);
 
   useEffect(() => {
+    if (phase === "done") return;
+
     let t;
 
     if (phase === "delay") {
@@ -84,12 +89,30 @@ function TypeLoop({
         const next = Math.max(0, i - 1);
         setI(next);
         setOut(text.slice(0, next));
-        if (next === 0) setPhase("typing");
+
+        if (next === 0) {
+          const nextCycle = cycle + 1;
+
+          // ✅ terminou a última repetição?
+          if (nextCycle >= loops) {
+            if (endState === "full") {
+              setOut(text);
+              setI(text.length);
+            } else {
+              setOut("");
+              setI(0);
+            }
+            setPhase("done");
+          } else {
+            setCycle(nextCycle);
+            setPhase("typing");
+          }
+        }
       }, eraseSpeed);
     }
 
     return () => clearTimeout(t);
-  }, [phase, i, text, speed, eraseSpeed, hold, startDelay]);
+  }, [phase, i, text, speed, eraseSpeed, hold, startDelay, loops, cycle, endState]);
 
   return <>{out}</>;
 }
@@ -1047,6 +1070,7 @@ const styles = {
   lockedSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
   lockedChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 };
+
 
 
 
