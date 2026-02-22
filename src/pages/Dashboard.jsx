@@ -3,8 +3,7 @@
 // - Sem balão / sem pill
 // - Tipografia firme, estética clean
 // - Sem mexer no resto do layout
-
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -59,6 +58,51 @@ function safeJsonParse(raw, fallback) {
   } catch {
     return fallback;
   }
+  function TypeLoop({
+  text = "fitdeal",
+  speed = 140,      // devagar
+  hold = 900,       // pausa no final
+  eraseSpeed = 70,  // apagar mais rápido (fica bonito)
+  startDelay = 250,
+}) {
+  const [out, setOut] = useState("");
+  const [phase, setPhase] = useState("delay"); // delay | typing | hold | erasing
+  const [i, setI] = useState(0);
+
+  useEffect(() => {
+    let t;
+
+    if (phase === "delay") {
+      t = setTimeout(() => setPhase("typing"), startDelay);
+    }
+
+    if (phase === "typing") {
+      t = setTimeout(() => {
+        const next = i + 1;
+        setI(next);
+        setOut(text.slice(0, next));
+        if (next >= text.length) setPhase("hold");
+      }, speed);
+    }
+
+    if (phase === "hold") {
+      t = setTimeout(() => setPhase("erasing"), hold);
+    }
+
+    if (phase === "erasing") {
+      t = setTimeout(() => {
+        const next = Math.max(0, i - 1);
+        setI(next);
+        setOut(text.slice(0, next));
+        if (next === 0) setPhase("typing");
+      }, eraseSpeed);
+    }
+
+    return () => clearTimeout(t);
+  }, [phase, i, text, speed, eraseSpeed, hold, startDelay]);
+
+  return <>{out}</>;
+}
 }
 
 function labelFromGoal(g) {
@@ -342,8 +386,9 @@ export default function Dashboard() {
           }}
         />
         <div style={styles.brandName}>
-          fitdeal<span style={{ color: ORANGE }}>.</span>
-        </div>
+  <TypeLoop text="fitdeal" />
+  <span style={{ color: ORANGE }}>.</span>
+</div>
 
         {/* opcional: um mini “status” bem discreto, sem balão */}
         <div style={styles.brandRight}>
@@ -1005,3 +1050,4 @@ const styles = {
   lockedSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
   lockedChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 };
+
