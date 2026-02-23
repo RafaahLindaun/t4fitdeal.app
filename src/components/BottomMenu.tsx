@@ -340,27 +340,47 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Pesinho (diagonal, igual ao ícone do card) — sem PNG (não quebra) */
+/* ✅ ÍCONE TREINO: branco, “Apple-like” (clean, rounded, monoline) — sem mudar funcionalidade */
 function DumbbellIcon({ active }: { active: boolean }) {
-  const stroke = "rgba(255,255,255,.95)";
-  const fillSoftA = "rgba(255,255,255,.10)";
-  const fillSoftB = "rgba(255,255,255,.06)";
+  const stroke = "#FFFFFF";
+  const glow = "rgba(255,255,255,.28)";
 
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g transform="rotate(-32 12 12)">
-        <path d="M9.2 12h5.6" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8.55 10.4v3.2" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M15.45 10.4v3.2" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
+      {/* leve diagonal, visual “iOS” */}
+      <g transform="rotate(-22 12 12)">
+        {/* barra */}
+        <path
+          d="M9 12h6"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
-        <rect x="4.45" y="8.9" width="2.75" height="6.2" rx="1.25" fill={fillSoftA} stroke={stroke} strokeWidth="2.2" />
-        <rect x="16.8" y="8.9" width="2.75" height="6.2" rx="1.25" fill={fillSoftA} stroke={stroke} strokeWidth="2.2" />
+        {/* collars */}
+        <path d="M8.2 10.4v3.2" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M15.8 10.4v3.2" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
 
-        <rect x="7.45" y="10.05" width="1.55" height="3.9" rx="0.78" fill={fillSoftB} stroke={stroke} strokeWidth="2.0" />
-        <rect x="15.0" y="10.05" width="1.55" height="3.9" rx="0.78" fill={fillSoftB} stroke={stroke} strokeWidth="2.0" />
+        {/* placas externas (rounded) */}
+        <path
+          d="M5.2 9.1c0-.7.6-1.3 1.3-1.3h.6c.7 0 1.3.6 1.3 1.3v5.8c0 .7-.6 1.3-1.3 1.3h-.6c-.7 0-1.3-.6-1.3-1.3V9.1Z"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+          style={{ filter: `drop-shadow(0 0 0.5px ${glow})` }}
+        />
+        <path
+          d="M15.6 9.1c0-.7.6-1.3 1.3-1.3h.6c.7 0 1.3.6 1.3 1.3v5.8c0 .7-.6 1.3-1.3 1.3h-.6c-.7 0-1.3-.6-1.3-1.3V9.1Z"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+          style={{ filter: `drop-shadow(0 0 0.5px ${glow})` }}
+        />
 
-        <path d="M3.9 10.1v3.8" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M20.1 10.1v3.8" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
+        {/* caps (pontas) */}
+        <path d="M4.4 10.2v3.6" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M19.6 10.2v3.6" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
       </g>
     </svg>
   );
