@@ -340,47 +340,85 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ ÍCONE TREINO: branco, “Apple-like” (clean, rounded, monoline) — sem mudar funcionalidade */
+/* ✅ Ícone do TREINO (mais “iOS app icon”: branco não estoura + peso bem legível) */
 function DumbbellIcon({ active }: { active: boolean }) {
-  const stroke = "#FFFFFF";
-  const glow = "rgba(255,255,255,.28)";
+  // menos “estourado” que 0.95 e com outline suave pra destacar no laranja
+  const strokeMain = "rgba(255,255,255,.86)";
+  const strokeSoft = "rgba(255,255,255,.52)";
+  const plateFill = "rgba(255,255,255,.12)";
+  const plateFill2 = "rgba(255,255,255,.07)";
 
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      {/* leve diagonal, visual “iOS” */}
-      <g transform="rotate(-22 12 12)">
+      <defs>
+        {/* micro-sombra estilo iOS pra separar do fundo sem “gritar” */}
+        <filter id="iosShadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="0.7" stdDeviation="0.6" floodColor="rgba(0,0,0,.18)" />
+        </filter>
+      </defs>
+
+      {/* diagonal, mas com desenho mais “SF Symbols-like” */}
+      <g transform="rotate(-32 12 12)" filter="url(#iosShadow)">
         {/* barra */}
         <path
-          d="M9 12h6"
-          stroke={stroke}
-          strokeWidth="2.2"
+          d="M9.1 12h5.8"
+          stroke={strokeMain}
+          strokeWidth="2.6"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
-        {/* collars */}
-        <path d="M8.2 10.4v3.2" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M15.8 10.4v3.2" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        {/* colares */}
+        <path d="M8.55 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M15.45 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
 
-        {/* placas externas (rounded) */}
-        <path
-          d="M5.2 9.1c0-.7.6-1.3 1.3-1.3h.6c.7 0 1.3.6 1.3 1.3v5.8c0 .7-.6 1.3-1.3 1.3h-.6c-.7 0-1.3-.6-1.3-1.3V9.1Z"
-          stroke={stroke}
-          strokeWidth="2.2"
-          strokeLinejoin="round"
-          style={{ filter: `drop-shadow(0 0 0.5px ${glow})` }}
+        {/* placas externas (mais arredondadas e legíveis) */}
+        <rect
+          x="4.35"
+          y="8.55"
+          width="2.95"
+          height="6.9"
+          rx="1.35"
+          fill={plateFill}
+          stroke={strokeMain}
+          strokeWidth="2.1"
         />
-        <path
-          d="M15.6 9.1c0-.7.6-1.3 1.3-1.3h.6c.7 0 1.3.6 1.3 1.3v5.8c0 .7-.6 1.3-1.3 1.3h-.6c-.7 0-1.3-.6-1.3-1.3V9.1Z"
-          stroke={stroke}
-          strokeWidth="2.2"
-          strokeLinejoin="round"
-          style={{ filter: `drop-shadow(0 0 0.5px ${glow})` }}
+        <rect
+          x="16.7"
+          y="8.55"
+          width="2.95"
+          height="6.9"
+          rx="1.35"
+          fill={plateFill}
+          stroke={strokeMain}
+          strokeWidth="2.1"
         />
 
-        {/* caps (pontas) */}
-        <path d="M4.4 10.2v3.6" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M19.6 10.2v3.6" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+        {/* placas internas */}
+        <rect
+          x="7.4"
+          y="9.75"
+          width="1.65"
+          height="4.5"
+          rx="0.85"
+          fill={plateFill2}
+          stroke={strokeSoft}
+          strokeWidth="1.7"
+        />
+        <rect
+          x="14.95"
+          y="9.75"
+          width="1.65"
+          height="4.5"
+          rx="0.85"
+          fill={plateFill2}
+          stroke={strokeSoft}
+          strokeWidth="1.7"
+        />
+
+        {/* tampas nas pontas */}
+        <path d="M3.85 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M20.15 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
       </g>
     </svg>
   );
