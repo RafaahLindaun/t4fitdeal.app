@@ -1,6 +1,3 @@
-isso e para o assinantes do plano nutri+ esse bloco fica preto e todo premium do app, 
-
-me mande completo
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -610,3 +607,4 @@ const styles = {
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
 };
+
