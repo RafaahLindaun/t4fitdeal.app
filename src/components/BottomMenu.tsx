@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 type Item = {
   to: string;
@@ -14,6 +15,10 @@ const ORANGE = "#FF6A00";
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
+
+  // (opcional) se existir logout no seu AuthContext, usamos. Se não existir, cai no fallback.
+  const auth = useAuth() as any;
+  const logoutFn = auth?.logout;
 
   const items: Item[] = [
     {
@@ -51,6 +56,9 @@ export default function BottomMenu() {
   // ✅ Long-press Apple-like: segura no botão central -> vai direto pro TreinoDetalhe
   const pressTimerRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
+
+  // ✅ Double-tap “Conta” -> action sheet de sair (Apple-like)
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   function vibrate(ms = 14) {
     try {
@@ -93,45 +101,149 @@ export default function BottomMenu() {
     }
   }
 
+  // fecha sheet com ESC (web) e trava rolagem quando aberto (iOS-like)
+  useEffect(() => {
+    if (!logoutOpen) return;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLogoutOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = prev || "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [logoutOpen]);
+
+  function openLogoutSheet(e?: any) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    vibrate(10);
+    setLogoutOpen(true);
+  }
+
+  function doLogout() {
+    setLogoutOpen(false);
+
+    // 1) se existir logout do AuthContext, usa
+    try {
+      if (typeof logoutFn === "function") {
+        logoutFn();
+        return;
+      }
+    } catch {}
+
+    // 2) fallback seguro: navega para login (ajuste a rota se for diferente no seu app)
+    try {
+      localStorage.setItem("logged_in", "0");
+      localStorage.removeItem("token");
+      localStorage.removeItem("session");
+      localStorage.removeItem("auth");
+      localStorage.removeItem("user");
+    } catch {}
+
+    nav("/login", { replace: true });
+  }
+
+  const contaActive = pathname.startsWith("/conta");
+
   return (
-    <nav style={styles.nav}>
-      <div style={styles.inner}>
-        <MenuItem it={items[0]} active={pathname === items[0].to} />
-        <MenuItem it={items[1]} active={pathname === items[1].to} />
+    <>
+      <nav style={styles.nav}>
+        <div style={styles.inner}>
+          <MenuItem it={items[0]} active={pathname === items[0].to} />
+          <MenuItem it={items[1]} active={pathname === items[1].to} />
 
-        {/* SLOT CENTRAL */}
-        <div style={{ height: 1 }} />
+          {/* SLOT CENTRAL */}
+          <div style={{ height: 1 }} />
 
-        <MenuItem it={items[2]} active={pathname === items[2].to} />
-        <MenuItem it={items[3]} active={pathname === items[3].to} />
-      </div>
+          <MenuItem it={items[2]} active={pathname === items[2].to} />
 
-      {/* BOTÃO CENTRAL “TREINO” */}
-      <Link
-        to="/treino"
-        aria-label="Treino"
-        style={{
-          ...styles.centerBtn,
-          ...(treinoActive ? styles.centerBtnActive : null),
-        }}
-        onMouseDown={startLongPress}
-        onMouseUp={endLongPress}
-        onMouseLeave={endLongPress}
-        onTouchStart={startLongPress}
-        onTouchEnd={endLongPress}
-        onTouchCancel={endLongPress}
-        onClick={cancelClickIfLongPress}
-      >
-        <div style={styles.centerIconWrap}>
-          {/* ✅ SOMENTE SVG: evita “quadrado quebrado” de imagem/placeholder */}
-          <div style={styles.centerIconSvg}>
-            <DumbbellIcon active={treinoActive} />
-          </div>
+          {/* ✅ CONTA com double-tap -> sair */}
+          <Link
+            to={items[3].to}
+            style={{
+              ...styles.item,
+              background: contaActive ? items[3].activeBg : "transparent",
+            }}
+            onDoubleClick={openLogoutSheet}
+          >
+            <div
+              style={{
+                ...styles.square,
+                borderColor: "rgba(15,23,42,0.08)",
+                boxShadow: contaActive ? "0 10px 26px rgba(15,23,42,0.10)" : "none",
+                transform: contaActive ? "translateY(-1px)" : "translateY(0px)",
+              }}
+            >
+              <items[3].Icon active={contaActive} />
+            </div>
+
+            <div
+              style={{
+                ...styles.label,
+                color: contaActive ? items[3].activeFg : "#64748b",
+                fontWeight: contaActive ? 800 : 700,
+              }}
+            >
+              {items[3].label}
+            </div>
+          </Link>
         </div>
 
-        <div style={styles.centerLabel}>Treino</div>
-      </Link>
-    </nav>
+        {/* BOTÃO CENTRAL “TREINO” */}
+        <Link
+          to="/treino"
+          aria-label="Treino"
+          style={{
+            ...styles.centerBtn,
+            ...(treinoActive ? styles.centerBtnActive : null),
+          }}
+          onMouseDown={startLongPress}
+          onMouseUp={endLongPress}
+          onMouseLeave={endLongPress}
+          onTouchStart={startLongPress}
+          onTouchEnd={endLongPress}
+          onTouchCancel={endLongPress}
+          onClick={cancelClickIfLongPress}
+        >
+          <div style={styles.centerIconWrap}>
+            <div style={styles.centerIconSvg}>
+              <DumbbellIcon active={treinoActive} />
+            </div>
+          </div>
+
+          <div style={styles.centerLabel}>Treino</div>
+        </Link>
+      </nav>
+
+      {/* ✅ Action Sheet (Apple-like) — só aparece no double-tap */}
+      {logoutOpen && (
+        <div style={styles.sheetOverlay} role="presentation" onClick={() => setLogoutOpen(false)}>
+          <div style={styles.sheetWrap} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div style={styles.sheetCard}>
+              <div style={styles.sheetTitle}>Deseja sair?</div>
+              <div style={styles.sheetSub}>Você pode entrar novamente quando quiser.</div>
+            </div>
+
+            <div style={styles.sheetBtns}>
+              <button type="button" style={styles.sheetBtnCancel} onClick={() => setLogoutOpen(false)}>
+                Cancelar
+              </button>
+              <button type="button" style={styles.sheetBtnDestructive} onClick={doLogout}>
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -198,6 +310,7 @@ const styles: Record<string, any> = {
     borderRadius: 16,
     textDecoration: "none",
     transition: "transform 0.14s ease, background 0.14s ease",
+    WebkitTapHighlightColor: "transparent",
   },
   square: {
     width: 44,
@@ -231,6 +344,7 @@ const styles: Record<string, any> = {
     boxShadow: "0 20px 50px rgba(255,106,0,.33), 0 12px 24px rgba(15,23,42,.12)",
     border: "1px solid rgba(255,255,255,.35)",
     transition: "transform .14s ease, filter .14s ease",
+    WebkitTapHighlightColor: "transparent",
   },
   centerBtnActive: {
     filter: "saturate(1.05) brightness(1.02)",
@@ -262,6 +376,67 @@ const styles: Record<string, any> = {
     marginTop: -2,
     letterSpacing: 0.1,
   },
+
+  /* ✅ Action Sheet styles (Apple-like, flutuante) */
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    background: "rgba(2,6,23,.42)",
+    display: "grid",
+    alignItems: "end",
+    padding: "12px",
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+    paddingTop: "calc(12px + env(safe-area-inset-top))",
+    backdropFilter: "blur(6px)",
+    WebkitBackdropFilter: "blur(6px)",
+  },
+  sheetWrap: {
+    width: "100%",
+    maxWidth: 520,
+    margin: "0 auto",
+    display: "grid",
+    gap: 10,
+  },
+  sheetCard: {
+    borderRadius: 18,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.28)",
+    padding: 14,
+    textAlign: "center",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+  },
+  sheetTitle: { fontSize: 14, fontWeight: 950, color: "#0f172a", letterSpacing: -0.2 },
+  sheetSub: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#64748b", lineHeight: 1.3 },
+
+  sheetBtns: {
+    borderRadius: 18,
+    overflow: "hidden",
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 18px 60px rgba(0,0,0,.22)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+  },
+  sheetBtnCancel: {
+    width: "100%",
+    padding: 14,
+    border: "none",
+    background: "transparent",
+    fontWeight: 950,
+    color: "#0f172a",
+    borderBottom: "1px solid rgba(15,23,42,.08)",
+  },
+  sheetBtnDestructive: {
+    width: "100%",
+    padding: 14,
+    border: "none",
+    background: "transparent",
+    fontWeight: 950,
+    color: "#ef4444", // iOS destructive red vibe
+  },
 };
 
 /* ÍCONES (SVG) — sem lib */
@@ -274,12 +449,7 @@ function HomeIcon({ active }: { active: boolean }) {
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <path
-        d="M9.5 21.5v-6.2h5v6.2"
-        stroke={active ? "#2563eb" : "#64748b"}
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
+      <path d="M9.5 21.5v-6.2h5v6.2" stroke={active ? "#2563eb" : "#64748b"} strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -293,12 +463,7 @@ function NutritionIcon({ active }: { active: boolean }) {
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <path
-        d="M12 10c-1.2 2.2-3.1 4-5.5 5.2"
-        stroke={active ? "#16a34a" : "#64748b"}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+      <path d="M12 10c-1.2 2.2-3.1 4-5.5 5.2" stroke={active ? "#16a34a" : "#64748b"} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -312,12 +477,7 @@ function CardIcon({ active }: { active: boolean }) {
         strokeWidth="1.8"
       />
       <path d="M4.5 9.3h15" stroke={active ? "#d97706" : "#64748b"} strokeWidth="1.8" />
-      <path
-        d="M7.5 15.5h5.2"
-        stroke={active ? "#d97706" : "#64748b"}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+      <path d="M7.5 15.5h5.2" stroke={active ? "#d97706" : "#64748b"} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -340,85 +500,28 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Ícone do TREINO (mais “iOS app icon”: branco não estoura + peso bem legível) */
+/* ✅ Ícone do TREINO (mantém o seu atual) */
 function DumbbellIcon({ active }: { active: boolean }) {
-  // menos “estourado” que 0.95 e com outline suave pra destacar no laranja
-  const strokeMain = "rgba(255,255,255,.86)";
+  const stroke = "rgba(255,255,255,.86)";
   const strokeSoft = "rgba(255,255,255,.52)";
-  const plateFill = "rgba(255,255,255,.12)";
-  const plateFill2 = "rgba(255,255,255,.07)";
+  const fillSoftA = "rgba(255,255,255,.12)";
+  const fillSoftB = "rgba(255,255,255,.07)";
 
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <defs>
-        {/* micro-sombra estilo iOS pra separar do fundo sem “gritar” */}
-        <filter id="iosShadow" x="-40%" y="-40%" width="180%" height="180%">
-          <feDropShadow dx="0" dy="0.7" stdDeviation="0.6" floodColor="rgba(0,0,0,.18)" />
-        </filter>
-      </defs>
+      <g transform="rotate(-32 12 12)">
+        <path d="M9.1 12h5.8" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8.55 10.35v3.3" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M15.45 10.35v3.3" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
 
-      {/* diagonal, mas com desenho mais “SF Symbols-like” */}
-      <g transform="rotate(-32 12 12)" filter="url(#iosShadow)">
-        {/* barra */}
-        <path
-          d="M9.1 12h5.8"
-          stroke={strokeMain}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <rect x="4.35" y="8.55" width="2.95" height="6.9" rx="1.35" fill={fillSoftA} stroke={stroke} strokeWidth="2.1" />
+        <rect x="16.7" y="8.55" width="2.95" height="6.9" rx="1.35" fill={fillSoftA} stroke={stroke} strokeWidth="2.1" />
 
-        {/* colares */}
-        <path d="M8.55 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
-        <path d="M15.45 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
+        <rect x="7.4" y="9.75" width="1.65" height="4.5" rx="0.85" fill={fillSoftB} stroke={strokeSoft} strokeWidth="1.7" />
+        <rect x="14.95" y="9.75" width="1.65" height="4.5" rx="0.85" fill={fillSoftB} stroke={strokeSoft} strokeWidth="1.7" />
 
-        {/* placas externas (mais arredondadas e legíveis) */}
-        <rect
-          x="4.35"
-          y="8.55"
-          width="2.95"
-          height="6.9"
-          rx="1.35"
-          fill={plateFill}
-          stroke={strokeMain}
-          strokeWidth="2.1"
-        />
-        <rect
-          x="16.7"
-          y="8.55"
-          width="2.95"
-          height="6.9"
-          rx="1.35"
-          fill={plateFill}
-          stroke={strokeMain}
-          strokeWidth="2.1"
-        />
-
-        {/* placas internas */}
-        <rect
-          x="7.4"
-          y="9.75"
-          width="1.65"
-          height="4.5"
-          rx="0.85"
-          fill={plateFill2}
-          stroke={strokeSoft}
-          strokeWidth="1.7"
-        />
-        <rect
-          x="14.95"
-          y="9.75"
-          width="1.65"
-          height="4.5"
-          rx="0.85"
-          fill={plateFill2}
-          stroke={strokeSoft}
-          strokeWidth="1.7"
-        />
-
-        {/* tampas nas pontas */}
-        <path d="M3.85 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M20.15 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M3.85 10.05v3.9" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M20.15 10.05v3.9" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
       </g>
     </svg>
   );
