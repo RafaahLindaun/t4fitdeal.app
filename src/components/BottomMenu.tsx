@@ -16,7 +16,6 @@ export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
 
-  // (opcional) se existir logout no seu AuthContext, usamos. Se não existir, cai no fallback.
   const auth = useAuth() as any;
   const logoutFn = auth?.logout;
 
@@ -52,13 +51,17 @@ export default function BottomMenu() {
   ];
 
   const treinoActive = pathname.startsWith("/treino");
+  const contaActive = pathname.startsWith("/conta");
 
   // ✅ Long-press Apple-like: segura no botão central -> vai direto pro TreinoDetalhe
   const pressTimerRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
 
-  // ✅ Double-tap “Conta” -> action sheet de sair (Apple-like)
+  // ✅ Double-click “Conta” -> action sheet
   const [logoutOpen, setLogoutOpen] = useState(false);
+
+  // ✅ IMPORTANTE: JSX não aceita <items[3].Icon />
+  const ContaIcon = items[3].Icon;
 
   function vibrate(ms = 14) {
     try {
@@ -80,11 +83,9 @@ export default function BottomMenu() {
     didLongPressRef.current = false;
     clearPressTimer();
 
-    // tempo “discreto” tipo iOS
     pressTimerRef.current = window.setTimeout(() => {
       didLongPressRef.current = true;
       vibrate(18);
-      // ✅ vai direto pro detalhe (sem mexer no visual)
       nav("/treino/detalhe", { state: { from: "/treino" } });
     }, 420);
   }
@@ -101,7 +102,7 @@ export default function BottomMenu() {
     }
   }
 
-  // fecha sheet com ESC (web) e trava rolagem quando aberto (iOS-like)
+  // trava scroll e fecha com ESC (web) quando sheet abre
   useEffect(() => {
     if (!logoutOpen) return;
 
@@ -131,7 +132,7 @@ export default function BottomMenu() {
   function doLogout() {
     setLogoutOpen(false);
 
-    // 1) se existir logout do AuthContext, usa
+    // 1) se existir logout no AuthContext, usa
     try {
       if (typeof logoutFn === "function") {
         logoutFn();
@@ -139,7 +140,7 @@ export default function BottomMenu() {
       }
     } catch {}
 
-    // 2) fallback seguro: navega para login (ajuste a rota se for diferente no seu app)
+    // 2) fallback: navega para login (ajuste se sua rota for diferente)
     try {
       localStorage.setItem("logged_in", "0");
       localStorage.removeItem("token");
@@ -150,8 +151,6 @@ export default function BottomMenu() {
 
     nav("/login", { replace: true });
   }
-
-  const contaActive = pathname.startsWith("/conta");
 
   return (
     <>
@@ -165,7 +164,7 @@ export default function BottomMenu() {
 
           <MenuItem it={items[2]} active={pathname === items[2].to} />
 
-          {/* ✅ CONTA com double-tap -> sair */}
+          {/* ✅ CONTA (igual visual), double-click abre sheet */}
           <Link
             to={items[3].to}
             style={{
@@ -182,7 +181,7 @@ export default function BottomMenu() {
                 transform: contaActive ? "translateY(-1px)" : "translateY(0px)",
               }}
             >
-              <items[3].Icon active={contaActive} />
+              <ContaIcon active={contaActive} />
             </div>
 
             <div
@@ -223,7 +222,7 @@ export default function BottomMenu() {
         </Link>
       </nav>
 
-      {/* ✅ Action Sheet (Apple-like) — só aparece no double-tap */}
+      {/* ✅ Action Sheet (Apple-like) */}
       {logoutOpen && (
         <div style={styles.sheetOverlay} role="presentation" onClick={() => setLogoutOpen(false)}>
           <div style={styles.sheetWrap} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
@@ -377,7 +376,7 @@ const styles: Record<string, any> = {
     letterSpacing: 0.1,
   },
 
-  /* ✅ Action Sheet styles (Apple-like, flutuante) */
+  /* ✅ Action Sheet (Apple-like) */
   sheetOverlay: {
     position: "fixed",
     inset: 0,
@@ -435,7 +434,7 @@ const styles: Record<string, any> = {
     border: "none",
     background: "transparent",
     fontWeight: 950,
-    color: "#ef4444", // iOS destructive red vibe
+    color: "#ef4444",
   },
 };
 
@@ -449,7 +448,12 @@ function HomeIcon({ active }: { active: boolean }) {
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <path d="M9.5 21.5v-6.2h5v6.2" stroke={active ? "#2563eb" : "#64748b"} strokeWidth="1.8" strokeLinejoin="round" />
+      <path
+        d="M9.5 21.5v-6.2h5v6.2"
+        stroke={active ? "#2563eb" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -463,7 +467,12 @@ function NutritionIcon({ active }: { active: boolean }) {
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <path d="M12 10c-1.2 2.2-3.1 4-5.5 5.2" stroke={active ? "#16a34a" : "#64748b"} strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M12 10c-1.2 2.2-3.1 4-5.5 5.2"
+        stroke={active ? "#16a34a" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -477,7 +486,12 @@ function CardIcon({ active }: { active: boolean }) {
         strokeWidth="1.8"
       />
       <path d="M4.5 9.3h15" stroke={active ? "#d97706" : "#64748b"} strokeWidth="1.8" />
-      <path d="M7.5 15.5h5.2" stroke={active ? "#d97706" : "#64748b"} strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M7.5 15.5h5.2"
+        stroke={active ? "#d97706" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -500,28 +514,28 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
-/* ✅ Ícone do TREINO (mantém o seu atual) */
+/* ✅ Seu ícone de Treino (mantido) */
 function DumbbellIcon({ active }: { active: boolean }) {
-  const stroke = "rgba(255,255,255,.86)";
+  const strokeMain = "rgba(255,255,255,.86)";
   const strokeSoft = "rgba(255,255,255,.52)";
-  const fillSoftA = "rgba(255,255,255,.12)";
-  const fillSoftB = "rgba(255,255,255,.07)";
+  const plateFill = "rgba(255,255,255,.12)";
+  const plateFill2 = "rgba(255,255,255,.07)";
 
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <g transform="rotate(-32 12 12)">
-        <path d="M9.1 12h5.8" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8.55 10.35v3.3" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
-        <path d="M15.45 10.35v3.3" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M9.1 12h5.8" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8.55 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M15.45 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
 
-        <rect x="4.35" y="8.55" width="2.95" height="6.9" rx="1.35" fill={fillSoftA} stroke={stroke} strokeWidth="2.1" />
-        <rect x="16.7" y="8.55" width="2.95" height="6.9" rx="1.35" fill={fillSoftA} stroke={stroke} strokeWidth="2.1" />
+        <rect x="4.35" y="8.55" width="2.95" height="6.9" rx="1.35" fill={plateFill} stroke={strokeMain} strokeWidth="2.1" />
+        <rect x="16.7" y="8.55" width="2.95" height="6.9" rx="1.35" fill={plateFill} stroke={strokeMain} strokeWidth="2.1" />
 
-        <rect x="7.4" y="9.75" width="1.65" height="4.5" rx="0.85" fill={fillSoftB} stroke={strokeSoft} strokeWidth="1.7" />
-        <rect x="14.95" y="9.75" width="1.65" height="4.5" rx="0.85" fill={fillSoftB} stroke={strokeSoft} strokeWidth="1.7" />
+        <rect x="7.4" y="9.75" width="1.65" height="4.5" rx="0.85" fill={plateFill2} stroke={strokeSoft} strokeWidth="1.7" />
+        <rect x="14.95" y="9.75" width="1.65" height="4.5" rx="0.85" fill={plateFill2} stroke={strokeSoft} strokeWidth="1.7" />
 
-        <path d="M3.85 10.05v3.9" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M20.15 10.05v3.9" stroke={stroke} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M3.85 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M20.15 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
       </g>
     </svg>
   );
