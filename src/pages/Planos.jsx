@@ -13,12 +13,13 @@ export default function Planos() {
   const email = (user?.email || "anon").toLowerCase();
 
   const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
+  const hasNutriPlus = useMemo(() => localStorage.getItem(`nutri_plus_${email}`) === "1", [email]);
 
   // refs para scroll suave (corrige botão Nutri+ e qualquer deep link)
-  const basicRef = useRef(null);
-  const nutriRef = useRef(null);
+  const basicRef = useRef<HTMLDivElement | null>(null);
+  const nutriRef = useRef<HTMLDivElement | null>(null);
 
-  const [tap, setTap] = useState(null);
+  const [tap, setTap] = useState<null | "basico" | "nutri">(null);
 
   function activateBasic() {
     // SIMULA pagamento do básico (depois troca por Stripe)
@@ -39,7 +40,7 @@ export default function Planos() {
     nav("/treino");
   }
 
-  function scrollTo(ref) {
+  function scrollTo(ref: any) {
     if (!ref?.current) return;
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -60,7 +61,7 @@ export default function Planos() {
   }, [location.hash, location.search]);
 
   // mini “tabs” no topo (glass/Apple)
-  function goTab(which) {
+  function goTab(which: "basico" | "nutri") {
     setTap(which);
     setTimeout(() => setTap(null), 140);
     if (which === "basico") scrollTo(basicRef);
@@ -74,13 +75,7 @@ export default function Planos() {
       {/* HERO */}
       <div style={styles.hero}>
         <div style={styles.heroTop}>
-          <button
-            type="button"
-            onClick={() => nav(-1)}
-            style={styles.backMini}
-            aria-label="Voltar"
-            title="Voltar"
-          >
+          <button type="button" onClick={() => nav(-1)} style={styles.backMini} aria-label="Voltar" title="Voltar">
             <ChevronLeft />
           </button>
 
@@ -115,16 +110,42 @@ export default function Planos() {
           </button>
         </div>
 
-        {paid ? (
-          <div style={styles.paidBanner}>
-            <span style={styles.paidDot} />
-            Você já tem o <b>Básico</b> ativo.
-            <button type="button" style={styles.paidBtn} onClick={() => nav("/dashboard")}>
-              Ir pro dashboard
+        {/* ✅ BANNER: Nutri+ (premium preto) / Básico (upsell) / Free */}
+        {hasNutriPlus ? (
+          <div style={styles.nutriBanner}>
+            <span style={styles.nutriMark} aria-hidden="true">
+              <SparkGlyph />
+            </span>
+
+            <div style={{ minWidth: 0 }}>
+              <div style={styles.nutriTitle}>Nutri+ ativo</div>
+              <div style={styles.nutriText}>
+                Você está no plano completo. <b>Dieta + hidratação</b> liberadas e integradas ao seu treino.
+              </div>
+            </div>
+
+            <button type="button" style={styles.nutriBtn} onClick={() => nav("/nutriplus")}>
+              Abrir Nutri+
+            </button>
+          </div>
+        ) : paid ? (
+          <div style={styles.freeBanner}>
+            <span style={styles.lockMark} aria-hidden="true">
+              <LockGlyph />
+            </span>
+
+            <div style={{ minWidth: 0 }}>
+              <div style={styles.freeTitle}>Plano Básico ativo</div>
+              <div style={styles.freeText}>
+                Quer liberar a <b>Nutrição completa</b>? Desbloqueie o <b>Nutri+</b> (cardápios, hidratação e mais).
+              </div>
+            </div>
+
+            <button type="button" style={styles.paidBtn} onClick={() => nav("/planos?focus=nutri")}>
+              Ver Nutri+
             </button>
           </div>
         ) : (
-          /* ✅ ALTERADO: SOMENTE ESTE “BALÃO” (texto + estilo) */
           <div style={styles.freeBanner}>
             <span style={styles.lockMark} aria-hidden="true">
               <LockGlyph />
@@ -204,9 +225,7 @@ export default function Planos() {
             Ver área de nutrição
           </button>
 
-          <div style={styles.microPremium}>
-            Inclui recursos de nutrição e acompanhamento no mesmo fluxo.
-          </div>
+          <div style={styles.microPremium}>Inclui recursos de nutrição e acompanhamento no mesmo fluxo.</div>
         </div>
       </div>
 
@@ -221,7 +240,7 @@ export default function Planos() {
 }
 
 /* ---------- UI bits ---------- */
-function Feature({ title, text }) {
+function Feature({ title, text }: { title: string; text: string }) {
   return (
     <div style={styles.feat}>
       <div style={styles.featIcon} aria-hidden="true">
@@ -235,7 +254,7 @@ function Feature({ title, text }) {
   );
 }
 
-function FeaturePremium({ title, text }) {
+function FeaturePremium({ title, text }: { title: string; text: string }) {
   return (
     <div style={styles.featPremium}>
       <div style={styles.featIconPremium} aria-hidden="true">
@@ -252,27 +271,15 @@ function FeaturePremium({ title, text }) {
 function ChevronLeft() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M15 18l-6-6 6-6"
-        stroke="#111"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M15 18l-6-6 6-6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function CheckGlyph({ color = "#111" }) {
+function CheckGlyph({ color = "#111" }: { color?: string }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M20 6L9 17l-5-5"
-        stroke={color}
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M20 6L9 17l-5-5" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -280,12 +287,7 @@ function CheckGlyph({ color = "#111" }) {
 function LockGlyph() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M8.5 11V8.7c0-2.3 1.7-4.2 3.5-4.2s3.5 1.9 3.5 4.2V11"
-        stroke="rgba(15,23,42,.65)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+      <path d="M8.5 11V8.7c0-2.3 1.7-4.2 3.5-4.2s3.5 1.9 3.5 4.2V11" stroke="rgba(15,23,42,.65)" strokeWidth="2.2" strokeLinecap="round" />
       <path
         d="M7.5 11h9c.9 0 1.5.6 1.5 1.5v6c0 .9-.6 1.5-1.5 1.5h-9c-.9 0-1.5-.6-1.5-1.5v-6c0-.9.6-1.5 1.5-1.5Z"
         stroke="rgba(15,23,42,.65)"
@@ -296,8 +298,17 @@ function LockGlyph() {
   );
 }
 
+function SparkGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2l1.2 5.2L18 8l-4.8.8L12 14l-1.2-5.2L6 8l4.8-.8L12 2Z" stroke="rgba(255,255,255,.88)" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M5 13l.7 3L9 17l-3.3.6L5 21l-.7-3L1 17l3.3-.6L5 13Z" stroke="rgba(255,255,255,.70)" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* ---------- styles (Apple-like: menos ruído, mais respiro, camadas sutis) ---------- */
-const styles = {
+const styles: Record<string, any> = {
   page: {
     padding: 18,
     paddingBottom: 120,
@@ -310,8 +321,7 @@ const styles = {
     position: "absolute",
     inset: -120,
     pointerEvents: "none",
-    background:
-      "radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
+    background: "radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
   },
 
   hero: {
@@ -343,12 +353,7 @@ const styles = {
   title: { marginTop: 6, fontSize: 28, fontWeight: 950, color: TEXT, letterSpacing: -0.8, lineHeight: 1.05 },
   sub: { marginTop: 8, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
-  tabs: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
+  tabs: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   tab: {
     padding: 12,
     borderRadius: 18,
@@ -371,20 +376,6 @@ const styles = {
   },
   tabTap: { transform: "scale(0.985)" },
 
-  paidBanner: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(15,23,42,.04)",
-    border: "1px solid rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 850,
-    fontSize: 12,
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  paidDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE },
   paidBtn: {
     marginLeft: "auto",
     padding: "10px 12px",
@@ -394,15 +385,15 @@ const styles = {
     fontWeight: 950,
     color: TEXT,
     cursor: "pointer",
+    flexShrink: 0,
   },
 
-  /* ✅ ALTERADO: SOMENTE O “BALÃO” DO FREE */
+  /* Banner Free/Básico (claro) */
   freeBanner: {
     marginTop: 12,
     borderRadius: 18,
     padding: 12,
-    background:
-      "linear-gradient(135deg, rgba(255,255,255,.90), rgba(255,255,255,.78))",
+    background: "linear-gradient(135deg, rgba(255,255,255,.90), rgba(255,255,255,.78))",
     border: "1px solid rgba(15,23,42,.07)",
     boxShadow: "0 14px 40px rgba(15,23,42,.08)",
     color: TEXT,
@@ -416,8 +407,7 @@ const styles = {
     width: 36,
     height: 36,
     borderRadius: 16,
-    background:
-      "radial-gradient(14px 14px at 30% 25%, rgba(255,106,0,.28), rgba(255,255,255,0) 70%), rgba(15,23,42,.04)",
+    background: "radial-gradient(14px 14px at 30% 25%, rgba(255,106,0,.28), rgba(255,255,255,0) 70%), rgba(15,23,42,.04)",
     border: "1px solid rgba(255,106,0,.18)",
     display: "grid",
     placeItems: "center",
@@ -427,12 +417,47 @@ const styles = {
   freeTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.15 },
   freeText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.3 },
   freeRight: { marginLeft: "auto", display: "grid", placeItems: "center" },
-  freePulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 6px rgba(255,106,0,.12)",
+  freePulseDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.12)" },
+
+  /* ✅ Banner Nutri+ (preto premium) */
+  nutriBanner: {
+    marginTop: 12,
+    borderRadius: 18,
+    padding: 12,
+    background: "radial-gradient(900px 220px at 14% -10%, rgba(255,106,0,.28), rgba(255,255,255,0) 55%), linear-gradient(135deg, rgba(10,10,12,.96), rgba(15,23,42,.90))",
+    border: "1px solid rgba(255,255,255,.10)",
+    boxShadow: "0 22px 80px rgba(0,0,0,.28)",
+    color: "rgba(255,255,255,.92)",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    position: "relative",
+    overflow: "hidden",
+  },
+  nutriMark: {
+    width: 36,
+    height: 36,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.08)",
+    border: "1px solid rgba(255,255,255,.12)",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
+    flexShrink: 0,
+  },
+  nutriTitle: { fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,.92)", letterSpacing: -0.2, lineHeight: 1.15 },
+  nutriText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.72)", lineHeight: 1.3 },
+  nutriBtn: {
+    marginLeft: "auto",
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.08)",
+    color: "rgba(255,255,255,.92)",
+    fontWeight: 950,
+    cursor: "pointer",
+    boxShadow: "0 14px 40px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.06)",
+    flexShrink: 0,
   },
 
   section: { position: "relative", zIndex: 1, marginTop: 14 },
@@ -488,20 +513,8 @@ const styles = {
   cardTitle: { marginTop: 12, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
   cardNote: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.4 },
 
-  cardTitlePremium: {
-    marginTop: 12,
-    fontSize: 18,
-    fontWeight: 950,
-    color: "rgba(255,255,255,.96)",
-    letterSpacing: -0.3,
-  },
-  cardNotePremium: {
-    marginTop: 6,
-    fontSize: 13,
-    fontWeight: 800,
-    color: "rgba(255,255,255,.70)",
-    lineHeight: 1.4,
-  },
+  cardTitlePremium: { marginTop: 12, fontSize: 18, fontWeight: 950, color: "rgba(255,255,255,.96)", letterSpacing: -0.3 },
+  cardNotePremium: { marginTop: 6, fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,.70)", lineHeight: 1.4 },
 
   featureGrid: { marginTop: 12, display: "grid", gap: 10 },
   featureGridPremium: { marginTop: 12, display: "grid", gap: 10 },
@@ -576,18 +589,6 @@ const styles = {
     fontWeight: 950,
     cursor: "pointer",
     boxShadow: "0 14px 40px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.06)",
-  },
-
-  secondary: {
-    marginTop: 14,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.30)",
-    background: "rgba(255,106,0,.12)",
-    color: TEXT,
-    fontWeight: 950,
-    cursor: "pointer",
   },
 
   micro: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
