@@ -4,26 +4,24 @@ import App from "./App";
 import "./index.css";
 import { ThemeProvider } from "./context/ThemeContext";
 
-ReactDOM.createRoot(
-  document.getElementById("root") as HTMLElement
-).render(
-  <React.StrictMode>
-      <App />
-  </React.StrictMode>
-);
-useEffect(() => {
-  let lastTouchEnd = 0;
-
-  const onTouchEnd = (e: TouchEvent) => {
+/** ✅ Bloqueia double-tap zoom (iOS/Safari) */
+let lastTouchEnd = 0;
+document.addEventListener(
+  "touchend",
+  (e) => {
     const now = Date.now();
     if (now - lastTouchEnd <= 300) {
-      e.preventDefault(); // evita double-tap zoom
+      e.preventDefault();
     }
     lastTouchEnd = now;
-  };
+  },
+  { passive: false }
+);
 
-  document.addEventListener("touchend", onTouchEnd, { passive: false });
-  return () => document.removeEventListener("touchend", onTouchEnd as any);
-}, []);
-
-
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  </React.StrictMode>
+);
