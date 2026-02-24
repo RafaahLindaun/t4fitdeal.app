@@ -124,13 +124,21 @@ export default function Planos() {
             </button>
           </div>
         ) : (
+          /* ✅ ALTERADO: SOMENTE ESTE “BALÃO” (texto + estilo) */
           <div style={styles.freeBanner}>
             <span style={styles.lockMark} aria-hidden="true">
               <LockGlyph />
             </span>
+
             <div style={{ minWidth: 0 }}>
-              <div style={styles.freeTitle}>Modo gratuito</div>
-              <div style={styles.freeText}>Assine para liberar tudo do treino.</div>
+              <div style={styles.freeTitle}>Você está no Free</div>
+              <div style={styles.freeText}>
+                Assine o <b>Básico</b> pra liberar o treino completo (detalhes, séries e evolução).
+              </div>
+            </div>
+
+            <div style={styles.freeRight} aria-hidden="true">
+              <span style={styles.freePulseDot} />
             </div>
           </div>
         )}
@@ -388,32 +396,44 @@ const styles = {
     cursor: "pointer",
   },
 
+  /* ✅ ALTERADO: SOMENTE O “BALÃO” DO FREE */
   freeBanner: {
     marginTop: 12,
     borderRadius: 18,
     padding: 12,
-    background: "rgba(255,106,0,.08)",
-    border: "1px solid rgba(255,106,0,.18)",
+    background:
+      "linear-gradient(135deg, rgba(255,255,255,.90), rgba(255,255,255,.78))",
+    border: "1px solid rgba(15,23,42,.07)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.08)",
     color: TEXT,
-    fontWeight: 850,
-    fontSize: 12,
     display: "flex",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
+    position: "relative",
+    overflow: "hidden",
   },
   lockMark: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 16,
-    background: "rgba(255,255,255,.86)",
-    border: "1px solid rgba(15,23,42,.06)",
+    background:
+      "radial-gradient(14px 14px at 30% 25%, rgba(255,106,0,.28), rgba(255,255,255,0) 70%), rgba(15,23,42,.04)",
+    border: "1px solid rgba(255,106,0,.18)",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 10px 26px rgba(15,23,42,.06)",
+    boxShadow: "0 10px 26px rgba(255,106,0,.10)",
     flexShrink: 0,
   },
-  freeTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.2 },
-  freeText: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.25 },
+  freeTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.15 },
+  freeText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.3 },
+  freeRight: { marginLeft: "auto", display: "grid", placeItems: "center" },
+  freePulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.12)",
+  },
 
   section: { position: "relative", zIndex: 1, marginTop: 14 },
 
