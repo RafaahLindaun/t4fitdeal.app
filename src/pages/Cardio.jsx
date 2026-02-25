@@ -1,9 +1,12 @@
 // ✅ COLE EM: src/pages/Cardio.jsx
-// Correções:
-// - remove “Leve, direto e guiado” -> “Bora pro cardio.” (ponto laranja, jovem)
-// - arruma o “mapa mental” (ring) pra não ficar por cima/bugado no iPhone
-// - deixa responsivo (no mobile: ring central + painel desce)
-// - evita o CTA flutuante cobrir os botões (sobe mais)
+// Ajustes pedidos:
+// - CTA flutuante (Liberar Nutri+ / Ver minha refeição) MAIS PRA BAIXO
+// - Timer/Cronômetro em “quadrado iOS” (não redondo)
+// - Pausar/Reset/Concluir com visual único, Apple-like
+// - “Mapa mental” corrigido: nada estoura pra fora (sem cards fora da tela)
+// - Minutos (presets) viram grid responsivo, sem overflow
+// - fitdeal. com ponto laranja (normal, não flutuante)
+// - mantém cores do app
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -163,7 +166,7 @@ function CalorieSheet({
             <div style={S.sheetUnit}>kcal</div>
           </div>
 
-          <div style={S.sheetHint}>A gente calcula o tempo certinho pra sua modalidade + peso.</div>
+          <div style={S.sheetHint}>A gente calcula o tempo certinho pro seu peso + modalidade.</div>
         </div>
 
         <div style={S.sheetFooter}>
@@ -220,7 +223,7 @@ export default function Cardio() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [kcalTarget, setKcalTarget] = useState("");
 
-  // ring responsive
+  // viewport
   const [vw, setVw] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 390));
   useEffect(() => {
     const onR = () => setVw(window.innerWidth);
@@ -230,26 +233,15 @@ export default function Cardio() {
 
   const isPhone = vw < 430;
 
-  // Ajuste do ring pra não “vazar” no mobile
-  const ringSize = clamp(isPhone ? vw - 54 : 320, 270, 340);
-  const radius = clamp(Math.round(ringSize * 0.38), 92, 128);
-
+  // ✅ “mapa mental” sem estourar: usa grid wrap (não absoluto)
   const ringItems = useMemo(() => {
-    // 6 itens ficam mais limpos no iPhone
+    // 6 itens fica sempre limpo no iPhone
     const list = options.slice(0, 6);
-    // garante que o selecionado apareça dentro dos 6
     if (list.find((x) => x.id === picked)) return list;
     const pickedObj = options.find((x) => x.id === picked);
     if (!pickedObj) return list;
     return [pickedObj, ...list.slice(0, 5)];
   }, [options, picked]);
-
-  function posFor(i, total) {
-    const a = (Math.PI * 2 * i) / total - Math.PI / 2;
-    const x = Math.cos(a) * radius;
-    const y = Math.sin(a) * radius;
-    return { x, y };
-  }
 
   useEffect(() => {
     return () => {
@@ -330,13 +322,6 @@ export default function Cardio() {
     return clamp(1 - remaining / (minutes * 60), 0, 1);
   }, [mode, minutes, remaining]);
 
-  const refBlock = useMemo(() => {
-    const refMin = mode === "timer" ? minutes : Math.max(1, Math.round(elapsed / 60));
-    const kcal = Math.round(refMin * kcalPerMin);
-    const kpm = Math.round(kcalPerMin);
-    return { refMin, kcal, kpm };
-  }, [mode, minutes, elapsed, kcalPerMin]);
-
   function startByCalories() {
     const kcal = clamp(Number(kcalTarget || 0), 10, 5000);
     if (!kcal || !Number.isFinite(kcal)) return;
@@ -404,9 +389,9 @@ export default function Cardio() {
     setTimeout(() => nav("/dashboard"), 500);
   }
 
-  // ✅ sobe mais pra não tampar botões
+  // ✅ CTA MAIS PRA BAIXO (quase encostando no menu, mas sem cobrir)
   const BOTTOM_MENU_SAFE = 102;
-  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 92;
+  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 18;
 
   if (!paid) {
     return (
@@ -445,31 +430,36 @@ export default function Cardio() {
 
   return (
     <div style={C.page}>
-      {/* HEAD (sem “leve/direto/guiado”) */}
+      {/* HEAD */}
       <div style={C.head}>
-        <div style={{ minWidth: 0 }}>
-          <div style={C.brandRow}>
-            <div style={C.brand}>fitdeal<span style={{ color: ORANGE }}>.</span></div>
-            <div style={C.headBtns}>
-              <button style={C.headBtn} onClick={openMap} type="button">Ver mapa</button>
-              <button style={C.headBtn} onClick={() => nav("/treino")} type="button">Voltar</button>
-            </div>
+        <div style={C.brandRow}>
+          <div style={C.brand}>
+            fitdeal<span style={{ color: ORANGE }}>.</span>
           </div>
 
-          <div style={C.kicker}>CARDIO</div>
-          <div style={C.heroTitle}>
-            Bora pro cardio<span style={C.orangeDot}>.</span>
+          <div style={C.headBtns}>
+            <button style={C.headBtn} onClick={openMap} type="button">
+              Ver mapa
+            </button>
+            <button style={C.headBtn} onClick={() => nav("/treino")} type="button">
+              Voltar
+            </button>
           </div>
+        </div>
 
-          <div style={C.subLine}>
-            Modalidade: <b>{opt?.title}</b> • Meta: <b>{goal}</b> • Nível: <b>{level}</b>
-          </div>
+        <div style={C.kicker}>CARDIO</div>
+        <div style={C.heroTitle}>
+          Bora pro cardio<span style={{ color: ORANGE }}>.</span>
+        </div>
+
+        <div style={C.subLine}>
+          Modalidade: <b>{opt?.title}</b> • Meta: <b>{goal}</b> • Nível: <b>{level}</b>
         </div>
       </div>
 
-      {/* MODE ROW */}
+      {/* MODE ROW (quadrado iOS) */}
       <div style={C.modeRow}>
-        <div style={C.modePill}>
+        <div style={C.modeSquareWrap}>
           <button
             type="button"
             onClick={() => {
@@ -478,10 +468,11 @@ export default function Cardio() {
               setRemaining(minutes * 60);
               setElapsed(0);
             }}
-            style={{ ...C.modeBtn, ...(mode === "timer" ? C.modeBtnOn : C.modeBtnOff) }}
+            style={{ ...C.modeSquareBtn, ...(mode === "timer" ? C.modeSquareOn : C.modeSquareOff) }}
           >
             Timer
           </button>
+
           <button
             type="button"
             onClick={() => {
@@ -489,7 +480,7 @@ export default function Cardio() {
               setMode("cronometro");
               setElapsed(0);
             }}
-            style={{ ...C.modeBtn, ...(mode === "cronometro" ? C.modeBtnOn : C.modeBtnOff) }}
+            style={{ ...C.modeSquareBtn, ...(mode === "cronometro" ? C.modeSquareOn : C.modeSquareOff) }}
           >
             Cronômetro
           </button>
@@ -500,85 +491,88 @@ export default function Cardio() {
         </button>
       </div>
 
-      {/* RING + SIDE (corrigido) */}
+      {/* CARD CENTRAL (quadrado + mapa mental limpo) */}
       <div style={C.centerCard}>
-        <div style={C.ringArea}>
-          <div style={C.ringStage}>
-            <div style={{ ...C.ringWrap, width: ringSize, height: ringSize }}>
-              {/* itens ao redor */}
-              {ringItems.map((o, i) => {
-                const p = posFor(i, ringItems.length);
-                const on = picked === o.id;
+        <div style={C.centerTop}>
+          <div style={C.centerLeft}>
+            <div style={C.centerMeta}>
+              <span style={C.dot} />
+              <span style={C.centerModeTxt}>{mode === "timer" ? "Timer" : "Cronômetro"}</span>
+              <span style={C.sep}>•</span>
+              <span style={C.centerModeTxt}>{Math.round(kcalPerMin)} kcal/min</span>
+              <span style={C.sep}>•</span>
+              <span style={C.centerModeTxt}>{Math.round(opt?.met || 0)} MET</span>
+            </div>
 
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => {
-                      setPicked(o.id);
-                      reset();
-                    }}
-                    style={{
-                      ...C.ringItem,
-                      transform: `translate(calc(${ringSize / 2}px + ${p.x}px - 50%), calc(${ringSize / 2}px + ${p.y}px - 50%))`,
-                      ...(on ? C.ringItemOn : C.ringItemOff),
-                    }}
-                    aria-label={o.title}
-                    title={o.title}
-                  >
-                    <div style={{ ...C.ringDot, ...(on ? C.ringDotOn : null) }} />
-                    <div style={C.ringLabel}>{o.title}</div>
-                    <div style={C.ringMet}>{Math.round(o.met)} MET</div>
-                  </button>
-                );
-              })}
+            <div style={C.squareTimeBox}>
+              <div style={C.squareTime}>{shownTime}</div>
 
-              {/* centro */}
-              <div style={C.centerCircle}>
-                <div style={C.circleMode}>{mode === "timer" ? "TIMER" : "CRONÔMETRO"}</div>
-                <div style={C.circleTime}>{shownTime}</div>
-                <div style={C.circleSub}>
-                  ~{Math.round(kcalPerMin)} kcal/min • ~{estKcal} kcal
+              {mode === "timer" ? (
+                <div style={C.squareTrack}>
+                  <div style={{ ...C.squareFill, transform: `scaleX(${progress})` }} />
                 </div>
+              ) : (
+                <div style={C.squareGhost}>Sem limite de tempo</div>
+              )}
 
-                {mode === "timer" ? (
-                  <div style={C.circleBarTrack}>
-                    <div style={{ ...C.circleBarFill, transform: `scaleX(${progress})` }} />
-                  </div>
-                ) : (
-                  <div style={C.circleBarGhost}>Sem limite de tempo</div>
-                )}
+              <div style={C.squareSub}>
+                Estimativa agora: <b>~{estKcal} kcal</b> • {elapsedMin} min
               </div>
             </div>
           </div>
 
-          <div style={C.sidePanel}>
-            <div style={C.sideTitle}>Tempo ↔ Calorias</div>
+          <div style={C.centerRight}>
+            <div style={C.panelTitle}>Tempo ↔ Calorias</div>
 
-            <div style={C.sideRow}>
-              <div style={C.sideK}>Ritmo</div>
-              <div style={C.sideV}>~{refBlock.kpm} kcal/min</div>
-            </div>
-
-            <div style={C.sideRow}>
-              <div style={C.sideK}>Agora</div>
-              <div style={C.sideV}>
+            <div style={C.panelRow}>
+              <div style={C.panelK}>Agora</div>
+              <div style={C.panelV}>
                 {elapsedMin} min → ~{estKcal} kcal
               </div>
             </div>
 
-            <div style={C.sideRow}>
-              <div style={C.sideK}>Referência</div>
-              <div style={C.sideV}>
-                {mode === "timer" ? `${minutes} min` : `${Math.max(1, refBlock.refMin)} min`} → ~{refBlock.kcal} kcal
-              </div>
+            <div style={C.panelRow}>
+              <div style={C.panelK}>Se fizer 20 min</div>
+              <div style={C.panelV}>~{Math.round(20 * kcalPerMin)} kcal</div>
             </div>
 
-            <div style={C.sideMini}>Estimativa (MET). Varia por velocidade real, pausas e técnica.</div>
+            <div style={C.panelRow}>
+              <div style={C.panelK}>Se fizer 30 min</div>
+              <div style={C.panelV}>~{Math.round(30 * kcalPerMin)} kcal</div>
+            </div>
+
+            <div style={C.panelMini}>Estimativa (MET). Varia pela intensidade real.</div>
           </div>
         </div>
 
-        {/* PRESETS só no timer */}
+        {/* MAPA MENTAL (grid, sem overflow) */}
+        <div style={C.ringGrid}>
+          {ringItems.map((o) => {
+            const on = picked === o.id;
+            const kpm = Math.round(calcKcalPerMin({ kg: weightKg, met: o.met }));
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => {
+                  setPicked(o.id);
+                  reset();
+                }}
+                style={{ ...C.ringChip, ...(on ? C.ringChipOn : C.ringChipOff) }}
+              >
+                <div style={C.ringChipTop}>
+                  <div style={{ ...C.ringChipDot, ...(on ? C.ringChipDotOn : null) }} />
+                  <div style={C.ringChipTitle}>{o.title}</div>
+                </div>
+                <div style={C.ringChipSub}>
+                  ~{kpm} kcal/min • {Math.round(o.met)} MET
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* PRESETS (sem estourar) */}
         {mode === "timer" ? (
           <div style={C.presets}>
             {[10, 15, 20, 30, 45, 60].map((m) => (
@@ -594,19 +588,18 @@ export default function Cardio() {
           </div>
         ) : null}
 
-        {/* ACTIONS */}
-        <div style={C.actions}>
-          {!running ? (
-            <button style={C.startBtn} onClick={start} type="button">
-              Começar
-            </button>
-          ) : (
-            <button style={C.pauseBtn} onClick={pause} type="button">
-              Pausar
-            </button>
-          )}
+        {/* ACTIONS (visual único / Apple) */}
+        <div style={C.actionsRow}>
+          <button
+            type="button"
+            onClick={!running ? start : pause}
+            style={{ ...C.actionMain, ...(running ? C.actionMainPause : C.actionMainStart) }}
+          >
+            <span>{!running ? "Começar" : "Pausar"}</span>
+            <span style={C.actionMini}>{!running ? "vai" : "segura"}</span>
+          </button>
 
-          <button style={C.resetBtn} onClick={reset} type="button">
+          <button type="button" onClick={reset} style={C.actionGhost}>
             Reset
           </button>
         </div>
@@ -684,30 +677,28 @@ const C = {
 
   kicker: { marginTop: 14, fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.7 },
   heroTitle: { marginTop: 6, fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0, lineHeight: 1.05 },
-  orangeDot: {
-    display: "inline-block",
-    marginLeft: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 7px rgba(255,106,0,.12)",
-    transform: "translateY(-4px)",
-  },
   subLine: { marginTop: 10, fontSize: 13, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   modeRow: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  modePill: {
-    display: "inline-flex",
-    gap: 8,
-    padding: 6,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.04)",
-    border: "1px solid rgba(15,23,42,.06)",
+
+  // ✅ quadrado iOS
+  modeSquareWrap: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    width: "min(420px, 100%)",
+    flex: "1 1 260px",
   },
-  modeBtn: { padding: "12px 14px", borderRadius: 999, border: "none", fontWeight: 950, fontSize: 13 },
-  modeBtnOn: { background: "#0B0B0C", color: "#fff", boxShadow: "0 14px 40px rgba(0,0,0,.14)" },
-  modeBtnOff: { background: "transparent", color: TEXT },
+  modeSquareBtn: {
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    fontWeight: 950,
+    fontSize: 13,
+    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
+  },
+  modeSquareOn: { background: "#0B0B0C", color: "#fff", borderColor: "rgba(255,255,255,.10)" },
+  modeSquareOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
   kcalBtn: {
     padding: "12px 14px",
@@ -731,120 +722,95 @@ const C = {
     WebkitBackdropFilter: "blur(12px)",
   },
 
-  ringArea: {
+  centerTop: {
     display: "grid",
     gridTemplateColumns: "1fr",
-    gap: 14,
-    alignItems: "start",
+    gap: 12,
   },
 
-  ringStage: {
-    borderRadius: 26,
-    padding: 14,
-    background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.96))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-    overflow: "visible",
-  },
-
-  ringWrap: {
-    position: "relative",
-    margin: "0 auto",
-    overflow: "visible",
-  },
-
-  ringItem: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    width: 128,
-    height: 78,
-    borderRadius: 22,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.96)",
-    display: "grid",
-    alignContent: "center",
-    justifyItems: "center",
-    gap: 6,
-    boxShadow: "0 12px 30px rgba(15,23,42,.06)",
-    padding: 10,
-    zIndex: 2,
-  },
-  ringItemOn: {
-    borderColor: "rgba(255,106,0,.24)",
-    background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.06))",
-    boxShadow: "0 18px 55px rgba(255,106,0,.12)",
-  },
-  ringItemOff: {},
-
-  ringDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.18)",
-    boxShadow: "0 0 0 7px rgba(15,23,42,.06)",
-  },
-  ringDotOn: { background: ORANGE, boxShadow: "0 0 0 7px rgba(255,106,0,.12)" },
-  ringLabel: { fontSize: 12, fontWeight: 950, color: TEXT, textAlign: "center", lineHeight: 1.1 },
-  ringMet: { fontSize: 12, fontWeight: 900, color: MUTED },
-
-  centerCircle: {
-    position: "absolute",
-    left: "50%",
-    top: "50%",
-    width: 210,
-    height: 210,
-    transform: "translate(-50%,-50%)",
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.08)",
-    background:
-      "radial-gradient(140px 140px at 30% 20%, rgba(255,106,0,.14), rgba(255,255,255,0) 65%), rgba(255,255,255,.98)",
-    boxShadow: "0 22px 80px rgba(15,23,42,.10)",
-    display: "grid",
-    alignContent: "center",
-    justifyItems: "center",
-    padding: 14,
-    textAlign: "center",
-    zIndex: 3,
-  },
-  circleMode: { fontSize: 10, fontWeight: 950, color: MUTED, letterSpacing: 0.8 },
-  circleTime: { marginTop: 6, fontSize: 54, fontWeight: 950, color: TEXT, letterSpacing: -1.8, lineHeight: 1 },
-  circleSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.25 },
-
-  circleBarTrack: {
-    marginTop: 10,
-    width: "100%",
-    height: 10,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    overflow: "hidden",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  circleBarFill: {
-    height: "100%",
-    width: "100%",
-    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
-    transformOrigin: "left center",
-    transition: "transform .25s ease",
-  },
-  circleBarGhost: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED, opacity: 0.85 },
-
-  sidePanel: {
+  centerLeft: { minWidth: 0 },
+  centerRight: {
     borderRadius: 22,
     padding: 14,
     background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.92))",
     border: "1px solid rgba(15,23,42,.06)",
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
   },
-  sideTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  sideRow: { marginTop: 10, display: "flex", justifyContent: "space-between", gap: 10 },
-  sideK: { fontSize: 12, fontWeight: 850, color: MUTED },
-  sideV: { fontSize: 12, fontWeight: 950, color: TEXT, textAlign: "right" },
-  sideMini: { marginTop: 10, fontSize: 11, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
 
-  presets: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 },
+  centerMeta: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
+  dot: { width: 8, height: 8, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 7px rgba(255,106,0,.12)" },
+  sep: { color: "rgba(15,23,42,.25)", fontWeight: 950 },
+  centerModeTxt: { fontSize: 12, fontWeight: 900, color: MUTED },
+
+  // ✅ quadrado do tempo
+  squareTimeBox: {
+    marginTop: 12,
+    borderRadius: 24,
+    padding: 16,
+    background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
+    overflow: "hidden",
+  },
+  squareTime: { fontSize: 56, fontWeight: 950, color: TEXT, letterSpacing: -1.8, lineHeight: 1 },
+  squareTrack: {
+    marginTop: 12,
+    width: "100%",
+    height: 12,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.06)",
+    overflow: "hidden",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  squareFill: {
+    height: "100%",
+    width: "100%",
+    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
+    transformOrigin: "left center",
+    transition: "transform .25s ease",
+  },
+  squareGhost: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
+  squareSub: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  panelTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  panelRow: { marginTop: 10, display: "flex", justifyContent: "space-between", gap: 10 },
+  panelK: { fontSize: 12, fontWeight: 850, color: MUTED },
+  panelV: { fontSize: 12, fontWeight: 950, color: TEXT, textAlign: "right" },
+  panelMini: { marginTop: 10, fontSize: 11, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+
+  // ✅ mapa mental em grid: não sai da página
+  ringGrid: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+  },
+  ringChip: {
+    width: "100%",
+    textAlign: "left",
+    borderRadius: 22,
+    padding: 14,
+    border: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.92)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    overflow: "hidden",
+  },
+  ringChipOn: {
+    borderColor: "rgba(255,106,0,.20)",
+    background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.06))",
+    boxShadow: "0 18px 55px rgba(255,106,0,.10)",
+  },
+  ringChipOff: {},
+  ringChipTop: { display: "flex", alignItems: "center", gap: 10 },
+  ringChipDot: { width: 9, height: 9, borderRadius: 999, background: "rgba(15,23,42,.18)", boxShadow: "0 0 0 7px rgba(15,23,42,.06)" },
+  ringChipDotOn: { background: ORANGE, boxShadow: "0 0 0 7px rgba(255,106,0,.12)" },
+  ringChipTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.15 },
+  ringChipSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.3 },
+
+  // ✅ presets sem overflow
+  presets: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
   presetBtn: {
-    padding: 12,
+    padding: 14,
     borderRadius: 18,
     border: "1px solid rgba(15,23,42,.08)",
     fontWeight: 950,
@@ -854,33 +820,31 @@ const C = {
   presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
   presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
-  actions: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  startBtn: {
+  // ✅ ações “únicas” (apple)
+  actionsRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  actionMain: {
     padding: 16,
-    borderRadius: 20,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,.14)",
+    display: "flex",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 10,
     fontWeight: 950,
-    boxShadow: "0 18px 50px rgba(255,106,0,.18)",
+    boxShadow: "0 22px 70px rgba(2,6,23,.14)",
   },
-  pauseBtn: {
+  actionMainStart: { background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))", color: "#fff" },
+  actionMainPause: { background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))", color: "#111" },
+  actionMini: { fontSize: 12, fontWeight: 950, opacity: 0.75 },
+
+  actionGhost: {
     padding: 16,
-    borderRadius: 20,
-    border: "1px solid rgba(15,23,42,.12)",
-    background: "rgba(15,23,42,.92)",
-    color: "#fff",
-    fontWeight: 950,
-    boxShadow: "0 16px 46px rgba(15,23,42,.16)",
-  },
-  resetBtn: {
-    padding: 16,
-    borderRadius: 20,
+    borderRadius: 22,
     border: "1px solid rgba(15,23,42,.10)",
     background: "rgba(255,255,255,.92)",
     color: TEXT,
     fontWeight: 950,
-    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
 
   finishBtn: {
@@ -899,6 +863,7 @@ const C = {
   finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
   note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
+  // ✅ CTA flutuante mais pra baixo
   floatingNutri: {
     position: "fixed",
     left: "50%",
@@ -1063,7 +1028,7 @@ const S = {
 };
 
 if (typeof document !== "undefined") {
-  const id = "fitdeal-cardio-fixes-v3";
+  const id = "fitdeal-cardio-fixes-v4";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
@@ -1073,12 +1038,9 @@ if (typeof document !== "undefined") {
         50% { transform: translateX(-50%) translateY(-2px); }
       }
       button:active { transform: scale(.99); }
-      @media (min-width: 980px){
-        /* no desktop: ring + painel lado a lado */
-        .ringGridFix { grid-template-columns: 1fr 280px !important; align-items: center !important; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        * { animation: none !important; transition: none !important; }
+      @media (min-width: 860px){
+        /* desktop: painel lateral */
+        .centerTopGridFix { grid-template-columns: 1.2fr .8fr !important; }
       }
     `;
     document.head.appendChild(style);
