@@ -1,12 +1,17 @@
 // ✅ COLE EM: src/pages/Cardio.jsx
-// Ajustes pedidos:
-// - CTA flutuante (Liberar Nutri+ / Ver minha refeição) MAIS PRA BAIXO
-// - Timer/Cronômetro em “quadrado iOS” (não redondo)
-// - Pausar/Reset/Concluir com visual único, Apple-like
-// - “Mapa mental” corrigido: nada estoura pra fora (sem cards fora da tela)
-// - Minutos (presets) viram grid responsivo, sem overflow
-// - fitdeal. com ponto laranja (normal, não flutuante)
-// - mantém cores do app
+// Cardio — estilo Apple + cores do app + recursos “de app grande” (sem libs)
+// Inclui:
+// - Header com "fitdeal." (ponto laranja fixo)
+// - Seletor de modo: Timer / Cronômetro / Por calorias
+// - Modalidades (chips) com seleção em laranja (Apple-like)
+// - Intensidade (slider) que ajusta MET (leve → forte)
+// - Timer quadrado (não redondo) + barra de progresso (no modo Timer)
+// - “Por calorias”: escolhe modalidade + kcal alvo → calcula minutos → inicia timer
+// - Presets de tempo (grid responsivo, sem estourar)
+// - Intervalos (HIIT) opcionais: 30/30, 40/20, 60/30 (muito usado em apps)
+// - Controles com visual único: Começar/Pausar/Reset + Concluir
+// - Registro no localStorage (mantido compatível com seu dashboard)
+// - Botão flutuante Nutri+ / Ver minha refeição MAIS PRA BAIXO (não cobre o menu)
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +21,10 @@ const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
+
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
+}
 
 function yyyyMmDd(d = new Date()) {
   const dt = new Date(d);
@@ -41,56 +50,11 @@ function getLevel(user) {
   return "iniciante";
 }
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
-
-/**
- * kcal/min = MET * 3.5 * kg / 200
- */
+// kcal/min = MET * 3.5 * kg / 200
 function calcKcalPerMin({ kg, met }) {
   const w = Number(kg || 0) || 70;
-  return (Number(met || 1) * 3.5 * w) / 200;
-}
-
-function getCardioOptions(goal, level) {
-  const base = [
-    { id: "walk", title: "Caminhada rápida", met: 4.3, mapQ: "parque caminhada" },
-    { id: "run", title: "Corrida (leve)", met: 7.0, mapQ: "pista corrida" },
-    { id: "bike", title: "Bike (moderado)", met: 6.8, mapQ: "ciclovia" },
-    { id: "ellip", title: "Elíptico", met: 5.0, mapQ: "academia" },
-    { id: "row", title: "Remo", met: 6.0, mapQ: "academia" },
-    { id: "jump", title: "Corda (leve)", met: 8.8, mapQ: "quadra esportiva" },
-    { id: "hiit", title: "Circuit/HIIT", met: 9.5, mapQ: "academia" },
-  ];
-
-  let mult = 1.0;
-  if (goal === "saude") mult = 0.92;
-  if (goal === "hipertrofia") mult = 1.0;
-  if (goal === "bodybuilding") mult = 1.02;
-  if (goal === "condicionamento") mult = 1.08;
-  if (goal === "powerlifting") mult = 0.98;
-
-  if (level === "iniciante") mult *= 0.92;
-  if (level === "avancado") mult *= 1.06;
-
-  return base.map((o) => ({ ...o, met: clamp(o.met * mult, 3.2, 11.5) }));
-}
-
-function getCongrats(goal, level) {
-  if (goal === "saude")
-    return level === "iniciante"
-      ? "Boa. Fez o básico bem feito — isso conta muito."
-      : "Excelente. Constância é o que mantém você forte por anos.";
-  if (goal === "condicionamento")
-    return level === "iniciante"
-      ? "Boa. Seu fôlego começa a mudar a partir de hoje."
-      : "Monstro. Resistência subindo de verdade.";
-  if (goal === "powerlifting")
-    return "Perfeito. Cardio na medida certa melhora recuperação sem roubar força.";
-  if (goal === "bodybuilding")
-    return "Boa. Cardio inteligente ajuda definição e melhora o desempenho.";
-  return "Fechado. Consistência vence.";
+  const m = Number(met || 1) || 1;
+  return (m * 3.5 * w) / 200;
 }
 
 function formatTime(s) {
@@ -100,8 +64,65 @@ function formatTime(s) {
   return `${mm}:${ss}`;
 }
 
-/* -------------------- Bottom Sheet: medir por calorias -------------------- */
-function CalorieSheet({
+function safeJsonParse(raw, fallback) {
+  try {
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function getCongrats(goal, level) {
+  if (goal === "saude")
+    return level === "iniciante"
+      ? "Boa. Fez o básico bem feito — isso já conta."
+      : "Perfeito. Mantém a rotina que o corpo responde.";
+  if (goal === "condicionamento")
+    return level === "iniciante"
+      ? "Boa. Seu fôlego começa a virar."
+      : "Monstro. Resistência subindo de verdade.";
+  if (goal === "powerlifting") return "Cardio na medida certa. Recuperação melhor, força intacta.";
+  if (goal === "bodybuilding") return "Cardio inteligente. Ajuda definição e melhora performance.";
+  return "Fechado. Consistência vence.";
+}
+
+/* -------- Modalidades (base MET) -------- */
+function getCardioOptions(goal, level) {
+  const base = [
+    { id: "walk", title: "Caminhada (rápida)", met: 4.3, mapQ: "parque caminhada" },
+    { id: "run", title: "Corrida (leve)", met: 7.0, mapQ: "pista corrida" },
+    { id: "bike", title: "Bike (moderado)", met: 6.8, mapQ: "ciclovia" },
+    { id: "ellip", title: "Elíptico", met: 5.0, mapQ: "academia" },
+    { id: "row", title: "Remo", met: 6.0, mapQ: "academia" },
+    { id: "stair", title: "Escada", met: 8.8, mapQ: "academia" },
+    { id: "hiit", title: "Circuit/HIIT", met: 9.5, mapQ: "academia" },
+  ];
+
+  // ajuste sutil por objetivo/nível (sem exagero)
+  let mult = 1.0;
+  if (goal === "saude") mult = 0.92;
+  if (goal === "condicionamento") mult = 1.06;
+  if (goal === "bodybuilding") mult = 1.02;
+  if (goal === "powerlifting") mult = 0.98;
+
+  if (level === "iniciante") mult *= 0.92;
+  if (level === "avancado") mult *= 1.06;
+
+  return base.map((o) => ({ ...o, met: clamp(o.met * mult, 3.2, 11.5) }));
+}
+
+/* -------- Haptics / feedback leve (se disponível) -------- */
+function vibrate(ms = 16) {
+  try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      // @ts-ignore
+      navigator.vibrate(ms);
+    }
+  } catch {}
+}
+
+/* -------- Bottom sheet: por calorias -------- */
+function CaloriesSheet({
   open,
   onClose,
   options,
@@ -109,30 +130,28 @@ function CalorieSheet({
   onPick,
   kcalTarget,
   setKcalTarget,
-  onStartByCalories,
+  intensity,
+  onStart,
 }) {
   if (!open) return null;
 
   return (
-    <div style={S.sheetOverlay} role="presentation" onClick={onClose}>
-      <div style={S.sheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <div style={S.sheetGrab} />
-
-        <div style={S.sheetHead}>
-          <div>
-            <div style={S.sheetTitle}>Medir por calorias</div>
-            <div style={S.sheetSub}>Escolhe a modalidade e manda as kcal.</div>
+    <div style={Sx.sheetOverlay} role="presentation" onClick={onClose}>
+      <div style={Sx.sheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div style={Sx.sheetGrab} />
+        <div style={Sx.sheetHead}>
+          <div style={{ minWidth: 0 }}>
+            <div style={Sx.sheetTitle}>Por calorias</div>
+            <div style={Sx.sheetSub}>Escolhe a modalidade e manda as kcal. A gente calcula o tempo.</div>
           </div>
-
-          <button type="button" style={S.sheetX} onClick={onClose} aria-label="Fechar">
+          <button style={Sx.sheetX} type="button" onClick={onClose} aria-label="Fechar">
             ✕
           </button>
         </div>
 
-        <div style={S.sheetBody}>
-          <div style={S.sheetSectionTitle}>Modalidade</div>
-
-          <div style={S.sheetOptList}>
+        <div style={Sx.sheetBody}>
+          <div style={Sx.sheetSectionTitle}>Modalidade</div>
+          <div style={Sx.sheetOptList}>
             {options.map((o) => {
               const on = picked === o.id;
               return (
@@ -140,41 +159,103 @@ function CalorieSheet({
                   key={o.id}
                   type="button"
                   onClick={() => onPick(o.id)}
-                  style={{ ...S.sheetOpt, ...(on ? S.sheetOptOn : S.sheetOptOff) }}
+                  style={{ ...Sx.sheetOpt, ...(on ? Sx.sheetOptOn : Sx.sheetOptOff) }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={S.sheetOptTitle}>{o.title}</div>
-                    <div style={S.sheetOptSub}>{Math.round(o.met)} MET</div>
+                    <div style={Sx.sheetOptTitle}>{o.title}</div>
+                    <div style={Sx.sheetOptSub}>{Math.round(o.met)} MET • intensidade {intensity}%</div>
                   </div>
-                  <div style={{ ...S.sheetPill, ...(on ? S.sheetPillOn : null) }}>{on ? "OK" : "—"}</div>
+                  <div style={{ ...Sx.sheetPill, ...(on ? Sx.sheetPillOn : null) }}>{on ? "OK" : "—"}</div>
                 </button>
               );
             })}
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 12 }} />
 
-          <div style={S.sheetSectionTitle}>Calorias alvo</div>
-          <div style={S.sheetInputRow}>
+          <div style={Sx.sheetSectionTitle}>Calorias alvo</div>
+          <div style={Sx.sheetInputRow}>
             <input
               value={kcalTarget}
               onChange={(e) => setKcalTarget(e.target.value)}
-              placeholder="Ex.: 200"
+              placeholder="Ex.: 250"
               inputMode="numeric"
-              style={S.sheetInput}
+              style={Sx.sheetInput}
             />
-            <div style={S.sheetUnit}>kcal</div>
+            <div style={Sx.sheetUnit}>kcal</div>
           </div>
 
-          <div style={S.sheetHint}>A gente calcula o tempo certinho pro seu peso + modalidade.</div>
+          <div style={Sx.sheetHint}>Dica: 150–350 kcal é um alvo “bom e real” pra maioria.</div>
         </div>
 
-        <div style={S.sheetFooter}>
-          <button type="button" style={S.sheetCancel} onClick={onClose}>
+        <div style={Sx.sheetFooter}>
+          <button type="button" style={Sx.sheetCancel} onClick={onClose}>
             Cancelar
           </button>
-          <button type="button" style={S.sheetGo} onClick={onStartByCalories}>
+          <button type="button" style={Sx.sheetGo} onClick={onStart}>
             Calcular e começar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------- Bottom sheet: intervalos -------- */
+function IntervalsSheet({ open, onClose, current, onSelect }) {
+  if (!open) return null;
+
+  const presets = [
+    { id: "off", name: "Desligado", on: 0, off: 0 },
+    { id: "30_30", name: "30s forte / 30s leve", on: 30, off: 30 },
+    { id: "40_20", name: "40s forte / 20s leve", on: 40, off: 20 },
+    { id: "60_30", name: "60s forte / 30s leve", on: 60, off: 30 },
+  ];
+
+  return (
+    <div style={Sx.sheetOverlay} role="presentation" onClick={onClose}>
+      <div style={Sx.sheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div style={Sx.sheetGrab} />
+        <div style={Sx.sheetHead}>
+          <div style={{ minWidth: 0 }}>
+            <div style={Sx.sheetTitle}>Intervalos (opcional)</div>
+            <div style={Sx.sheetSub}>Pra quem curte ritmo: alterna forte/levezinho automaticamente.</div>
+          </div>
+          <button style={Sx.sheetX} type="button" onClick={onClose} aria-label="Fechar">
+            ✕
+          </button>
+        </div>
+
+        <div style={Sx.sheetBody}>
+          <div style={Sx.sheetOptList}>
+            {presets.map((p) => {
+              const on = current === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onSelect(p.id, p.on, p.off)}
+                  style={{ ...Sx.sheetOpt, ...(on ? Sx.sheetOptOn : Sx.sheetOptOff) }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={Sx.sheetOptTitle}>{p.name}</div>
+                    <div style={Sx.sheetOptSub}>
+                      {p.id === "off" ? "Sem ciclos" : `Ciclo: ${p.on}s / ${p.off}s`}
+                    </div>
+                  </div>
+                  <div style={{ ...Sx.sheetPill, ...(on ? Sx.sheetPillOn : null) }}>{on ? "OK" : "—"}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ height: 6 }} />
+          <div style={Sx.sheetHint}>Se for iniciante, começa com 30/30. Simples e eficiente.</div>
+        </div>
+
+        <div style={Sx.sheetFooterSingle}>
+          <button type="button" style={Sx.sheetBack} onClick={onClose}>
+            Voltar
           </button>
         </div>
       </div>
@@ -189,68 +270,53 @@ export default function Cardio() {
 
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
+  // compatível com flags antigas e novas
   const nutriPlusNew = localStorage.getItem(`nutri_plus_${email}`) === "1";
   const nutriPlusOld = localStorage.getItem(`nutri_${email}`) === "1";
   const nutriPlus = nutriPlusNew || nutriPlusOld;
 
   const goal = useMemo(() => getGoal(user), [user]);
   const level = useMemo(() => getLevel(user), [user]);
+
   const weightKg = Number(user?.peso || 0) || 70;
 
   const options = useMemo(() => getCardioOptions(goal, level), [goal, level]);
   const [picked, setPicked] = useState(options[0]?.id || "walk");
+
   const opt = useMemo(() => options.find((o) => o.id === picked) || options[0], [options, picked]);
 
-  const kcalPerMin = useMemo(
-    () => calcKcalPerMin({ kg: weightKg, met: opt?.met || 4.3 }),
-    [weightKg, opt]
-  );
+  // intensidade (ajusta MET de forma suave, como apps fazem)
+  // 70% = leve | 100% = padrão | 115% = mais forte
+  const [intensity, setIntensity] = useState(100);
+  const intensityMult = useMemo(() => clamp(intensity / 100, 0.7, 1.15), [intensity]);
+  const metNow = useMemo(() => clamp((opt?.met || 4.3) * intensityMult, 3.0, 12.5), [opt, intensityMult]);
 
-  // modo
-  const [mode, setMode] = useState("timer"); // "timer" | "cronometro"
+  const kcalPerMin = useMemo(() => calcKcalPerMin({ kg: weightKg, met: metNow }), [weightKg, metNow]);
 
-  // timer
+  // modos
+  const [mode, setMode] = useState("timer"); // timer | chrono | calories
+
+  // timer e chrono
   const [minutes, setMinutes] = useState(20);
   const [remaining, setRemaining] = useState(20 * 60);
-
-  // cronometro
   const [elapsed, setElapsed] = useState(0);
-
   const [running, setRunning] = useState(false);
   const tickRef = useRef(null);
 
-  // sheet
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // intervalos (opcional)
+  const [intervalId, setIntervalId] = useState("off");
+  const [intOn, setIntOn] = useState(0);
+  const [intOff, setIntOff] = useState(0);
+  const [phase, setPhase] = useState("steady"); // strong | easy | steady
+  const [phaseLeft, setPhaseLeft] = useState(0);
+
+  // sheets
+  const [calSheet, setCalSheet] = useState(false);
   const [kcalTarget, setKcalTarget] = useState("");
+  const [intSheet, setIntSheet] = useState(false);
 
-  // viewport
-  const [vw, setVw] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 390));
-  useEffect(() => {
-    const onR = () => setVw(window.innerWidth);
-    window.addEventListener("resize", onR);
-    return () => window.removeEventListener("resize", onR);
-  }, []);
-
-  const isPhone = vw < 430;
-
-  // ✅ “mapa mental” sem estourar: usa grid wrap (não absoluto)
-  const ringItems = useMemo(() => {
-    // 6 itens fica sempre limpo no iPhone
-    const list = options.slice(0, 6);
-    if (list.find((x) => x.id === picked)) return list;
-    const pickedObj = options.find((x) => x.id === picked);
-    if (!pickedObj) return list;
-    return [pickedObj, ...list.slice(0, 5)];
-  }, [options, picked]);
-
-  useEffect(() => {
-    return () => {
-      if (tickRef.current) {
-        clearInterval(tickRef.current);
-        tickRef.current = null;
-      }
-    };
-  }, []);
+  // “press” visual
+  const [pulsePick, setPulsePick] = useState(false);
 
   function stopTick() {
     if (tickRef.current) {
@@ -264,14 +330,17 @@ export default function Cardio() {
     stopTick();
   }
 
-  function reset() {
+  function resetAll() {
     pause();
-    if (mode === "timer") setRemaining(minutes * 60);
-    else setElapsed(0);
+    setElapsed(0);
+    setRemaining(minutes * 60);
+    setPhase(intervalId === "off" ? "steady" : "strong");
+    setPhaseLeft(intervalId === "off" ? 0 : intOn);
   }
 
   function setPresetMin(v) {
     const m = clamp(Number(v || 0), 5, 240);
+    vibrate(10);
     pause();
     setMode("timer");
     setMinutes(m);
@@ -281,10 +350,14 @@ export default function Cardio() {
 
   function start() {
     if (running) return;
+    vibrate(14);
     setRunning(true);
 
     stopTick();
     tickRef.current = setInterval(() => {
+      // intervalos: alterna fase se estiver ligado
+      const intervalOn = intervalId !== "off" && intOn > 0 && intOff > 0;
+
       if (mode === "timer") {
         setRemaining((r) => {
           if (r <= 1) {
@@ -297,14 +370,33 @@ export default function Cardio() {
       } else {
         setElapsed((e) => e + 1);
       }
+
+      if (intervalOn) {
+        setPhaseLeft((pl) => {
+          if (pl <= 1) {
+            setPhase((p) => {
+              const next = p === "strong" ? "easy" : "strong";
+              vibrate(10);
+              return next;
+            });
+            // reinicia contador da nova fase
+            return phase === "strong" ? intOff : intOn;
+          }
+          return pl - 1;
+        });
+      }
     }, 1000);
   }
 
-  function openMap() {
-    const q = encodeURIComponent(`${opt?.mapQ || "academia"} perto de mim`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+  function toggleRun() {
+    if (running) pause();
+    else start();
   }
 
+  // tempo exibido
+  const shownTime = mode === "timer" ? formatTime(remaining) : formatTime(elapsed);
+
+  // minutos “andados”
   const elapsedMin = useMemo(() => {
     if (mode === "timer") {
       const doneSec = Math.max(0, minutes * 60 - remaining);
@@ -313,7 +405,6 @@ export default function Cardio() {
     return Math.max(0, Math.round(elapsed / 60));
   }, [mode, minutes, remaining, elapsed]);
 
-  const shownTime = mode === "timer" ? formatTime(remaining) : formatTime(elapsed);
   const estKcal = Math.round(elapsedMin * kcalPerMin);
 
   const progress = useMemo(() => {
@@ -322,18 +413,35 @@ export default function Cardio() {
     return clamp(1 - remaining / (minutes * 60), 0, 1);
   }, [mode, minutes, remaining]);
 
+  // “Por calorias” calcula tempo e inicia
   function startByCalories() {
     const kcal = clamp(Number(kcalTarget || 0), 10, 5000);
-    if (!kcal || !Number.isFinite(kcal)) return;
+    if (!Number.isFinite(kcal) || kcal <= 0) return;
 
     const min = clamp(Math.ceil(kcal / Math.max(0.1, kcalPerMin)), 5, 240);
+
     setMode("timer");
     setMinutes(min);
     setRemaining(min * 60);
     setElapsed(0);
-    setSheetOpen(false);
 
-    setTimeout(() => start(), 120);
+    setCalSheet(false);
+    setTimeout(() => start(), 140);
+  }
+
+  // intervalos
+  function applyIntervals(id, onS, offS) {
+    setIntervalId(id);
+    setIntOn(onS);
+    setIntOff(offS);
+
+    // reseta fase imediatamente (sem bagunçar)
+    setPhase(id === "off" ? "steady" : "strong");
+    setPhaseLeft(id === "off" ? 0 : onS);
+
+    // se estiver rodando, mantém rodando (só muda regra)
+    vibrate(10);
+    setIntSheet(false);
   }
 
   function finish() {
@@ -354,21 +462,23 @@ export default function Cardio() {
       kcal,
       type: opt.id,
       title: opt.title,
-      met: opt.met,
+      met: metNow,
+      intensity,
       mode,
+      intervalId,
       createdAt: Date.now(),
     };
 
     const raw = localStorage.getItem(sessionsKey);
-    const list = raw ? JSON.parse(raw) : [];
-    const nextList = [record, ...list].slice(0, 90);
+    const list = raw ? safeJsonParse(raw, []) : [];
+    const nextList = [record, ...(Array.isArray(list) ? list : [])].slice(0, 90);
     localStorage.setItem(sessionsKey, JSON.stringify(nextList));
 
     const prevTotal = Number(localStorage.getItem(totalKey) || 0) || 0;
     localStorage.setItem(totalKey, String(prevTotal + kcal));
 
     const weekRaw = localStorage.getItem(weekKey);
-    const obj = weekRaw ? JSON.parse(weekRaw) : {};
+    const obj = weekRaw ? safeJsonParse(weekRaw, {}) : {};
     obj[day] = (obj[day] || 0) + kcal;
     localStorage.setItem(weekKey, JSON.stringify(obj));
 
@@ -389,17 +499,23 @@ export default function Cardio() {
     setTimeout(() => nav("/dashboard"), 500);
   }
 
-  // ✅ CTA MAIS PRA BAIXO (quase encostando no menu, mas sem cobrir)
+  function openMap() {
+    const q = encodeURIComponent(`${opt?.mapQ || "academia"} perto de mim`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+  }
+
+  // CTA flutuante — MAIS PRA BAIXO (quase encostado no menu)
   const BOTTOM_MENU_SAFE = 102;
   const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 18;
 
+  // paywall
   if (!paid) {
     return (
-      <div style={C.page}>
-        <div style={C.lockCard}>
-          <div style={C.lockTitle}>Cardio bloqueado</div>
-          <div style={C.lockText}>Assine o plano para liberar o cardio guiado.</div>
-          <button style={C.lockBtn} onClick={() => nav("/planos")} type="button">
+      <div style={S.page}>
+        <div style={S.lockCard}>
+          <div style={S.lockTitle}>Cardio bloqueado</div>
+          <div style={S.lockText}>Assine o plano para liberar o cardio guiado.</div>
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button">
             Ver planos
           </button>
         </div>
@@ -407,17 +523,17 @@ export default function Cardio() {
         {!nutriPlus ? (
           <button
             onClick={() => nav("/planos")}
-            style={{ ...C.floatingNutri, bottom: FLOATING_BOTTOM }}
+            style={{ ...S.floatingNutri, bottom: FLOATING_BOTTOM }}
             type="button"
             aria-label="Abrir planos Nutri+"
           >
-            <span style={C.floatDot} />
+            <span style={S.floatDot} />
             Liberar Nutri+
           </button>
         ) : (
           <button
             onClick={() => nav("/nutricao")}
-            style={{ ...C.floatingNutri, ...C.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
+            style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
             type="button"
             aria-label="Ver minha refeição"
           >
@@ -428,47 +544,59 @@ export default function Cardio() {
     );
   }
 
+  // chips para o “mapa mental” (grid que não estoura)
+  const ringItems = options.slice(0, 6);
+
+  const kpmNow = Math.round(kcalPerMin);
+  const phaseLabel =
+    intervalId === "off"
+      ? "Ritmo livre"
+      : phase === "strong"
+      ? `Forte • ${phaseLeft}s`
+      : `Leve • ${phaseLeft}s`;
+
   return (
-    <div style={C.page}>
-      {/* HEAD */}
-      <div style={C.head}>
-        <div style={C.brandRow}>
-          <div style={C.brand}>
+    <div style={S.page}>
+      {/* HEADER */}
+      <div style={S.head}>
+        <div style={S.brandRow}>
+          <div style={S.brand}>
             fitdeal<span style={{ color: ORANGE }}>.</span>
           </div>
 
-          <div style={C.headBtns}>
-            <button style={C.headBtn} onClick={openMap} type="button">
+          <div style={S.headBtns}>
+            <button style={S.headBtn} onClick={openMap} type="button">
               Ver mapa
             </button>
-            <button style={C.headBtn} onClick={() => nav("/treino")} type="button">
+            <button style={S.headBtn} onClick={() => nav("/treino")} type="button">
               Voltar
             </button>
           </div>
         </div>
 
-        <div style={C.kicker}>CARDIO</div>
-        <div style={C.heroTitle}>
+        <div style={S.kicker}>CARDIO</div>
+        <div style={S.heroTitle}>
           Bora pro cardio<span style={{ color: ORANGE }}>.</span>
         </div>
 
-        <div style={C.subLine}>
+        <div style={S.subLine}>
           Modalidade: <b>{opt?.title}</b> • Meta: <b>{goal}</b> • Nível: <b>{level}</b>
         </div>
       </div>
 
-      {/* MODE ROW (quadrado iOS) */}
-      <div style={C.modeRow}>
-        <div style={C.modeSquareWrap}>
+      {/* MODOS */}
+      <div style={S.modeRow}>
+        <div style={S.modeSquareWrap}>
           <button
             type="button"
             onClick={() => {
+              vibrate(10);
               pause();
               setMode("timer");
               setRemaining(minutes * 60);
               setElapsed(0);
             }}
-            style={{ ...C.modeSquareBtn, ...(mode === "timer" ? C.modeSquareOn : C.modeSquareOff) }}
+            style={{ ...S.modeSquareBtn, ...(mode === "timer" ? S.modeSquareOn : S.modeSquareOff) }}
           >
             Timer
           </button>
@@ -476,110 +604,145 @@ export default function Cardio() {
           <button
             type="button"
             onClick={() => {
+              vibrate(10);
               pause();
-              setMode("cronometro");
+              setMode("chrono");
               setElapsed(0);
             }}
-            style={{ ...C.modeSquareBtn, ...(mode === "cronometro" ? C.modeSquareOn : C.modeSquareOff) }}
+            style={{ ...S.modeSquareBtn, ...(mode === "chrono" ? S.modeSquareOn : S.modeSquareOff) }}
           >
             Cronômetro
           </button>
         </div>
 
-        <button type="button" style={C.kcalBtn} onClick={() => setSheetOpen(true)}>
-          Medir por calorias
+        <button
+          type="button"
+          style={S.kcalBtn}
+          onClick={() => {
+            vibrate(10);
+            setCalSheet(true);
+          }}
+        >
+          Por calorias
         </button>
       </div>
 
-      {/* CARD CENTRAL (quadrado + mapa mental limpo) */}
-      <div style={C.centerCard}>
-        <div style={C.centerTop}>
-          <div style={C.centerLeft}>
-            <div style={C.centerMeta}>
-              <span style={C.dot} />
-              <span style={C.centerModeTxt}>{mode === "timer" ? "Timer" : "Cronômetro"}</span>
-              <span style={C.sep}>•</span>
-              <span style={C.centerModeTxt}>{Math.round(kcalPerMin)} kcal/min</span>
-              <span style={C.sep}>•</span>
-              <span style={C.centerModeTxt}>{Math.round(opt?.met || 0)} MET</span>
-            </div>
-
-            <div style={C.squareTimeBox}>
-              <div style={C.squareTime}>{shownTime}</div>
-
-              {mode === "timer" ? (
-                <div style={C.squareTrack}>
-                  <div style={{ ...C.squareFill, transform: `scaleX(${progress})` }} />
-                </div>
-              ) : (
-                <div style={C.squareGhost}>Sem limite de tempo</div>
-              )}
-
-              <div style={C.squareSub}>
-                Estimativa agora: <b>~{estKcal} kcal</b> • {elapsedMin} min
-              </div>
-            </div>
+      {/* CARD CENTRAL */}
+      <div style={{ ...S.centerCard, ...(pulsePick ? S.centerPulse : null) }}>
+        {/* Linha superior: meta/met/ritmo + botões pequenos */}
+        <div style={S.centerMetaRow}>
+          <div style={S.centerMeta}>
+            <span style={S.dot} />
+            <span style={S.centerMetaTxt}>{kpmNow} kcal/min</span>
+            <span style={S.sep}>•</span>
+            <span style={S.centerMetaTxt}>{Math.round(metNow)} MET</span>
+            <span style={S.sep}>•</span>
+            <span style={S.centerMetaTxt}>{phaseLabel}</span>
           </div>
 
-          <div style={C.centerRight}>
-            <div style={C.panelTitle}>Tempo ↔ Calorias</div>
-
-            <div style={C.panelRow}>
-              <div style={C.panelK}>Agora</div>
-              <div style={C.panelV}>
-                {elapsedMin} min → ~{estKcal} kcal
-              </div>
-            </div>
-
-            <div style={C.panelRow}>
-              <div style={C.panelK}>Se fizer 20 min</div>
-              <div style={C.panelV}>~{Math.round(20 * kcalPerMin)} kcal</div>
-            </div>
-
-            <div style={C.panelRow}>
-              <div style={C.panelK}>Se fizer 30 min</div>
-              <div style={C.panelV}>~{Math.round(30 * kcalPerMin)} kcal</div>
-            </div>
-
-            <div style={C.panelMini}>Estimativa (MET). Varia pela intensidade real.</div>
+          <div style={S.miniActions}>
+            <button
+              type="button"
+              style={S.miniBtn}
+              onClick={() => setIntSheet(true)}
+              aria-label="Configurar intervalos"
+            >
+              Intervalos
+            </button>
+            <button
+              type="button"
+              style={S.miniBtn}
+              onClick={() => {
+                // quick reset sem “pular”
+                vibrate(10);
+                resetAll();
+              }}
+              aria-label="Reiniciar"
+            >
+              Limpar
+            </button>
           </div>
         </div>
 
-        {/* MAPA MENTAL (grid, sem overflow) */}
-        <div style={C.ringGrid}>
+        {/* TIMER QUADRADO */}
+        <div style={S.squareTimeBox}>
+          <div style={S.squareTime}>{shownTime}</div>
+
+          {mode === "timer" ? (
+            <div style={S.squareTrack}>
+              <div style={{ ...S.squareFill, transform: `scaleX(${progress})` }} />
+            </div>
+          ) : (
+            <div style={S.squareGhost}>Sem limite de tempo</div>
+          )}
+
+          <div style={S.squareSub}>
+            Estimativa: <b>~{estKcal} kcal</b> • {elapsedMin} min
+          </div>
+        </div>
+
+        {/* INTENSIDADE */}
+        <div style={S.intensityCard}>
+          <div style={S.intTop}>
+            <div>
+              <div style={S.intTitle}>Intensidade</div>
+              <div style={S.intSub}>Ajusta o ritmo (leve → forte). Isso muda as kcal/min.</div>
+            </div>
+            <div style={S.intPill}>{intensity}%</div>
+          </div>
+
+          <input
+            type="range"
+            min={70}
+            max={115}
+            value={intensity}
+            onChange={(e) => setIntensity(Number(e.target.value))}
+            style={S.slider}
+          />
+
+          <div style={S.intBottom}>
+            <span style={S.intMini}>Leve</span>
+            <span style={S.intMini}>Padrão</span>
+            <span style={S.intMini}>Forte</span>
+          </div>
+        </div>
+
+        {/* MODALIDADES (mapa mental em grid, sem estourar) */}
+        <div style={S.ringGrid}>
           {ringItems.map((o) => {
             const on = picked === o.id;
-            const kpm = Math.round(calcKcalPerMin({ kg: weightKg, met: o.met }));
+            const kpm = Math.round(calcKcalPerMin({ kg: weightKg, met: o.met * intensityMult }));
             return (
               <button
                 key={o.id}
                 type="button"
                 onClick={() => {
                   setPicked(o.id);
-                  reset();
+                  setPulsePick(true);
+                  setTimeout(() => setPulsePick(false), 180);
+                  resetAll();
+                  vibrate(10);
                 }}
-                style={{ ...C.ringChip, ...(on ? C.ringChipOn : C.ringChipOff) }}
+                style={{ ...S.ringChip, ...(on ? S.ringChipOn : S.ringChipOff) }}
               >
-                <div style={C.ringChipTop}>
-                  <div style={{ ...C.ringChipDot, ...(on ? C.ringChipDotOn : null) }} />
-                  <div style={C.ringChipTitle}>{o.title}</div>
+                <div style={S.ringChipTop}>
+                  <div style={{ ...S.ringChipDot, ...(on ? S.ringChipDotOn : null) }} />
+                  <div style={S.ringChipTitle}>{o.title}</div>
                 </div>
-                <div style={C.ringChipSub}>
-                  ~{kpm} kcal/min • {Math.round(o.met)} MET
-                </div>
+                <div style={S.ringChipSub}>~{kpm} kcal/min • {Math.round(o.met)} MET</div>
               </button>
             );
           })}
         </div>
 
-        {/* PRESETS (sem estourar) */}
+        {/* PRESETS (só no timer) */}
         {mode === "timer" ? (
-          <div style={C.presets}>
+          <div style={S.presets}>
             {[10, 15, 20, 30, 45, 60].map((m) => (
               <button
                 key={m}
                 onClick={() => setPresetMin(m)}
-                style={{ ...C.presetBtn, ...(minutes === m ? C.presetOn : C.presetOff) }}
+                style={{ ...S.presetBtn, ...(minutes === m ? S.presetOn : S.presetOff) }}
                 type="button"
               >
                 {m}min
@@ -588,60 +751,70 @@ export default function Cardio() {
           </div>
         ) : null}
 
-        {/* ACTIONS (visual único / Apple) */}
-        <div style={C.actionsRow}>
+        {/* CONTROLES (visual único, Apple) */}
+        <div style={S.actionsRow}>
           <button
             type="button"
-            onClick={!running ? start : pause}
-            style={{ ...C.actionMain, ...(running ? C.actionMainPause : C.actionMainStart) }}
+            onClick={toggleRun}
+            style={{ ...S.actionMain, ...(running ? S.actionMainPause : S.actionMainStart) }}
           >
-            <span>{!running ? "Começar" : "Pausar"}</span>
-            <span style={C.actionMini}>{!running ? "vai" : "segura"}</span>
+            <span>{running ? "Pausar" : "Começar"}</span>
+            <span style={S.actionMini}>{running ? "segura" : "vai"}</span>
           </button>
 
-          <button type="button" onClick={reset} style={C.actionGhost}>
+          <button type="button" onClick={resetAll} style={S.actionGhost}>
             Reset
           </button>
         </div>
 
         <button
-          style={{ ...C.finishBtn, ...(elapsedMin < 3 ? C.finishDisabled : null) }}
+          type="button"
           onClick={finish}
           disabled={elapsedMin < 3}
-          type="button"
+          style={{ ...S.finishBtn, ...(elapsedMin < 3 ? S.finishDisabled : null) }}
         >
           Concluir cardio
         </button>
 
-        <div style={C.note}>
-          Dica: conclui pelo menos <b>3 min</b> pra registrar.
+        <div style={S.note}>
+          Dica: conclui pelo menos <b>3 min</b> pra registrar no dashboard.
         </div>
       </div>
 
+      {/* CTA flutuante — MAIS PRA BAIXO */}
       {!nutriPlus ? (
-        <button onClick={() => nav("/planos")} style={{ ...C.floatingNutri, bottom: FLOATING_BOTTOM }} type="button">
-          <span style={C.floatDot} />
+        <button onClick={() => nav("/planos")} style={{ ...S.floatingNutri, bottom: FLOATING_BOTTOM }} type="button">
+          <span style={S.floatDot} />
           Liberar Nutri+
         </button>
       ) : (
         <button
           onClick={() => nav("/nutricao")}
-          style={{ ...C.floatingNutri, ...C.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
+          style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
           type="button"
         >
           Ver minha refeição
         </button>
       )}
 
-      <CalorieSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+      {/* Sheets */}
+      <CaloriesSheet
+        open={calSheet}
+        onClose={() => setCalSheet(false)}
         options={options}
         picked={picked}
         onPick={(id) => setPicked(id)}
         kcalTarget={kcalTarget}
         setKcalTarget={setKcalTarget}
-        onStartByCalories={startByCalories}
+        intensity={intensity}
+        onStart={startByCalories}
+      />
+
+      <IntervalsSheet
+        open={intSheet}
+        onClose={() => setIntSheet(false)}
+        current={intervalId}
+        onSelect={(id, onS, offS) => applyIntervals(id, onS, offS)}
       />
 
       <div style={{ height: 220 }} />
@@ -649,8 +822,8 @@ export default function Cardio() {
   );
 }
 
-/* -------------------- styles -------------------- */
-const C = {
+/* ---------------- styles ---------------- */
+const S = {
   page: { padding: 18, paddingBottom: 170, background: BG },
 
   head: {
@@ -680,8 +853,6 @@ const C = {
   subLine: { marginTop: 10, fontSize: 13, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   modeRow: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" },
-
-  // ✅ quadrado iOS
   modeSquareWrap: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -720,31 +891,29 @@ const C = {
     boxShadow: "0 22px 75px rgba(15,23,42,.06)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
+    transition: "transform .18s ease",
   },
+  centerPulse: { transform: "scale(0.996)" },
 
-  centerTop: {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 12,
-  },
-
-  centerLeft: { minWidth: 0 },
-  centerRight: {
-    borderRadius: 22,
-    padding: 14,
-    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.92))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
-
+  centerMetaRow: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" },
   centerMeta: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
   dot: { width: 8, height: 8, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 7px rgba(255,106,0,.12)" },
   sep: { color: "rgba(15,23,42,.25)", fontWeight: 950 },
-  centerModeTxt: { fontSize: 12, fontWeight: 900, color: MUTED },
+  centerMetaTxt: { fontSize: 12, fontWeight: 900, color: MUTED },
 
-  // ✅ quadrado do tempo
+  miniActions: { display: "inline-flex", gap: 10 },
+  miniBtn: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 10px 24px rgba(15,23,42,.05)",
+  },
+
   squareTimeBox: {
-    marginTop: 12,
+    marginTop: 14,
     borderRadius: 24,
     padding: 16,
     background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))",
@@ -772,13 +941,30 @@ const C = {
   squareGhost: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
   squareSub: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  panelTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  panelRow: { marginTop: 10, display: "flex", justifyContent: "space-between", gap: 10 },
-  panelK: { fontSize: 12, fontWeight: 850, color: MUTED },
-  panelV: { fontSize: 12, fontWeight: 950, color: TEXT, textAlign: "right" },
-  panelMini: { marginTop: 10, fontSize: 11, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+  intensityCard: {
+    marginTop: 14,
+    borderRadius: 24,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
+    border: "1px solid rgba(255,106,0,.16)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+  },
+  intTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" },
+  intTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  intSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  intPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,.86)",
+    border: "1px solid rgba(15,23,42,.06)",
+    fontWeight: 950,
+    color: TEXT,
+    whiteSpace: "nowrap",
+  },
+  slider: { width: "100%", marginTop: 12 },
+  intBottom: { marginTop: 8, display: "flex", justifyContent: "space-between", gap: 10 },
+  intMini: { fontSize: 11, fontWeight: 900, color: MUTED },
 
-  // ✅ mapa mental em grid: não sai da página
   ringGrid: {
     marginTop: 14,
     display: "grid",
@@ -807,7 +993,6 @@ const C = {
   ringChipTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.15 },
   ringChipSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.3 },
 
-  // ✅ presets sem overflow
   presets: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
   presetBtn: {
     padding: 14,
@@ -820,7 +1005,6 @@ const C = {
   presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
   presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
-  // ✅ ações “únicas” (apple)
   actionsRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   actionMain: {
     padding: 16,
@@ -863,7 +1047,31 @@ const C = {
   finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
   note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
-  // ✅ CTA flutuante mais pra baixo
+  /* LOCK */
+  lockCard: {
+    borderRadius: 26,
+    padding: 18,
+    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 22px 70px rgba(15,23,42,.10)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+  },
+  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  lockBtn: {
+    marginTop: 12,
+    width: "100%",
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: ORANGE,
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
+  },
+
+  /* FLOATING CTA — mais pra baixo */
   floatingNutri: {
     position: "fixed",
     left: "50%",
@@ -897,33 +1105,9 @@ const C = {
     background: "rgba(255,255,255,.60)",
     boxShadow: "0 0 0 7px rgba(255,255,255,.12)",
   },
-
-  lockCard: {
-    borderRadius: 26,
-    padding: 18,
-    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 22px 70px rgba(15,23,42,.10)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-  },
-  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
-  lockBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
-  },
 };
 
-/* sheet styles */
-const S = {
+const Sx = {
   sheetOverlay: {
     position: "fixed",
     inset: 0,
@@ -1024,11 +1208,35 @@ const S = {
     color: TEXT,
     fontWeight: 950,
   },
-  sheetGo: { padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 16px 44px rgba(255,106,0,.18)" },
+  sheetGo: {
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: ORANGE,
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 16px 44px rgba(255,106,0,.18)",
+  },
+
+  sheetFooterSingle: {
+    padding: "12px 14px",
+    borderTop: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.90)",
+  },
+  sheetBack: {
+    width: "100%",
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 16px 40px rgba(0,0,0,.18)",
+  },
 };
 
 if (typeof document !== "undefined") {
-  const id = "fitdeal-cardio-fixes-v4";
+  const id = "fitdeal-cardio-pro-ui";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
@@ -1038,9 +1246,10 @@ if (typeof document !== "undefined") {
         50% { transform: translateX(-50%) translateY(-2px); }
       }
       button:active { transform: scale(.99); }
+      input[type="range"] { accent-color: ${ORANGE}; }
       @media (min-width: 860px){
-        /* desktop: painel lateral */
-        .centerTopGridFix { grid-template-columns: 1.2fr .8fr !important; }
+        /* Desktop: 3 colunas pros presets */
+        .fitdeal-desktop-preset { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
       }
     `;
     document.head.appendChild(style);
