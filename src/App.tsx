@@ -18,6 +18,7 @@ import Suplementacao from "./pages/Suplementacao.jsx";
 import Calendario from "./pages/Calendario.jsx";
 import ComoFunciona from "./pages/ComoFunciona.jsx";
 
+import Cardio, { CardioMiniDock } from "./pages/Cardio";
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -187,6 +188,8 @@ export default function App() {
     <AuthProvider>
       <AppRoutes />
     </AuthProvider>
+          <CardioMiniDock />
   );
 }
+
 
