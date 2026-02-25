@@ -2,7 +2,6 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const APP = "fitdeal";
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
@@ -38,156 +37,151 @@ function clamp(n, a, b) {
 
 /**
  * kcal/min = MET * 3.5 * kg / 200
- * (Fórmula padrão baseada em MET).
+ * (estimativa padrão via MET)
  */
 function calcKcalPerMin({ kg, met }) {
   const w = Number(kg || 0) || 70;
-  return (Number(met || 0) * 3.5 * w) / 200;
+  return (Number(met || 1) * 3.5 * w) / 200;
 }
 
 /**
- * METs de referência (Compendium of Physical Activities):
- * - Walking 3.5 mph ~ 4.3 MET  [oai_citation:1‡SEES](https://safeexerciseateverystage2.squarespace.com/s/2011_Compendium_of_Physical_Activities_.pdf)
- * - Running 6 mph ~ 9.8 MET  [oai_citation:2‡SEES](https://safeexerciseateverystage2.squarespace.com/s/2011_Compendium_of_Physical_Activities_.pdf)
- * - Stationary bike moderate ~ 6.8 MET  [oai_citation:3‡SEES](https://safeexerciseateverystage2.squarespace.com/s/2011_Compendium_of_Physical_Activities_.pdf)
- * - Jump rope (slow/moderate) ~ 8.8 MET  [oai_citation:4‡SEES](https://safeexerciseateverystage2.squarespace.com/s/2011_Compendium_of_Physical_Activities_.pdf)
- * - Circuit training (kettlebells/aerobic movement) ~ 8.0 MET  [oai_citation:5‡SEES](https://safeexerciseateverystage2.squarespace.com/s/2011_Compendium_of_Physical_Activities_.pdf)
+ * Opções “limpas” (padrão), com MET aproximado.
+ * Ajuste leve por objetivo/nível (sem exagero).
  */
 function getCardioOptions(goal, level) {
   const base = [
-    { id: "walk", title: "Caminhada (rápida)", met: 4.3, mapQ: "parque caminhada" },
-    { id: "run", title: "Corrida (leve)", met: 9.8, mapQ: "pista corrida" },
-    { id: "bike", title: "Bike (moderado)", met: 6.8, mapQ: "ciclovia" },
-    { id: "jump", title: "Corda (leve)", met: 8.8, mapQ: "quadra esportiva" },
-    { id: "hiit", title: "Circuit/HIIT (curto)", met: 8.0, mapQ: "academia" },
+    { id: "walk", title: "Caminhada rápida", met: 4.3, mapQ: "parque caminhada" },
+    { id: "run", title: "Corrida leve", met: 7.0, mapQ: "pista corrida" },
+    { id: "bike", title: "Bike moderada", met: 6.8, mapQ: "ciclovia" },
+    { id: "ellip", title: "Elíptico", met: 5.0, mapQ: "academia" },
+    { id: "row", title: "Remo ergômetro", met: 6.0, mapQ: "academia" },
+    { id: "jump", title: "Corda", met: 8.8, mapQ: "quadra esportiva" },
+    { id: "hiit", title: "HIIT curto", met: 9.5, mapQ: "academia" },
   ];
 
-  // ajuste leve por objetivo/nível (sem exagero)
   let mult = 1.0;
   if (goal === "saude") mult = 0.92;
   if (goal === "hipertrofia") mult = 1.0;
   if (goal === "bodybuilding") mult = 1.02;
-  if (goal === "condicionamento") mult = 1.06;
+  if (goal === "condicionamento") mult = 1.08;
   if (goal === "powerlifting") mult = 0.98;
 
-  if (level === "iniciante") mult *= 0.94;
-  if (level === "avancado") mult *= 1.05;
+  if (level === "iniciante") mult *= 0.92;
+  if (level === "avancado") mult *= 1.06;
 
-  return base.map((o) => ({ ...o, met: clamp(o.met * mult, 3.6, 10.5) }));
+  return base.map((o) => ({ ...o, met: clamp(o.met * mult, 3.2, 11.5) }));
 }
 
 function getCongrats(goal, level) {
   if (goal === "saude")
     return level === "iniciante"
-      ? "Você fez o básico bem feito — isso muda o corpo e a mente."
-      : "Rotina consistente é o que mantém você forte por anos.";
+      ? "Boa. Você fez o básico bem feito — isso muda o corpo e a mente."
+      : "Excelente. Rotina consistente é o que mantém você forte por anos.";
   if (goal === "condicionamento")
     return level === "iniciante"
-      ? "Boa! Seu fôlego começa a mudar a partir de hoje."
-      : "Você subiu o nível — sua resistência tá ficando real.";
+      ? "Boa. Seu fôlego começa a mudar a partir de hoje."
+      : "Monstro. Você subiu o nível — sua resistência tá ficando real.";
   if (goal === "powerlifting")
-    return "Cardio na medida certa melhora recuperação sem roubar força.";
+    return "Perfeito. Cardio na medida certa melhora recuperação sem roubar força.";
   if (goal === "bodybuilding")
-    return "Cardio inteligente ajuda definição e melhora o desempenho.";
-  return "Você fez o que precisava — consistência vence.";
+    return "Excelente. Cardio inteligente ajuda definição e melhora o desempenho.";
+  return "Parabéns. Consistência vence.";
 }
 
 function formatTime(s) {
-  const ss = Math.max(0, Math.floor(Number(s || 0)));
-  const mm = String(Math.floor(ss / 60)).padStart(2, "0");
-  const rr = String(Math.floor(ss % 60)).padStart(2, "0");
-  return `${mm}:${rr}`;
+  const sec = Math.max(0, Math.floor(Number(s || 0)));
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+  const ss = String(sec % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
 }
 
-function vibrate(ms = 14) {
-  try {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      // @ts-ignore
-      navigator.vibrate(ms);
-    }
-  } catch {}
-}
-
-/* ---------------- UI small bits ---------------- */
-
-function Pill({ on, label }) {
-  return (
-    <div style={{ ...S.pill, ...(on ? S.pillOn : S.pillOff) }}>
-      <span style={{ ...S.pillDot, ...(on ? S.pillDotOn : S.pillDotOff) }} />
-      {label}
-    </div>
-  );
-}
-
-function MiniToggle({ left, right, value, onChange }) {
-  return (
-    <div style={S.miniToggle} role="tablist" aria-label="Modo">
-      <button
-        type="button"
-        onClick={() => onChange(left.value)}
-        style={{ ...S.miniTab, ...(value === left.value ? S.miniTabOn : S.miniTabOff) }}
-        className="tap"
-      >
-        {left.label}
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(right.value)}
-        style={{ ...S.miniTab, ...(value === right.value ? S.miniTabOn : S.miniTabOff) }}
-        className="tap"
-      >
-        {right.label}
-      </button>
-    </div>
-  );
-}
-
-function ProgressBar({ pct }) {
-  const p = clamp(Number(pct || 0), 0, 1);
-  return (
-    <div style={S.barTrack}>
-      <div style={{ ...S.barFill, width: `${Math.round(p * 100)}%` }} />
-    </div>
-  );
-}
-
-function OrbitalPicker({ options, picked, onPick }) {
-  // raio responsivo, sem “quebrar” em telas pequenas
-  const radius = 118; // base
-  const n = Math.max(1, options.length);
+/* -------------------- UI: Modal “Medir por calorias” -------------------- */
+function CalorieSheet({
+  open,
+  onClose,
+  options,
+  picked,
+  onPick,
+  kcalTarget,
+  setKcalTarget,
+  onStartByCalories,
+}) {
+  if (!open) return null;
 
   return (
-    <div style={S.orbitWrap} aria-label="Modalidades">
-      {options.map((o, i) => {
-        const on = picked === o.id;
-        const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+    <div style={S.sheetOverlay} role="presentation" onClick={onClose}>
+      <div style={S.sheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div style={S.sheetGrab} />
 
-        return (
-          <button
-            key={o.id}
-            type="button"
-            className="tap"
-            onClick={() => onPick(o.id)}
-            style={{
-              ...S.orbitBtn,
-              ...(on ? S.orbitBtnOn : S.orbitBtnOff),
-              transform: `translate(${x}px, ${y}px)`,
-            }}
-            aria-label={o.title}
-          >
-            <div style={S.orbitTitle}>{o.title}</div>
-            <div style={S.orbitSub}>{Math.round(o.met * 10) / 10} MET</div>
+        <div style={S.sheetHead}>
+          <div>
+            <div style={S.sheetTitle}>Medir por calorias</div>
+            <div style={S.sheetSub}>Escolha a modalidade e diga quantas kcal você quer gastar.</div>
+          </div>
+
+          <button type="button" style={S.sheetX} onClick={onClose} aria-label="Fechar">
+            ✕
           </button>
-        );
-      })}
+        </div>
+
+        <div style={S.sheetBody}>
+          <div style={S.sheetSectionTitle}>Modalidade</div>
+
+          <div style={S.sheetOptList}>
+            {options.map((o) => {
+              const on = picked === o.id;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => onPick(o.id)}
+                  style={{ ...S.sheetOpt, ...(on ? S.sheetOptOn : S.sheetOptOff) }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={S.sheetOptTitle}>{o.title}</div>
+                    <div style={S.sheetOptSub}>Intensidade estimada (MET)</div>
+                  </div>
+                  <div style={{ ...S.sheetPill, ...(on ? S.sheetPillOn : null) }}>
+                    {on ? "Selecionado" : "—"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ height: 10 }} />
+
+          <div style={S.sheetSectionTitle}>Calorias alvo</div>
+          <div style={S.sheetInputRow}>
+            <input
+              value={kcalTarget}
+              onChange={(e) => setKcalTarget(e.target.value)}
+              placeholder="Ex.: 200"
+              inputMode="numeric"
+              style={S.sheetInput}
+            />
+            <div style={S.sheetUnit}>kcal</div>
+          </div>
+
+          <div style={S.sheetHint}>
+            O tempo será calculado pelo seu peso e pela modalidade escolhida.
+          </div>
+        </div>
+
+        <div style={S.sheetFooter}>
+          <button type="button" style={S.sheetCancel} onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="button" style={S.sheetGo} onClick={onStartByCalories}>
+            Calcular e começar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ---------------- Page ---------------- */
-
+/* -------------------- Página -------------------- */
 export default function Cardio() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -196,19 +190,18 @@ export default function Cardio() {
   // paywall cardio (mantido)
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // flags Nutri+ (mantido)
+  // compatível com flags antigas e novas
   const nutriPlusNew = localStorage.getItem(`nutri_plus_${email}`) === "1";
   const nutriPlusOld = localStorage.getItem(`nutri_${email}`) === "1";
   const nutriPlus = nutriPlusNew || nutriPlusOld;
 
   const goal = useMemo(() => getGoal(user), [user]);
   const level = useMemo(() => getLevel(user), [user]);
-
   const weightKg = Number(user?.peso || 0) || 70;
 
   const options = useMemo(() => getCardioOptions(goal, level), [goal, level]);
-  const [picked, setPicked] = useState(options[0]?.id || "walk");
 
+  const [picked, setPicked] = useState(options[0]?.id || "walk");
   const opt = useMemo(() => options.find((o) => o.id === picked) || options[0], [options, picked]);
 
   const kcalPerMin = useMemo(
@@ -216,40 +209,26 @@ export default function Cardio() {
     [weightKg, opt]
   );
 
-  // modo de contagem
-  const [clockMode, setClockMode] = useState("timer"); // "timer" | "stopwatch"
-  // modo de meta
-  const [measureMode, setMeasureMode] = useState("tempo"); // "tempo" | "calorias"
+  // modo: timer (countdown) ou cronometro (stopwatch)
+  const [mode, setMode] = useState("timer"); // "timer" | "cronometro"
 
-  // timer / cronômetro
+  // timer (countdown)
   const [minutes, setMinutes] = useState(20);
-  const [running, setRunning] = useState(false);
-
-  // countdown
   const [remaining, setRemaining] = useState(20 * 60);
-  // countup
+
+  // cronômetro (conta pra cima)
   const [elapsed, setElapsed] = useState(0);
 
+  const [running, setRunning] = useState(false);
   const tickRef = useRef(null);
 
-  // calorias alvo (modo “por calorias”)
-  const [targetKcal, setTargetKcal] = useState("");
-  const targetMin = useMemo(() => {
-    const kcal = Number(String(targetKcal).replace(",", "."));
-    if (!Number.isFinite(kcal) || kcal <= 0) return 0;
-    const m = kcalPerMin > 0 ? kcal / kcalPerMin : 0;
-    return clamp(Math.round(m), 1, 240);
-  }, [targetKcal, kcalPerMin]);
+  // sheet “medir por calorias”
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [kcalTarget, setKcalTarget] = useState("");
 
-  // reset ao trocar modalidade (suave)
-  useEffect(() => {
-    // não “zera” agressivo no modo calorias se estiver rodando
-    if (running) return;
-    setRemaining(minutes * 60);
-    setElapsed(0);
-  }, [picked]); // eslint-disable-line react-hooks/exhaustive-deps
+  // micro feedback
+  const [pulsePick, setPulsePick] = useState(false);
 
-  // cleanup interval
   useEffect(() => {
     return () => {
       if (tickRef.current) {
@@ -266,31 +245,37 @@ export default function Cardio() {
     }
   }
 
-  function applyMinutes(m) {
-    const mm = clamp(Number(m || 0), 1, 240);
-    setMinutes(mm);
-    setRemaining(mm * 60);
+  function resetAll() {
+    stopTick();
+    setRunning(false);
+    setRemaining(minutes * 60);
+    setElapsed(0);
+  }
+
+  function setPresetMin(v) {
+    const m = clamp(Number(v || 0), 5, 240);
+    stopTick();
+    setRunning(false);
+    setMode("timer");
+    setMinutes(m);
+    setRemaining(m * 60);
     setElapsed(0);
   }
 
   function start() {
     if (running) return;
-
-    // se estiver em TIMER e já chegou a zero, reinicia
-    if (clockMode === "timer" && remaining <= 0) setRemaining(minutes * 60);
-
     setRunning(true);
-    stopTick();
 
+    stopTick();
     tickRef.current = setInterval(() => {
-      if (clockMode === "timer") {
+      if (mode === "timer") {
         setRemaining((r) => {
-          const next = Math.max(0, r - 1);
-          if (next <= 0) {
+          if (r <= 1) {
             stopTick();
             setRunning(false);
+            return 0;
           }
-          return next;
+          return r - 1;
         });
       } else {
         setElapsed((e) => e + 1);
@@ -305,36 +290,62 @@ export default function Cardio() {
 
   function reset() {
     pause();
-    setRemaining(minutes * 60);
-    setElapsed(0);
+    if (mode === "timer") setRemaining(minutes * 60);
+    else setElapsed(0);
   }
 
-  // kcal estimados
+  function openMap() {
+    const q = encodeURIComponent(`${opt?.mapQ || "academia"} perto de mim`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+  }
+
+  // minutos “atuais” pro cálculo de kcal (depende do modo)
   const elapsedMin = useMemo(() => {
-    if (clockMode === "timer") {
-      const done = Math.max(0, minutes * 60 - remaining);
-      return Math.max(0, Math.round(done / 60));
+    if (mode === "timer") {
+      const doneSec = Math.max(0, minutes * 60 - remaining);
+      return Math.max(0, Math.round(doneSec / 60));
     }
     return Math.max(0, Math.round(elapsed / 60));
-  }, [clockMode, minutes, remaining, elapsed]);
+  }, [mode, minutes, remaining, elapsed]);
 
-  const estKcal = useMemo(() => Math.round(elapsedMin * kcalPerMin), [elapsedMin, kcalPerMin]);
+  const shownTime = mode === "timer" ? formatTime(remaining) : formatTime(elapsed);
 
-  // progresso
+  const estKcal = Math.round(elapsedMin * kcalPerMin);
+
   const progress = useMemo(() => {
-    if (clockMode === "timer") {
-      return minutes ? clamp(1 - remaining / (minutes * 60), 0, 1) : 0;
-    }
-    // stopwatch: se tiver targetKcal válido, vira progresso; senão, zero
-    const kcal = Number(String(targetKcal).replace(",", "."));
-    if (!Number.isFinite(kcal) || kcal <= 0) return 0;
-    return clamp(estKcal / kcal, 0, 1);
-  }, [clockMode, minutes, remaining, estKcal, targetKcal]);
+    if (mode !== "timer") return 0; // no cronômetro, não tem “fim”
+    if (!minutes) return 0;
+    return clamp(1 - remaining / (minutes * 60), 0, 1);
+  }, [mode, minutes, remaining]);
+
+  // barra “tempo ⇄ kcal” (lado do círculo)
+  const refBlock = useMemo(() => {
+    const refMin = mode === "timer" ? minutes : Math.max(1, Math.round(elapsed / 60));
+    const kcal = Math.round(refMin * kcalPerMin);
+    const kpm = Math.round(kcalPerMin);
+    return { refMin, kcal, kpm };
+  }, [mode, minutes, elapsed, kcalPerMin]);
+
+  // iniciar por calorias: define minutos e começa
+  function startByCalories() {
+    const kcal = clamp(Number(kcalTarget || 0), 10, 5000);
+    if (!kcal || !Number.isFinite(kcal)) return;
+
+    // tempo = kcal / (kcal/min)
+    const min = clamp(Math.ceil(kcal / Math.max(0.1, kcalPerMin)), 5, 240);
+    setMode("timer");
+    setMinutes(min);
+    setRemaining(min * 60);
+    setElapsed(0);
+    setSheetOpen(false);
+
+    setTimeout(() => start(), 120);
+  }
 
   function finish() {
     pause();
 
-    const doneMin = Math.max(0, elapsedMin);
+    const doneMin = elapsedMin;
     const kcal = Math.round(doneMin * kcalPerMin);
 
     const day = yyyyMmDd(new Date());
@@ -350,6 +361,7 @@ export default function Cardio() {
       type: opt.id,
       title: opt.title,
       met: opt.met,
+      mode,
       createdAt: Date.now(),
     };
 
@@ -380,68 +392,32 @@ export default function Cardio() {
       })
     );
 
-    setTimeout(() => nav("/dashboard"), 520);
+    setTimeout(() => nav("/dashboard"), 500);
   }
 
-  function openMap() {
-    const q = encodeURIComponent(`${opt.mapQ} perto de mim`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
-  }
-
-  function pickOption(id) {
-    setPicked(id);
-    vibrate(12);
-    if (!running) reset();
-  }
-
-  function startByCalories() {
-    // exige kcal alvo
-    const kcal = Number(String(targetKcal).replace(",", "."));
-    if (!Number.isFinite(kcal) || kcal <= 0) return;
-
-    const m = targetMin || 0;
-    if (clockMode === "timer") {
-      applyMinutes(m);
-      setMeasureMode("tempo"); // volta pro painel principal (mais simples)
-      setTimeout(() => start(), 60);
-      return;
-    }
-
-    // stopwatch: zera e começa contando até atingir kcal (visual de progresso)
-    setElapsed(0);
-    setMeasureMode("tempo");
-    setTimeout(() => start(), 60);
-  }
-
-  // CTA flutuante não colidir com BottomMenu
+  // ✅ garante que o CTA flutuante NÃO cubra o menu inferior
   const BOTTOM_MENU_SAFE = 102;
   const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 18;
 
-  // injeta micro animações + taps
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const id = "fitdeal-cardio-v2-ui";
-    if (document.getElementById(id)) return;
+  // ring positions
+  const ringSize = 290;
+  const radius = 118;
+  const ringItems = useMemo(() => options.slice(0, 6), [options]); // mantém limpo
 
-    const st = document.createElement("style");
-    st.id = id;
-    st.innerHTML = `
-      .tap { transition: transform .12s ease, filter .12s ease; }
-      .tap:active { transform: scale(.99); filter: brightness(.985); }
-      @media (prefers-reduced-motion: reduce) {
-        .tap { transition: none !important; }
-      }
-    `;
-    document.head.appendChild(st);
-  }, []);
+  function posFor(i, total) {
+    const a = (Math.PI * 2 * i) / total - Math.PI / 2;
+    const x = Math.cos(a) * radius;
+    const y = Math.sin(a) * radius;
+    return { x, y };
+  }
 
   if (!paid) {
     return (
-      <div style={S.page}>
-        <div style={S.lockCard}>
-          <div style={S.lockTitle}>Cardio bloqueado</div>
-          <div style={S.lockText}>Assine um plano para liberar o cardio guiado.</div>
-          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="tap">
+      <div style={C.page}>
+        <div style={C.lockCard}>
+          <div style={C.lockTitle}>Cardio bloqueado</div>
+          <div style={C.lockText}>Assine o plano para liberar o cardio guiado.</div>
+          <button style={C.lockBtn} onClick={() => nav("/planos")} type="button">
             Ver planos
           </button>
         </div>
@@ -449,19 +425,19 @@ export default function Cardio() {
         {!nutriPlus ? (
           <button
             onClick={() => nav("/planos")}
-            style={{ ...S.floatingNutri, bottom: FLOATING_BOTTOM }}
+            style={{ ...C.floatingNutri, bottom: FLOATING_BOTTOM }}
             type="button"
-            className="tap"
+            aria-label="Abrir planos Nutri+"
           >
-            <span style={S.floatDot} />
+            <span style={C.floatDot} />
             Liberar Nutri+
           </button>
         ) : (
           <button
             onClick={() => nav("/nutricao")}
-            style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
+            style={{ ...C.floatingNutri, ...C.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
             type="button"
-            className="tap"
+            aria-label="Ver minha refeição"
           >
             Ver minha refeição
           </button>
@@ -471,556 +447,243 @@ export default function Cardio() {
   }
 
   return (
-    <div style={S.page}>
+    <div style={C.page}>
       {/* HEAD */}
-      <div style={S.head}>
+      <div style={C.head}>
         <div style={{ minWidth: 0 }}>
-          <div style={S.brandRow}>
-            <div style={S.brandName}>
-              {APP}
-              <span style={{ color: ORANGE }}>.</span>
-            </div>
-            <button style={S.mapBtn} onClick={openMap} type="button" className="tap">
-              Ver mapa
-            </button>
-          </div>
-
-          <div style={S.kicker}>Cardio</div>
-          <div style={S.title}>Leve, direto e guiado</div>
-          <div style={S.sub}>
-            Modalidade: <b>{opt?.title}</b> • Meta: <b>{goal}</b> • Nível: <b>{level}</b>
+          <div style={C.brand}>fitdeal</div>
+          <div style={C.title}>Cardio</div>
+          <div style={C.sub}>
+            Meta: <b>{goal}</b> • Nível: <b>{level}</b> • Peso: <b>{weightKg} kg</b>
           </div>
         </div>
 
-        <button style={S.backBtn} onClick={() => nav("/treino")} type="button" className="tap">
+        <button style={C.backBtn} onClick={() => nav("/treino")} type="button">
           Voltar
         </button>
       </div>
 
-      {/* CONTROL BAR */}
-      <div style={S.controlRow}>
-        <MiniToggle
-          left={{ label: "Timer", value: "timer" }}
-          right={{ label: "Cronômetro", value: "stopwatch" }}
-          value={clockMode}
-          onChange={(v) => {
-            setClockMode(v);
-            reset();
-          }}
-        />
-
-        <button
-          type="button"
-          className="tap"
-          style={S.calModeBtn}
-          onClick={() => setMeasureMode((m) => (m === "tempo" ? "calorias" : "tempo"))}
-        >
-          {measureMode === "tempo" ? "Medir por calorias" : "Voltar ao tempo"}
-        </button>
-      </div>
-
-      {/* ORBIT + CENTER */}
-      <div style={S.stage}>
-        {/* Orbital buttons */}
-        <OrbitalPicker options={options} picked={picked} onPick={pickOption} />
-
-        {/* Center clock */}
-        <div style={S.center}>
-          <div style={S.centerGlass} />
-
-          <div style={S.centerTop}>
-            <Pill on label={opt?.title} />
-            <div style={S.centerMeta}>
-              ~<b>{Math.round(kcalPerMin)}</b> kcal/min • {Math.round(opt?.met * 10) / 10} MET
+      {/* CENTER RING */}
+      <div style={C.centerCard}>
+        <div style={C.centerTop}>
+          <div>
+            <div style={C.centerKicker}>Escolha a modalidade e comece</div>
+            <div style={C.centerHint}>
+              Estimativa por MET (peso + intensidade). Ajuste real varia por técnica e condicionamento.
             </div>
           </div>
 
-          <div style={S.centerClock}>
-            {clockMode === "timer" ? formatTime(remaining) : formatTime(elapsed)}
-          </div>
+          <button style={C.mapBtn} onClick={openMap} type="button">
+            Ver mapa
+          </button>
+        </div>
 
-          <div style={S.centerKcalRow}>
-            <div style={S.centerKcalLeft}>
-              <div style={S.centerKcalLabel}>
-                {measureMode === "calorias" ? "Alvo" : "Estimativa"}
-              </div>
-              <div style={S.centerKcalValue}>
-                {measureMode === "calorias" && targetMin > 0 ? (
-                  <>
-                    <b>{targetMin}</b> min ≈ <b>{Math.round(targetMin * kcalPerMin)}</b> kcal
-                  </>
-                ) : (
-                  <>
-                    <b>{estKcal}</b> kcal
-                  </>
-                )}
-              </div>
-            </div>
+        <div style={{ height: 14 }} />
 
-            <div style={S.centerKcalRight}>
-              <div style={S.smallNum}>
-                <b>{elapsedMin}</b> min
-              </div>
-              <ProgressBar pct={progress} />
-              <div style={S.smallHint}>
-                {clockMode === "timer"
-                  ? `${Math.round(progress * 100)}%`
-                  : targetKcal
-                  ? `${Math.round(progress * 100)}% do alvo`
-                  : "—"}
-              </div>
-            </div>
-          </div>
-
-          {/* MAIN ACTIONS */}
-          <div style={S.actions}>
-            {!running ? (
-              <button style={S.startBtn} onClick={start} type="button" className="tap">
-                Começar
-              </button>
-            ) : (
-              <button style={S.pauseBtn} onClick={pause} type="button" className="tap">
-                Pausar
-              </button>
-            )}
-
-            <button style={S.resetBtn} onClick={reset} type="button" className="tap">
-              Reset
+        {/* toggle modo */}
+        <div style={C.modeRow}>
+          <div style={C.modePill} role="tablist" aria-label="Selecionar modo">
+            <button
+              type="button"
+              onClick={() => {
+                pause();
+                setMode("timer");
+                setRemaining(minutes * 60);
+                setElapsed(0);
+              }}
+              style={{ ...C.modeBtn, ...(mode === "timer" ? C.modeBtnOn : C.modeBtnOff) }}
+            >
+              Timer
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                pause();
+                setMode("cronometro");
+                setElapsed(0);
+              }}
+              style={{ ...C.modeBtn, ...(mode === "cronometro" ? C.modeBtnOn : C.modeBtnOff) }}
+            >
+              Cronômetro
             </button>
           </div>
 
-          {/* presets: apenas no modo tempo */}
-          {measureMode === "tempo" && clockMode === "timer" ? (
-            <div style={S.presets}>
-              {[10, 15, 20, 30, 45].map((m) => (
+          <button type="button" style={C.kcalBtn} onClick={() => setSheetOpen(true)}>
+            Medir por calorias
+          </button>
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        <div style={C.ringArea}>
+          <div style={{ ...C.ringWrap, width: ringSize, height: ringSize }}>
+            {/* itens ao redor */}
+            {ringItems.map((o, i) => {
+              const p = posFor(i, ringItems.length);
+              const on = picked === o.id;
+
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => {
+                    setPicked(o.id);
+                    setPulsePick(true);
+                    setTimeout(() => setPulsePick(false), 220);
+                    reset();
+                  }}
+                  style={{
+                    ...C.ringItem,
+                    transform: `translate(calc(${ringSize / 2}px + ${p.x}px - 50%), calc(${ringSize / 2}px + ${p.y}px - 50%))`,
+                    ...(on ? C.ringItemOn : C.ringItemOff),
+                  }}
+                  aria-label={o.title}
+                  title={o.title}
+                >
+                  <div style={C.ringDot} />
+                  <div style={C.ringLabel}>{o.title.split(" ")[0]}</div>
+                </button>
+              );
+            })}
+
+            {/* centro */}
+            <div style={{ ...C.centerCircle, ...(pulsePick ? C.centerPulse : null) }}>
+              <div style={C.circleTop}>
+                <div style={C.circleMode}>{mode === "timer" ? "TIMER" : "CRONÔMETRO"}</div>
+                <div style={C.circleName}>{opt?.title}</div>
+              </div>
+
+              <div style={C.circleTime}>{shownTime}</div>
+
+              <div style={C.circleSub}>
+                ~<b>{Math.round(kcalPerMin)}</b> kcal/min • total ~<b>{estKcal}</b> kcal
+              </div>
+
+              {/* progress bar no centro (apenas no timer) */}
+              {mode === "timer" ? (
+                <div style={C.circleBarTrack}>
+                  <div style={{ ...C.circleBarFill, transform: `scaleX(${progress})` }} />
+                </div>
+              ) : (
+                <div style={C.circleBarGhost}>Sem limite de tempo</div>
+              )}
+            </div>
+          </div>
+
+          {/* painel lateral (tempo x kcal) */}
+          <div style={C.sidePanel}>
+            <div style={C.sideTitle}>Relação tempo × calorias</div>
+
+            <div style={C.sideRow}>
+              <div style={C.sideK}>Ritmo</div>
+              <div style={C.sideV}>
+                ~{refBlock.kpm} kcal/min
+              </div>
+            </div>
+
+            <div style={C.sideRow}>
+              <div style={C.sideK}>Referência</div>
+              <div style={C.sideV}>
+                {mode === "timer" ? `${minutes} min` : `${Math.max(1, refBlock.refMin)} min`}
+                {" "}
+                → ~{refBlock.kcal} kcal
+              </div>
+            </div>
+
+            <div style={C.sideMini}>
+              *Estimativa. Pode variar por inclinação, velocidade real, técnica e pausas.
+            </div>
+          </div>
+        </div>
+
+        {/* presets só para timer */}
+        {mode === "timer" ? (
+          <>
+            <div style={C.presets}>
+              {[10, 15, 20, 30, 45, 60].map((m) => (
                 <button
                   key={m}
-                  onClick={() => applyMinutes(m)}
-                  style={{ ...S.presetBtn, ...(minutes === m ? S.presetOn : S.presetOff) }}
+                  onClick={() => setPresetMin(m)}
+                  style={{ ...C.presetBtn, ...(minutes === m ? C.presetOn : C.presetOff) }}
                   type="button"
-                  className="tap"
                 >
                   {m}min
                 </button>
               ))}
             </div>
-          ) : null}
+          </>
+        ) : null}
 
-          <button
-            style={{
-              ...S.finishBtn,
-              ...(elapsedMin < 3 ? S.finishDisabled : null),
-            }}
-            onClick={finish}
-            disabled={elapsedMin < 3}
-            type="button"
-            className="tap"
-          >
-            Concluir cardio
+        {/* actions */}
+        <div style={C.actions}>
+          {!running ? (
+            <button style={C.startBtn} onClick={start} type="button">
+              Começar
+            </button>
+          ) : (
+            <button style={C.pauseBtn} onClick={pause} type="button">
+              Pausar
+            </button>
+          )}
+
+          <button style={C.resetBtn} onClick={reset} type="button">
+            Reset
           </button>
+        </div>
 
-          <div style={S.note}>
-            Dica: conclua pelo menos <b>3 min</b> para registrar no dashboard.
-          </div>
+        <button
+          style={{ ...C.finishBtn, ...(elapsedMin < 3 ? C.finishDisabled : null) }}
+          onClick={finish}
+          disabled={elapsedMin < 3}
+          type="button"
+        >
+          Concluir cardio
+        </button>
+
+        <div style={C.note}>
+          Dica: conclua pelo menos <b>3 min</b> para registrar no dashboard.
         </div>
       </div>
 
-      {/* CALORIES MODE (sheet) */}
-      {measureMode === "calorias" ? (
-        <div style={S.calSheet}>
-          <div style={S.calTitle}>Medir por calorias</div>
-          <div style={S.calSub}>
-            Escolha a modalidade acima e digite quantas calorias você quer gastar. O app calcula o tempo e inicia.
-          </div>
-
-          <div style={S.calRow}>
-            <div style={S.calBox}>
-              <div style={S.calLabel}>Modalidade</div>
-              <div style={S.calVal}>{opt?.title}</div>
-              <div style={S.calMini}>
-                ~{Math.round(kcalPerMin)} kcal/min • {Math.round(opt?.met * 10) / 10} MET
-              </div>
-            </div>
-
-            <div style={S.calBox}>
-              <div style={S.calLabel}>Calorias alvo</div>
-              <input
-                value={targetKcal}
-                onChange={(e) => setTargetKcal(e.target.value)}
-                placeholder="Ex.: 180"
-                style={S.calInput}
-                inputMode="decimal"
-              />
-              <div style={S.calMini}>
-                {targetMin > 0 ? (
-                  <>
-                    Tempo estimado: <b>{targetMin} min</b>
-                  </>
-                ) : (
-                  "Digite um número para calcular."
-                )}
-              </div>
-            </div>
-          </div>
-
-          <button
-            style={{ ...S.calStart, ...(targetMin > 0 ? null : S.calStartDisabled) }}
-            type="button"
-            className="tap"
-            onClick={startByCalories}
-            disabled={targetMin <= 0}
-          >
-            Começar por calorias
-          </button>
-
-          <div style={S.calFoot}>
-            Estimativa baseada em MET. Ajuste real varia com intensidade, inclinação, técnica e pausas.
-          </div>
-        </div>
-      ) : null}
-
       {!nutriPlus ? (
-        <button
-          onClick={() => nav("/planos")}
-          style={{ ...S.floatingNutri, bottom: FLOATING_BOTTOM }}
-          type="button"
-          className="tap"
-        >
-          <span style={S.floatDot} />
+        <button onClick={() => nav("/planos")} style={{ ...C.floatingNutri, bottom: FLOATING_BOTTOM }} type="button">
+          <span style={C.floatDot} />
           Liberar Nutri+
         </button>
       ) : (
         <button
           onClick={() => nav("/nutricao")}
-          style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
+          style={{ ...C.floatingNutri, ...C.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
           type="button"
-          className="tap"
         >
           Ver minha refeição
         </button>
       )}
 
-      <div style={{ height: 190 }} />
+      {/* Bottom sheet: medir por calorias */}
+      <CalorieSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        options={options}
+        picked={picked}
+        onPick={(id) => setPicked(id)}
+        kcalTarget={kcalTarget}
+        setKcalTarget={setKcalTarget}
+        onStartByCalories={startByCalories}
+      />
+
+      <div style={{ height: 180 }} />
     </div>
   );
 }
 
-/* ---------------- styles ---------------- */
-const S = {
+/* -------------------- styles -------------------- */
+const C = {
   page: {
     padding: 18,
     paddingBottom: 170,
     background: BG,
   },
-
-  head: {
-    borderRadius: 28,
-    padding: 18,
-    background: "linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.74))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 26px 90px rgba(15,23,42,.08)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
-  },
-
-  brandRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  brandName: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-
-  kicker: { marginTop: 10, fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  title: { marginTop: 4, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.8, lineHeight: 1.05 },
-  sub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-
-  backBtn: {
-    padding: "12px 14px",
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 10px 30px rgba(15,23,42,.06)",
-    flexShrink: 0,
-  },
-
-  mapBtn: {
-    padding: "10px 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.88)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 10px 26px rgba(15,23,42,.05)",
-    flexShrink: 0,
-  },
-
-  controlRow: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "1fr auto",
-    gap: 10,
-    alignItems: "center",
-  },
-
-  miniToggle: {
-    borderRadius: 18,
-    padding: 6,
-    background: "rgba(255,255,255,.86)",
-    border: "1px solid rgba(15,23,42,.08)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 6,
-  },
-  miniTab: { border: "none", borderRadius: 14, padding: "10px 10px", fontWeight: 950, fontSize: 12 },
-  miniTabOn: { background: "rgba(15,23,42,.92)", color: "#fff" },
-  miniTabOff: { background: "rgba(255,255,255,.86)", color: TEXT },
-
-  calModeBtn: {
-    padding: "12px 14px",
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-    whiteSpace: "nowrap",
-  },
-
-  stage: {
-    marginTop: 14,
-    borderRadius: 28,
-    padding: 18,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 22px 75px rgba(15,23,42,.06)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    position: "relative",
-    overflow: "hidden",
-    minHeight: 520,
-  },
-
-  orbitWrap: {
-    position: "absolute",
-    left: "50%",
-    top: 240,
-    transform: "translate(-50%, -50%)",
-    width: 1,
-    height: 1,
-    pointerEvents: "none",
-  },
-  orbitBtn: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    width: 138,
-    padding: 12,
-    borderRadius: 20,
-    border: "1px solid rgba(15,23,42,.08)",
-    textAlign: "left",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-    pointerEvents: "auto",
-  },
-  orbitBtnOn: {
-    background: "linear-gradient(180deg, rgba(255,106,0,.14), rgba(255,106,0,.08))",
-    borderColor: "rgba(255,106,0,.22)",
-    boxShadow: "0 18px 55px rgba(255,106,0,.14)",
-  },
-  orbitBtnOff: { background: "rgba(255,255,255,.92)" },
-  orbitTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.2 },
-  orbitSub: { marginTop: 5, fontSize: 11, fontWeight: 850, color: MUTED },
-
-  center: {
-    position: "relative",
-    zIndex: 2,
-    borderRadius: 28,
-    padding: 18,
-    marginTop: 190,
-    background: "linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,255,255,.86))",
-    border: "1px solid rgba(15,23,42,.07)",
-    boxShadow: "0 26px 90px rgba(15,23,42,.10)",
-    overflow: "hidden",
-  },
-  centerGlass: {
-    position: "absolute",
-    inset: -40,
-    background:
-      "radial-gradient(520px 260px at 25% 0%, rgba(255,106,0,.12), transparent 60%), radial-gradient(520px 260px at 95% 0%, rgba(15,23,42,.10), transparent 65%)",
-    pointerEvents: "none",
-  },
-  centerTop: { position: "relative" },
-  centerMeta: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED },
-
-  centerClock: {
-    position: "relative",
-    marginTop: 12,
-    fontSize: 54,
-    fontWeight: 950,
-    color: TEXT,
-    letterSpacing: -1.6,
-    lineHeight: 1,
-    textAlign: "center",
-  },
-
-  centerKcalRow: {
-    position: "relative",
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 12,
-    alignItems: "end",
-  },
-  centerKcalLeft: { minWidth: 0 },
-  centerKcalLabel: { fontSize: 12, fontWeight: 950, color: MUTED },
-  centerKcalValue: { marginTop: 6, fontSize: 13, fontWeight: 900, color: TEXT, lineHeight: 1.35 },
-
-  centerKcalRight: { display: "grid", gap: 8, justifyItems: "end" },
-  smallNum: { fontSize: 12, fontWeight: 900, color: TEXT, opacity: 0.9 },
-  smallHint: { fontSize: 11, fontWeight: 900, color: MUTED },
-
-  barTrack: {
-    width: "100%",
-    height: 10,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    overflow: "hidden",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 999,
-    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
-    transition: "width .25s ease",
-  },
-
-  actions: { position: "relative", marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  startBtn: {
-    padding: 16,
-    borderRadius: 22,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 18px 50px rgba(255,106,0,.18)",
-  },
-  pauseBtn: {
-    padding: 16,
-    borderRadius: 22,
-    border: "1px solid rgba(15,23,42,.12)",
-    background: "rgba(15,23,42,.92)",
-    color: "#fff",
-    fontWeight: 950,
-    boxShadow: "0 16px 46px rgba(15,23,42,.16)",
-  },
-  resetBtn: {
-    padding: 16,
-    borderRadius: 22,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
-  },
-
-  presets: { position: "relative", marginTop: 12, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 },
-  presetBtn: {
-    padding: 12,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    fontWeight: 950,
-    background: "rgba(255,255,255,.92)",
-    boxShadow: "0 10px 22px rgba(15,23,42,.04)",
-  },
-  presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
-  presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
-
-  finishBtn: {
-    position: "relative",
-    marginTop: 12,
-    width: "100%",
-    padding: 18,
-    borderRadius: 24,
-    border: "1px solid rgba(255,255,255,.10)",
-    background: "linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))",
-    color: "#fff",
-    fontWeight: 950,
-    fontSize: 14,
-    letterSpacing: 0.2,
-    boxShadow: "0 22px 70px rgba(2,6,23,.22)",
-  },
-  finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
-  note: { position: "relative", marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
-
-  pill: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,106,0,.18)",
-    background: "rgba(255,106,0,.10)",
-    fontWeight: 950,
-    fontSize: 12,
-    color: TEXT,
-  },
-  pillOn: {},
-  pillOff: {},
-  pillDot: { width: 8, height: 8, borderRadius: 999 },
-  pillDotOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.12)" },
-  pillDotOff: { background: "rgba(15,23,42,.16)" },
-
-  /* CALORIES SHEET */
-  calSheet: {
-    marginTop: 14,
-    borderRadius: 28,
-    padding: 18,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 22px 75px rgba(15,23,42,.06)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-  },
-  calTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-  calSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-  calRow: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  calBox: {
-    borderRadius: 22,
-    padding: 14,
-    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.96))",
-    border: "1px solid rgba(15,23,42,.08)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
-  calLabel: { fontSize: 12, fontWeight: 950, color: MUTED },
-  calVal: { marginTop: 6, fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  calMini: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.25 },
-  calInput: {
-    width: "100%",
-    marginTop: 6,
-    padding: "12px 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    outline: "none",
-    fontSize: 14,
-    fontWeight: 850,
-    background: "rgba(255,255,255,.96)",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)",
-  },
-  calStart: {
-    marginTop: 12,
-    width: "100%",
-    padding: 16,
-    borderRadius: 22,
-    border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 18px 55px rgba(255,106,0,.22)",
-  },
-  calStartDisabled: { opacity: 0.55, boxShadow: "none" },
-  calFoot: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   /* LOCK */
   lockCard: {
@@ -1046,6 +709,248 @@ const S = {
     boxShadow: "0 16px 40px rgba(255,106,0,.20)",
   },
 
+  /* HEAD */
+  head: {
+    borderRadius: 28,
+    padding: 18,
+    background: "linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.74))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 26px 90px rgba(15,23,42,.08)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+  },
+  brand: { fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+  title: { marginTop: 4, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.8, lineHeight: 1.05 },
+  sub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  backBtn: {
+    padding: "12px 14px",
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 10px 30px rgba(15,23,42,.06)",
+  },
+
+  centerCard: {
+    marginTop: 14,
+    borderRadius: 28,
+    padding: 18,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 22px 75px rgba(15,23,42,.06)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+  },
+
+  centerTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
+  centerKicker: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
+  centerHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+  mapBtn: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.85)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 10px 26px rgba(15,23,42,.05)",
+  },
+
+  modeRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  modePill: {
+    display: "inline-flex",
+    gap: 8,
+    padding: 6,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.04)",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  modeBtn: {
+    padding: "10px 12px",
+    borderRadius: 999,
+    border: "none",
+    fontWeight: 950,
+    fontSize: 12,
+    letterSpacing: 0.2,
+  },
+  modeBtnOn: { background: "#0B0B0C", color: "#fff", boxShadow: "0 14px 40px rgba(0,0,0,.14)" },
+  modeBtnOff: { background: "transparent", color: TEXT },
+
+  kcalBtn: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "rgba(255,106,0,.10)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 12px 34px rgba(255,106,0,.10)",
+    whiteSpace: "nowrap",
+  },
+
+  ringArea: {
+    display: "grid",
+    gridTemplateColumns: "minmax(290px, 1fr) minmax(180px, 260px)",
+    gap: 14,
+    alignItems: "center",
+  },
+
+  ringWrap: { position: "relative", margin: "0 auto" },
+
+  ringItem: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: 78,
+    height: 54,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    background: "rgba(255,255,255,.92)",
+    display: "grid",
+    alignContent: "center",
+    justifyItems: "center",
+    gap: 6,
+    boxShadow: "0 12px 30px rgba(15,23,42,.06)",
+  },
+  ringItemOn: {
+    borderColor: "rgba(255,106,0,.22)",
+    background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.06))",
+    boxShadow: "0 18px 55px rgba(255,106,0,.12)",
+  },
+  ringItemOff: {},
+  ringDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.12)",
+  },
+  ringLabel: { fontSize: 11, fontWeight: 950, color: TEXT },
+
+  centerCircle: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 190,
+    height: 190,
+    transform: "translate(-50%,-50%)",
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,.08)",
+    background:
+      "radial-gradient(120px 120px at 30% 20%, rgba(255,106,0,.14), rgba(255,255,255,0) 65%), rgba(255,255,255,.94)",
+    boxShadow: "0 22px 80px rgba(15,23,42,.10)",
+    display: "grid",
+    alignContent: "center",
+    justifyItems: "center",
+    padding: 14,
+    textAlign: "center",
+  },
+  centerPulse: { transform: "translate(-50%,-50%) scale(0.995)" },
+
+  circleTop: { display: "grid", gap: 2, marginBottom: 8 },
+  circleMode: { fontSize: 10, fontWeight: 950, color: MUTED, letterSpacing: 0.8 },
+  circleName: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, opacity: 0.9 },
+
+  circleTime: { fontSize: 44, fontWeight: 950, color: TEXT, letterSpacing: -1.2, lineHeight: 1 },
+  circleSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.25 },
+
+  circleBarTrack: {
+    marginTop: 10,
+    width: "100%",
+    height: 10,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.06)",
+    overflow: "hidden",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  circleBarFill: {
+    height: "100%",
+    width: "100%",
+    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
+    transformOrigin: "left center",
+    transition: "transform .25s ease",
+  },
+  circleBarGhost: {
+    marginTop: 10,
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+    opacity: 0.85,
+  },
+
+  sidePanel: {
+    borderRadius: 22,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.92))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+  },
+  sideTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  sideRow: { marginTop: 10, display: "flex", justifyContent: "space-between", gap: 10 },
+  sideK: { fontSize: 12, fontWeight: 850, color: MUTED },
+  sideV: { fontSize: 12, fontWeight: 950, color: TEXT, textAlign: "right" },
+  sideMini: { marginTop: 10, fontSize: 11, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+
+  presets: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 },
+  presetBtn: {
+    padding: 12,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    fontWeight: 950,
+    background: "rgba(255,255,255,.92)",
+    boxShadow: "0 10px 22px rgba(15,23,42,.04)",
+  },
+  presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
+  presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
+
+  actions: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  startBtn: {
+    padding: 16,
+    borderRadius: 20,
+    border: "none",
+    background: ORANGE,
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 18px 50px rgba(255,106,0,.18)",
+  },
+  pauseBtn: {
+    padding: 16,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.12)",
+    background: "rgba(15,23,42,.92)",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 16px 46px rgba(15,23,42,.16)",
+  },
+  resetBtn: {
+    padding: 16,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+  },
+
+  finishBtn: {
+    marginTop: 12,
+    width: "100%",
+    padding: 18,
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,.10)",
+    background: "linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))",
+    color: "#fff",
+    fontWeight: 950,
+    fontSize: 14,
+    letterSpacing: 0.2,
+    boxShadow: "0 22px 70px rgba(2,6,23,.22)",
+  },
+  finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
+  note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
+
   /* FLOATING CTA */
   floatingNutri: {
     position: "fixed",
@@ -1062,6 +967,7 @@ const S = {
     display: "inline-flex",
     alignItems: "center",
     gap: 10,
+    animation: "nutriFloat 3.2s ease-in-out infinite",
     backdropFilter: "blur(10px)",
     WebkitBackdropFilter: "blur(10px)",
   },
@@ -1070,6 +976,7 @@ const S = {
     color: "#fff",
     boxShadow: "0 22px 80px rgba(0,0,0,.18)",
     border: "1px solid rgba(255,255,255,.10)",
+    animation: "nutriFloat 3.6s ease-in-out infinite",
   },
   floatDot: {
     width: 8,
@@ -1079,3 +986,143 @@ const S = {
     boxShadow: "0 0 0 7px rgba(255,255,255,.12)",
   },
 };
+
+/* -------------------- sheet styles -------------------- */
+const S = {
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    background: "rgba(2,6,23,.44)",
+    display: "grid",
+    alignItems: "end",
+    padding: "12px",
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+    paddingTop: "calc(12px + env(safe-area-inset-top))",
+  },
+  sheet: {
+    width: "100%",
+    maxWidth: 520,
+    margin: "0 auto",
+    borderRadius: 26,
+    background: "rgba(255,255,255,.94)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.28)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    overflow: "hidden",
+    maxHeight: "calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+    display: "flex",
+    flexDirection: "column",
+  },
+  sheetGrab: { width: 52, height: 6, borderRadius: 999, background: "rgba(15,23,42,.12)", margin: "10px auto 0" },
+  sheetHead: { padding: 14, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  sheetTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  sheetSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 360 },
+  sheetX: { width: 40, height: 40, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, flexShrink: 0 },
+
+  sheetBody: { padding: "0 14px 12px", overflowY: "auto", WebkitOverflowScrolling: "touch" },
+  sheetSectionTitle: { marginTop: 10, fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+
+  sheetOptList: { marginTop: 10, display: "grid", gap: 10 },
+  sheetOpt: {
+    width: "100%",
+    textAlign: "left",
+    borderRadius: 22,
+    padding: 14,
+    border: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.92)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+  },
+  sheetOptOn: {
+    background: "linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,106,0,.06))",
+    borderColor: "rgba(255,106,0,.20)",
+    boxShadow: "0 18px 55px rgba(255,106,0,.10)",
+  },
+  sheetOptOff: {},
+  sheetOptTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  sheetOptSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
+
+  sheetPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(15,23,42,.06)",
+    fontWeight: 950,
+    fontSize: 12,
+    color: TEXT,
+    whiteSpace: "nowrap",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  sheetPillOn: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.18)" },
+
+  sheetInputRow: {
+    marginTop: 10,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 10,
+    alignItems: "center",
+  },
+  sheetInput: {
+    width: "100%",
+    padding: "14px 14px",
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.96)",
+    outline: "none",
+    fontSize: 14,
+    fontWeight: 900,
+    boxShadow: "0 12px 30px rgba(15,23,42,.06)",
+  },
+  sheetUnit: { fontSize: 12, fontWeight: 950, color: MUTED },
+
+  sheetHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  sheetFooter: {
+    padding: "12px 14px",
+    borderTop: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.90)",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  sheetCancel: {
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+  sheetGo: {
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: ORANGE,
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 16px 44px rgba(255,106,0,.18)",
+  },
+};
+
+/* keyframes */
+if (typeof document !== "undefined") {
+  const id = "fitdeal-cardio-keyframes-v2";
+  if (!document.getElementById(id)) {
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes nutriFloat {
+        0%, 100% { transform: translateX(-50%) translateY(0px); }
+        50% { transform: translateX(-50%) translateY(-2px); }
+      }
+      button:active { transform: scale(.99); }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
