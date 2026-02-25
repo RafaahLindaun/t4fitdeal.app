@@ -1,3 +1,10 @@
+// ✅ COLE EM: src/pages/Cardio.jsx
+// Correções:
+// - remove “Leve, direto e guiado” -> “Bora pro cardio.” (ponto laranja, jovem)
+// - arruma o “mapa mental” (ring) pra não ficar por cima/bugado no iPhone
+// - deixa responsivo (no mobile: ring central + painel desce)
+// - evita o CTA flutuante cobrir os botões (sobe mais)
+
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -37,26 +44,21 @@ function clamp(n, a, b) {
 
 /**
  * kcal/min = MET * 3.5 * kg / 200
- * (estimativa padrão via MET)
  */
 function calcKcalPerMin({ kg, met }) {
   const w = Number(kg || 0) || 70;
   return (Number(met || 1) * 3.5 * w) / 200;
 }
 
-/**
- * Opções “limpas” (padrão), com MET aproximado.
- * Ajuste leve por objetivo/nível (sem exagero).
- */
 function getCardioOptions(goal, level) {
   const base = [
     { id: "walk", title: "Caminhada rápida", met: 4.3, mapQ: "parque caminhada" },
-    { id: "run", title: "Corrida leve", met: 7.0, mapQ: "pista corrida" },
-    { id: "bike", title: "Bike moderada", met: 6.8, mapQ: "ciclovia" },
+    { id: "run", title: "Corrida (leve)", met: 7.0, mapQ: "pista corrida" },
+    { id: "bike", title: "Bike (moderado)", met: 6.8, mapQ: "ciclovia" },
     { id: "ellip", title: "Elíptico", met: 5.0, mapQ: "academia" },
-    { id: "row", title: "Remo ergômetro", met: 6.0, mapQ: "academia" },
-    { id: "jump", title: "Corda", met: 8.8, mapQ: "quadra esportiva" },
-    { id: "hiit", title: "HIIT curto", met: 9.5, mapQ: "academia" },
+    { id: "row", title: "Remo", met: 6.0, mapQ: "academia" },
+    { id: "jump", title: "Corda (leve)", met: 8.8, mapQ: "quadra esportiva" },
+    { id: "hiit", title: "Circuit/HIIT", met: 9.5, mapQ: "academia" },
   ];
 
   let mult = 1.0;
@@ -75,17 +77,17 @@ function getCardioOptions(goal, level) {
 function getCongrats(goal, level) {
   if (goal === "saude")
     return level === "iniciante"
-      ? "Boa. Você fez o básico bem feito — isso muda o corpo e a mente."
-      : "Excelente. Rotina consistente é o que mantém você forte por anos.";
+      ? "Boa. Fez o básico bem feito — isso conta muito."
+      : "Excelente. Constância é o que mantém você forte por anos.";
   if (goal === "condicionamento")
     return level === "iniciante"
       ? "Boa. Seu fôlego começa a mudar a partir de hoje."
-      : "Monstro. Você subiu o nível — sua resistência tá ficando real.";
+      : "Monstro. Resistência subindo de verdade.";
   if (goal === "powerlifting")
     return "Perfeito. Cardio na medida certa melhora recuperação sem roubar força.";
   if (goal === "bodybuilding")
-    return "Excelente. Cardio inteligente ajuda definição e melhora o desempenho.";
-  return "Parabéns. Consistência vence.";
+    return "Boa. Cardio inteligente ajuda definição e melhora o desempenho.";
+  return "Fechado. Consistência vence.";
 }
 
 function formatTime(s) {
@@ -95,7 +97,7 @@ function formatTime(s) {
   return `${mm}:${ss}`;
 }
 
-/* -------------------- UI: Modal “Medir por calorias” -------------------- */
+/* -------------------- Bottom Sheet: medir por calorias -------------------- */
 function CalorieSheet({
   open,
   onClose,
@@ -116,7 +118,7 @@ function CalorieSheet({
         <div style={S.sheetHead}>
           <div>
             <div style={S.sheetTitle}>Medir por calorias</div>
-            <div style={S.sheetSub}>Escolha a modalidade e diga quantas kcal você quer gastar.</div>
+            <div style={S.sheetSub}>Escolhe a modalidade e manda as kcal.</div>
           </div>
 
           <button type="button" style={S.sheetX} onClick={onClose} aria-label="Fechar">
@@ -139,11 +141,9 @@ function CalorieSheet({
                 >
                   <div style={{ minWidth: 0 }}>
                     <div style={S.sheetOptTitle}>{o.title}</div>
-                    <div style={S.sheetOptSub}>Intensidade estimada (MET)</div>
+                    <div style={S.sheetOptSub}>{Math.round(o.met)} MET</div>
                   </div>
-                  <div style={{ ...S.sheetPill, ...(on ? S.sheetPillOn : null) }}>
-                    {on ? "Selecionado" : "—"}
-                  </div>
+                  <div style={{ ...S.sheetPill, ...(on ? S.sheetPillOn : null) }}>{on ? "OK" : "—"}</div>
                 </button>
               );
             })}
@@ -163,9 +163,7 @@ function CalorieSheet({
             <div style={S.sheetUnit}>kcal</div>
           </div>
 
-          <div style={S.sheetHint}>
-            O tempo será calculado pelo seu peso e pela modalidade escolhida.
-          </div>
+          <div style={S.sheetHint}>A gente calcula o tempo certinho pra sua modalidade + peso.</div>
         </div>
 
         <div style={S.sheetFooter}>
@@ -181,16 +179,13 @@ function CalorieSheet({
   );
 }
 
-/* -------------------- Página -------------------- */
 export default function Cardio() {
   const nav = useNavigate();
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
 
-  // paywall cardio (mantido)
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  // compatível com flags antigas e novas
   const nutriPlusNew = localStorage.getItem(`nutri_plus_${email}`) === "1";
   const nutriPlusOld = localStorage.getItem(`nutri_${email}`) === "1";
   const nutriPlus = nutriPlusNew || nutriPlusOld;
@@ -200,7 +195,6 @@ export default function Cardio() {
   const weightKg = Number(user?.peso || 0) || 70;
 
   const options = useMemo(() => getCardioOptions(goal, level), [goal, level]);
-
   const [picked, setPicked] = useState(options[0]?.id || "walk");
   const opt = useMemo(() => options.find((o) => o.id === picked) || options[0], [options, picked]);
 
@@ -209,25 +203,53 @@ export default function Cardio() {
     [weightKg, opt]
   );
 
-  // modo: timer (countdown) ou cronometro (stopwatch)
+  // modo
   const [mode, setMode] = useState("timer"); // "timer" | "cronometro"
 
-  // timer (countdown)
+  // timer
   const [minutes, setMinutes] = useState(20);
   const [remaining, setRemaining] = useState(20 * 60);
 
-  // cronômetro (conta pra cima)
+  // cronometro
   const [elapsed, setElapsed] = useState(0);
 
   const [running, setRunning] = useState(false);
   const tickRef = useRef(null);
 
-  // sheet “medir por calorias”
+  // sheet
   const [sheetOpen, setSheetOpen] = useState(false);
   const [kcalTarget, setKcalTarget] = useState("");
 
-  // micro feedback
-  const [pulsePick, setPulsePick] = useState(false);
+  // ring responsive
+  const [vw, setVw] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 390));
+  useEffect(() => {
+    const onR = () => setVw(window.innerWidth);
+    window.addEventListener("resize", onR);
+    return () => window.removeEventListener("resize", onR);
+  }, []);
+
+  const isPhone = vw < 430;
+
+  // Ajuste do ring pra não “vazar” no mobile
+  const ringSize = clamp(isPhone ? vw - 54 : 320, 270, 340);
+  const radius = clamp(Math.round(ringSize * 0.38), 92, 128);
+
+  const ringItems = useMemo(() => {
+    // 6 itens ficam mais limpos no iPhone
+    const list = options.slice(0, 6);
+    // garante que o selecionado apareça dentro dos 6
+    if (list.find((x) => x.id === picked)) return list;
+    const pickedObj = options.find((x) => x.id === picked);
+    if (!pickedObj) return list;
+    return [pickedObj, ...list.slice(0, 5)];
+  }, [options, picked]);
+
+  function posFor(i, total) {
+    const a = (Math.PI * 2 * i) / total - Math.PI / 2;
+    const x = Math.cos(a) * radius;
+    const y = Math.sin(a) * radius;
+    return { x, y };
+  }
 
   useEffect(() => {
     return () => {
@@ -245,17 +267,20 @@ export default function Cardio() {
     }
   }
 
-  function resetAll() {
-    stopTick();
+  function pause() {
     setRunning(false);
-    setRemaining(minutes * 60);
-    setElapsed(0);
+    stopTick();
+  }
+
+  function reset() {
+    pause();
+    if (mode === "timer") setRemaining(minutes * 60);
+    else setElapsed(0);
   }
 
   function setPresetMin(v) {
     const m = clamp(Number(v || 0), 5, 240);
-    stopTick();
-    setRunning(false);
+    pause();
     setMode("timer");
     setMinutes(m);
     setRemaining(m * 60);
@@ -283,23 +308,11 @@ export default function Cardio() {
     }, 1000);
   }
 
-  function pause() {
-    setRunning(false);
-    stopTick();
-  }
-
-  function reset() {
-    pause();
-    if (mode === "timer") setRemaining(minutes * 60);
-    else setElapsed(0);
-  }
-
   function openMap() {
     const q = encodeURIComponent(`${opt?.mapQ || "academia"} perto de mim`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
   }
 
-  // minutos “atuais” pro cálculo de kcal (depende do modo)
   const elapsedMin = useMemo(() => {
     if (mode === "timer") {
       const doneSec = Math.max(0, minutes * 60 - remaining);
@@ -309,16 +322,14 @@ export default function Cardio() {
   }, [mode, minutes, remaining, elapsed]);
 
   const shownTime = mode === "timer" ? formatTime(remaining) : formatTime(elapsed);
-
   const estKcal = Math.round(elapsedMin * kcalPerMin);
 
   const progress = useMemo(() => {
-    if (mode !== "timer") return 0; // no cronômetro, não tem “fim”
+    if (mode !== "timer") return 0;
     if (!minutes) return 0;
     return clamp(1 - remaining / (minutes * 60), 0, 1);
   }, [mode, minutes, remaining]);
 
-  // barra “tempo ⇄ kcal” (lado do círculo)
   const refBlock = useMemo(() => {
     const refMin = mode === "timer" ? minutes : Math.max(1, Math.round(elapsed / 60));
     const kcal = Math.round(refMin * kcalPerMin);
@@ -326,12 +337,10 @@ export default function Cardio() {
     return { refMin, kcal, kpm };
   }, [mode, minutes, elapsed, kcalPerMin]);
 
-  // iniciar por calorias: define minutos e começa
   function startByCalories() {
     const kcal = clamp(Number(kcalTarget || 0), 10, 5000);
     if (!kcal || !Number.isFinite(kcal)) return;
 
-    // tempo = kcal / (kcal/min)
     const min = clamp(Math.ceil(kcal / Math.max(0.1, kcalPerMin)), 5, 240);
     setMode("timer");
     setMinutes(min);
@@ -395,21 +404,9 @@ export default function Cardio() {
     setTimeout(() => nav("/dashboard"), 500);
   }
 
-  // ✅ garante que o CTA flutuante NÃO cubra o menu inferior
+  // ✅ sobe mais pra não tampar botões
   const BOTTOM_MENU_SAFE = 102;
-  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 18;
-
-  // ring positions
-  const ringSize = 290;
-  const radius = 118;
-  const ringItems = useMemo(() => options.slice(0, 6), [options]); // mantém limpo
-
-  function posFor(i, total) {
-    const a = (Math.PI * 2 * i) / total - Math.PI / 2;
-    const x = Math.cos(a) * radius;
-    const y = Math.sin(a) * radius;
-    return { x, y };
-  }
+  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 92;
 
   if (!paid) {
     return (
@@ -448,173 +445,156 @@ export default function Cardio() {
 
   return (
     <div style={C.page}>
-      {/* HEAD */}
+      {/* HEAD (sem “leve/direto/guiado”) */}
       <div style={C.head}>
         <div style={{ minWidth: 0 }}>
-          <div style={C.brand}>fitdeal</div>
-          <div style={C.title}>Cardio</div>
-          <div style={C.sub}>
-            Meta: <b>{goal}</b> • Nível: <b>{level}</b> • Peso: <b>{weightKg} kg</b>
+          <div style={C.brandRow}>
+            <div style={C.brand}>fitdeal<span style={{ color: ORANGE }}>.</span></div>
+            <div style={C.headBtns}>
+              <button style={C.headBtn} onClick={openMap} type="button">Ver mapa</button>
+              <button style={C.headBtn} onClick={() => nav("/treino")} type="button">Voltar</button>
+            </div>
+          </div>
+
+          <div style={C.kicker}>CARDIO</div>
+          <div style={C.heroTitle}>
+            Bora pro cardio<span style={C.orangeDot}>.</span>
+          </div>
+
+          <div style={C.subLine}>
+            Modalidade: <b>{opt?.title}</b> • Meta: <b>{goal}</b> • Nível: <b>{level}</b>
           </div>
         </div>
+      </div>
 
-        <button style={C.backBtn} onClick={() => nav("/treino")} type="button">
-          Voltar
+      {/* MODE ROW */}
+      <div style={C.modeRow}>
+        <div style={C.modePill}>
+          <button
+            type="button"
+            onClick={() => {
+              pause();
+              setMode("timer");
+              setRemaining(minutes * 60);
+              setElapsed(0);
+            }}
+            style={{ ...C.modeBtn, ...(mode === "timer" ? C.modeBtnOn : C.modeBtnOff) }}
+          >
+            Timer
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              pause();
+              setMode("cronometro");
+              setElapsed(0);
+            }}
+            style={{ ...C.modeBtn, ...(mode === "cronometro" ? C.modeBtnOn : C.modeBtnOff) }}
+          >
+            Cronômetro
+          </button>
+        </div>
+
+        <button type="button" style={C.kcalBtn} onClick={() => setSheetOpen(true)}>
+          Medir por calorias
         </button>
       </div>
 
-      {/* CENTER RING */}
+      {/* RING + SIDE (corrigido) */}
       <div style={C.centerCard}>
-        <div style={C.centerTop}>
-          <div>
-            <div style={C.centerKicker}>Escolha a modalidade e comece</div>
-            <div style={C.centerHint}>
-              Estimativa por MET (peso + intensidade). Ajuste real varia por técnica e condicionamento.
-            </div>
-          </div>
-
-          <button style={C.mapBtn} onClick={openMap} type="button">
-            Ver mapa
-          </button>
-        </div>
-
-        <div style={{ height: 14 }} />
-
-        {/* toggle modo */}
-        <div style={C.modeRow}>
-          <div style={C.modePill} role="tablist" aria-label="Selecionar modo">
-            <button
-              type="button"
-              onClick={() => {
-                pause();
-                setMode("timer");
-                setRemaining(minutes * 60);
-                setElapsed(0);
-              }}
-              style={{ ...C.modeBtn, ...(mode === "timer" ? C.modeBtnOn : C.modeBtnOff) }}
-            >
-              Timer
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                pause();
-                setMode("cronometro");
-                setElapsed(0);
-              }}
-              style={{ ...C.modeBtn, ...(mode === "cronometro" ? C.modeBtnOn : C.modeBtnOff) }}
-            >
-              Cronômetro
-            </button>
-          </div>
-
-          <button type="button" style={C.kcalBtn} onClick={() => setSheetOpen(true)}>
-            Medir por calorias
-          </button>
-        </div>
-
-        <div style={{ height: 16 }} />
-
         <div style={C.ringArea}>
-          <div style={{ ...C.ringWrap, width: ringSize, height: ringSize }}>
-            {/* itens ao redor */}
-            {ringItems.map((o, i) => {
-              const p = posFor(i, ringItems.length);
-              const on = picked === o.id;
+          <div style={C.ringStage}>
+            <div style={{ ...C.ringWrap, width: ringSize, height: ringSize }}>
+              {/* itens ao redor */}
+              {ringItems.map((o, i) => {
+                const p = posFor(i, ringItems.length);
+                const on = picked === o.id;
 
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => {
-                    setPicked(o.id);
-                    setPulsePick(true);
-                    setTimeout(() => setPulsePick(false), 220);
-                    reset();
-                  }}
-                  style={{
-                    ...C.ringItem,
-                    transform: `translate(calc(${ringSize / 2}px + ${p.x}px - 50%), calc(${ringSize / 2}px + ${p.y}px - 50%))`,
-                    ...(on ? C.ringItemOn : C.ringItemOff),
-                  }}
-                  aria-label={o.title}
-                  title={o.title}
-                >
-                  <div style={C.ringDot} />
-                  <div style={C.ringLabel}>{o.title.split(" ")[0]}</div>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => {
+                      setPicked(o.id);
+                      reset();
+                    }}
+                    style={{
+                      ...C.ringItem,
+                      transform: `translate(calc(${ringSize / 2}px + ${p.x}px - 50%), calc(${ringSize / 2}px + ${p.y}px - 50%))`,
+                      ...(on ? C.ringItemOn : C.ringItemOff),
+                    }}
+                    aria-label={o.title}
+                    title={o.title}
+                  >
+                    <div style={{ ...C.ringDot, ...(on ? C.ringDotOn : null) }} />
+                    <div style={C.ringLabel}>{o.title}</div>
+                    <div style={C.ringMet}>{Math.round(o.met)} MET</div>
+                  </button>
+                );
+              })}
 
-            {/* centro */}
-            <div style={{ ...C.centerCircle, ...(pulsePick ? C.centerPulse : null) }}>
-              <div style={C.circleTop}>
+              {/* centro */}
+              <div style={C.centerCircle}>
                 <div style={C.circleMode}>{mode === "timer" ? "TIMER" : "CRONÔMETRO"}</div>
-                <div style={C.circleName}>{opt?.title}</div>
-              </div>
-
-              <div style={C.circleTime}>{shownTime}</div>
-
-              <div style={C.circleSub}>
-                ~<b>{Math.round(kcalPerMin)}</b> kcal/min • total ~<b>{estKcal}</b> kcal
-              </div>
-
-              {/* progress bar no centro (apenas no timer) */}
-              {mode === "timer" ? (
-                <div style={C.circleBarTrack}>
-                  <div style={{ ...C.circleBarFill, transform: `scaleX(${progress})` }} />
+                <div style={C.circleTime}>{shownTime}</div>
+                <div style={C.circleSub}>
+                  ~{Math.round(kcalPerMin)} kcal/min • ~{estKcal} kcal
                 </div>
-              ) : (
-                <div style={C.circleBarGhost}>Sem limite de tempo</div>
-              )}
+
+                {mode === "timer" ? (
+                  <div style={C.circleBarTrack}>
+                    <div style={{ ...C.circleBarFill, transform: `scaleX(${progress})` }} />
+                  </div>
+                ) : (
+                  <div style={C.circleBarGhost}>Sem limite de tempo</div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* painel lateral (tempo x kcal) */}
           <div style={C.sidePanel}>
-            <div style={C.sideTitle}>Relação tempo × calorias</div>
+            <div style={C.sideTitle}>Tempo ↔ Calorias</div>
 
             <div style={C.sideRow}>
               <div style={C.sideK}>Ritmo</div>
+              <div style={C.sideV}>~{refBlock.kpm} kcal/min</div>
+            </div>
+
+            <div style={C.sideRow}>
+              <div style={C.sideK}>Agora</div>
               <div style={C.sideV}>
-                ~{refBlock.kpm} kcal/min
+                {elapsedMin} min → ~{estKcal} kcal
               </div>
             </div>
 
             <div style={C.sideRow}>
               <div style={C.sideK}>Referência</div>
               <div style={C.sideV}>
-                {mode === "timer" ? `${minutes} min` : `${Math.max(1, refBlock.refMin)} min`}
-                {" "}
-                → ~{refBlock.kcal} kcal
+                {mode === "timer" ? `${minutes} min` : `${Math.max(1, refBlock.refMin)} min`} → ~{refBlock.kcal} kcal
               </div>
             </div>
 
-            <div style={C.sideMini}>
-              *Estimativa. Pode variar por inclinação, velocidade real, técnica e pausas.
-            </div>
+            <div style={C.sideMini}>Estimativa (MET). Varia por velocidade real, pausas e técnica.</div>
           </div>
         </div>
 
-        {/* presets só para timer */}
+        {/* PRESETS só no timer */}
         {mode === "timer" ? (
-          <>
-            <div style={C.presets}>
-              {[10, 15, 20, 30, 45, 60].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setPresetMin(m)}
-                  style={{ ...C.presetBtn, ...(minutes === m ? C.presetOn : C.presetOff) }}
-                  type="button"
-                >
-                  {m}min
-                </button>
-              ))}
-            </div>
-          </>
+          <div style={C.presets}>
+            {[10, 15, 20, 30, 45, 60].map((m) => (
+              <button
+                key={m}
+                onClick={() => setPresetMin(m)}
+                style={{ ...C.presetBtn, ...(minutes === m ? C.presetOn : C.presetOff) }}
+                type="button"
+              >
+                {m}min
+              </button>
+            ))}
+          </div>
         ) : null}
 
-        {/* actions */}
+        {/* ACTIONS */}
         <div style={C.actions}>
           {!running ? (
             <button style={C.startBtn} onClick={start} type="button">
@@ -641,7 +621,7 @@ export default function Cardio() {
         </button>
 
         <div style={C.note}>
-          Dica: conclua pelo menos <b>3 min</b> para registrar no dashboard.
+          Dica: conclui pelo menos <b>3 min</b> pra registrar.
         </div>
       </div>
 
@@ -660,7 +640,6 @@ export default function Cardio() {
         </button>
       )}
 
-      {/* Bottom sheet: medir por calorias */}
       <CalorieSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -672,61 +651,28 @@ export default function Cardio() {
         onStartByCalories={startByCalories}
       />
 
-      <div style={{ height: 180 }} />
+      <div style={{ height: 220 }} />
     </div>
   );
 }
 
 /* -------------------- styles -------------------- */
 const C = {
-  page: {
-    padding: 18,
-    paddingBottom: 170,
-    background: BG,
-  },
+  page: { padding: 18, paddingBottom: 170, background: BG },
 
-  /* LOCK */
-  lockCard: {
-    borderRadius: 26,
-    padding: 18,
-    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 22px 70px rgba(15,23,42,.10)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-  },
-  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
-  lockBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
-  },
-
-  /* HEAD */
   head: {
     borderRadius: 28,
     padding: 18,
     background: "linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.74))",
     border: "1px solid rgba(15,23,42,.06)",
     boxShadow: "0 26px 90px rgba(15,23,42,.08)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
     backdropFilter: "blur(14px)",
     WebkitBackdropFilter: "blur(14px)",
   },
-  brand: { fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  title: { marginTop: 4, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.8, lineHeight: 1.05 },
-  sub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-  backBtn: {
+  brandRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  brand: { fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
+  headBtns: { display: "inline-flex", gap: 10, flexShrink: 0 },
+  headBtn: {
     padding: "12px 14px",
     borderRadius: 18,
     border: "1px solid rgba(15,23,42,.10)",
@@ -734,6 +680,44 @@ const C = {
     color: TEXT,
     fontWeight: 950,
     boxShadow: "0 10px 30px rgba(15,23,42,.06)",
+  },
+
+  kicker: { marginTop: 14, fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.7 },
+  heroTitle: { marginTop: 6, fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0, lineHeight: 1.05 },
+  orangeDot: {
+    display: "inline-block",
+    marginLeft: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 7px rgba(255,106,0,.12)",
+    transform: "translateY(-4px)",
+  },
+  subLine: { marginTop: 10, fontSize: 13, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  modeRow: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" },
+  modePill: {
+    display: "inline-flex",
+    gap: 8,
+    padding: 6,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.04)",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  modeBtn: { padding: "12px 14px", borderRadius: 999, border: "none", fontWeight: 950, fontSize: 13 },
+  modeBtnOn: { background: "#0B0B0C", color: "#fff", boxShadow: "0 14px 40px rgba(0,0,0,.14)" },
+  modeBtnOff: { background: "transparent", color: TEXT },
+
+  kcalBtn: {
+    padding: "12px 14px",
+    borderRadius: 18,
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "rgba(255,106,0,.10)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 12px 34px rgba(255,106,0,.10)",
+    whiteSpace: "nowrap",
   },
 
   centerCard: {
@@ -747,114 +731,84 @@ const C = {
     WebkitBackdropFilter: "blur(12px)",
   },
 
-  centerTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
-  centerKicker: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.35 },
-  centerHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  mapBtn: {
-    padding: "10px 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.85)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 10px 26px rgba(15,23,42,.05)",
-  },
-
-  modeRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  modePill: {
-    display: "inline-flex",
-    gap: 8,
-    padding: 6,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.04)",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  modeBtn: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "none",
-    fontWeight: 950,
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
-  modeBtnOn: { background: "#0B0B0C", color: "#fff", boxShadow: "0 14px 40px rgba(0,0,0,.14)" },
-  modeBtnOff: { background: "transparent", color: TEXT },
-
-  kcalBtn: {
-    padding: "10px 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "rgba(255,106,0,.10)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 12px 34px rgba(255,106,0,.10)",
-    whiteSpace: "nowrap",
-  },
-
   ringArea: {
     display: "grid",
-    gridTemplateColumns: "minmax(290px, 1fr) minmax(180px, 260px)",
+    gridTemplateColumns: "1fr",
     gap: 14,
-    alignItems: "center",
+    alignItems: "start",
   },
 
-  ringWrap: { position: "relative", margin: "0 auto" },
+  ringStage: {
+    borderRadius: 26,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.96))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    overflow: "visible",
+  },
+
+  ringWrap: {
+    position: "relative",
+    margin: "0 auto",
+    overflow: "visible",
+  },
 
   ringItem: {
     position: "absolute",
     left: 0,
     top: 0,
-    width: 78,
-    height: 54,
-    borderRadius: 18,
+    width: 128,
+    height: 78,
+    borderRadius: 22,
     border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.92)",
+    background: "rgba(255,255,255,.96)",
     display: "grid",
     alignContent: "center",
     justifyItems: "center",
     gap: 6,
     boxShadow: "0 12px 30px rgba(15,23,42,.06)",
+    padding: 10,
+    zIndex: 2,
   },
   ringItemOn: {
-    borderColor: "rgba(255,106,0,.22)",
+    borderColor: "rgba(255,106,0,.24)",
     background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.06))",
     boxShadow: "0 18px 55px rgba(255,106,0,.12)",
   },
   ringItemOff: {},
+
   ringDot: {
     width: 8,
     height: 8,
     borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 6px rgba(255,106,0,.12)",
+    background: "rgba(15,23,42,.18)",
+    boxShadow: "0 0 0 7px rgba(15,23,42,.06)",
   },
-  ringLabel: { fontSize: 11, fontWeight: 950, color: TEXT },
+  ringDotOn: { background: ORANGE, boxShadow: "0 0 0 7px rgba(255,106,0,.12)" },
+  ringLabel: { fontSize: 12, fontWeight: 950, color: TEXT, textAlign: "center", lineHeight: 1.1 },
+  ringMet: { fontSize: 12, fontWeight: 900, color: MUTED },
 
   centerCircle: {
     position: "absolute",
     left: "50%",
     top: "50%",
-    width: 190,
-    height: 190,
+    width: 210,
+    height: 210,
     transform: "translate(-50%,-50%)",
     borderRadius: 999,
     border: "1px solid rgba(15,23,42,.08)",
     background:
-      "radial-gradient(120px 120px at 30% 20%, rgba(255,106,0,.14), rgba(255,255,255,0) 65%), rgba(255,255,255,.94)",
+      "radial-gradient(140px 140px at 30% 20%, rgba(255,106,0,.14), rgba(255,255,255,0) 65%), rgba(255,255,255,.98)",
     boxShadow: "0 22px 80px rgba(15,23,42,.10)",
     display: "grid",
     alignContent: "center",
     justifyItems: "center",
     padding: 14,
     textAlign: "center",
+    zIndex: 3,
   },
-  centerPulse: { transform: "translate(-50%,-50%) scale(0.995)" },
-
-  circleTop: { display: "grid", gap: 2, marginBottom: 8 },
   circleMode: { fontSize: 10, fontWeight: 950, color: MUTED, letterSpacing: 0.8 },
-  circleName: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, opacity: 0.9 },
-
-  circleTime: { fontSize: 44, fontWeight: 950, color: TEXT, letterSpacing: -1.2, lineHeight: 1 },
+  circleTime: { marginTop: 6, fontSize: 54, fontWeight: 950, color: TEXT, letterSpacing: -1.8, lineHeight: 1 },
   circleSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.25 },
 
   circleBarTrack: {
@@ -873,13 +827,7 @@ const C = {
     transformOrigin: "left center",
     transition: "transform .25s ease",
   },
-  circleBarGhost: {
-    marginTop: 10,
-    fontSize: 11,
-    fontWeight: 900,
-    color: MUTED,
-    opacity: 0.85,
-  },
+  circleBarGhost: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED, opacity: 0.85 },
 
   sidePanel: {
     borderRadius: 22,
@@ -951,7 +899,6 @@ const C = {
   finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
   note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
-  /* FLOATING CTA */
   floatingNutri: {
     position: "fixed",
     left: "50%",
@@ -985,9 +932,32 @@ const C = {
     background: "rgba(255,255,255,.60)",
     boxShadow: "0 0 0 7px rgba(255,255,255,.12)",
   },
+
+  lockCard: {
+    borderRadius: 26,
+    padding: 18,
+    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 22px 70px rgba(15,23,42,.10)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+  },
+  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  lockBtn: {
+    marginTop: 12,
+    width: "100%",
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: ORANGE,
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
+  },
 };
 
-/* -------------------- sheet styles -------------------- */
+/* sheet styles */
 const S = {
   sheetOverlay: {
     position: "fixed",
@@ -1058,13 +1028,7 @@ const S = {
   },
   sheetPillOn: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.18)" },
 
-  sheetInputRow: {
-    marginTop: 10,
-    display: "grid",
-    gridTemplateColumns: "1fr auto",
-    gap: 10,
-    alignItems: "center",
-  },
+  sheetInputRow: { marginTop: 10, display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" },
   sheetInput: {
     width: "100%",
     padding: "14px 14px",
@@ -1077,7 +1041,6 @@ const S = {
     boxShadow: "0 12px 30px rgba(15,23,42,.06)",
   },
   sheetUnit: { fontSize: 12, fontWeight: 950, color: MUTED },
-
   sheetHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   sheetFooter: {
@@ -1096,20 +1059,11 @@ const S = {
     color: TEXT,
     fontWeight: 950,
   },
-  sheetGo: {
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 44px rgba(255,106,0,.18)",
-  },
+  sheetGo: { padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 16px 44px rgba(255,106,0,.18)" },
 };
 
-/* keyframes */
 if (typeof document !== "undefined") {
-  const id = "fitdeal-cardio-keyframes-v2";
+  const id = "fitdeal-cardio-fixes-v3";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
@@ -1119,6 +1073,10 @@ if (typeof document !== "undefined") {
         50% { transform: translateX(-50%) translateY(-2px); }
       }
       button:active { transform: scale(.99); }
+      @media (min-width: 980px){
+        /* no desktop: ring + painel lado a lado */
+        .ringGridFix { grid-template-columns: 1fr 280px !important; align-items: center !important; }
+      }
       @media (prefers-reduced-motion: reduce) {
         * { animation: none !important; transition: none !important; }
       }
