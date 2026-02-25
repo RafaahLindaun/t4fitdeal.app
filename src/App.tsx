@@ -5,7 +5,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Treino from "./pages/Treino.jsx";
 import TreinoDetalhe from "./pages/TreinoDetalhe.jsx";
-import Cardio from "./pages/Cardio.jsx";
+import Cardio, { CardioMiniDock } from "./pages/Cardio.jsx";
 import Nutricao from "./pages/Nutricao";
 import NutricaoOpcao from "./pages/NutricaoOpcao";
 import NutriPlus from "./pages/NutriPlus.jsx";
@@ -18,22 +18,33 @@ import Suplementacao from "./pages/Suplementacao.jsx";
 import Calendario from "./pages/Calendario.jsx";
 import ComoFunciona from "./pages/ComoFunciona.jsx";
 
-import Cardio, { CardioMiniDock } from "./pages/Cardio";
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
-// ✅ Só pra controlar onde o BottomMenu aparece (sem mexer no BottomMenu.jsx)
+/* ✅ Só pra controlar onde o BottomMenu aparece (sem mexer no BottomMenu.jsx) */
 function BottomMenuGate() {
   const { user } = useAuth();
   const { pathname } = useLocation();
 
   if (!user) return null;
 
-  // ✅ Aqui é a única regra: no onboarding NÃO mostra menu
+  // ✅ no onboarding NÃO mostra menu
   if (pathname.startsWith("/onboarding")) return null;
 
   return <BottomMenu />;
+}
+
+/* ✅ Dock global (mini play do cardio) — também escondemos no onboarding/login */
+function CardioDockGate() {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+
+  if (!user) return null;
+  if (pathname === "/") return null; // login
+  if (pathname.startsWith("/onboarding")) return null;
+
+  return <CardioMiniDock />;
 }
 
 function AppRoutes() {
@@ -71,7 +82,15 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/treino/detalhe" element={<TreinoDetalhe />} />
+        {/* ✅ Eu recomendo proteger também (igual as outras) */}
+        <Route
+          path="/treino/detalhe"
+          element={
+            <ProtectedRoute>
+              <TreinoDetalhe />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/treino/personalizar"
@@ -91,7 +110,14 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/calendario" element={<Calendario />} />
+        <Route
+          path="/calendario"
+          element={
+            <ProtectedRoute>
+              <Calendario />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/suplementacao"
@@ -137,7 +163,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/nutriplus"
           element={
@@ -177,8 +203,11 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
       </Routes>
 
-      {/* ✅ Menu agora só aparece fora do onboarding */}
+      {/* ✅ Menu inferior fora do onboarding */}
       <BottomMenuGate />
+
+      {/* ✅ MiniDock do cardio global (aparece em qualquer página) */}
+      <CardioDockGate />
     </BrowserRouter>
   );
 }
@@ -188,8 +217,5 @@ export default function App() {
     <AuthProvider>
       <AppRoutes />
     </AuthProvider>
-          <CardioMiniDock />
   );
 }
-
-
