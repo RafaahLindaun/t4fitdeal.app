@@ -1,14 +1,19 @@
 // ✅ COLE EM: src/pages/Cardio.jsx
-// Cardio — estilo Apple + cores do app + "mini play" global (sem libs)
-// Inclui:
-// - Header com "fitdeal." (ponto laranja fixo)
-// - Modo: Timer / Cronômetro / Por calorias
-// - Modalidades (chips) + intensidade
-// - Intervalos opcionais
-// - Persistência LIVE em localStorage (continua contando ao trocar de página)
-// - Export: CardioMiniDock (mini player global)
+// Cardio — Apple-like + cores do app + “mini player” persistente (sem libs)
+// ✅ O que muda aqui:
+// - Botão “Começar/Pausar” vira FLUTUANTE e grande (estilo iOS)
+// - O tempo continua contando mesmo saindo da página (persistência por timestamp)
+// - “MiniPlay/Dock” aparece e permite voltar pro Cardio com 1 toque
+//
+// ✅ IMPORTANTE (pra aparecer EM TODAS AS PÁGINAS):
+// 1) Este arquivo já EXPORTA um componente: CardioMiniDock
+// 2) No seu App layout (ex: App.jsx) monte ele uma vez, fora das rotas:
+//    <CardioMiniDock />
+// Assim ele fica global e acompanha qualquer navegação.
+//
+// Se você não quiser global agora, ele já aparece dentro do Cardio também.
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -17,11 +22,9 @@ const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
-/* ---------------- helpers ---------------- */
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
-
 function safeJsonParse(raw, fallback) {
   try {
     return raw ? JSON.parse(raw) : fallback;
@@ -29,13 +32,26 @@ function safeJsonParse(raw, fallback) {
     return fallback;
   }
 }
-
 function yyyyMmDd(d = new Date()) {
   const dt = new Date(d);
   const y = dt.getFullYear();
   const m = String(dt.getMonth() + 1).padStart(2, "0");
   const day = String(dt.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+function formatTime(s) {
+  const sec = Math.max(0, Math.floor(Number(s || 0)));
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+  const ss = String(sec % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+function vibrate(ms = 16) {
+  try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      // @ts-ignore
+      navigator.vibrate(ms);
+    }
+  } catch {}
 }
 
 function getGoal(user) {
@@ -46,12 +62,24 @@ function getGoal(user) {
   if (raw.includes("saud") || raw.includes("bem")) return "saude";
   return "hipertrofia";
 }
-
 function getLevel(user) {
   const raw = String(user?.nivel || "iniciante").toLowerCase();
   if (raw.includes("avan")) return "avancado";
   if (raw.includes("inter")) return "intermediario";
   return "iniciante";
+}
+function getCongrats(goal, level) {
+  if (goal === "saude")
+    return level === "iniciante"
+      ? "Boa. Fez o básico bem feito — isso já conta."
+      : "Perfeito. Mantém a rotina que o corpo responde.";
+  if (goal === "condicionamento")
+    return level === "iniciante"
+      ? "Boa. Seu fôlego começa a virar."
+      : "Monstro. Resistência subindo de verdade.";
+  if (goal === "powerlifting") return "Cardio na medida certa. Recuperação melhor, força intacta.";
+  if (goal === "bodybuilding") return "Cardio inteligente. Ajuda definição e melhora performance.";
+  return "Fechado. Consistência vence.";
 }
 
 // kcal/min = MET * 3.5 * kg / 200
@@ -59,13 +87,6 @@ function calcKcalPerMin({ kg, met }) {
   const w = Number(kg || 0) || 70;
   const m = Number(met || 1) || 1;
   return (m * 3.5 * w) / 200;
-}
-
-function formatTime(s) {
-  const sec = Math.max(0, Math.floor(Number(s || 0)));
-  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
-  const ss = String(sec % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
 }
 
 /* -------- Modalidades (base MET) -------- */
@@ -92,67 +113,47 @@ function getCardioOptions(goal, level) {
   return base.map((o) => ({ ...o, met: clamp(o.met * mult, 3.2, 11.5) }));
 }
 
-/* -------- haptics leve -------- */
-function vibrate(ms = 16) {
-  try {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      // @ts-ignore
-      navigator.vibrate(ms);
-    }
-  } catch {}
-}
-
-function getCongrats(goal, level) {
-  if (goal === "saude")
-    return level === "iniciante"
-      ? "Boa. Fez o básico bem feito — isso já conta."
-      : "Perfeito. Mantém a rotina que o corpo responde.";
-  if (goal === "condicionamento")
-    return level === "iniciante"
-      ? "Boa. Seu fôlego começa a virar."
-      : "Monstro. Resistência subindo de verdade.";
-  if (goal === "powerlifting") return "Cardio na medida certa. Recuperação melhor, força intacta.";
-  if (goal === "bodybuilding") return "Cardio inteligente. Ajuda definição e melhora performance.";
-  return "Fechado. Consistência vence.";
-}
-
-/* ---------------- LIVE persistence ---------------- */
+/* ======================= LIVE STATE (persistente) ======================= */
+/**
+ * Guardamos um “relógio” por timestamp.
+ * - elapsedSecBase: segundos acumulados até o último start
+ * - lastStartTs: timestamp do último start (ms). Se running, elapsed = base + (now-lastStart)/1000
+ * - mode: timer/chrono
+ * - durationSec: só no timer
+ */
 function liveKey(email) {
   return `cardio_live_${email}`;
 }
 function readLive(email) {
-  if (typeof window === "undefined") return null;
   return safeJsonParse(localStorage.getItem(liveKey(email)), null);
 }
 function writeLive(email, obj) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(liveKey(email), JSON.stringify(obj));
-  } catch {}
+  localStorage.setItem(liveKey(email), JSON.stringify(obj));
 }
 function clearLive(email) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(liveKey(email));
-  } catch {}
+  localStorage.removeItem(liveKey(email));
 }
-function computeElapsedTotalSec(live, nowTs) {
+function computeElapsedSec(live, now = Date.now()) {
   if (!live) return 0;
   const base = Number(live.elapsedSecBase || 0) || 0;
-  if (!live.running) return base;
-  const last = Number(live.lastStartTs || 0) || nowTs;
-  return base + Math.max(0, Math.floor((nowTs - last) / 1000));
-}
-function computeShownSecondsFromLive(live, nowTs) {
-  const elapsed = computeElapsedTotalSec(live, nowTs);
-  const isTimer = live?.mode === "timer";
-  const dur = Number(live?.durationSec || 0) || 0;
-  if (isTimer) return Math.max(0, dur - elapsed);
-  return elapsed;
+  if (!live.running) return clamp(base, 0, 1e9);
+  const lastStartTs = Number(live.lastStartTs || 0) || now;
+  const add = Math.max(0, Math.floor((now - lastStartTs) / 1000));
+  return clamp(base + add, 0, 1e9);
 }
 
-/* ---------------- Bottom sheets ---------------- */
-function CaloriesSheet({ open, onClose, options, picked, onPick, kcalTarget, setKcalTarget, intensity, onStart }) {
+/* ======================= SHEETS ======================= */
+function CaloriesSheet({
+  open,
+  onClose,
+  options,
+  picked,
+  onPick,
+  kcalTarget,
+  setKcalTarget,
+  intensity,
+  onStart,
+}) {
   if (!open) return null;
 
   return (
@@ -280,42 +281,97 @@ function IntervalsSheet({ open, onClose, current, onSelect }) {
   );
 }
 
-/* ---------------- PAGE ---------------- */
+/* ======================= MINI DOCK GLOBAL ======================= */
+/**
+ * ✅ Monte isso no App layout pra aparecer em todas as páginas:
+ * export function CardioMiniDock() { ... }
+ */
+export function CardioMiniDock() {
+  const nav = useNavigate();
+  const { user } = useAuth();
+  const email = (user?.email || "anon").toLowerCase();
+
+  const [live, setLive] = useState(() => readLive(email));
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setNow(Date.now());
+      setLive(readLive(email));
+    }, 450);
+    return () => clearInterval(t);
+  }, [email]);
+
+  if (!live) return null;
+
+  const elapsedSec = computeElapsedSec(live, now);
+  const isTimer = live.mode === "timer";
+  const durationSec = Number(live.durationSec || 0) || 0;
+  const remainingSec = isTimer ? Math.max(0, durationSec - elapsedSec) : elapsedSec;
+
+  const labelTop = live.running ? "Cardio rodando" : "Cardio pausado";
+  const labelSub = `${live.title || "Cardio"} • ${Math.round(live.kcalPerMin || 0)} kcal/min`;
+
+  const progress = isTimer && durationSec > 0 ? clamp(elapsedSec / durationSec, 0, 1) : 0;
+
+  return (
+    <button
+      type="button"
+      onClick={() => nav("/cardio")}
+      style={MD.wrap}
+      aria-label="Abrir cardio (mini player)"
+    >
+      <div style={MD.left}>
+        <div style={MD.dot} />
+        <div style={{ minWidth: 0 }}>
+          <div style={MD.top}>{labelTop}</div>
+          <div style={MD.sub}>{labelSub}</div>
+        </div>
+      </div>
+
+      <div style={MD.right}>
+        <div style={MD.time}>{formatTime(remainingSec)}</div>
+        <div style={MD.track}>
+          <div style={{ ...MD.fill, transform: `scaleX(${progress || (live.running ? 0.35 : 0.18)})` }} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ======================= PAGE ======================= */
 export default function Cardio() {
   const nav = useNavigate();
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
 
-  const paid = typeof window !== "undefined" ? localStorage.getItem(`paid_${email}`) === "1" : false;
+  const paid = localStorage.getItem(`paid_${email}`) === "1";
 
   // compatível com flags antigas e novas
-  const nutriPlusNew = typeof window !== "undefined" ? localStorage.getItem(`nutri_plus_${email}`) === "1" : false;
-  const nutriPlusOld = typeof window !== "undefined" ? localStorage.getItem(`nutri_${email}`) === "1" : false;
+  const nutriPlusNew = localStorage.getItem(`nutri_plus_${email}`) === "1";
+  const nutriPlusOld = localStorage.getItem(`nutri_${email}`) === "1";
   const nutriPlus = nutriPlusNew || nutriPlusOld;
 
   const goal = useMemo(() => getGoal(user), [user]);
   const level = useMemo(() => getLevel(user), [user]);
+
   const weightKg = Number(user?.peso || 0) || 70;
 
   const options = useMemo(() => getCardioOptions(goal, level), [goal, level]);
   const [picked, setPicked] = useState(options[0]?.id || "walk");
+
   const opt = useMemo(() => options.find((o) => o.id === picked) || options[0], [options, picked]);
 
   // intensidade
   const [intensity, setIntensity] = useState(100);
   const intensityMult = useMemo(() => clamp(intensity / 100, 0.7, 1.15), [intensity]);
   const metNow = useMemo(() => clamp((opt?.met || 4.3) * intensityMult, 3.0, 12.5), [opt, intensityMult]);
+
   const kcalPerMin = useMemo(() => calcKcalPerMin({ kg: weightKg, met: metNow }), [weightKg, metNow]);
 
   // modos
   const [mode, setMode] = useState("timer"); // timer | chrono
-
-  // timer/chrono
   const [minutes, setMinutes] = useState(20);
-  const [remaining, setRemaining] = useState(20 * 60);
-  const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(false);
-  const tickRef = useRef(null);
 
   // intervalos
   const [intervalId, setIntervalId] = useState("off");
@@ -329,302 +385,213 @@ export default function Cardio() {
   const [kcalTarget, setKcalTarget] = useState("");
   const [intSheet, setIntSheet] = useState(false);
 
-  // “press”
-  const [pulsePick, setPulsePick] = useState(false);
+  // live
+  const [running, setRunning] = useState(false);
+  const [elapsedSecBase, setElapsedSecBase] = useState(0);
+  const [lastStartTs, setLastStartTs] = useState(0);
 
-  function stopTick() {
-    if (tickRef.current) {
-      clearInterval(tickRef.current);
-      tickRef.current = null;
-    }
-  }
+  // tick local (só pra re-render suave)
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 350);
+    return () => clearInterval(t);
+  }, []);
 
-  // ✅ sempre que mudar “parâmetros” importantes, escreve live “parado”
-  function syncLiveStopped(extra = {}) {
-    const durationSec = mode === "timer" ? clamp(Number(minutes || 0), 1, 999) * 60 : 0;
-
-    writeLive(email, {
-      running: false,
-      mode,
-      durationSec,
-      elapsedSecBase: mode === "timer" ? Math.max(0, durationSec - remaining) : elapsed,
-      lastStartTs: 0,
-      title: opt?.title || "Cardio",
-      type: opt?.id || "walk",
-      met: metNow,
-      intensity,
-      kcalPerMin,
-      intervalId,
-      intOn,
-      intOff,
-      phase: intervalId === "off" ? "steady" : phase,
-      phaseLeft: intervalId === "off" ? 0 : phaseLeft,
-      updatedAt: Date.now(),
-      ...extra,
-    });
-  }
-
-  // ✅ restaura live quando entra na página Cardio
+  // carregar sessão pendente (se o usuário saiu e voltou)
   useEffect(() => {
     const live = readLive(email);
     if (!live) return;
 
-    // restaura seleção básica
-    if (live.type) setPicked(live.type);
-    if (typeof live.intensity === "number") setIntensity(clamp(live.intensity, 70, 115));
+    setPicked(live.picked || picked);
+    setIntensity(Number(live.intensity || 100) || 100);
+    setMode(live.mode || "timer");
+    setMinutes(Math.max(5, Math.round((Number(live.durationSec || 1200) || 1200) / 60)));
 
-    if (live.mode === "chrono" || live.mode === "timer") setMode(live.mode);
+    setIntervalId(live.intervalId || "off");
+    setIntOn(Number(live.intOn || 0) || 0);
+    setIntOff(Number(live.intOff || 0) || 0);
 
-    if (live.intervalId) setIntervalId(live.intervalId);
-    if (typeof live.intOn === "number") setIntOn(live.intOn);
-    if (typeof live.intOff === "number") setIntOff(live.intOff);
-
-    // tempo
-    const nowTs = Date.now();
-    const elapsedTotal = computeElapsedTotalSec(live, nowTs);
-    const dur = Number(live.durationSec || 0) || 0;
-
-    if (live.mode === "timer") {
-      const totalMin = clamp(Math.round(dur / 60) || 20, 5, 240);
-      setMinutes(totalMin);
-      const rem = Math.max(0, dur - elapsedTotal);
-      setRemaining(rem);
-      setElapsed(0);
-    } else {
-      setElapsed(elapsedTotal);
-      setRemaining(0);
-    }
-
-    // fase intervalos
-    if (live.intervalId && live.intervalId !== "off") {
-      setPhase(live.phase === "easy" ? "easy" : "strong");
-      setPhaseLeft(clamp(Number(live.phaseLeft || 0), 0, 9999));
-    } else {
-      setPhase("steady");
-      setPhaseLeft(0);
-    }
-
+    setElapsedSecBase(Number(live.elapsedSecBase || 0) || 0);
+    setLastStartTs(Number(live.lastStartTs || 0) || 0);
     setRunning(!!live.running);
-    // se estava rodando, reativa o tick local
-    if (live.running) {
-      stopTick();
-      tickRef.current = setInterval(() => {
-        tickOneSecond(true);
-      }, 1000);
-    }
+
+    setPhase(live.phase || (live.intervalId === "off" ? "steady" : "strong"));
+    setPhaseLeft(Number(live.phaseLeft || 0) || 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
 
-  function pause() {
+  // calcula elapsed “real” por timestamp
+  const elapsedSec = useMemo(() => {
+    const base = Number(elapsedSecBase || 0) || 0;
+    if (!running) return clamp(base, 0, 1e9);
+    const add = Math.max(0, Math.floor((now - (Number(lastStartTs || 0) || now)) / 1000));
+    return clamp(base + add, 0, 1e9);
+  }, [elapsedSecBase, running, lastStartTs, now]);
+
+  // timer/chrono exibido
+  const durationSec = useMemo(() => clamp(Number(minutes || 20) * 60, 5 * 60, 240 * 60), [minutes]);
+  const remainingSec = useMemo(() => (mode === "timer" ? Math.max(0, durationSec - elapsedSec) : elapsedSec), [mode, durationSec, elapsedSec]);
+  const shownTime = useMemo(() => formatTime(remainingSec), [remainingSec]);
+
+  const elapsedMin = useMemo(() => Math.max(0, Math.round(elapsedSec / 60)), [elapsedSec]);
+  const estKcal = useMemo(() => Math.round(elapsedMin * kcalPerMin), [elapsedMin, kcalPerMin]);
+
+  const progress = useMemo(() => {
+    if (mode !== "timer") return 0;
+    if (!durationSec) return 0;
+    return clamp(elapsedSec / durationSec, 0, 1);
+  }, [mode, elapsedSec, durationSec]);
+
+  // auto-stop no timer quando chega em 0
+  useEffect(() => {
+    if (mode !== "timer") return;
+    if (!running) return;
+    if (remainingSec > 0) return;
+
+    // stop
     setRunning(false);
-    stopTick();
+    setElapsedSecBase(durationSec);
+    setLastStartTs(0);
+    vibrate(18);
+  }, [mode, running, remainingSec, durationSec]);
 
-    // transforma running->false calculando elapsedBase corretamente
-    const live = readLive(email);
-    const nowTs = Date.now();
-    const elapsedTotal = computeElapsedTotalSec(live, nowTs);
-
-    if (mode === "timer") {
-      const durationSec = clamp(Number(minutes || 0), 1, 999) * 60;
-      const rem = Math.max(0, durationSec - elapsedTotal);
-      setRemaining(rem);
-
-      writeLive(email, {
-        ...(live || {}),
-        running: false,
-        elapsedSecBase: elapsedTotal,
-        lastStartTs: 0,
-        durationSec,
-        updatedAt: nowTs,
-      });
-    } else {
-      setElapsed(elapsedTotal);
-      writeLive(email, {
-        ...(live || {}),
-        running: false,
-        elapsedSecBase: elapsedTotal,
-        lastStartTs: 0,
-        durationSec: 0,
-        updatedAt: nowTs,
-      });
-    }
-  }
-
-  function resetAll() {
-    pause();
-
-    if (mode === "timer") {
-      setRemaining(minutes * 60);
-      setElapsed(0);
-    } else {
-      setElapsed(0);
-      setRemaining(0);
+  // intervalos (contagem por timestamp também, sem depender do setInterval)
+  // aqui: phaseLeft é “cosmético” — quando rodando, a gente recalcula por elapsedSec
+  useEffect(() => {
+    const intervalOn = intervalId !== "off" && intOn > 0 && intOff > 0;
+    if (!intervalOn) {
+      setPhase("steady");
+      setPhaseLeft(0);
+      return;
     }
 
-    setPhase(intervalId === "off" ? "steady" : "strong");
-    setPhaseLeft(intervalId === "off" ? 0 : intOn);
+    // se não está rodando, mantém o que está salvo
+    if (!running) return;
 
-    clearLive(email); // reset total mesmo
-    syncLiveStopped({ cleared: true });
-  }
+    const cycle = intOn + intOff;
+    const t = elapsedSec % cycle;
 
-  function setPresetMin(v) {
-    const m = clamp(Number(v || 0), 5, 240);
-    vibrate(10);
-    pause();
-    setMode("timer");
-    setMinutes(m);
-    setRemaining(m * 60);
-    setElapsed(0);
-    syncLiveStopped({ mode: "timer", durationSec: m * 60, elapsedSecBase: 0 });
+    if (t < intOn) {
+      setPhase("strong");
+      setPhaseLeft(intOn - t);
+    } else {
+      setPhase("easy");
+      setPhaseLeft(cycle - t);
+    }
+  }, [intervalId, intOn, intOff, elapsedSec, running]);
+
+  // persistir sessão live no localStorage (pra continuar em outras páginas)
+  useEffect(() => {
+    const live = {
+      v: 1,
+      running,
+      mode,
+      durationSec: mode === "timer" ? durationSec : 0,
+      elapsedSecBase,
+      lastStartTs,
+
+      picked,
+      title: opt?.title || "Cardio",
+      intensity,
+      metNow,
+      kcalPerMin,
+
+      intervalId,
+      intOn,
+      intOff,
+      phase,
+      phaseLeft,
+
+      createdAt: Date.now(),
+    };
+
+    // se zerou e não tá rodando, e não tem nada útil, não precisa manter
+    const hasSomething = running || elapsedSecBase > 0;
+    if (!hasSomething) {
+      clearLive(email);
+      return;
+    }
+    writeLive(email, live);
+  }, [
+    email,
+    running,
+    mode,
+    durationSec,
+    elapsedSecBase,
+    lastStartTs,
+    picked,
+    opt?.title,
+    intensity,
+    metNow,
+    kcalPerMin,
+    intervalId,
+    intOn,
+    intOff,
+    phase,
+    phaseLeft,
+  ]);
+
+  function pause() {
+    if (!running) return;
+    vibrate(12);
+
+    // congela elapsedSecBase no “agora”
+    setElapsedSecBase(elapsedSec);
+    setLastStartTs(0);
+    setRunning(false);
   }
 
   function start() {
     if (running) return;
     vibrate(14);
+
+    // se já chegou no fim do timer, recomeça
+    if (mode === "timer" && elapsedSec >= durationSec) {
+      setElapsedSecBase(0);
+    }
+
+    setLastStartTs(Date.now());
     setRunning(true);
-
-    // inicia live
-    const nowTs = Date.now();
-    const current = readLive(email);
-
-    // calcula elapsedBase atual
-    let elapsedBase = 0;
-    if (current) {
-      const elapsedTotal = computeElapsedTotalSec(current, nowTs);
-      elapsedBase = elapsedTotal;
-    } else {
-      elapsedBase = mode === "timer" ? Math.max(0, minutes * 60 - remaining) : elapsed;
-    }
-
-    const durationSec = mode === "timer" ? clamp(Number(minutes || 0), 1, 999) * 60 : 0;
-
-    writeLive(email, {
-      running: true,
-      mode,
-      durationSec,
-      elapsedSecBase: elapsedBase,
-      lastStartTs: nowTs,
-      title: opt?.title || "Cardio",
-      type: opt?.id || "walk",
-      met: metNow,
-      intensity,
-      kcalPerMin,
-      intervalId,
-      intOn,
-      intOff,
-      phase: intervalId === "off" ? "steady" : phase,
-      phaseLeft: intervalId === "off" ? 0 : phaseLeft || (phase === "easy" ? intOff : intOn),
-      updatedAt: nowTs,
-    });
-
-    stopTick();
-    tickRef.current = setInterval(() => {
-      tickOneSecond(false);
-    }, 1000);
   }
 
-  function tickOneSecond(fromRestore) {
-    const live = readLive(email);
-    if (!live || !live.running) return;
+  function resetAll() {
+    vibrate(10);
+    setRunning(false);
+    setElapsedSecBase(0);
+    setLastStartTs(0);
 
-    const nowTs = Date.now();
-    const elapsedTotal = computeElapsedTotalSec(live, nowTs);
-
-    // intervalos
-    const intervalOn = live.intervalId !== "off" && Number(live.intOn) > 0 && Number(live.intOff) > 0;
-
-    if (live.mode === "timer") {
-      const dur = Number(live.durationSec || 0) || 0;
-      const rem = Math.max(0, dur - elapsedTotal);
-      setRemaining(rem);
-      setElapsed(0);
-
-      if (rem <= 0) {
-        // acabou
-        setRunning(false);
-        stopTick();
-        writeLive(email, { ...live, running: false, elapsedSecBase: dur, lastStartTs: 0, updatedAt: nowTs });
-        return;
-      }
+    if (intervalId !== "off") {
+      setPhase("strong");
+      setPhaseLeft(intOn);
     } else {
-      setElapsed(elapsedTotal);
-      setRemaining(0);
-    }
-
-    // fase (intervalos) — controla no live pra manter consistente
-    if (intervalOn) {
-      let phase = live.phase === "easy" ? "easy" : "strong";
-      let left = Number(live.phaseLeft || 0) || 0;
-
-      if (!fromRestore) {
-        left = Math.max(0, left - 1);
-      }
-
-      if (left <= 0) {
-        const next = phase === "strong" ? "easy" : "strong";
-        phase = next;
-        left = next === "strong" ? Number(live.intOn || 0) : Number(live.intOff || 0);
-        vibrate(10);
-      }
-
-      setPhase(phase);
-      setPhaseLeft(left);
-
-      writeLive(email, {
-        ...live,
-        phase,
-        phaseLeft: left,
-        updatedAt: nowTs,
-      });
-    } else {
-      // atualiza só o tempo para o dock
-      writeLive(email, {
-        ...live,
-        updatedAt: nowTs,
-      });
+      setPhase("steady");
+      setPhaseLeft(0);
     }
   }
 
-  function toggleRun() {
-    if (running) pause();
-    else start();
+  function setPresetMin(v) {
+    const m = clamp(Number(v || 0), 5, 240);
+    vibrate(10);
+    setMode("timer");
+    setMinutes(m);
+    resetAll();
   }
 
-  // tempo exibido
-  const shownTime = mode === "timer" ? formatTime(remaining) : formatTime(elapsed);
-
-  // minutos "andados"
-  const elapsedMin = useMemo(() => {
-    if (mode === "timer") {
-      const doneSec = Math.max(0, minutes * 60 - remaining);
-      return Math.max(0, Math.round(doneSec / 60));
-    }
-    return Math.max(0, Math.round(elapsed / 60));
-  }, [mode, minutes, remaining, elapsed]);
-
-  const estKcal = Math.round(elapsedMin * kcalPerMin);
-
-  const progress = useMemo(() => {
-    if (mode !== "timer") return 0;
-    if (!minutes) return 0;
-    return clamp(1 - remaining / (minutes * 60), 0, 1);
-  }, [mode, minutes, remaining]);
-
-  // “Por calorias”
   function startByCalories() {
     const kcal = clamp(Number(kcalTarget || 0), 10, 5000);
     if (!Number.isFinite(kcal) || kcal <= 0) return;
 
     const min = clamp(Math.ceil(kcal / Math.max(0.1, kcalPerMin)), 5, 240);
 
-    pause();
     setMode("timer");
     setMinutes(min);
-    setRemaining(min * 60);
-    setElapsed(0);
-
     setCalSheet(false);
+
+    // começa do zero
+    setRunning(false);
+    setElapsedSecBase(0);
+    setLastStartTs(0);
+
     setTimeout(() => start(), 140);
   }
 
@@ -633,31 +600,21 @@ export default function Cardio() {
     setIntOn(onS);
     setIntOff(offS);
 
-    setPhase(id === "off" ? "steady" : "strong");
-    setPhaseLeft(id === "off" ? 0 : onS);
-
+    if (id === "off") {
+      setPhase("steady");
+      setPhaseLeft(0);
+    } else {
+      setPhase("strong");
+      setPhaseLeft(onS);
+    }
     vibrate(10);
     setIntSheet(false);
-
-    // se estiver rodando, sincroniza no live
-    const live = readLive(email);
-    if (live) {
-      writeLive(email, {
-        ...live,
-        intervalId: id,
-        intOn: onS,
-        intOff: offS,
-        phase: id === "off" ? "steady" : "strong",
-        phaseLeft: id === "off" ? 0 : onS,
-        updatedAt: Date.now(),
-      });
-    }
   }
 
   function finish() {
     pause();
 
-    const doneMin = elapsedMin;
+    const doneMin = Math.max(0, Math.round(elapsedSec / 60));
     const kcal = Math.round(doneMin * kcalPerMin);
 
     const day = yyyyMmDd(new Date());
@@ -706,7 +663,12 @@ export default function Cardio() {
       })
     );
 
+    // encerra mini player
     clearLive(email);
+    setRunning(false);
+    setElapsedSecBase(0);
+    setLastStartTs(0);
+
     setTimeout(() => nav("/dashboard"), 500);
   }
 
@@ -715,9 +677,18 @@ export default function Cardio() {
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
   }
 
-  // CTA flutuante — MAIS PRA BAIXO
+  // CTA flutuante Nutri
   const BOTTOM_MENU_SAFE = 102;
-  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 12;
+  const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 18;
+
+  const ringItems = options.slice(0, 6);
+
+  const phaseLabel =
+    intervalId === "off"
+      ? "Ritmo livre"
+      : phase === "strong"
+      ? `Forte • ${phaseLeft}s`
+      : `Leve • ${phaseLeft}s`;
 
   // paywall
   if (!paid) {
@@ -749,17 +720,11 @@ export default function Cardio() {
     );
   }
 
-  const ringItems = options.slice(0, 6);
-  const kpmNow = Math.round(kcalPerMin);
-  const phaseLabel =
-    intervalId === "off"
-      ? "Ritmo livre"
-      : phase === "strong"
-      ? `Forte • ${phaseLeft}s`
-      : `Leve • ${phaseLeft}s`;
-
   return (
     <div style={S.page}>
+      {/* ✅ MiniDock aqui também (mesmo se você não colocar no App ainda) */}
+      <CardioMiniDock />
+
       {/* HEADER */}
       <div style={S.head}>
         <div style={S.brandRow}>
@@ -796,9 +761,7 @@ export default function Cardio() {
               vibrate(10);
               pause();
               setMode("timer");
-              setRemaining(minutes * 60);
-              setElapsed(0);
-              syncLiveStopped({ mode: "timer" });
+              resetAll();
             }}
             style={{ ...S.modeSquareBtn, ...(mode === "timer" ? S.modeSquareOn : S.modeSquareOff) }}
           >
@@ -811,8 +774,7 @@ export default function Cardio() {
               vibrate(10);
               pause();
               setMode("chrono");
-              setElapsed(0);
-              syncLiveStopped({ mode: "chrono", durationSec: 0, elapsedSecBase: 0 });
+              resetAll();
             }}
             style={{ ...S.modeSquareBtn, ...(mode === "chrono" ? S.modeSquareOn : S.modeSquareOff) }}
           >
@@ -833,11 +795,11 @@ export default function Cardio() {
       </div>
 
       {/* CARD CENTRAL */}
-      <div style={{ ...S.centerCard, ...(pulsePick ? S.centerPulse : null) }}>
+      <div style={S.centerCard}>
         <div style={S.centerMetaRow}>
           <div style={S.centerMeta}>
             <span style={S.dot} />
-            <span style={S.centerMetaTxt}>{kpmNow} kcal/min</span>
+            <span style={S.centerMetaTxt}>{Math.round(kcalPerMin)} kcal/min</span>
             <span style={S.sep}>•</span>
             <span style={S.centerMetaTxt}>{Math.round(metNow)} MET</span>
             <span style={S.sep}>•</span>
@@ -848,14 +810,7 @@ export default function Cardio() {
             <button type="button" style={S.miniBtn} onClick={() => setIntSheet(true)}>
               Intervalos
             </button>
-            <button
-              type="button"
-              style={S.miniBtn}
-              onClick={() => {
-                vibrate(10);
-                resetAll();
-              }}
-            >
+            <button type="button" style={S.miniBtn} onClick={resetAll}>
               Limpar
             </button>
           </div>
@@ -893,12 +848,7 @@ export default function Cardio() {
             min={70}
             max={115}
             value={intensity}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setIntensity(v);
-              const live = readLive(email);
-              if (live) writeLive(email, { ...live, intensity: v, updatedAt: Date.now() });
-            }}
+            onChange={(e) => setIntensity(Number(e.target.value))}
             style={S.slider}
           />
 
@@ -909,7 +859,7 @@ export default function Cardio() {
           </div>
         </div>
 
-        {/* MODALIDADES (grid que não estoura) */}
+        {/* “MAPA MENTAL” (grid, sem estourar) */}
         <div style={S.ringGrid}>
           {ringItems.map((o) => {
             const on = picked === o.id;
@@ -920,10 +870,8 @@ export default function Cardio() {
                 type="button"
                 onClick={() => {
                   setPicked(o.id);
-                  setPulsePick(true);
-                  setTimeout(() => setPulsePick(false), 180);
-                  resetAll();
                   vibrate(10);
+                  resetAll();
                 }}
                 style={{ ...S.ringChip, ...(on ? S.ringChipOn : S.ringChipOff) }}
               >
@@ -941,26 +889,25 @@ export default function Cardio() {
         {mode === "timer" ? (
           <div style={S.presets}>
             {[10, 15, 20, 30, 45, 60].map((m) => (
-              <button key={m} onClick={() => setPresetMin(m)} style={{ ...S.presetBtn, ...(minutes === m ? S.presetOn : S.presetOff) }} type="button">
+              <button
+                key={m}
+                onClick={() => setPresetMin(m)}
+                style={{ ...S.presetBtn, ...(minutes === m ? S.presetOn : S.presetOff) }}
+                type="button"
+              >
                 {m}min
               </button>
             ))}
           </div>
         ) : null}
 
-        {/* CONTROLES */}
-        <div style={S.actionsRow}>
-          <button type="button" onClick={toggleRun} style={{ ...S.actionMain, ...(running ? S.actionMainPause : S.actionMainStart) }}>
-            <span>{running ? "Pausar" : "Começar"}</span>
-            <span style={S.actionMini}>{running ? "segura" : "vai"}</span>
-          </button>
-
-          <button type="button" onClick={resetAll} style={S.actionGhost}>
-            Reset
-          </button>
-        </div>
-
-        <button type="button" onClick={finish} disabled={elapsedMin < 3} style={{ ...S.finishBtn, ...(elapsedMin < 3 ? S.finishDisabled : null) }}>
+        {/* Concluir + texto */}
+        <button
+          type="button"
+          onClick={finish}
+          disabled={elapsedMin < 3}
+          style={{ ...S.finishBtn, ...(elapsedMin < 3 ? S.finishDisabled : null) }}
+        >
           Concluir cardio
         </button>
 
@@ -969,14 +916,44 @@ export default function Cardio() {
         </div>
       </div>
 
-      {/* CTA flutuante — MAIS PRA BAIXO */}
+      {/* ✅ BOTÃO FLUTUANTE GRANDE: Começar/Pausar + Reset */}
+      <div style={S.playDock}>
+        <button
+          type="button"
+          onClick={() => (running ? pause() : start())}
+          style={{ ...S.playMain, ...(running ? S.playMainOn : S.playMainOff) }}
+          aria-label={running ? "Pausar cardio" : "Começar cardio"}
+        >
+          <div style={S.playMainLeft}>
+            <div style={{ ...S.playDot, ...(running ? S.playDotOn : S.playDotOff) }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={S.playTitle}>{running ? "Pausar" : "Começar"}</div>
+              <div style={S.playSub}>
+                {opt?.title} • {Math.round(kcalPerMin)} kcal/min
+              </div>
+            </div>
+          </div>
+
+          <div style={S.playTime}>{shownTime}</div>
+        </button>
+
+        <button type="button" onClick={resetAll} style={S.playReset} aria-label="Resetar cardio">
+          Reset
+        </button>
+      </div>
+
+      {/* CTA flutuante Nutri — mais pra baixo */}
       {!nutriPlus ? (
         <button onClick={() => nav("/planos")} style={{ ...S.floatingNutri, bottom: FLOATING_BOTTOM }} type="button">
           <span style={S.floatDot} />
           Liberar Nutri+
         </button>
       ) : (
-        <button onClick={() => nav("/nutricao")} style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }} type="button">
+        <button
+          onClick={() => nav("/nutricao")}
+          style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
+          type="button"
+        >
           Ver minha refeição
         </button>
       )}
@@ -994,81 +971,21 @@ export default function Cardio() {
         onStart={startByCalories}
       />
 
-      <IntervalsSheet open={intSheet} onClose={() => setIntSheet(false)} current={intervalId} onSelect={(id, onS, offS) => applyIntervals(id, onS, offS)} />
+      <IntervalsSheet
+        open={intSheet}
+        onClose={() => setIntSheet(false)}
+        current={intervalId}
+        onSelect={(id, onS, offS) => applyIntervals(id, onS, offS)}
+      />
 
-      <div style={{ height: 220 }} />
+      <div style={{ height: 260 }} />
     </div>
   );
 }
 
-/* ---------------- MINI DOCK (GLOBAL) ----------------
-   ✅ Use isso em App/Layout (fora do Cardio) pra aparecer em todas as telas.
-   ✅ NÃO usa useNavigate (não quebra se estiver fora do Router).
-*/
-export function CardioMiniDock() {
-  const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
-
-  const [live, setLive] = useState(null);
-  const [nowTs, setNowTs] = useState(Date.now());
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const pull = () => {
-      setNowTs(Date.now());
-      setLive(readLive(email));
-    };
-
-    pull();
-    const t = setInterval(pull, 450);
-    return () => clearInterval(t);
-  }, [email]);
-
-  if (!live) return null;
-
-  const shownSec = computeShownSecondsFromLive(live, nowTs);
-  const isTimer = live.mode === "timer";
-  const dur = Number(live.durationSec || 0) || 0;
-  const elapsedTotal = computeElapsedTotalSec(live, nowTs);
-  const progress = isTimer && dur > 0 ? clamp(elapsedTotal / dur, 0, 1) : 0;
-
-  // só mostra se: rodando OU pausado com algum tempo já feito
-  const hasAnyTime = isTimer ? dur > 0 && shownSec < dur : shownSec > 0;
-  if (!live.running && !hasAnyTime) return null;
-
-  const bottomSafe = 102 + 10; // acima do BottomMenu
-
-  return (
-    <button
-      type="button"
-      onClick={() => (window.location.href = "/cardio")}
-      style={{ ...MD.wrap, bottom: `calc(${bottomSafe}px + env(safe-area-inset-bottom))` }}
-      aria-label="Abrir cardio (mini player)"
-    >
-      <div style={MD.left}>
-        <div style={{ ...MD.dot, ...(live.running ? MD.dotOn : MD.dotOff) }} />
-        <div style={{ minWidth: 0 }}>
-          <div style={MD.top}>{live.running ? "Cardio rodando" : "Cardio pausado"}</div>
-          <div style={MD.sub}>
-            {String(live.title || "Cardio")} • {Math.round(Number(live.kcalPerMin || 0) || 0)} kcal/min
-          </div>
-        </div>
-      </div>
-
-      <div style={MD.right}>
-        <div style={MD.time}>{formatTime(shownSec)}</div>
-        <div style={MD.track}>
-          <div style={{ ...MD.fill, transform: `scaleX(${isTimer ? progress : live.running ? 0.35 : 0.18})` }} />
-        </div>
-      </div>
-    </button>
-  );
-}
-
-/* ---------------- styles ---------------- */
+/* ======================= STYLES ======================= */
 const S = {
-  page: { padding: 18, paddingBottom: 170, background: BG },
+  page: { padding: 18, paddingBottom: 190, background: BG },
 
   head: {
     borderRadius: 28,
@@ -1096,7 +1013,14 @@ const S = {
   heroTitle: { marginTop: 6, fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0, lineHeight: 1.05 },
   subLine: { marginTop: 10, fontSize: 13, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  modeRow: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" },
+  modeRow: {
+    marginTop: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
   modeSquareWrap: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -1135,9 +1059,7 @@ const S = {
     boxShadow: "0 22px 75px rgba(15,23,42,.06)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    transition: "transform .18s ease",
   },
-  centerPulse: { transform: "scale(0.996)" },
 
   centerMetaRow: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" },
   centerMeta: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
@@ -1244,34 +1166,8 @@ const S = {
   presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
   presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
-  actionsRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  actionMain: {
-    padding: 16,
-    borderRadius: 22,
-    border: "1px solid rgba(255,255,255,.14)",
-    display: "flex",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: 10,
-    fontWeight: 950,
-    boxShadow: "0 22px 70px rgba(2,6,23,.14)",
-  },
-  actionMainStart: { background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))", color: "#fff" },
-  actionMainPause: { background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))", color: "#111" },
-  actionMini: { fontSize: 12, fontWeight: 950, opacity: 0.75 },
-
-  actionGhost: {
-    padding: 16,
-    borderRadius: 22,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
-  },
-
   finishBtn: {
-    marginTop: 12,
+    marginTop: 14,
     width: "100%",
     padding: 18,
     borderRadius: 22,
@@ -1286,6 +1182,59 @@ const S = {
   finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
   note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
+  /* PLAY DOCK (flutuante grande) */
+  playDock: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    bottom: "calc(18px + env(safe-area-inset-bottom) + 86px)", // acima do BottomMenu
+    zIndex: 1200,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 10,
+    alignItems: "center",
+  },
+  playMain: {
+    width: "100%",
+    borderRadius: 26,
+    padding: 14,
+    border: "1px solid rgba(255,255,255,.14)",
+    boxShadow: "0 24px 80px rgba(2,6,23,.18)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    textAlign: "left",
+    overflow: "hidden",
+  },
+  playMainOff: {
+    background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))",
+    color: "#fff",
+  },
+  playMainOn: {
+    background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
+    color: "#111",
+  },
+  playMainLeft: { display: "flex", alignItems: "center", gap: 12, minWidth: 0 },
+  playDot: { width: 10, height: 10, borderRadius: 999 },
+  playDotOff: { background: "rgba(255,255,255,.55)", boxShadow: "0 0 0 8px rgba(255,255,255,.10)" },
+  playDotOn: { background: "rgba(0,0,0,.55)", boxShadow: "0 0 0 8px rgba(0,0,0,.10)" },
+  playTitle: { fontSize: 15, fontWeight: 950, letterSpacing: -0.2, whiteSpace: "nowrap" },
+  playSub: { marginTop: 4, fontSize: 12, fontWeight: 850, opacity: 0.8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  playTime: { fontSize: 18, fontWeight: 950, letterSpacing: -0.3, whiteSpace: "nowrap" },
+
+  playReset: {
+    width: 86,
+    padding: "14px 14px",
+    borderRadius: 22,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 16px 44px rgba(15,23,42,.08)",
+  },
+
+  /* LOCK */
   lockCard: {
     borderRadius: 26,
     padding: 18,
@@ -1309,6 +1258,7 @@ const S = {
     boxShadow: "0 16px 40px rgba(255,106,0,.20)",
   },
 
+  /* FLOATING CTA Nutri */
   floatingNutri: {
     position: "fixed",
     left: "50%",
@@ -1472,20 +1422,21 @@ const Sx = {
   },
 };
 
-/* ---- MiniDock styles ---- */
+/* ======================= MINI DOCK STYLES ======================= */
 const MD = {
   wrap: {
     position: "fixed",
     left: 12,
     right: 12,
-    zIndex: 9999,
-    borderRadius: 22,
+    bottom: "calc(12px + env(safe-area-inset-bottom) + 86px)", // acima do BottomMenu
+    zIndex: 1100,
+    borderRadius: 24,
     padding: 12,
     background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(255,255,255,.35)",
-    boxShadow: "0 22px 70px rgba(0,0,0,.18)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
+    border: "1px solid rgba(15,23,42,.08)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.12)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1493,25 +1444,22 @@ const MD = {
     textAlign: "left",
   },
   left: { display: "flex", alignItems: "center", gap: 10, minWidth: 0 },
-  dot: { width: 10, height: 10, borderRadius: 999, boxShadow: "0 0 0 6px rgba(255,106,0,.12)" },
-  dotOn: { background: ORANGE },
-  dotOff: { background: "rgba(15,23,42,.25)" },
-  top: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  sub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-
-  right: { display: "grid", justifyItems: "end", gap: 6, flexShrink: 0 },
+  dot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 8px rgba(255,106,0,.12)" },
+  top: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap" },
+  sub: { marginTop: 3, fontSize: 12, fontWeight: 850, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 },
+  right: { display: "grid", justifyItems: "end", gap: 8, flexShrink: 0 },
   time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   track: {
-    width: 92,
-    height: 8,
+    width: 100,
+    height: 10,
     borderRadius: 999,
-    background: "rgba(15,23,42,.08)",
+    background: "rgba(15,23,42,.06)",
     overflow: "hidden",
-    border: "1px solid rgba(15,23,42,.08)",
+    border: "1px solid rgba(15,23,42,.06)",
   },
   fill: {
-    width: "100%",
     height: "100%",
+    width: "100%",
     background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
     transformOrigin: "left center",
     transition: "transform .25s ease",
@@ -1519,7 +1467,7 @@ const MD = {
 };
 
 if (typeof document !== "undefined") {
-  const id = "fitdeal-cardio-pro-ui";
+  const id = "fitdeal-cardio-mini-global";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
@@ -1530,6 +1478,9 @@ if (typeof document !== "undefined") {
       }
       button:active { transform: scale(.99); }
       input[type="range"] { accent-color: ${ORANGE}; }
+      @media (prefers-reduced-motion: reduce){
+        * { animation: none !important; transition: none !important; }
+      }
     `;
     document.head.appendChild(style);
   }
