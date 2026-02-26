@@ -4,11 +4,12 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const AuthContext = createContext(null);
 
 // “banco local”
-const USERS_KEY = "fitdeal_users_v1"; // guarda todos os usuários
-const SESSION_KEY = "fitdeal_session_v1"; // guarda qual email está logado
+const USERS_KEY = "fitdeal_users_v1";      // guarda todos os usuários
+const SESSION_KEY = "fitdeal_session_v1";  // guarda qual email está logado
 
 function readJSON(key, fallback) {
   try {
+    if (typeof window === "undefined") return fallback;
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
@@ -16,30 +17,31 @@ function readJSON(key, fallback) {
   }
 }
 function writeJSON(key, value) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // ✅ importante pro ProtectedRoute não redirecionar “cedo”
+  const [ready, setReady] = useState(false); // ✅ importante
 
   // ✅ Rehidrata sessão ao abrir o app
   useEffect(() => {
     try {
+      if (typeof window === "undefined") return;
+
       const sessionEmail = localStorage.getItem(SESSION_KEY);
       if (!sessionEmail) {
-        setUser(null);
-        setLoading(false);
+        setReady(true);
         return;
       }
 
       const users = readJSON(USERS_KEY, {});
       const found = users[String(sessionEmail).toLowerCase()];
-      setUser(found || null);
+      if (found) setUser(found);
+      setReady(true);
     } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
+      setReady(true);
     }
   }, []);
 
@@ -61,7 +63,7 @@ export function AuthProvider({ children }) {
       id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
       nome,
       email,
-      senha, // ⚠️ depois trocar por auth real
+      senha, // ⚠️ depois troca por auth real
       altura,
       peso,
       objetivo: "hipertrofia",
@@ -76,6 +78,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem(SESSION_KEY, email);
 
     setUser(newUser);
+    setReady(true);
     return { ok: true };
   }
 
@@ -90,6 +93,7 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem(SESSION_KEY, email);
     setUser(found);
+    setReady(true);
     return { ok: true };
   }
 
@@ -108,13 +112,13 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    localStorage.removeItem(SESSION_KEY);
+    if (typeof window !== "undefined") localStorage.removeItem(SESSION_KEY);
     setUser(null);
   }
 
   const value = useMemo(
-    () => ({ user, loading, signup, loginWithEmail, updateUser, logout }),
-    [user, loading]
+    () => ({ user, ready, signup, loginWithEmail, updateUser, logout }),
+    [user, ready]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
