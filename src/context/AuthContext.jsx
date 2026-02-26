@@ -1,11 +1,11 @@
-// ✅ COLE EM: src/context/AuthContext.jsx  (ou .tsx se for o seu caso)
+// ✅ COLE EM: src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
 
 // “banco local”
-const USERS_KEY = "fitdeal_users_v1";      // guarda todos os usuários
-const SESSION_KEY = "fitdeal_session_v1";  // guarda qual email está logado
+const USERS_KEY = "fitdeal_users_v1"; // guarda todos os usuários
+const SESSION_KEY = "fitdeal_session_v1"; // guarda qual email está logado
 
 function readJSON(key, fallback) {
   try {
@@ -21,15 +21,26 @@ function writeJSON(key, value) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // ✅ importante pro ProtectedRoute não redirecionar “cedo”
 
   // ✅ Rehidrata sessão ao abrir o app
   useEffect(() => {
-    const sessionEmail = localStorage.getItem(SESSION_KEY);
-    if (!sessionEmail) return;
+    try {
+      const sessionEmail = localStorage.getItem(SESSION_KEY);
+      if (!sessionEmail) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-    const users = readJSON(USERS_KEY, {});
-    const found = users[sessionEmail.toLowerCase()];
-    if (found) setUser(found);
+      const users = readJSON(USERS_KEY, {});
+      const found = users[String(sessionEmail).toLowerCase()];
+      setUser(found || null);
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   function signup(form) {
@@ -50,7 +61,7 @@ export function AuthProvider({ children }) {
       id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
       nome,
       email,
-      senha, // ⚠️ depois você troca por auth real (Stripe/Backend). Por enquanto ok.
+      senha, // ⚠️ depois trocar por auth real
       altura,
       peso,
       objetivo: "hipertrofia",
@@ -102,8 +113,8 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({ user, signup, loginWithEmail, updateUser, logout }),
-    [user]
+    () => ({ user, loading, signup, loginWithEmail, updateUser, logout }),
+    [user, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
