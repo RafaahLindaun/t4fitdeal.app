@@ -20,17 +20,16 @@ import ComoFunciona from "./pages/ComoFunciona.jsx";
 
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
-// ✅ Só pra controlar onde o BottomMenu aparece (sem mexer no BottomMenu.jsx)
 function BottomMenuGate() {
   const { user } = useAuth();
   const { pathname } = useLocation();
 
   if (!user) return null;
-
-  // ✅ Aqui é a única regra: no onboarding NÃO mostra menu
   if (pathname.startsWith("/onboarding")) return null;
+  if (pathname === "/") return null;
 
   return <BottomMenu />;
 }
@@ -70,7 +69,14 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/treino/detalhe" element={<TreinoDetalhe />} />
+        <Route
+          path="/treino/detalhe"
+          element={
+            <ProtectedRoute>
+              <TreinoDetalhe />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/treino/personalizar"
@@ -90,7 +96,14 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/calendario" element={<Calendario />} />
+        <Route
+          path="/calendario"
+          element={
+            <ProtectedRoute>
+              <Calendario />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/suplementacao"
@@ -176,7 +189,6 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
       </Routes>
 
-      {/* ✅ Menu agora só aparece fora do onboarding */}
       <BottomMenuGate />
     </BrowserRouter>
   );
@@ -184,8 +196,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
