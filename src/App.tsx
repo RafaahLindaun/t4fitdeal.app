@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -29,8 +28,6 @@ function BottomMenuGate() {
   const { pathname } = useLocation();
 
   if (!user) return null;
-
-  // ✅ Aqui é a única regra: no onboarding NÃO mostra menu
   if (pathname.startsWith("/onboarding")) return null;
 
   return <BottomMenu />;
@@ -71,7 +68,15 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/treino/detalhe" element={<TreinoDetalhe />} />
+        {/* ✅ CORRIGIDO: também protegido */}
+        <Route
+          path="/treino/detalhe"
+          element={
+            <ProtectedRoute>
+              <TreinoDetalhe />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/treino/personalizar"
@@ -91,7 +96,14 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/calendario" element={<Calendario />} />
+        <Route
+          path="/calendario"
+          element={
+            <ProtectedRoute>
+              <Calendario />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/suplementacao"
@@ -137,7 +149,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/nutriplus"
           element={
@@ -187,6 +199,6 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-    </AuthProvider> 
+    </AuthProvider>
   );
 }
