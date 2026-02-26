@@ -1,12 +1,16 @@
+// ✅ COLE EM: src/components/ProtectedRoute.jsx
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, ready } = useAuth();
 
-  if (loading) return null; // ou um "Carregando…" se quiser
+  // ✅ enquanto reidrata sessão, não decide nada
+  if (!ready) return null;
 
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
 
   return children;
 }
