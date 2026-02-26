@@ -1,12 +1,8 @@
 // ✅ COLE EM: src/pages/Cardio.jsx
 // Cardio — estilo Apple + cores do app + "mini play" global (sem libs)
-// Inclui:
-// - Header com "fitdeal." (ponto laranja fixo)
-// - Modo: Timer / Cronômetro / Por calorias
-// - Modalidades (chips) + intensidade
-// - Intervalos opcionais
-// - Persistência LIVE em localStorage (continua contando ao trocar de página)
-// - Export: CardioMiniDock (mini player global)
+// - Persistência LIVE em localStorage (continua contando ao trocar de tela)
+// - Toast Apple-like quando termina (e ao voltar do fundo mostra "terminou há X")
+// - Export: CardioMiniDock (mini player global) — renderize DENTRO do Router
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -30,22 +26,6 @@ function safeJsonParse(raw, fallback) {
   }
 }
 
-function yyyyMmDd(d = new Date()) {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, "0");
-  const day = String(dt.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function getGoal(user) {
-  const raw = String(user?.objetivo || "hipertrofia").toLowerCase();
-  if (raw.includes("power")) return "powerlifting";
-  if (raw.includes("body")) return "bodybuilding";
-  if (raw.includes("cond")) return "condicionamento";
-  if (raw.includes("saud") || raw.includes("bem")) return "saude";
-  return "hipertrofia";
-}
 function nowTs() {
   return Date.now();
 }
@@ -68,6 +48,23 @@ function vibrate(ms = 24) {
       navigator.vibrate(ms);
     }
   } catch {}
+}
+
+function yyyyMmDd(d = new Date()) {
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getGoal(user) {
+  const raw = String(user?.objetivo || "hipertrofia").toLowerCase();
+  if (raw.includes("power")) return "powerlifting";
+  if (raw.includes("body")) return "bodybuilding";
+  if (raw.includes("cond")) return "condicionamento";
+  if (raw.includes("saud") || raw.includes("bem")) return "saude";
+  return "hipertrofia";
 }
 
 function getLevel(user) {
@@ -115,16 +112,6 @@ function getCardioOptions(goal, level) {
   return base.map((o) => ({ ...o, met: clamp(o.met * mult, 3.2, 11.5) }));
 }
 
-/* -------- haptics leve -------- */
-function vibrate(ms = 16) {
-  try {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      // @ts-ignore
-      navigator.vibrate(ms);
-    }
-  } catch {}
-}
-
 function getCongrats(goal, level) {
   if (goal === "saude")
     return level === "iniciante"
@@ -159,15 +146,17 @@ function clearLive(email) {
     localStorage.removeItem(liveKey(email));
   } catch {}
 }
-function computeElapsedTotalSec(live, nowTs) {
+
+function computeElapsedTotalSec(live, tsNow) {
   if (!live) return 0;
   const base = Number(live.elapsedSecBase || 0) || 0;
   if (!live.running) return base;
-  const last = Number(live.lastStartTs || 0) || nowTs;
-  return base + Math.max(0, Math.floor((nowTs - last) / 1000));
+  const last = Number(live.lastStartTs || 0) || tsNow;
+  return base + Math.max(0, Math.floor((tsNow - last) / 1000));
 }
-function computeShownSecondsFromLive(live, nowTs) {
-  const elapsed = computeElapsedTotalSec(live, nowTs);
+
+function computeShownSecondsFromLive(live, tsNow) {
+  const elapsed = computeElapsedTotalSec(live, tsNow);
   const isTimer = live?.mode === "timer";
   const dur = Number(live?.durationSec || 0) || 0;
   if (isTimer) return Math.max(0, dur - elapsed);
@@ -312,8 +301,8 @@ export default function Cardio() {
   const paid = typeof window !== "undefined" ? localStorage.getItem(`paid_${email}`) === "1" : false;
 
   const [toast, setToast] = useState(null);
-// toast: { title: string, text: string, ts: number }
-  
+  // toast: { title: string, text: string, ts: number }
+
   // compatível com flags antigas e novas
   const nutriPlusNew = typeof window !== "undefined" ? localStorage.getItem(`nutri_plus_${email}`) === "1" : false;
   const nutriPlusOld = typeof window !== "undefined" ? localStorage.getItem(`nutri_${email}`) === "1" : false;
@@ -365,7 +354,7 @@ export default function Cardio() {
     }
   }
 
-  // ✅ sempre que mudar “parâmetros” importantes, escreve live “parado”
+  // escreve live “parado”
   function syncLiveStopped(extra = {}) {
     const durationSec = mode === "timer" ? clamp(Number(minutes || 0), 1, 999) * 60 : 0;
 
@@ -385,82 +374,73 @@ export default function Cardio() {
       intOff,
       phase: intervalId === "off" ? "steady" : phase,
       phaseLeft: intervalId === "off" ? 0 : phaseLeft,
-      updatedAt: Date.now(),
+      updatedAt: nowTs(),
       ...extra,
     });
   }
-useEffect(() => {
-  if (typeof document === "undefined") return;
 
-  const onVis = () => {
-    if (document.visibilityState !== "visible") return;
+  // ✅ ao voltar do fundo (ou foco), se terminou, mostra toast “terminou há X”
+  useEffect(() => {
+    if (typeof document === "undefined") return;
 
-    const live = readLive(email);
-    if (!live) return;
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
 
-    // terminou enquanto estava fora e ainda não mostramos
-    if (live.finishedAt && !live.finishedShown) {
-      const agoMs = nowTs() - Number(live.finishedAt || 0);
-      const ago = msToHumanAgo(agoMs);
+      const live = readLive(email);
+      if (!live) return;
 
-      setToast({
-        title: "Seu cardio acabou.",
-        text: `Terminou há ${ago}. Quer registrar?`,
-        ts: nowTs(),
-      });
+      if (live.finishedAt && !live.finishedShown) {
+        const ago = msToHumanAgo(nowTs() - Number(live.finishedAt || 0));
 
-      // marca como mostrado pra não repetir
-      writeLive(email, { ...live, finishedShown: true, updatedAt: nowTs() });
+        setToast({
+          title: "Seu cardio acabou.",
+          text: `Terminou há ${ago}.`,
+          ts: nowTs(),
+        });
 
-      vibrate(25);
-      window.setTimeout(() => setToast(null), 4200);
-    }
-  };
+        writeLive(email, { ...live, finishedShown: true, updatedAt: nowTs() });
+        vibrate(25);
+        window.setTimeout(() => setToast(null), 4200);
+      }
+    };
 
-  document.addEventListener("visibilitychange", onVis);
-  window.addEventListener("focus", onVis);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    onVis();
 
-  // roda uma vez ao montar
-  onVis();
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+  }, [email]);
 
-  return () => {
-    document.removeEventListener("visibilitychange", onVis);
-    window.removeEventListener("focus", onVis);
-  };
-}, [email]);
-  
   // ✅ restaura live quando entra na página Cardio
   useEffect(() => {
     const live = readLive(email);
     if (!live) return;
 
-    // restaura seleção básica
     if (live.type) setPicked(live.type);
     if (typeof live.intensity === "number") setIntensity(clamp(live.intensity, 70, 115));
-
     if (live.mode === "chrono" || live.mode === "timer") setMode(live.mode);
 
     if (live.intervalId) setIntervalId(live.intervalId);
     if (typeof live.intOn === "number") setIntOn(live.intOn);
     if (typeof live.intOff === "number") setIntOff(live.intOff);
 
-    // tempo
-    const nowTs = Date.now();
-    const elapsedTotal = computeElapsedTotalSec(live, nowTs);
+    const tsNow = nowTs();
+    const elapsedTotal = computeElapsedTotalSec(live, tsNow);
     const dur = Number(live.durationSec || 0) || 0;
 
     if (live.mode === "timer") {
       const totalMin = clamp(Math.round(dur / 60) || 20, 5, 240);
       setMinutes(totalMin);
-      const rem = Math.max(0, dur - elapsedTotal);
-      setRemaining(rem);
+      setRemaining(Math.max(0, dur - elapsedTotal));
       setElapsed(0);
     } else {
       setElapsed(elapsedTotal);
       setRemaining(0);
     }
 
-    // fase intervalos
     if (live.intervalId && live.intervalId !== "off") {
       setPhase(live.phase === "easy" ? "easy" : "strong");
       setPhaseLeft(clamp(Number(live.phaseLeft || 0), 0, 9999));
@@ -468,45 +448,27 @@ useEffect(() => {
       setPhase("steady");
       setPhaseLeft(0);
     }
-if (rem <= 0) {
-  setRunning(false);
-  stopTick();
 
-  const finishedAt = nowTs;
-  writeLive(email, {
-    ...live,
-    running: false,
-    elapsedSecBase: dur,
-    lastStartTs: 0,
-    finishedAt,          // ✅ marca quando terminou
-    finishedShown: false // ✅ ainda não mostramos a mensagem
-  });
+    setRunning(!!live.running);
 
-  vibrate(45);
-  setToast({
-    title: "Acabou.",
-    text: "Boa. Descanso fechado — bora continuar.",
-    ts: finishedAt,
-  });
-
-  // some sozinho
-  window.setTimeout(() => setToast(null), 3200);
-  return;
-}
+    if (live.running) {
+      stopTick();
+      tickRef.current = setInterval(() => tickOneSecond(false), 1000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
 
   function pause() {
     setRunning(false);
     stopTick();
 
-    // transforma running->false calculando elapsedBase corretamente
     const live = readLive(email);
-    const nowTs = Date.now();
-    const elapsedTotal = computeElapsedTotalSec(live, nowTs);
+    const tsNow = nowTs();
+    const elapsedTotal = computeElapsedTotalSec(live, tsNow);
 
     if (mode === "timer") {
       const durationSec = clamp(Number(minutes || 0), 1, 999) * 60;
-      const rem = Math.max(0, durationSec - elapsedTotal);
-      setRemaining(rem);
+      setRemaining(Math.max(0, durationSec - elapsedTotal));
 
       writeLive(email, {
         ...(live || {}),
@@ -514,7 +476,7 @@ if (rem <= 0) {
         elapsedSecBase: elapsedTotal,
         lastStartTs: 0,
         durationSec,
-        updatedAt: nowTs,
+        updatedAt: tsNow,
       });
     } else {
       setElapsed(elapsedTotal);
@@ -524,7 +486,7 @@ if (rem <= 0) {
         elapsedSecBase: elapsedTotal,
         lastStartTs: 0,
         durationSec: 0,
-        updatedAt: nowTs,
+        updatedAt: tsNow,
       });
     }
   }
@@ -543,7 +505,7 @@ if (rem <= 0) {
     setPhase(intervalId === "off" ? "steady" : "strong");
     setPhaseLeft(intervalId === "off" ? 0 : intOn);
 
-    clearLive(email); // reset total mesmo
+    clearLive(email);
     syncLiveStopped({ cleared: true });
   }
 
@@ -563,18 +525,12 @@ if (rem <= 0) {
     vibrate(14);
     setRunning(true);
 
-    // inicia live
-    const nowTs = Date.now();
+    const tsNow = nowTs();
     const current = readLive(email);
 
-    // calcula elapsedBase atual
     let elapsedBase = 0;
-    if (current) {
-      const elapsedTotal = computeElapsedTotalSec(current, nowTs);
-      elapsedBase = elapsedTotal;
-    } else {
-      elapsedBase = mode === "timer" ? Math.max(0, minutes * 60 - remaining) : elapsed;
-    }
+    if (current) elapsedBase = computeElapsedTotalSec(current, tsNow);
+    else elapsedBase = mode === "timer" ? Math.max(0, minutes * 60 - remaining) : elapsed;
 
     const durationSec = mode === "timer" ? clamp(Number(minutes || 0), 1, 999) * 60 : 0;
 
@@ -583,7 +539,7 @@ if (rem <= 0) {
       mode,
       durationSec,
       elapsedSecBase: elapsedBase,
-      lastStartTs: nowTs,
+      lastStartTs: tsNow,
       title: opt?.title || "Cardio",
       type: opt?.id || "walk",
       met: metNow,
@@ -594,23 +550,22 @@ if (rem <= 0) {
       intOff,
       phase: intervalId === "off" ? "steady" : phase,
       phaseLeft: intervalId === "off" ? 0 : phaseLeft || (phase === "easy" ? intOff : intOn),
-      updatedAt: nowTs,
+      finishedAt: 0,
+      finishedShown: true,
+      updatedAt: tsNow,
     });
 
     stopTick();
-    tickRef.current = setInterval(() => {
-      tickOneSecond(false);
-    }, 1000);
+    tickRef.current = setInterval(() => tickOneSecond(false), 1000);
   }
 
   function tickOneSecond(fromRestore) {
     const live = readLive(email);
     if (!live || !live.running) return;
 
-    const nowTs = Date.now();
-    const elapsedTotal = computeElapsedTotalSec(live, nowTs);
+    const tsNow = nowTs();
+    const elapsedTotal = computeElapsedTotalSec(live, tsNow);
 
-    // intervalos
     const intervalOn = live.intervalId !== "off" && Number(live.intOn) > 0 && Number(live.intOff) > 0;
 
     if (live.mode === "timer") {
@@ -620,10 +575,28 @@ if (rem <= 0) {
       setElapsed(0);
 
       if (rem <= 0) {
-        // acabou
         setRunning(false);
         stopTick();
-        writeLive(email, { ...live, running: false, elapsedSecBase: dur, lastStartTs: 0, updatedAt: nowTs });
+
+        const finishedAt = tsNow;
+
+        writeLive(email, {
+          ...live,
+          running: false,
+          elapsedSecBase: dur,
+          lastStartTs: 0,
+          finishedAt,
+          finishedShown: false,
+          updatedAt: tsNow,
+        });
+
+        vibrate(45);
+        setToast({
+          title: "Acabou.",
+          text: "Boa. Tempo fechado — bora continuar.",
+          ts: finishedAt,
+        });
+        window.setTimeout(() => setToast(null), 3200);
         return;
       }
     } else {
@@ -631,37 +604,25 @@ if (rem <= 0) {
       setRemaining(0);
     }
 
-    // fase (intervalos) — controla no live pra manter consistente
     if (intervalOn) {
-      let phase = live.phase === "easy" ? "easy" : "strong";
+      let p = live.phase === "easy" ? "easy" : "strong";
       let left = Number(live.phaseLeft || 0) || 0;
 
-      if (!fromRestore) {
-        left = Math.max(0, left - 1);
-      }
+      if (!fromRestore) left = Math.max(0, left - 1);
 
       if (left <= 0) {
-        const next = phase === "strong" ? "easy" : "strong";
-        phase = next;
+        const next = p === "strong" ? "easy" : "strong";
+        p = next;
         left = next === "strong" ? Number(live.intOn || 0) : Number(live.intOff || 0);
         vibrate(10);
       }
 
-      setPhase(phase);
+      setPhase(p);
       setPhaseLeft(left);
 
-      writeLive(email, {
-        ...live,
-        phase,
-        phaseLeft: left,
-        updatedAt: nowTs,
-      });
+      writeLive(email, { ...live, phase: p, phaseLeft: left, updatedAt: tsNow });
     } else {
-      // atualiza só o tempo para o dock
-      writeLive(email, {
-        ...live,
-        updatedAt: nowTs,
-      });
+      writeLive(email, { ...live, updatedAt: tsNow });
     }
   }
 
@@ -670,10 +631,8 @@ if (rem <= 0) {
     else start();
   }
 
-  // tempo exibido
   const shownTime = mode === "timer" ? formatTime(remaining) : formatTime(elapsed);
 
-  // minutos "andados"
   const elapsedMin = useMemo(() => {
     if (mode === "timer") {
       const doneSec = Math.max(0, minutes * 60 - remaining);
@@ -690,7 +649,6 @@ if (rem <= 0) {
     return clamp(1 - remaining / (minutes * 60), 0, 1);
   }, [mode, minutes, remaining]);
 
-  // “Por calorias”
   function startByCalories() {
     const kcal = clamp(Number(kcalTarget || 0), 10, 5000);
     if (!Number.isFinite(kcal) || kcal <= 0) return;
@@ -718,7 +676,6 @@ if (rem <= 0) {
     vibrate(10);
     setIntSheet(false);
 
-    // se estiver rodando, sincroniza no live
     const live = readLive(email);
     if (live) {
       writeLive(email, {
@@ -728,7 +685,7 @@ if (rem <= 0) {
         intOff: offS,
         phase: id === "off" ? "steady" : "strong",
         phaseLeft: id === "off" ? 0 : onS,
-        updatedAt: Date.now(),
+        updatedAt: nowTs(),
       });
     }
   }
@@ -794,11 +751,9 @@ if (rem <= 0) {
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
   }
 
-  // CTA flutuante — MAIS PRA BAIXO
   const BOTTOM_MENU_SAFE = 102;
   const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 12;
 
-  // paywall
   if (!paid) {
     return (
       <div style={S.page}>
@@ -839,6 +794,22 @@ if (rem <= 0) {
 
   return (
     <div style={S.page}>
+      {/* TOAST */}
+      {toast ? (
+        <div style={T.wrap} role="status" aria-live="polite">
+          <div style={T.card}>
+            <div style={T.dot} />
+            <div style={{ minWidth: 0 }}>
+              <div style={T.title}>{toast.title}</div>
+              <div style={T.text}>{toast.text}</div>
+            </div>
+            <button type="button" style={T.x} onClick={() => setToast(null)} aria-label="Fechar">
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {/* HEADER */}
       <div style={S.head}>
         <div style={S.brandRow}>
@@ -976,7 +947,7 @@ if (rem <= 0) {
               const v = Number(e.target.value);
               setIntensity(v);
               const live = readLive(email);
-              if (live) writeLive(email, { ...live, intensity: v, updatedAt: Date.now() });
+              if (live) writeLive(email, { ...live, intensity: v, updatedAt: nowTs() });
             }}
             style={S.slider}
           />
@@ -988,7 +959,7 @@ if (rem <= 0) {
           </div>
         </div>
 
-        {/* MODALIDADES (grid que não estoura) */}
+        {/* MODALIDADES */}
         <div style={S.ringGrid}>
           {ringItems.map((o) => {
             const on = picked === o.id;
@@ -1016,11 +987,16 @@ if (rem <= 0) {
           })}
         </div>
 
-        {/* PRESETS (só no timer) */}
+        {/* PRESETS */}
         {mode === "timer" ? (
           <div style={S.presets}>
             {[10, 15, 20, 30, 45, 60].map((m) => (
-              <button key={m} onClick={() => setPresetMin(m)} style={{ ...S.presetBtn, ...(minutes === m ? S.presetOn : S.presetOff) }} type="button">
+              <button
+                key={m}
+                onClick={() => setPresetMin(m)}
+                style={{ ...S.presetBtn, ...(minutes === m ? S.presetOn : S.presetOff) }}
+                type="button"
+              >
                 {m}min
               </button>
             ))}
@@ -1029,7 +1005,11 @@ if (rem <= 0) {
 
         {/* CONTROLES */}
         <div style={S.actionsRow}>
-          <button type="button" onClick={toggleRun} style={{ ...S.actionMain, ...(running ? S.actionMainPause : S.actionMainStart) }}>
+          <button
+            type="button"
+            onClick={toggleRun}
+            style={{ ...S.actionMain, ...(running ? S.actionMainPause : S.actionMainStart) }}
+          >
             <span>{running ? "Pausar" : "Começar"}</span>
             <span style={S.actionMini}>{running ? "segura" : "vai"}</span>
           </button>
@@ -1039,7 +1019,12 @@ if (rem <= 0) {
           </button>
         </div>
 
-        <button type="button" onClick={finish} disabled={elapsedMin < 3} style={{ ...S.finishBtn, ...(elapsedMin < 3 ? S.finishDisabled : null) }}>
+        <button
+          type="button"
+          onClick={finish}
+          disabled={elapsedMin < 3}
+          style={{ ...S.finishBtn, ...(elapsedMin < 3 ? S.finishDisabled : null) }}
+        >
           Concluir cardio
         </button>
 
@@ -1048,14 +1033,18 @@ if (rem <= 0) {
         </div>
       </div>
 
-      {/* CTA flutuante — MAIS PRA BAIXO */}
+      {/* CTA flutuante */}
       {!nutriPlus ? (
         <button onClick={() => nav("/planos")} style={{ ...S.floatingNutri, bottom: FLOATING_BOTTOM }} type="button">
           <span style={S.floatDot} />
           Liberar Nutri+
         </button>
       ) : (
-        <button onClick={() => nav("/nutricao")} style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }} type="button">
+        <button
+          onClick={() => nav("/nutricao")}
+          style={{ ...S.floatingNutri, ...S.floatingNutriPaid, bottom: FLOATING_BOTTOM }}
+          type="button"
+        >
           Ver minha refeição
         </button>
       )}
@@ -1073,7 +1062,12 @@ if (rem <= 0) {
         onStart={startByCalories}
       />
 
-      <IntervalsSheet open={intSheet} onClose={() => setIntSheet(false)} current={intervalId} onSelect={(id, onS, offS) => applyIntervals(id, onS, offS)} />
+      <IntervalsSheet
+        open={intSheet}
+        onClose={() => setIntSheet(false)}
+        current={intervalId}
+        onSelect={(id, onS, offS) => applyIntervals(id, onS, offS)}
+      />
 
       <div style={{ height: 220 }} />
     </div>
@@ -1081,22 +1075,21 @@ if (rem <= 0) {
 }
 
 /* ---------------- MINI DOCK (GLOBAL) ----------------
-   ✅ Use isso em App/Layout (fora do Cardio) pra aparecer em todas as telas.
-   ✅ NÃO usa useNavigate (não quebra se estiver fora do Router).
+   ✅ Renderize DENTRO do Router (ex.: dentro de <BrowserRouter>).
 */
 export function CardioMiniDock() {
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
-  const nav = useNavigate(); // ✅ agora pode usar porque fica dentro do Router
+  const nav = useNavigate();
 
   const [live, setLive] = useState(null);
-  const [nowTs, setNowTs] = useState(Date.now());
+  const [tsNow, setTsNow] = useState(nowTs());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const pull = () => {
-      setNowTs(Date.now());
+      setTsNow(nowTs());
       setLive(readLive(email));
     };
 
@@ -1107,10 +1100,10 @@ export function CardioMiniDock() {
 
   if (!live) return null;
 
-  const shownSec = computeShownSecondsFromLive(live, nowTs);
+  const shownSec = computeShownSecondsFromLive(live, tsNow);
   const isTimer = live.mode === "timer";
   const dur = Number(live.durationSec || 0) || 0;
-  const elapsedTotal = computeElapsedTotalSec(live, nowTs);
+  const elapsedTotal = computeElapsedTotalSec(live, tsNow);
   const progress = isTimer && dur > 0 ? clamp(elapsedTotal / dur, 0, 1) : 0;
 
   const hasAnyTime = isTimer ? dur > 0 && shownSec < dur : shownSec > 0;
@@ -1121,7 +1114,7 @@ export function CardioMiniDock() {
   return (
     <button
       type="button"
-      onClick={() => nav("/cardio")} // ✅ sem reload, sem crash
+      onClick={() => nav("/cardio")}
       style={{ ...MD.wrap, bottom: `calc(${bottomSafe}px + env(safe-area-inset-bottom))` }}
       aria-label="Abrir cardio (mini player)"
     >
@@ -1144,21 +1137,6 @@ export function CardioMiniDock() {
     </button>
   );
 }
-
-{toast ? (
-  <div style={T.wrap} role="status" aria-live="polite">
-    <div style={T.card}>
-      <div style={T.dot} />
-      <div style={{ minWidth: 0 }}>
-        <div style={T.title}>{toast.title}</div>
-        <div style={T.text}>{toast.text}</div>
-      </div>
-      <button type="button" style={T.x} onClick={() => setToast(null)} aria-label="Fechar">
-        ✕
-      </button>
-    </div>
-  </div>
-) : null}
 
 /* ---------------- styles ---------------- */
 const S = {
@@ -1191,46 +1169,14 @@ const S = {
   subLine: { marginTop: 10, fontSize: 13, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
   modeRow: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  modeSquareWrap: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    width: "min(420px, 100%)",
-    flex: "1 1 260px",
-  },
-  modeSquareBtn: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    fontWeight: 950,
-    fontSize: 13,
-    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
-  },
+  modeSquareWrap: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "min(420px, 100%)", flex: "1 1 260px" },
+  modeSquareBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", fontWeight: 950, fontSize: 13, boxShadow: "0 12px 34px rgba(15,23,42,.06)" },
   modeSquareOn: { background: "#0B0B0C", color: "#fff", borderColor: "rgba(255,255,255,.10)" },
   modeSquareOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
-  kcalBtn: {
-    padding: "12px 14px",
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "rgba(255,106,0,.10)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 12px 34px rgba(255,106,0,.10)",
-    whiteSpace: "nowrap",
-  },
+  kcalBtn: { padding: "12px 14px", borderRadius: 18, border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,106,0,.10)", color: TEXT, fontWeight: 950, boxShadow: "0 12px 34px rgba(255,106,0,.10)", whiteSpace: "nowrap" },
 
-  centerCard: {
-    marginTop: 14,
-    borderRadius: 28,
-    padding: 18,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 22px 75px rgba(15,23,42,.06)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    transition: "transform .18s ease",
-  },
+  centerCard: { marginTop: 14, borderRadius: 28, padding: 18, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 22px 75px rgba(15,23,42,.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", transition: "transform .18s ease" },
   centerPulse: { transform: "scale(0.996)" },
 
   centerMetaRow: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" },
@@ -1240,85 +1186,27 @@ const S = {
   centerMetaTxt: { fontSize: 12, fontWeight: 900, color: MUTED },
 
   miniActions: { display: "inline-flex", gap: 10 },
-  miniBtn: {
-    padding: "10px 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 10px 24px rgba(15,23,42,.05)",
-  },
+  miniBtn: { padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, boxShadow: "0 10px 24px rgba(15,23,42,.05)" },
 
-  squareTimeBox: {
-    marginTop: 14,
-    borderRadius: 24,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
-    overflow: "hidden",
-  },
+  squareTimeBox: { marginTop: 14, borderRadius: 24, padding: 16, background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 18px 60px rgba(15,23,42,.08)", overflow: "hidden" },
   squareTime: { fontSize: 56, fontWeight: 950, color: TEXT, letterSpacing: -1.8, lineHeight: 1 },
-  squareTrack: {
-    marginTop: 12,
-    width: "100%",
-    height: 12,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    overflow: "hidden",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  squareFill: {
-    height: "100%",
-    width: "100%",
-    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
-    transformOrigin: "left center",
-    transition: "transform .25s ease",
-  },
+  squareTrack: { marginTop: 12, width: "100%", height: 12, borderRadius: 999, background: "rgba(15,23,42,.06)", overflow: "hidden", border: "1px solid rgba(15,23,42,.06)" },
+  squareFill: { height: "100%", width: "100%", background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transformOrigin: "left center", transition: "transform .25s ease" },
   squareGhost: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
   squareSub: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  intensityCard: {
-    marginTop: 14,
-    borderRadius: 24,
-    padding: 14,
-    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
-    border: "1px solid rgba(255,106,0,.16)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
+  intensityCard: { marginTop: 14, borderRadius: 24, padding: 14, background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))", border: "1px solid rgba(255,106,0,.16)", boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
   intTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" },
   intTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   intSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-  intPill: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,.86)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 950,
-    color: TEXT,
-    whiteSpace: "nowrap",
-  },
+  intPill: { padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,.86)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 950, color: TEXT, whiteSpace: "nowrap" },
   slider: { width: "100%", marginTop: 12 },
   intBottom: { marginTop: 8, display: "flex", justifyContent: "space-between", gap: 10 },
   intMini: { fontSize: 11, fontWeight: 900, color: MUTED },
 
   ringGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 },
-  ringChip: {
-    width: "100%",
-    textAlign: "left",
-    borderRadius: 22,
-    padding: 14,
-    border: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.92)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-    overflow: "hidden",
-  },
-  ringChipOn: {
-    borderColor: "rgba(255,106,0,.20)",
-    background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.06))",
-    boxShadow: "0 18px 55px rgba(255,106,0,.10)",
-  },
+  ringChip: { width: "100%", textAlign: "left", borderRadius: 22, padding: 14, border: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.92)", boxShadow: "0 14px 40px rgba(15,23,42,.06)", overflow: "hidden" },
+  ringChipOn: { borderColor: "rgba(255,106,0,.20)", background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.06))", boxShadow: "0 18px 55px rgba(255,106,0,.10)" },
   ringChipOff: {},
   ringChipTop: { display: "flex", alignItems: "center", gap: 10 },
   ringChipDot: { width: 9, height: 9, borderRadius: 999, background: "rgba(15,23,42,.18)", boxShadow: "0 0 0 7px rgba(15,23,42,.06)" },
@@ -1327,115 +1215,30 @@ const S = {
   ringChipSub: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.3 },
 
   presets: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
-  presetBtn: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    fontWeight: 950,
-    background: "rgba(255,255,255,.92)",
-    boxShadow: "0 10px 22px rgba(15,23,42,.04)",
-  },
+  presetBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", fontWeight: 950, background: "rgba(255,255,255,.92)", boxShadow: "0 10px 22px rgba(15,23,42,.04)" },
   presetOn: { background: ORANGE, border: "none", color: "#111", boxShadow: "0 16px 44px rgba(255,106,0,.16)" },
   presetOff: { background: "rgba(255,255,255,.92)", color: TEXT },
 
   actionsRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  actionMain: {
-    padding: 16,
-    borderRadius: 22,
-    border: "1px solid rgba(255,255,255,.14)",
-    display: "flex",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: 10,
-    fontWeight: 950,
-    boxShadow: "0 22px 70px rgba(2,6,23,.14)",
-  },
+  actionMain: { padding: 16, borderRadius: 22, border: "1px solid rgba(255,255,255,.14)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, fontWeight: 950, boxShadow: "0 22px 70px rgba(2,6,23,.14)" },
   actionMainStart: { background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))", color: "#fff" },
   actionMainPause: { background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))", color: "#111" },
   actionMini: { fontSize: 12, fontWeight: 950, opacity: 0.75 },
 
-  actionGhost: {
-    padding: 16,
-    borderRadius: 22,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
-  },
+  actionGhost: { padding: 16, borderRadius: 22, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, boxShadow: "0 14px 34px rgba(15,23,42,.06)" },
 
-  finishBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 18,
-    borderRadius: 22,
-    border: "1px solid rgba(255,255,255,.10)",
-    background: "linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))",
-    color: "#fff",
-    fontWeight: 950,
-    fontSize: 14,
-    letterSpacing: 0.2,
-    boxShadow: "0 22px 70px rgba(2,6,23,.22)",
-  },
+  finishBtn: { marginTop: 12, width: "100%", padding: 18, borderRadius: 22, border: "1px solid rgba(255,255,255,.10)", background: "linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))", color: "#fff", fontWeight: 950, fontSize: 14, letterSpacing: 0.2, boxShadow: "0 22px 70px rgba(2,6,23,.22)" },
   finishDisabled: { opacity: 0.55, filter: "grayscale(0.2)" },
   note: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
-  lockCard: {
-    borderRadius: 26,
-    padding: 18,
-    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 22px 70px rgba(15,23,42,.10)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-  },
+  lockCard: { borderRadius: 26, padding: 18, background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.78))", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 22px 70px rgba(15,23,42,.10)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" },
   lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
-  lockBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
-  },
+  lockBtn: { marginTop: 12, width: "100%", padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 16px 40px rgba(255,106,0,.20)" },
 
-  floatingNutri: {
-    position: "fixed",
-    left: "50%",
-    transform: "translateX(-50%)",
-    zIndex: 999,
-    padding: "14px 18px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,.20)",
-    background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 22px 70px rgba(255,106,0,.20)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    animation: "nutriFloat 3.2s ease-in-out infinite",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  },
-  floatingNutriPaid: {
-    background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))",
-    color: "#fff",
-    boxShadow: "0 22px 80px rgba(0,0,0,.18)",
-    border: "1px solid rgba(255,255,255,.10)",
-    animation: "nutriFloat 3.6s ease-in-out infinite",
-  },
-  floatDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    background: "rgba(255,255,255,.60)",
-    boxShadow: "0 0 0 7px rgba(255,255,255,.12)",
-  },
+  floatingNutri: { position: "fixed", left: "50%", transform: "translateX(-50%)", zIndex: 999, padding: "14px 18px", borderRadius: 999, border: "1px solid rgba(255,255,255,.20)", background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))", color: "#111", fontWeight: 950, boxShadow: "0 22px 70px rgba(255,106,0,.20)", display: "inline-flex", alignItems: "center", gap: 10, animation: "nutriFloat 3.2s ease-in-out infinite", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" },
+  floatingNutriPaid: { background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))", color: "#fff", boxShadow: "0 22px 80px rgba(0,0,0,.18)", border: "1px solid rgba(255,255,255,.10)", animation: "nutriFloat 3.6s ease-in-out infinite" },
+  floatDot: { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,.60)", boxShadow: "0 0 0 7px rgba(255,255,255,.12)" },
 };
 
 const Sx = {
@@ -1475,98 +1278,28 @@ const Sx = {
   sheetSectionTitle: { marginTop: 10, fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
 
   sheetOptList: { marginTop: 10, display: "grid", gap: 10 },
-  sheetOpt: {
-    width: "100%",
-    textAlign: "left",
-    borderRadius: 22,
-    padding: 14,
-    border: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.92)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-  },
-  sheetOptOn: {
-    background: "linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,106,0,.06))",
-    borderColor: "rgba(255,106,0,.20)",
-    boxShadow: "0 18px 55px rgba(255,106,0,.10)",
-  },
+  sheetOpt: { width: "100%", textAlign: "left", borderRadius: 22, padding: 14, border: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.92)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  sheetOptOn: { background: "linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,106,0,.06))", borderColor: "rgba(255,106,0,.20)", boxShadow: "0 18px 55px rgba(255,106,0,.10)" },
   sheetOptOff: {},
   sheetOptTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   sheetOptSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
 
-  sheetPill: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    fontWeight: 950,
-    fontSize: 12,
-    color: TEXT,
-    whiteSpace: "nowrap",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
+  sheetPill: { padding: "8px 10px", borderRadius: 999, background: "rgba(15,23,42,.06)", fontWeight: 950, fontSize: 12, color: TEXT, whiteSpace: "nowrap", border: "1px solid rgba(15,23,42,.06)" },
   sheetPillOn: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.18)" },
 
   sheetInputRow: { marginTop: 10, display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" },
-  sheetInput: {
-    width: "100%",
-    padding: "14px 14px",
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.96)",
-    outline: "none",
-    fontSize: 14,
-    fontWeight: 900,
-    boxShadow: "0 12px 30px rgba(15,23,42,.06)",
-  },
+  sheetInput: { width: "100%", padding: "14px 14px", borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.96)", outline: "none", fontSize: 14, fontWeight: 900, boxShadow: "0 12px 30px rgba(15,23,42,.06)" },
   sheetUnit: { fontSize: 12, fontWeight: 950, color: MUTED },
   sheetHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  sheetFooter: {
-    padding: "12px 14px",
-    borderTop: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.90)",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  sheetCancel: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  sheetGo: {
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 44px rgba(255,106,0,.18)",
-  },
+  sheetFooter: { padding: "12px 14px", borderTop: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.90)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  sheetCancel: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950 },
+  sheetGo: { padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 16px 44px rgba(255,106,0,.18)" },
 
-  sheetFooterSingle: {
-    padding: "12px 14px",
-    borderTop: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.90)",
-  },
-  sheetBack: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: "#0B0B0C",
-    color: "#fff",
-    fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(0,0,0,.18)",
-  },
+  sheetFooterSingle: { padding: "12px 14px", borderTop: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.90)" },
+  sheetBack: { width: "100%", padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.18)" },
 };
 
-/* ---- MiniDock styles ---- */
 const MD = {
   wrap: {
     position: "fixed",
@@ -1592,42 +1325,12 @@ const MD = {
   dotOff: { background: "rgba(15,23,42,.25)" },
   top: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   sub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-
   right: { display: "grid", justifyItems: "end", gap: 6, flexShrink: 0 },
   time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  track: {
-    width: 92,
-    height: 8,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.08)",
-    overflow: "hidden",
-    border: "1px solid rgba(15,23,42,.08)",
-  },
-  fill: {
-    width: "100%",
-    height: "100%",
-    background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
-    transformOrigin: "left center",
-    transition: "transform .25s ease",
-  },
+  track: { width: 92, height: 8, borderRadius: 999, background: "rgba(15,23,42,.08)", overflow: "hidden", border: "1px solid rgba(15,23,42,.08)" },
+  fill: { width: "100%", height: "100%", background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transformOrigin: "left center", transition: "transform .25s ease" },
 };
 
-if (typeof document !== "undefined") {
-  const id = "fitdeal-cardio-pro-ui";
-  if (!document.getElementById(id)) {
-    const style = document.createElement("style");
-    style.id = id;
-    style.innerHTML = `
-      @keyframes nutriFloat {
-        0%, 100% { transform: translateX(-50%) translateY(0px); }
-        50% { transform: translateX(-50%) translateY(-2px); }
-      }
-      button:active { transform: scale(.99); }
-      input[type="range"] { accent-color: ${ORANGE}; }
-    `;
-    document.head.appendChild(style);
-  }
-}
 const T = {
   wrap: {
     position: "fixed",
@@ -1653,27 +1356,25 @@ const T = {
     gap: 10,
     pointerEvents: "auto",
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 7px rgba(255,106,0,.12)",
-    flexShrink: 0,
-  },
+  dot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 7px rgba(255,106,0,.12)", flexShrink: 0 },
   title: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   text: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.25 },
-  x: {
-    marginLeft: "auto",
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    border: "none",
-    background: "rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
-    display: "grid",
-    placeItems: "center",
-  },
+  x: { marginLeft: "auto", width: 40, height: 40, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, display: "grid", placeItems: "center" },
 };
 
+if (typeof document !== "undefined") {
+  const id = "fitdeal-cardio-pro-ui";
+  if (!document.getElementById(id)) {
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes nutriFloat {
+        0%, 100% { transform: translateX(-50%) translateY(0px); }
+        50% { transform: translateX(-50%) translateY(-2px); }
+      }
+      button:active { transform: scale(.99); }
+      input[type="range"] { accent-color: ${ORANGE}; }
+    `;
+    document.head.appendChild(style);
+  }
+}
