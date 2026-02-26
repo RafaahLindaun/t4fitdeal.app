@@ -46,6 +46,29 @@ function getGoal(user) {
   if (raw.includes("saud") || raw.includes("bem")) return "saude";
   return "hipertrofia";
 }
+function nowTs() {
+  return Date.now();
+}
+
+function msToHumanAgo(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m <= 0) return `${r}s`;
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm}min`;
+}
+
+function vibrate(ms = 24) {
+  try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      // @ts-ignore
+      navigator.vibrate(ms);
+    }
+  } catch {}
+}
 
 function getLevel(user) {
   const raw = String(user?.nivel || "iniciante").toLowerCase();
@@ -288,6 +311,9 @@ export default function Cardio() {
 
   const paid = typeof window !== "undefined" ? localStorage.getItem(`paid_${email}`) === "1" : false;
 
+  const [toast, setToast] = useState(null);
+// toast: { title: string, text: string, ts: number }
+  
   // compatível com flags antigas e novas
   const nutriPlusNew = typeof window !== "undefined" ? localStorage.getItem(`nutri_plus_${email}`) === "1" : false;
   const nutriPlusOld = typeof window !== "undefined" ? localStorage.getItem(`nutri_${email}`) === "1" : false;
@@ -363,7 +389,46 @@ export default function Cardio() {
       ...extra,
     });
   }
+useEffect(() => {
+  if (typeof document === "undefined") return;
 
+  const onVis = () => {
+    if (document.visibilityState !== "visible") return;
+
+    const live = readLive(email);
+    if (!live) return;
+
+    // terminou enquanto estava fora e ainda não mostramos
+    if (live.finishedAt && !live.finishedShown) {
+      const agoMs = nowTs() - Number(live.finishedAt || 0);
+      const ago = msToHumanAgo(agoMs);
+
+      setToast({
+        title: "Seu cardio acabou.",
+        text: `Terminou há ${ago}. Quer registrar?`,
+        ts: nowTs(),
+      });
+
+      // marca como mostrado pra não repetir
+      writeLive(email, { ...live, finishedShown: true, updatedAt: nowTs() });
+
+      vibrate(25);
+      window.setTimeout(() => setToast(null), 4200);
+    }
+  };
+
+  document.addEventListener("visibilitychange", onVis);
+  window.addEventListener("focus", onVis);
+
+  // roda uma vez ao montar
+  onVis();
+
+  return () => {
+    document.removeEventListener("visibilitychange", onVis);
+    window.removeEventListener("focus", onVis);
+  };
+}, [email]);
+  
   // ✅ restaura live quando entra na página Cardio
   useEffect(() => {
     const live = readLive(email);
@@ -403,17 +468,31 @@ export default function Cardio() {
       setPhase("steady");
       setPhaseLeft(0);
     }
+if (rem <= 0) {
+  setRunning(false);
+  stopTick();
 
-    setRunning(!!live.running);
-    // se estava rodando, reativa o tick local
-    if (live.running) {
-      stopTick();
-      tickRef.current = setInterval(() => {
-        tickOneSecond(true);
-      }, 1000);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email]);
+  const finishedAt = nowTs;
+  writeLive(email, {
+    ...live,
+    running: false,
+    elapsedSecBase: dur,
+    lastStartTs: 0,
+    finishedAt,          // ✅ marca quando terminou
+    finishedShown: false // ✅ ainda não mostramos a mensagem
+  });
+
+  vibrate(45);
+  setToast({
+    title: "Acabou.",
+    text: "Boa. Descanso fechado — bora continuar.",
+    ts: finishedAt,
+  });
+
+  // some sozinho
+  window.setTimeout(() => setToast(null), 3200);
+  return;
+}
 
   function pause() {
     setRunning(false);
@@ -1066,6 +1145,21 @@ export function CardioMiniDock() {
   );
 }
 
+{toast ? (
+  <div style={T.wrap} role="status" aria-live="polite">
+    <div style={T.card}>
+      <div style={T.dot} />
+      <div style={{ minWidth: 0 }}>
+        <div style={T.title}>{toast.title}</div>
+        <div style={T.text}>{toast.text}</div>
+      </div>
+      <button type="button" style={T.x} onClick={() => setToast(null)} aria-label="Fechar">
+        ✕
+      </button>
+    </div>
+  </div>
+) : null}
+
 /* ---------------- styles ---------------- */
 const S = {
   page: { padding: 18, paddingBottom: 170, background: BG },
@@ -1534,4 +1628,52 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+const T = {
+  wrap: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    top: "calc(12px + env(safe-area-inset-top))",
+    zIndex: 99999,
+    display: "grid",
+    placeItems: "center",
+    pointerEvents: "none",
+  },
+  card: {
+    width: "min(520px, 100%)",
+    borderRadius: 22,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 22px 70px rgba(0,0,0,.18)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    pointerEvents: "auto",
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 7px rgba(255,106,0,.12)",
+    flexShrink: 0,
+  },
+  title: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  text: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.25 },
+  x: {
+    marginLeft: "auto",
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    border: "none",
+    background: "rgba(15,23,42,.06)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "grid",
+    placeItems: "center",
+  },
+};
 
