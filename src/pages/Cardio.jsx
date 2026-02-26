@@ -1008,6 +1008,7 @@ export default function Cardio() {
 export function CardioMiniDock() {
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
+  const nav = useNavigate(); // ✅ agora pode usar porque fica dentro do Router
 
   const [live, setLive] = useState(null);
   const [nowTs, setNowTs] = useState(Date.now());
@@ -1033,16 +1034,15 @@ export function CardioMiniDock() {
   const elapsedTotal = computeElapsedTotalSec(live, nowTs);
   const progress = isTimer && dur > 0 ? clamp(elapsedTotal / dur, 0, 1) : 0;
 
-  // só mostra se: rodando OU pausado com algum tempo já feito
   const hasAnyTime = isTimer ? dur > 0 && shownSec < dur : shownSec > 0;
   if (!live.running && !hasAnyTime) return null;
 
-  const bottomSafe = 102 + 10; // acima do BottomMenu
+  const bottomSafe = 102 + 10;
 
   return (
     <button
       type="button"
-      onClick={() => (window.location.href = "/cardio")}
+      onClick={() => nav("/cardio")} // ✅ sem reload, sem crash
       style={{ ...MD.wrap, bottom: `calc(${bottomSafe}px + env(safe-area-inset-bottom))` }}
       aria-label="Abrir cardio (mini player)"
     >
@@ -1534,3 +1534,4 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
