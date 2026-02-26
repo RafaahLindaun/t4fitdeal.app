@@ -1,4 +1,3 @@
-// ✅ COLE EM: src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
@@ -9,7 +8,6 @@ const SESSION_KEY = "fitdeal_session_v1";  // guarda qual email está logado
 
 function readJSON(key, fallback) {
   try {
-    if (typeof window === "undefined") return fallback;
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
@@ -17,32 +15,20 @@ function readJSON(key, fallback) {
   }
 }
 function writeJSON(key, value) {
-  if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [ready, setReady] = useState(false); // ✅ importante
 
   // ✅ Rehidrata sessão ao abrir o app
   useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
+    const sessionEmail = localStorage.getItem(SESSION_KEY);
+    if (!sessionEmail) return;
 
-      const sessionEmail = localStorage.getItem(SESSION_KEY);
-      if (!sessionEmail) {
-        setReady(true);
-        return;
-      }
-
-      const users = readJSON(USERS_KEY, {});
-      const found = users[String(sessionEmail).toLowerCase()];
-      if (found) setUser(found);
-      setReady(true);
-    } catch {
-      setReady(true);
-    }
+    const users = readJSON(USERS_KEY, {});
+    const found = users[sessionEmail.toLowerCase()];
+    if (found) setUser(found);
   }, []);
 
   function signup(form) {
@@ -63,7 +49,7 @@ export function AuthProvider({ children }) {
       id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
       nome,
       email,
-      senha, // ⚠️ depois troca por auth real
+      senha, // ⚠️ depois você troca por auth real (Stripe/Backend). Por enquanto ok.
       altura,
       peso,
       objetivo: "hipertrofia",
@@ -78,7 +64,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem(SESSION_KEY, email);
 
     setUser(newUser);
-    setReady(true);
     return { ok: true };
   }
 
@@ -93,7 +78,6 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem(SESSION_KEY, email);
     setUser(found);
-    setReady(true);
     return { ok: true };
   }
 
@@ -112,13 +96,13 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    if (typeof window !== "undefined") localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
     setUser(null);
   }
 
   const value = useMemo(
-    () => ({ user, ready, signup, loginWithEmail, updateUser, logout }),
-    [user, ready]
+    () => ({ user, signup, loginWithEmail, updateUser, logout }),
+    [user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
