@@ -3,19 +3,39 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const AuthContext = createContext(null);
 
 // “banco local”
-const USERS_KEY = "fitdeal_users_v1";      // guarda todos os usuários
-const SESSION_KEY = "fitdeal_session_v1";  // guarda qual email está logado
+const USERS_KEY = "fitdeal_users_v1";
+const SESSION_KEY = "fitdeal_session_v1";
+
+function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+}
+function safeRemoveItem(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
 
 function readJSON(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = safeGetItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
   }
 }
 function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    safeSetItem(key, JSON.stringify(value));
+  } catch {}
 }
 
 export function AuthProvider({ children }) {
@@ -23,11 +43,11 @@ export function AuthProvider({ children }) {
 
   // ✅ Rehidrata sessão ao abrir o app
   useEffect(() => {
-    const sessionEmail = localStorage.getItem(SESSION_KEY);
+    const sessionEmail = safeGetItem(SESSION_KEY);
     if (!sessionEmail) return;
 
     const users = readJSON(USERS_KEY, {});
-    const found = users[sessionEmail.toLowerCase()];
+    const found = users[String(sessionEmail).toLowerCase()];
     if (found) setUser(found);
   }, []);
 
@@ -49,7 +69,7 @@ export function AuthProvider({ children }) {
       id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
       nome,
       email,
-      senha, // ⚠️ depois você troca por auth real (Stripe/Backend). Por enquanto ok.
+      senha,
       altura,
       peso,
       objetivo: "hipertrofia",
@@ -61,7 +81,7 @@ export function AuthProvider({ children }) {
 
     users[email] = newUser;
     writeJSON(USERS_KEY, users);
-    localStorage.setItem(SESSION_KEY, email);
+    safeSetItem(SESSION_KEY, email);
 
     setUser(newUser);
     return { ok: true };
@@ -76,7 +96,7 @@ export function AuthProvider({ children }) {
     if (!found) return { ok: false, msg: "Conta não encontrada. Use Sign up." };
     if (found.senha !== senha) return { ok: false, msg: "Senha incorreta." };
 
-    localStorage.setItem(SESSION_KEY, email);
+    safeSetItem(SESSION_KEY, email);
     setUser(found);
     return { ok: true };
   }
@@ -90,20 +110,17 @@ export function AuthProvider({ children }) {
       users[next.email.toLowerCase()] = next;
       writeJSON(USERS_KEY, users);
 
-      localStorage.setItem(SESSION_KEY, next.email.toLowerCase());
+      safeSetItem(SESSION_KEY, next.email.toLowerCase());
       return next;
     });
   }
 
   function logout() {
-    localStorage.removeItem(SESSION_KEY);
+    safeRemoveItem(SESSION_KEY);
     setUser(null);
   }
 
-  const value = useMemo(
-    () => ({ user, signup, loginWithEmail, updateUser, logout }),
-    [user]
-  );
+  const value = useMemo(() => ({ user, signup, loginWithEmail, updateUser, logout }), [user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
