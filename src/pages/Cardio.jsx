@@ -1192,15 +1192,16 @@ const S = {
 squareWrap: {
   marginTop: 14,
   width: "100%",
-  maxWidth: 380,                 // controla o tamanho do quadrado
-  aspectRatio: "1 / 1",          // ✅ quadrado perfeito
+  maxWidth: 380,
+  aspectRatio: "1 / 1",
   marginLeft: "auto",
   marginRight: "auto",
+  position: "relative", // fallback iOS
 },
 
 squareTimeBox: {
-  width: "100%",
-  height: "100%",
+  position: "absolute",
+  inset: 0,
   borderRadius: 24,
   padding: 16,
   display: "flex",
@@ -1444,5 +1445,6 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
 
 
