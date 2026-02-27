@@ -913,7 +913,7 @@ export default function Cardio() {
 
         {/* TIMER QUADRADO */}
         <div style={S.squareTimeBox}>
-          <div style={S.squareTime}>{shownTime}</div>
+          <div style={S.squareTime} className="fitdeal-digital-time">{shownTime}</div>
 
           {mode === "timer" ? (
             <div style={S.squareTrack}>
@@ -1402,3 +1402,4 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
