@@ -1378,3 +1378,27 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+if (typeof document !== "undefined") {
+  const id = "fitdeal-cardio-fonts";
+  if (!document.getElementById(id)) {
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @font-face{
+        font-family: "FitdealSevenSeg";
+        src: url("/fonts/SevenSegment.ttf") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      .fitdeal-digital-time{
+        font-family: "FitdealSevenSeg", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+        letter-spacing: 1px;
+        font-variant-numeric: tabular-nums;
+        text-rendering: geometricPrecision;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
