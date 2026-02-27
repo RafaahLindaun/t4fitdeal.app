@@ -1,9 +1,8 @@
 // ✅ COLE EM: src/pages/Cardio.jsx
-// Cardio — estilo Apple + cores do app + "mini play" global (sem libs)
+// Cardio — estética clean/leve + funcionalidades novas
 // - Persistência LIVE em localStorage (continua contando ao trocar de tela)
 // - Toast Apple-like quando termina (e ao voltar do fundo mostra "terminou há X")
 // - Export: CardioMiniDock (mini player global) — renderize DENTRO do Router
-// ✅ EXTRA: Número do tempo em fonte "7 segmentos" (digital) via /public/fonts/SevenSegment.ttf
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -42,7 +41,7 @@ function msToHumanAgo(ms) {
   return `${h}h ${mm}min`;
 }
 
-function vibrate(ms = 24) {
+function vibrate(ms = 16) {
   try {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(ms);
@@ -126,6 +125,18 @@ function getCongrats(goal, level) {
   return "Fechado. Consistência vence.";
 }
 
+// ✅ NOVO (leve e útil): micro-incentivo durante o treino
+function getMicroPush(goal, level, running, elapsedMin) {
+  if (!running && elapsedMin <= 0) return "Começa leve e mantém. O corpo entende constância.";
+  if (!running && elapsedMin > 0) return "Pausou? Tudo bem. Respira e volta quando der.";
+  if (elapsedMin < 3) return "Só mais um pouco — 3 min já registra no dashboard.";
+  if (elapsedMin < 10) return "Ritmo bom. Mantém estável.";
+  if (goal === "condicionamento") return level === "avancado" ? "Acelera controlado. Você aguenta." : "Foco na respiração e cadência.";
+  if (goal === "bodybuilding") return "Cardio inteligente: firme, sem se matar.";
+  if (goal === "powerlifting") return "Leve e constante: melhora recuperação.";
+  return "Boa. Continua. Resultado é inevitável.";
+}
+
 /* ---------------- LIVE persistence ---------------- */
 function liveKey(email) {
   return `cardio_live_${email}`;
@@ -195,7 +206,9 @@ function CaloriesSheet({ open, onClose, options, picked, onPick, kcalTarget, set
                 >
                   <div style={{ minWidth: 0 }}>
                     <div style={Sx.sheetOptTitle}>{o.title}</div>
-                    <div style={Sx.sheetOptSub}>{Math.round(o.met)} MET • intensidade {intensity}%</div>
+                    <div style={Sx.sheetOptSub}>
+                      {Math.round(o.met)} MET • intensidade {intensity}%
+                    </div>
                   </div>
                   <div style={{ ...Sx.sheetPill, ...(on ? Sx.sheetPillOn : null) }}>{on ? "OK" : "—"}</div>
                 </button>
@@ -250,7 +263,7 @@ function IntervalsSheet({ open, onClose, current, onSelect }) {
         <div style={Sx.sheetHead}>
           <div style={{ minWidth: 0 }}>
             <div style={Sx.sheetTitle}>Intervalos (opcional)</div>
-            <div style={Sx.sheetSub}>Pra quem curte ritmo: alterna forte/levezinho automaticamente.</div>
+            <div style={Sx.sheetSub}>Alterna forte/levezinho automaticamente.</div>
           </div>
           <button style={Sx.sheetX} type="button" onClick={onClose} aria-label="Fechar">
             ✕
@@ -370,17 +383,24 @@ export default function Cardio() {
     });
   }
 
+  // ✅ ao voltar do fundo (ou foco), se terminou, mostra toast “terminou há X”
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
+
       const live = readLive(email);
       if (!live) return;
 
       if (live.finishedAt && !live.finishedShown) {
         const ago = msToHumanAgo(nowTs() - Number(live.finishedAt || 0));
-        setToast({ title: "Seu cardio acabou.", text: `Terminou há ${ago}.`, ts: nowTs() });
+
+        setToast({
+          title: "Seu cardio acabou.",
+          text: `Terminou há ${ago}.`,
+          ts: nowTs(),
+        });
 
         writeLive(email, { ...live, finishedShown: true, updatedAt: nowTs() });
         vibrate(25);
@@ -398,6 +418,7 @@ export default function Cardio() {
     };
   }, [email]);
 
+  // ✅ restaura live quando entra na página Cardio
   useEffect(() => {
     const live = readLive(email);
     if (!live) return;
@@ -574,7 +595,11 @@ export default function Cardio() {
         });
 
         vibrate(45);
-        setToast({ title: "Acabou.", text: "Boa. Tempo fechado — bora continuar.", ts: finishedAt });
+        setToast({
+          title: "Acabou.",
+          text: "Boa. Tempo fechado — bora continuar.",
+          ts: finishedAt,
+        });
         window.setTimeout(() => setToast(null), 3200);
         return;
       }
@@ -733,6 +758,7 @@ export default function Cardio() {
   const BOTTOM_MENU_SAFE = 102;
   const FLOATING_BOTTOM = BOTTOM_MENU_SAFE + 12;
 
+  // paywall
   if (!paid) {
     return (
       <div style={S.page}>
@@ -766,6 +792,8 @@ export default function Cardio() {
   const kpmNow = Math.round(kcalPerMin);
   const phaseLabel =
     intervalId === "off" ? "Ritmo livre" : phase === "strong" ? `Forte • ${phaseLeft}s` : `Leve • ${phaseLeft}s`;
+
+  const microPush = useMemo(() => getMicroPush(goal, level, running, elapsedMin), [goal, level, running, elapsedMin]);
 
   return (
     <div style={S.page}>
@@ -886,11 +914,9 @@ export default function Cardio() {
           </div>
         </div>
 
-        {/* TIMER QUADRADO (igual seu atual) */}
+        {/* TIMER */}
         <div style={S.squareTimeBox}>
-          <div style={S.squareTime} className="fitdeal-digital-time">
-            {shownTime}
-          </div>
+          <div style={S.squareTime}>{shownTime}</div>
 
           {mode === "timer" ? (
             <div style={S.squareTrack}>
@@ -903,6 +929,9 @@ export default function Cardio() {
           <div style={S.squareSub}>
             Estimativa: <b>~{estKcal} kcal</b> • {elapsedMin} min
           </div>
+
+          {/* ✅ incentivo discreto (novo, leve) */}
+          <div style={S.microPush}>{microPush}</div>
         </div>
 
         {/* INTENSIDADE */}
@@ -1106,9 +1135,7 @@ export function CardioMiniDock() {
       </div>
 
       <div style={MD.right}>
-        <div style={MD.time} className="fitdeal-digital-time">
-          {formatTime(shownSec)}
-        </div>
+        <div style={MD.time}>{formatTime(shownSec)}</div>
         <div style={MD.track}>
           <div style={{ ...MD.fill, transform: `scaleX(${isTimer ? progress : live.running ? 0.35 : 0.18})` }} />
         </div>
@@ -1167,20 +1194,13 @@ const S = {
   miniActions: { display: "inline-flex", gap: 10 },
   miniBtn: { padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, boxShadow: "0 10px 24px rgba(15,23,42,.05)" },
 
-  squareTimeBox: {
-    marginTop: 14,
-    borderRadius: 24,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
-    overflow: "hidden",
-  },
-  squareTime: { fontSize: 56, fontWeight: 950, color: TEXT, letterSpacing: 1, lineHeight: 1 },
+  squareTimeBox: { marginTop: 14, borderRadius: 24, padding: 16, background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 18px 60px rgba(15,23,42,.08)", overflow: "hidden" },
+  squareTime: { fontSize: 56, fontWeight: 950, color: TEXT, letterSpacing: -1.8, lineHeight: 1 },
   squareTrack: { marginTop: 12, width: "100%", height: 12, borderRadius: 999, background: "rgba(15,23,42,.06)", overflow: "hidden", border: "1px solid rgba(15,23,42,.06)" },
   squareFill: { height: "100%", width: "100%", background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transformOrigin: "left center", transition: "transform .25s ease" },
   squareGhost: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
   squareSub: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  microPush: { marginTop: 10, fontSize: 12, fontWeight: 850, color: "rgba(100,116,139,.95)", lineHeight: 1.35 },
 
   intensityCard: { marginTop: 14, borderRadius: 24, padding: 14, background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))", border: "1px solid rgba(255,106,0,.16)", boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
   intTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" },
@@ -1287,7 +1307,6 @@ const Sx = {
   sheetBack: { width: "100%", padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.18)" },
 };
 
-/* ---- MiniDock styles ---- */
 const MD = {
   wrap: {
     position: "fixed",
@@ -1315,7 +1334,7 @@ const MD = {
   sub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
 
   right: { display: "grid", justifyItems: "end", gap: 6, flexShrink: 0 },
-  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: 1 },
+  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   track: { width: 92, height: 8, borderRadius: 999, background: "rgba(15,23,42,.08)", overflow: "hidden", border: "1px solid rgba(15,23,42,.08)" },
   fill: { width: "100%", height: "100%", background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transformOrigin: "left center", transition: "transform .25s ease" },
 };
@@ -1351,7 +1370,6 @@ const T = {
   x: { marginLeft: "auto", width: 40, height: 40, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, display: "grid", placeItems: "center" },
 };
 
-/* ---- inject styles (1x) ---- */
 if (typeof document !== "undefined") {
   const id = "fitdeal-cardio-pro-ui";
   if (!document.getElementById(id)) {
@@ -1364,30 +1382,6 @@ if (typeof document !== "undefined") {
       }
       button:active { transform: scale(.99); }
       input[type="range"] { accent-color: ${ORANGE}; }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-if (typeof document !== "undefined") {
-  const id = "fitdeal-cardio-fonts";
-  if (!document.getElementById(id)) {
-    const style = document.createElement("style");
-    style.id = id;
-    style.innerHTML = `
-      @font-face{
-        font-family: "FitdealSevenSeg";
-        src: url("/fonts/SevenSegment.ttf") format("truetype");
-        font-weight: 400;
-        font-style: normal;
-        font-display: swap;
-      }
-      .fitdeal-digital-time{
-        font-family: "FitdealSevenSeg", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-        letter-spacing: 1px;
-        font-variant-numeric: tabular-nums;
-        text-rendering: geometricPrecision;
-      }
     `;
     document.head.appendChild(style);
   }
