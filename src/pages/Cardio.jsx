@@ -3,6 +3,7 @@
 // - Persistência LIVE em localStorage (continua contando ao trocar de tela)
 // - Toast Apple-like quando termina (e ao voltar do fundo mostra "terminou há X")
 // - Export: CardioMiniDock (mini player global) — renderize DENTRO do Router
+// ✅ EXTRA: Número do tempo em fonte "7 segmentos" (digital) via /public/fonts/SevenSegment.ttf
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -44,7 +45,6 @@ function msToHumanAgo(ms) {
 function vibrate(ms = 24) {
   try {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      // @ts-ignore
       navigator.vibrate(ms);
     }
   } catch {}
@@ -301,9 +301,7 @@ export default function Cardio() {
   const paid = typeof window !== "undefined" ? localStorage.getItem(`paid_${email}`) === "1" : false;
 
   const [toast, setToast] = useState(null);
-  // toast: { title: string, text: string, ts: number }
 
-  // compatível com flags antigas e novas
   const nutriPlusNew = typeof window !== "undefined" ? localStorage.getItem(`nutri_plus_${email}`) === "1" : false;
   const nutriPlusOld = typeof window !== "undefined" ? localStorage.getItem(`nutri_${email}`) === "1" : false;
   const nutriPlus = nutriPlusNew || nutriPlusOld;
@@ -316,35 +314,29 @@ export default function Cardio() {
   const [picked, setPicked] = useState(options[0]?.id || "walk");
   const opt = useMemo(() => options.find((o) => o.id === picked) || options[0], [options, picked]);
 
-  // intensidade
   const [intensity, setIntensity] = useState(100);
   const intensityMult = useMemo(() => clamp(intensity / 100, 0.7, 1.15), [intensity]);
   const metNow = useMemo(() => clamp((opt?.met || 4.3) * intensityMult, 3.0, 12.5), [opt, intensityMult]);
   const kcalPerMin = useMemo(() => calcKcalPerMin({ kg: weightKg, met: metNow }), [weightKg, metNow]);
 
-  // modos
   const [mode, setMode] = useState("timer"); // timer | chrono
 
-  // timer/chrono
   const [minutes, setMinutes] = useState(20);
   const [remaining, setRemaining] = useState(20 * 60);
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
   const tickRef = useRef(null);
 
-  // intervalos
   const [intervalId, setIntervalId] = useState("off");
   const [intOn, setIntOn] = useState(0);
   const [intOff, setIntOff] = useState(0);
   const [phase, setPhase] = useState("steady"); // strong | easy | steady
   const [phaseLeft, setPhaseLeft] = useState(0);
 
-  // sheets
   const [calSheet, setCalSheet] = useState(false);
   const [kcalTarget, setKcalTarget] = useState("");
   const [intSheet, setIntSheet] = useState(false);
 
-  // “press”
   const [pulsePick, setPulsePick] = useState(false);
 
   function stopTick() {
@@ -354,7 +346,6 @@ export default function Cardio() {
     }
   }
 
-  // escreve live “parado”
   function syncLiveStopped(extra = {}) {
     const durationSec = mode === "timer" ? clamp(Number(minutes || 0), 1, 999) * 60 : 0;
 
@@ -379,24 +370,17 @@ export default function Cardio() {
     });
   }
 
-  // ✅ ao voltar do fundo (ou foco), se terminou, mostra toast “terminou há X”
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
-
       const live = readLive(email);
       if (!live) return;
 
       if (live.finishedAt && !live.finishedShown) {
         const ago = msToHumanAgo(nowTs() - Number(live.finishedAt || 0));
-
-        setToast({
-          title: "Seu cardio acabou.",
-          text: `Terminou há ${ago}.`,
-          ts: nowTs(),
-        });
+        setToast({ title: "Seu cardio acabou.", text: `Terminou há ${ago}.`, ts: nowTs() });
 
         writeLive(email, { ...live, finishedShown: true, updatedAt: nowTs() });
         vibrate(25);
@@ -414,7 +398,6 @@ export default function Cardio() {
     };
   }, [email]);
 
-  // ✅ restaura live quando entra na página Cardio
   useEffect(() => {
     const live = readLive(email);
     if (!live) return;
@@ -591,11 +574,7 @@ export default function Cardio() {
         });
 
         vibrate(45);
-        setToast({
-          title: "Acabou.",
-          text: "Boa. Tempo fechado — bora continuar.",
-          ts: finishedAt,
-        });
+        setToast({ title: "Acabou.", text: "Boa. Tempo fechado — bora continuar.", ts: finishedAt });
         window.setTimeout(() => setToast(null), 3200);
         return;
       }
@@ -786,11 +765,7 @@ export default function Cardio() {
   const ringItems = options.slice(0, 6);
   const kpmNow = Math.round(kcalPerMin);
   const phaseLabel =
-    intervalId === "off"
-      ? "Ritmo livre"
-      : phase === "strong"
-      ? `Forte • ${phaseLeft}s`
-      : `Leve • ${phaseLeft}s`;
+    intervalId === "off" ? "Ritmo livre" : phase === "strong" ? `Forte • ${phaseLeft}s` : `Leve • ${phaseLeft}s`;
 
   return (
     <div style={S.page}>
@@ -911,23 +886,24 @@ export default function Cardio() {
           </div>
         </div>
 
-       <div style={S.squareWrap}>
-  <div style={S.squareTimeBox}>
-    <div style={S.squareTime} className="fitdeal-digital-time">{shownTime}</div>
+        {/* TIMER QUADRADO (igual seu atual) */}
+        <div style={S.squareTimeBox}>
+          <div style={S.squareTime} className="fitdeal-digital-time">
+            {shownTime}
+          </div>
 
-    {mode === "timer" ? (
-      <div style={S.squareTrack}>
-        <div style={{ ...S.squareFill, transform: `scaleX(${progress})` }} />
-      </div>
-    ) : (
-      <div style={S.squareGhost}>Sem limite de tempo</div>
-    )}
+          {mode === "timer" ? (
+            <div style={S.squareTrack}>
+              <div style={{ ...S.squareFill, transform: `scaleX(${progress})` }} />
+            </div>
+          ) : (
+            <div style={S.squareGhost}>Sem limite de tempo</div>
+          )}
 
-    <div style={S.squareSub}>
-      Estimativa: <b>~{estKcal} kcal</b> • {elapsedMin} min
-    </div>
-  </div>
-</div>
+          <div style={S.squareSub}>
+            Estimativa: <b>~{estKcal} kcal</b> • {elapsedMin} min
+          </div>
+        </div>
 
         {/* INTENSIDADE */}
         <div style={S.intensityCard}>
@@ -1130,7 +1106,9 @@ export function CardioMiniDock() {
       </div>
 
       <div style={MD.right}>
-        <div style={MD.time}>{formatTime(shownSec)}</div>
+        <div style={MD.time} className="fitdeal-digital-time">
+          {formatTime(shownSec)}
+        </div>
         <div style={MD.track}>
           <div style={{ ...MD.fill, transform: `scaleX(${isTimer ? progress : live.running ? 0.35 : 0.18})` }} />
         </div>
@@ -1189,29 +1167,21 @@ const S = {
   miniActions: { display: "inline-flex", gap: 10 },
   miniBtn: { padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.92)", color: TEXT, fontWeight: 950, boxShadow: "0 10px 24px rgba(15,23,42,.05)" },
 
-squareWrap: {
-  marginTop: 14,
-  width: "100%",
-  maxWidth: 380,
-  aspectRatio: "1 / 1",
-  marginLeft: "auto",
-  marginRight: "auto",
-  position: "relative", // fallback iOS
-},
+  squareTimeBox: {
+    marginTop: 14,
+    borderRadius: 24,
+    padding: 16,
+    background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
+    overflow: "hidden",
+  },
+  squareTime: { fontSize: 56, fontWeight: 950, color: TEXT, letterSpacing: 1, lineHeight: 1 },
+  squareTrack: { marginTop: 12, width: "100%", height: 12, borderRadius: 999, background: "rgba(15,23,42,.06)", overflow: "hidden", border: "1px solid rgba(15,23,42,.06)" },
+  squareFill: { height: "100%", width: "100%", background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transformOrigin: "left center", transition: "transform .25s ease" },
+  squareGhost: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
+  squareSub: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-squareTimeBox: {
-  position: "absolute",
-  inset: 0,
-  borderRadius: 24,
-  padding: 16,
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  background: "linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,.98))",
-  border: "1px solid rgba(15,23,42,.06)",
-  boxShadow: "0 18px 60px rgba(15,23,42,.08)",
-  overflow: "hidden",
-},
   intensityCard: { marginTop: 14, borderRadius: 24, padding: 14, background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))", border: "1px solid rgba(255,106,0,.16)", boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
   intTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" },
   intTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
@@ -1255,33 +1225,7 @@ squareTimeBox: {
 
   floatingNutri: { position: "fixed", left: "50%", transform: "translateX(-50%)", zIndex: 999, padding: "14px 18px", borderRadius: 999, border: "1px solid rgba(255,255,255,.20)", background: "linear-gradient(180deg, rgba(255,106,0,.98), rgba(255,138,61,.92))", color: "#111", fontWeight: 950, boxShadow: "0 22px 70px rgba(255,106,0,.20)", display: "inline-flex", alignItems: "center", gap: 10, animation: "nutriFloat 3.2s ease-in-out infinite", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" },
   floatingNutriPaid: { background: "linear-gradient(180deg, rgba(11,11,12,.98), rgba(11,11,12,.92))", color: "#fff", boxShadow: "0 22px 80px rgba(0,0,0,.18)", border: "1px solid rgba(255,255,255,.10)", animation: "nutriFloat 3.6s ease-in-out infinite" },
- floatDot: { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,.60)", boxShadow: "0 0 0 7px rgba(255,255,255,.12)" },
- 
-  squareTime: {
-  fontSize: 64,
-  fontWeight: 950,
-  color: TEXT,
-  letterSpacing: 1,
-  lineHeight: 1,
-  textAlign: "center",
-  marginBottom: 12,
-},
-  squareTrack: { marginTop: 0, width: "100%", height: 12, borderRadius: 999, background: "rgba(15,23,42,.06)", overflow: "hidden", border: "1px solid rgba(15,23,42,.06)" },
-squareGhost: { marginTop: 0, fontSize: 12, fontWeight: 900, color: MUTED, textAlign: "center" },
-squareSub: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, textAlign: "center" },
-squareWrap: {
-  marginTop: 14,
-  width: "100%",
-  maxWidth: 380,
-  aspectRatio: "1 / 1",
-  marginLeft: "auto",
-  marginRight: "auto",
-  position: "relative",
-},
-squareTimeBox: {
-  position: "absolute",
-  inset: 0,
-},
+  floatDot: { width: 8, height: 8, borderRadius: 999, background: "rgba(255,255,255,.60)", boxShadow: "0 0 0 7px rgba(255,255,255,.12)" },
 };
 
 const Sx = {
@@ -1343,6 +1287,7 @@ const Sx = {
   sheetBack: { width: "100%", padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.18)" },
 };
 
+/* ---- MiniDock styles ---- */
 const MD = {
   wrap: {
     position: "fixed",
@@ -1368,8 +1313,9 @@ const MD = {
   dotOff: { background: "rgba(15,23,42,.25)" },
   top: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   sub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+
   right: { display: "grid", justifyItems: "end", gap: 6, flexShrink: 0 },
-  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: 1 },
   track: { width: 92, height: 8, borderRadius: 999, background: "rgba(15,23,42,.08)", overflow: "hidden", border: "1px solid rgba(15,23,42,.08)" },
   fill: { width: "100%", height: "100%", background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transformOrigin: "left center", transition: "transform .25s ease" },
 };
@@ -1405,6 +1351,7 @@ const T = {
   x: { marginLeft: "auto", width: 40, height: 40, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, display: "grid", placeItems: "center" },
 };
 
+/* ---- inject styles (1x) ---- */
 if (typeof document !== "undefined") {
   const id = "fitdeal-cardio-pro-ui";
   if (!document.getElementById(id)) {
@@ -1421,6 +1368,7 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
 if (typeof document !== "undefined") {
   const id = "fitdeal-cardio-fonts";
   if (!document.getElementById(id)) {
@@ -1434,7 +1382,6 @@ if (typeof document !== "undefined") {
         font-style: normal;
         font-display: swap;
       }
-
       .fitdeal-digital-time{
         font-family: "FitdealSevenSeg", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
         letter-spacing: 1px;
@@ -1445,6 +1392,3 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
-
-
-
