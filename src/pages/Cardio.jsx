@@ -2,14 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
- * Cardio.jsx — versão encaixada para telas móveis / padrões
- *
- * Principais pontos:
- * - max-width 430px (mobile-first), centralizado
- * - safe-area paddings (iOS/android)
- * - tipografia com clamp() para responsividade
- * - ring e cards responsivos, evitando textos esmagados
- * - export default + named export CardioMiniDock
+ * Cardio.jsx
+ * - Modos: timer | chrono | calories
+ * - Fundo claro (white) e paleta do app
+ * - Layout encaixado no tamanho da página
+ * - Export default + named export CardioMiniDock
  */
 
 const APP_ORANGE = "#FF6A00";
@@ -17,6 +14,8 @@ const APP_ACCENT = "#FFB26B";
 const APP_BG = "#ffffff";
 const APP_TEXT = "#0b1220";
 const APP_MUTED = "#6b7280";
+const APP_LINE = "rgba(11,18,32,0.08)";
+const APP_SOFT = "#f8fafc";
 
 const WEEKLY_GOAL_MINUTES = 150;
 const STORAGE_KEY = "cardio_sessions_v5";
@@ -57,20 +56,23 @@ function getLast7Days() {
   return res;
 }
 
-function caloriesFromMET({ met, minutes, weightKg = 80 }) {
-  const kcalPerMin = (met * 3.5 * weightKg) / 200;
-  return Math.round(minutes * kcalPerMin);
-}
-
-function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sublabel }) {
+function RingProgress({ progress = 0, size = 150, stroke = 12, value, label, sublabel }) {
   const clamped = Math.max(0, Math.min(100, progress));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clamped / 100) * circumference;
+
   return (
-    <div className="ring-wrap" aria-hidden>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="ring-svg">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(11,17,24,0.06)" strokeWidth={stroke} />
+    <div className="ring-wrap">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="ring-svg" aria-hidden>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(11,17,24,0.06)"
+          strokeWidth={stroke}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -102,6 +104,7 @@ function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sub
 
 function WeekTimeline({ sessions }) {
   const days = getLast7Days();
+
   return (
     <section className="card timeline-card">
       <div className="section-head">
@@ -117,7 +120,10 @@ function WeekTimeline({ sessions }) {
           const daySessions = sessions.filter((s) => s.date === key);
           const totalMin = daySessions.reduce((a, b) => a + (b.minutes || 0), 0);
           const done = daySessions.length > 0;
-          const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(day).replace(".", "");
+          const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
+            .format(day)
+            .replace(".", "");
+
           return (
             <div className="timeline-item" key={key}>
               <div className={`bubble ${done ? "done" : ""}`}>
@@ -133,13 +139,11 @@ function WeekTimeline({ sessions }) {
   );
 }
 
-/* ---------------- Main component ---------------- */
 export default function Cardio({ userWeightKg = 80 }) {
   const nav = useNavigate();
   const plannerRef = useRef(null);
 
-  // UI state
-  const [mode, setMode] = useState("timer"); // timer | chrono | calories
+  const [mode, setMode] = useState("timer");
   const [selectedWorkoutId, setSelectedWorkoutId] = useState("bike");
   const [selectedIntensity, setSelectedIntensity] = useState("moderate");
   const [minutes, setMinutes] = useState(25);
@@ -153,7 +157,6 @@ export default function Cardio({ userWeightKg = 80 }) {
     }
   });
 
-  // stopwatch (chrono)
   const chronoRef = useRef(null);
   const [chronoRunning, setChronoRunning] = useState(false);
   const [chronoElapsedSec, setChronoElapsedSec] = useState(0);
@@ -172,6 +175,7 @@ export default function Cardio({ userWeightKg = 80 }) {
       }
       return;
     }
+
     chronoRef.current = setInterval(() => {
       setChronoElapsedSec((s) => s + 1);
     }, 1000);
@@ -191,34 +195,39 @@ export default function Cardio({ userWeightKg = 80 }) {
 
   const intensityInfo = INTENSITIES[selectedIntensity] || INTENSITIES.moderate;
 
-  // MET used for estimates uses workout's moderate MET scaled by intensity multiplier
   const metNow = useMemo(() => {
     const base = selectedWorkout?.mets?.moderate || 5.5;
     return +(base * intensityInfo.multiplier).toFixed(2);
   }, [selectedWorkout, intensityInfo]);
 
-  const kcalPerMin = useMemo(() => ((metNow * 3.5 * (userWeightKg || 80)) / 200), [metNow, userWeightKg]);
+  const kcalPerMin = useMemo(
+    () => (metNow * 3.5 * (userWeightKg || 80)) / 200,
+    [metNow, userWeightKg]
+  );
 
-  // week / today stats
   const todayKey = getDateKey();
-  const todaySessions = useMemo(() => sessions.filter((s) => s.date === todayKey), [sessions]);
+  const todaySessions = useMemo(() => sessions.filter((s) => s.date === todayKey), [sessions, todayKey]);
   const todayMinutes = todaySessions.reduce((a, b) => a + (b.minutes || 0), 0);
   const todayKcal = todaySessions.reduce((a, b) => a + (b.calories || 0), 0);
 
   const last7Boundary = new Date();
   last7Boundary.setDate(last7Boundary.getDate() - 6);
+
   const weekSessions = sessions.filter((s) => new Date(`${s.date}T12:00:00`) >= last7Boundary);
   const weekMinutes = weekSessions.reduce((a, b) => a + (b.minutes || 0), 0);
   const weekKcal = weekSessions.reduce((a, b) => a + (b.calories || 0), 0);
   const weekProgress = Math.min(100, Math.round((weekMinutes / WEEKLY_GOAL_MINUTES) * 100));
   const minutesLeft = Math.max(0, WEEKLY_GOAL_MINUTES - weekMinutes);
 
-  const recentSessions = [...sessions].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 6);
+  const recentSessions = [...sessions]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 6);
+
   const completedToday = todaySessions.length > 0;
 
-  // helpers
   function saveSessionFromMinutes(mins, modeLabel = "manual") {
     const kcal = Math.round(mins * kcalPerMin);
+
     const entry = {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       createdAt: new Date().toISOString(),
@@ -232,15 +241,14 @@ export default function Cardio({ userWeightKg = 80 }) {
       weightKg: userWeightKg,
       mode: modeLabel,
     };
+
     setSessions((prev) => [entry, ...prev].slice(0, 200));
   }
 
-  // Timer mode: user picks minutes and clicks primary to "start" — here we simply save
   function handleTimerSave() {
     saveSessionFromMinutes(minutes, "timer");
   }
 
-  // Chrono mode: use chronoElapsedSec; save current elapsed time in minutes
   function handleChronoSave() {
     const mins = Math.max(1, Math.round(chronoElapsedSec / 60));
     saveSessionFromMinutes(mins, "chrono");
@@ -248,7 +256,6 @@ export default function Cardio({ userWeightKg = 80 }) {
     setChronoRunning(false);
   }
 
-  // Calories mode: calculate required minutes from kcal target
   function handleCaloriesStartOrSave() {
     const kcal = Math.max(0, Math.round(Number(calTarget || 0)));
     if (kcal <= 0) return;
@@ -257,23 +264,21 @@ export default function Cardio({ userWeightKg = 80 }) {
     setCalTarget("");
   }
 
-  // Chrono controls
   function chronoToggle() {
     setChronoRunning((r) => !r);
   }
+
   function chronoReset() {
     setChronoRunning(false);
     setChronoElapsedSec(0);
   }
 
-  // small helpers for display
   function formatMMSS(sec) {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${pad2(m)}:${pad2(s)}`;
   }
 
-  /* ---------------- Render ---------------- */
   return (
     <div className="cardio-screen">
       <style>{`
@@ -283,215 +288,605 @@ export default function Cardio({ userWeightKg = 80 }) {
           --app-bg: ${APP_BG};
           --app-text: ${APP_TEXT};
           --app-muted: ${APP_MUTED};
+          --app-line: ${APP_LINE};
+          --app-soft: ${APP_SOFT};
         }
 
-        * { box-sizing: border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-        body, #root { background: var(--app-bg); }
+        * {
+          box-sizing: border-box;
+          min-width: 0;
+        }
+
+        html, body, #root {
+          background: var(--app-bg);
+          width: 100%;
+          overflow-x: hidden;
+        }
 
         .cardio-screen {
-          min-height: 100vh;
-          padding-top: env(safe-area-inset-top, 18px);
-          padding-bottom: calc(env(safe-area-inset-bottom, 18px) + 28px);
-          padding-left: env(safe-area-inset-left, 12px);
-          padding-right: env(safe-area-inset-right, 12px);
+          width: 100%;
+          min-height: 100dvh;
+          padding:
+            calc(14px + env(safe-area-inset-top))
+            12px
+            calc(120px + env(safe-area-inset-bottom))
+            12px;
           color: var(--app-text);
-          background: var(--app-bg);
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-          -webkit-font-variant-ligatures: none;
+          background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          overflow-x: hidden;
         }
 
-        /* container fixed to common mobile width but fluid on desktop */
         .container {
           width: 100%;
-          max-width: 430px; /* mobile standard */
+          max-width: 1120px;
           margin: 0 auto;
         }
 
-        /* cards */
         .card {
-          border-radius: 14px;
-          padding: 14px;
+          width: 100%;
+          border-radius: 22px;
+          padding: 20px;
           background: #fff;
-          border: 1px solid rgba(11,17,24,0.06);
-          box-shadow: 0 8px 30px rgba(11,17,24,0.04);
+          border: 1px solid var(--app-line);
+          box-shadow:
+            0 8px 30px rgba(11, 17, 24, 0.04),
+            0 2px 8px rgba(11, 17, 24, 0.03);
         }
 
-        /* hero layout (compact) */
         .hero {
           display: grid;
-          grid-template-columns: minmax(92px, 120px) 1fr;
-          gap: 12px;
-          align-items: start;
-          margin-bottom: 12px;
+          grid-template-columns: 148px minmax(0, 1fr);
+          gap: 20px;
+          align-items: center;
+          margin-bottom: 16px;
         }
 
         .kicker {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 6px 10px;
+          padding: 8px 12px;
           border-radius: 999px;
           background: linear-gradient(90deg, rgba(255,106,0,0.08), rgba(255,178,107,0.05));
           color: var(--app-muted);
           font-weight: 700;
-          font-size: clamp(12px, 2.4vw, 13px);
+          font-size: 13px;
+          width: fit-content;
         }
 
         h1.title {
-          margin: 0 0 6px 0;
-          font-size: clamp(20px, 4.4vw, 28px);
+          margin: 10px 0 6px 0;
+          font-size: clamp(28px, 4vw, 40px);
           line-height: 1.02;
           color: var(--app-text);
-          letter-spacing: -0.02em;
+          letter-spacing: -0.04em;
+          font-weight: 800;
         }
 
         .subtitle {
           margin: 0;
           color: var(--app-muted);
-          font-size: clamp(12px, 2.6vw, 14px);
+          font-size: 14px;
+          line-height: 1.55;
+          max-width: 72ch;
+        }
+
+        .hero-stats {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin-top: 14px;
+        }
+
+        .stat {
+          background: linear-gradient(180deg, #ffffff, #ffffff);
+          border-radius: 16px;
+          padding: 14px;
+          border: 1px solid var(--app-line);
+        }
+
+        .stat .label {
+          font-size: 12px;
+          color: var(--app-muted);
+          margin-bottom: 6px;
+          font-weight: 700;
+        }
+
+        .stat .value {
+          font-weight: 800;
+          font-size: 18px;
+          color: var(--app-text);
+          letter-spacing: -0.02em;
         }
 
         .modes {
-          display:flex;
-          gap:8px;
-          margin-top: 10px;
-          flex-wrap:wrap;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 14px;
         }
+
         .mode-btn {
-          padding:8px 10px;
-          border-radius:10px;
-          border:1px solid rgba(11,17,24,0.06);
+          width: 100%;
+          padding: 12px 12px;
+          border-radius: 14px;
+          border: 1px solid var(--app-line);
           background: #fff;
-          font-weight:700;
-          cursor:pointer;
-          font-size: 13px;
-          min-width: 84px;
-          text-align:center;
+          font-weight: 700;
+          cursor: pointer;
+          color: var(--app-text);
         }
+
         .mode-btn.active {
           background: linear-gradient(90deg, var(--app-orange), var(--app-accent));
           color: #111;
           box-shadow: 0 8px 28px rgba(255,106,0,0.08);
+          border-color: transparent;
         }
 
         .content {
-          display:grid;
-          grid-template-columns: 1fr 320px;
-          gap: 12px;
-          margin-top: 12px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+          gap: 16px;
+          margin-top: 16px;
           align-items: start;
         }
 
-        /* On small screens stack columns */
-        @media (max-width: 420px) {
-          .content { grid-template-columns: 1fr; }
+        .section-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 12px;
         }
 
-        .section-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-        .section-title { margin:0; font-size:15px; font-weight:800; }
-        .section-sub { margin:4px 0 0 0; font-size:12px; color:var(--app-muted); }
+        .section-title {
+          margin: 0;
+          font-size: 20px;
+          line-height: 1.1;
+          font-weight: 800;
+          color: var(--app-text);
+          letter-spacing: -0.03em;
+        }
+
+        .section-sub {
+          margin: 6px 0 0 0;
+          font-size: 13px;
+          line-height: 1.5;
+          color: var(--app-muted);
+        }
 
         .workout-grid {
-          display:grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
           margin-top: 12px;
         }
+
         .workout-card {
-          padding: 12px;
-          border-radius: 12px;
-          border:1px solid rgba(11,17,24,0.04);
-          background:#fff;
-          text-align:left;
-          cursor:pointer;
-          min-height: 84px;
-          display:flex;
-          flex-direction:column;
-          justify-content:space-between;
-          word-break: break-word;
+          padding: 16px;
+          border-radius: 16px;
+          border: 1px solid var(--app-line);
+          background: #fff;
+          text-align: left;
+          cursor: pointer;
+          min-height: 104px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
         }
+
         .workout-card.active {
           border-color: rgba(255,106,0,0.18);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
           background: linear-gradient(180deg, rgba(255,106,0,0.04), rgba(255,255,255,1));
         }
-        .workout-name { font-weight:800; font-size:14px; color: var(--app-text); }
-        .workout-sub { font-size:12px; color: var(--app-muted); margin-top:6px; }
 
-        .control { display:flex; flex-direction:column; gap:10px; margin-top: 8px; }
-        .label { font-size:13px; color: var(--app-muted); font-weight:700; }
-
-        .durations { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-        .chip {
-          padding:8px 10px;
-          border-radius:12px;
-          border:1px solid rgba(11,17,24,0.06);
-          background:#fff;
-          cursor:pointer;
-          font-weight:700;
-          font-size:13px;
-          min-height:40px;
-          min-width:56px;
+        .workout-name {
+          font-weight: 800;
+          font-size: 15px;
+          color: var(--app-text);
+          letter-spacing: -0.02em;
         }
-        .chip.active { background: linear-gradient(90deg, rgba(255,106,0,0.12), rgba(255,178,107,0.06)); color:#111; border-color: rgba(255,106,0,0.14); }
 
-        .intensity-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:8px; }
-        .intensity-card { padding:10px; border-radius:12px; border:1px solid rgba(11,17,24,0.04); background:#fff; min-height:98px; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; }
-        .intensity-card.active { border-color: rgba(255,106,0,0.12); }
+        .workout-sub {
+          font-size: 13px;
+          color: var(--app-muted);
+          margin-top: 6px;
+          line-height: 1.45;
+        }
+
+        .control {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .label {
+          font-size: 13px;
+          color: var(--app-muted);
+          font-weight: 700;
+        }
+
+        .durations {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 8px;
+        }
+
+        .chip {
+          padding: 11px 13px;
+          border-radius: 13px;
+          border: 1px solid var(--app-line);
+          background: #fff;
+          cursor: pointer;
+          font-weight: 700;
+          color: var(--app-text);
+        }
+
+        .chip.active {
+          background: linear-gradient(90deg, rgba(255,106,0,0.12), rgba(255,178,107,0.06));
+          color: #111;
+          border-color: rgba(255,106,0,0.14);
+        }
+
+        .intensity-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .intensity-card {
+          padding: 14px;
+          border-radius: 14px;
+          border: 1px solid var(--app-line);
+          background: #fff;
+          min-height: 112px;
+          cursor: pointer;
+        }
+
+        .intensity-card.active {
+          border-color: rgba(255,106,0,0.12);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+          background: linear-gradient(180deg, rgba(255,106,0,0.04), rgba(255,255,255,1));
+        }
 
         .estimate {
-          margin-top:6px;
-          padding:10px;
-          border-radius:12px;
-          border:1px solid rgba(11,17,24,0.04);
-          background:#fff;
+          margin-top: 8px;
+          padding: 14px;
+          border-radius: 16px;
+          border: 1px solid var(--app-line);
+          background: linear-gradient(180deg, #ffffff, #ffffff);
         }
-        .estimate .big { font-size: clamp(20px, 4.5vw, 34px); font-weight:800; color: var(--app-text); }
 
-        .actions { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+        .estimate .big {
+          font-size: clamp(28px, 5vw, 40px);
+          font-weight: 800;
+          color: var(--app-text);
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+
+        .actions {
+          margin-top: 12px;
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
         .primary {
           background: linear-gradient(90deg, var(--app-orange), var(--app-accent));
-          border:none;
-          padding:10px 12px;
-          border-radius:12px;
-          font-weight:800;
-          cursor:pointer;
-          color:#111;
-          min-height:44px;
+          border: none;
+          padding: 13px 16px;
+          border-radius: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          color: #111;
+          min-height: 48px;
         }
+
         .ghost {
-          background:transparent;
-          border:1px solid rgba(11,17,24,0.06);
-          padding:10px 12px;
-          border-radius:12px;
-          font-weight:700;
-          cursor:pointer;
-          min-height:44px;
+          background: transparent;
+          border: 1px solid var(--app-line);
+          padding: 13px 14px;
+          border-radius: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          color: var(--app-text);
+          min-height: 48px;
         }
 
-        .chrono-box { display:flex; gap:8px; align-items:center; margin-top:8px; }
-        .chrono-time { font-weight:900; font-size:20px; letter-spacing:-0.02em; min-width:78px; text-align:center; }
+        .primary:disabled,
+        .ghost:disabled,
+        .chip:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
 
-        .history { margin-top:10px; }
-        .history-item { display:flex; justify-content:space-between; gap:10px; padding:8px; border-radius:10px; border:1px solid rgba(11,17,24,0.04); background:#fff; font-size:13px; }
-        .empty { padding:12px; border-radius:10px; border:1px dashed rgba(11,17,24,0.06); color: var(--app-muted); font-size:13px; text-align:center; }
+        .chrono-box {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          flex-wrap: wrap;
+          margin-top: 8px;
+        }
 
-        /* ring */
-        .ring-wrap { position:relative; width: clamp(112px, 25vw, 140px); height: clamp(112px, 25vw, 140px); display:flex; align-items:center; justify-content:center; }
-        .ring-svg { width:100%; height:100%; display:block; }
-        .ring-center { position:absolute; text-align:center; padding:6px; }
-        .ring-value { font-weight:800; font-size: clamp(14px, 3vw, 20px); }
-        .ring-label { font-size:12px; color: var(--app-muted); }
-        .ring-sub { font-size:11px; color: rgba(11,17,24,0.6); }
+        .chrono-time {
+          font-weight: 900;
+          font-size: clamp(28px, 5vw, 34px);
+          letter-spacing: -0.03em;
+          color: var(--app-text);
+        }
 
-        /* accessibility: avoid text overflow */
-        .workout-name, .workout-sub, .section-title, .subtitle {
-          overflow-wrap: anywhere;
-          word-break: break-word;
+        .history-item {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 12px;
+          border-radius: 12px;
+          border: 1px solid var(--app-line);
+          background: #fff;
+          align-items: center;
+        }
+
+        .empty {
+          padding: 14px;
+          border-radius: 12px;
+          border: 1px dashed rgba(11,17,24,0.10);
+          color: var(--app-muted);
+          background: var(--app-soft);
+        }
+
+        .timeline-row {
+          display: grid;
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 10px;
+          margin-top: 6px;
+        }
+
+        .timeline-item {
+          text-align: center;
+          min-width: 0;
+        }
+
+        .bubble {
+          width: 18px;
+          height: 18px;
+          margin: 0 auto 8px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(11,17,24,0.08);
+          box-shadow: 0 0 0 6px rgba(11,17,24,0.02);
+        }
+
+        .bubble-inner {
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: rgba(11,17,24,0.30);
+        }
+
+        .bubble.done {
+          background: linear-gradient(180deg, var(--app-orange), var(--app-accent));
+          box-shadow: 0 0 0 6px rgba(255,106,0,0.08);
+        }
+
+        .bubble.done .bubble-inner {
+          background: #fff;
+        }
+
+        .timeline-day {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--app-text);
+          text-transform: capitalize;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .timeline-min {
+          font-size: 11px;
+          color: var(--app-muted);
+          margin-top: 4px;
+          line-height: 1.3;
+        }
+
+        .ring-wrap {
+          position: relative;
+          width: 150px;
+          height: 150px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-inline: auto;
+        }
+
+        .ring-svg {
+          max-width: 100%;
+          height: auto;
+          overflow: visible;
+        }
+
+        .ring-center {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 18px;
+        }
+
+        .ring-value {
+          font-weight: 800;
+          font-size: 20px;
+          color: var(--app-text);
+          line-height: 1;
+          letter-spacing: -0.03em;
+        }
+
+        .ring-label {
+          font-size: 12px;
+          color: var(--app-muted);
+          margin-top: 6px;
+        }
+
+        .ring-sub {
+          font-size: 11px;
+          color: rgba(11,17,24,0.6);
+          margin-top: 4px;
+          line-height: 1.35;
+        }
+
+        .side-buttons {
+          margin-top: 12px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .full-input {
+          margin-top: 8px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid var(--app-line);
+          width: 100%;
+          font-size: 15px;
+          color: var(--app-text);
+          background: #fff;
+          outline: none;
+        }
+
+        .full-input:focus {
+          border-color: rgba(255,106,0,0.28);
+          box-shadow: 0 0 0 4px rgba(255,106,0,0.08);
+        }
+
+        @media (max-width: 1100px) {
+          .content {
+            grid-template-columns: 1fr 320px;
+          }
+        }
+
+        @media (max-width: 920px) {
+          .content {
+            grid-template-columns: 1fr;
+          }
+
+          .hero {
+            grid-template-columns: 128px minmax(0, 1fr);
+            gap: 16px;
+          }
+
+          .ring-wrap {
+            width: 128px;
+            height: 128px;
+          }
+        }
+
+        @media (max-width: 720px) {
+          .cardio-screen {
+            padding:
+              calc(12px + env(safe-area-inset-top))
+              10px
+              calc(110px + env(safe-area-inset-bottom))
+              10px;
+          }
+
+          .card {
+            padding: 16px;
+            border-radius: 18px;
+          }
+
+          .hero {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: left;
+          }
+
+          .hero > div:last-child {
+            width: 100%;
+          }
+
+          .hero-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .modes {
+            grid-template-columns: 1fr;
+          }
+
+          .workout-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .intensity-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .timeline-row {
+            grid-template-columns: repeat(7, minmax(38px, 1fr));
+            gap: 6px;
+          }
+
+          .chrono-box {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .actions {
+            flex-direction: column;
+          }
+
+          .actions .primary,
+          .actions .ghost {
+            width: 100%;
+          }
+
+          .side-buttons {
+            grid-template-columns: 1fr;
+          }
+
+          h1.title {
+            font-size: clamp(26px, 8vw, 34px);
+          }
+        }
+
+        @media (max-width: 420px) {
+          .ring-wrap {
+            width: 120px;
+            height: 120px;
+          }
+
+          .ring-value {
+            font-size: 18px;
+          }
+
+          .timeline-day {
+            font-size: 11px;
+          }
+
+          .timeline-min {
+            font-size: 10px;
+          }
+
+          .workout-card,
+          .intensity-card {
+            min-height: auto;
+          }
         }
       `}</style>
 
       <div className="container">
-        <section className="card hero" aria-labelledby="hero-title">
+        <section className="card hero">
           <RingProgress
             progress={weekProgress}
             value={`${weekMinutes} min`}
@@ -501,23 +896,46 @@ export default function Cardio({ userWeightKg = 80 }) {
 
           <div>
             <div className="kicker">Cardio · foco e constância</div>
-            <h1 id="hero-title" className="title">{completedToday ? "Cardio de hoje concluído" : "Feche seu cardio de hoje"}</h1>
+            <h1 className="title">
+              {completedToday ? "Cardio de hoje concluído" : "Feche seu cardio de hoje"}
+            </h1>
             <p className="subtitle">
               {completedToday
                 ? `Hoje: ${todayMinutes} min • ${todayKcal} kcal`
-                : `${minutes} min • ${selectedWorkout.name.toLowerCase()} • ${INTENSITIES[selectedIntensity].label.toLowerCase()}`}
+                : `${minutes} min de ${selectedWorkout.name.toLowerCase()} em ritmo ${INTENSITIES[selectedIntensity].label.toLowerCase()} — ~${Math.round(kcalPerMin)} kcal/min`}
             </p>
 
+            <div className="hero-stats">
+              <div className="stat">
+                <div className="label">Hoje</div>
+                <div className="value">{todayMinutes} min</div>
+              </div>
+              <div className="stat">
+                <div className="label">Calorias hoje</div>
+                <div className="value">{todayKcal} kcal</div>
+              </div>
+              <div className="stat">
+                <div className="label">Semana</div>
+                <div className="value">{weekMinutes}/{WEEKLY_GOAL_MINUTES} min</div>
+              </div>
+            </div>
+
             <div className="modes" role="tablist" aria-label="Modos cardio">
-              <button className={`mode-btn ${mode === "timer" ? "active" : ""}`} onClick={() => setMode("timer")}>Timer</button>
-              <button className={`mode-btn ${mode === "chrono" ? "active" : ""}`} onClick={() => setMode("chrono")}>Cronômetro</button>
-              <button className={`mode-btn ${mode === "calories" ? "active" : ""}`} onClick={() => setMode("calories")}>Por calorias</button>
+              <button className={`mode-btn ${mode === "timer" ? "active" : ""}`} onClick={() => setMode("timer")}>
+                Timer
+              </button>
+              <button className={`mode-btn ${mode === "chrono" ? "active" : ""}`} onClick={() => setMode("chrono")}>
+                Cronômetro
+              </button>
+              <button className={`mode-btn ${mode === "calories" ? "active" : ""}`} onClick={() => setMode("calories")}>
+                Por calorias
+              </button>
             </div>
           </div>
         </section>
 
-        <div className="content" role="main">
-          <div className="card" aria-label="Configurações do cardio">
+        <div className="content">
+          <div className="card">
             <div className="section-head">
               <div>
                 <h3 className="section-title">Escolha seu cardio</h3>
@@ -525,15 +943,12 @@ export default function Cardio({ userWeightKg = 80 }) {
               </div>
             </div>
 
-            <div className="workout-grid" style={{ marginTop: 10 }}>
+            <div className="workout-grid">
               {WORKOUTS.map((w) => (
                 <div
                   key={w.id}
                   className={`workout-card ${selectedWorkoutId === w.id ? "active" : ""}`}
                   onClick={() => setSelectedWorkoutId(w.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === "Enter") setSelectedWorkoutId(w.id); }}
                 >
                   <div className="workout-name">{w.name}</div>
                   <div className="workout-sub">{w.subtitle}</div>
@@ -541,7 +956,7 @@ export default function Cardio({ userWeightKg = 80 }) {
               ))}
             </div>
 
-            <div style={{ height: 10 }} />
+            <div style={{ height: 16 }} />
 
             <div className="section-head">
               <div>
@@ -550,14 +965,20 @@ export default function Cardio({ userWeightKg = 80 }) {
               </div>
             </div>
 
-            <div className="control">
+            <div className="control" ref={plannerRef}>
               {mode === "timer" && (
                 <>
                   <div>
                     <div className="label">Quanto tempo?</div>
                     <div className="durations">
                       {DURATIONS.map((d) => (
-                        <button key={d} className={`chip ${minutes === d ? "active" : ""}`} onClick={() => setMinutes(d)}>{d} min</button>
+                        <button
+                          key={d}
+                          className={`chip ${minutes === d ? "active" : ""}`}
+                          onClick={() => setMinutes(d)}
+                        >
+                          {d} min
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -566,9 +987,13 @@ export default function Cardio({ userWeightKg = 80 }) {
                     <div className="label">Intensidade</div>
                     <div className="intensity-grid">
                       {Object.entries(INTENSITIES).map(([k, v]) => (
-                        <div key={k} className={`intensity-card ${selectedIntensity === k ? "active" : ""}`} onClick={() => setSelectedIntensity(k)}>
-                          <div style={{ fontWeight: 800 }}>{v.label}</div>
-                          <div style={{ marginTop: 6, color: APP_MUTED }}>{v.feel}</div>
+                        <div
+                          key={k}
+                          className={`intensity-card ${selectedIntensity === k ? "active" : ""}`}
+                          onClick={() => setSelectedIntensity(k)}
+                        >
+                          <div style={{ fontWeight: 800, color: APP_TEXT }}>{v.label}</div>
+                          <div style={{ marginTop: 6, color: APP_MUTED, lineHeight: 1.45 }}>{v.feel}</div>
                         </div>
                       ))}
                     </div>
@@ -577,12 +1002,21 @@ export default function Cardio({ userWeightKg = 80 }) {
                   <div className="estimate">
                     <div className="label">Estimativa</div>
                     <div className="big">~ {Math.round(minutes * kcalPerMin)} kcal</div>
-                    <div style={{ color: APP_MUTED, marginTop: 6 }}>{minutes} min • {selectedWorkout.name} • {INTENSITIES[selectedIntensity].label}</div>
+                    <div style={{ color: APP_MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      {minutes} min • {selectedWorkout.name} • {INTENSITIES[selectedIntensity].label}
+                    </div>
                   </div>
 
                   <div className="actions">
-                    <button className="primary" onClick={handleTimerSave}>Concluir sessão ({minutes} min)</button>
-                    <button className="ghost" onClick={() => plannerRef.current?.scrollIntoView({ behavior: "smooth" })}>Fazer mais</button>
+                    <button className="primary" onClick={handleTimerSave}>
+                      Concluir sessão ({minutes} min)
+                    </button>
+                    <button
+                      className="ghost"
+                      onClick={() => plannerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    >
+                      Fazer mais
+                    </button>
                   </div>
                 </>
               )}
@@ -592,24 +1026,43 @@ export default function Cardio({ userWeightKg = 80 }) {
                   <div>
                     <div className="label">Cronômetro</div>
                     <div className="chrono-box">
-                      <div className="chrono-time" aria-live="polite">{formatMMSS(chronoElapsedSec)}</div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button className="chip" onClick={chronoToggle}>{chronoRunning ? "Pausar" : "Iniciar"}</button>
-                        <button className="chip" onClick={chronoReset}>Reset</button>
+                      <div className="chrono-time">{formatMMSS(chronoElapsedSec)}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button className="chip" onClick={chronoToggle}>
+                          {chronoRunning ? "Pausar" : "Iniciar"}
+                        </button>
+                        <button className="chip" onClick={chronoReset}>
+                          Reset
+                        </button>
                       </div>
                     </div>
-                    <div style={{ marginTop: 8, color: APP_MUTED }}>Ao salvar, o cronômetro grava os minutos completos (arredondados).</div>
+
+                    <div style={{ marginTop: 10, color: APP_MUTED, lineHeight: 1.5 }}>
+                      Ao salvar, o cronômetro grava os minutos completos.
+                    </div>
                   </div>
 
                   <div className="estimate">
                     <div className="label">Estimativa atualmente</div>
                     <div className="big">~ {Math.round((chronoElapsedSec / 60) * kcalPerMin)} kcal</div>
-                    <div style={{ color: APP_MUTED, marginTop: 6 }}>{selectedWorkout.name} • {INTENSITIES[selectedIntensity].label}</div>
+                    <div style={{ color: APP_MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      {selectedWorkout.name} • {INTENSITIES[selectedIntensity].label}
+                    </div>
                   </div>
 
                   <div className="actions">
-                    <button className="primary" onClick={handleChronoSave} disabled={chronoElapsedSec < 30}>Salvar sessão</button>
-                    <button className="ghost" onClick={() => { setChronoElapsedSec(0); setChronoRunning(false); }}>Cancelar</button>
+                    <button className="primary" onClick={handleChronoSave} disabled={chronoElapsedSec < 30}>
+                      Salvar sessão
+                    </button>
+                    <button
+                      className="ghost"
+                      onClick={() => {
+                        setChronoElapsedSec(0);
+                        setChronoRunning(false);
+                      }}
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </>
               )}
@@ -623,9 +1076,11 @@ export default function Cardio({ userWeightKg = 80 }) {
                       value={calTarget}
                       onChange={(e) => setCalTarget(e.target.value)}
                       placeholder="Ex.: 250"
-                      style={{ marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid rgba(11,17,24,0.06)", width: "100%", fontSize: 14 }}
+                      className="full-input"
                     />
-                    <div style={{ marginTop: 8, color: APP_MUTED }}>Estimativa baseada em {Math.round(kcalPerMin)} kcal/min (peso: {userWeightKg}kg, MET: {metNow}).</div>
+                    <div style={{ marginTop: 8, color: APP_MUTED, lineHeight: 1.5 }}>
+                      Estimativa baseada em {Math.round(kcalPerMin)} kcal/min (peso: {userWeightKg}kg, MET: {metNow}).
+                    </div>
                   </div>
 
                   <div className="estimate">
@@ -638,59 +1093,78 @@ export default function Cardio({ userWeightKg = 80 }) {
                         return `${mins} min`;
                       })()}
                     </div>
-                    <div style={{ color: APP_MUTED, marginTop: 6 }}>{selectedWorkout.name} • {INTENSITIES[selectedIntensity].label}</div>
+                    <div style={{ color: APP_MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      {selectedWorkout.name} • {INTENSITIES[selectedIntensity].label}
+                    </div>
                   </div>
 
                   <div className="actions">
-                    <button className="primary" onClick={handleCaloriesStartOrSave} disabled={!Number(calTarget) || Number(calTarget) <= 0}>Salvar por kcal</button>
-                    <button className="ghost" onClick={() => setCalTarget("")}>Limpar</button>
+                    <button
+                      className="primary"
+                      onClick={handleCaloriesStartOrSave}
+                      disabled={!Number(calTarget) || Number(calTarget) <= 0}
+                    >
+                      Salvar por kcal
+                    </button>
+                    <button className="ghost" onClick={() => setCalTarget("")}>
+                      Limpar
+                    </button>
                   </div>
                 </>
               )}
             </div>
           </div>
 
-          {/* right column (sidebar) */}
-          <aside style={{ minWidth: 0 }}>
-            <div className="card" aria-label="Resumo e histórico">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <aside>
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <div>
                   <div style={{ fontSize: 13, color: APP_MUTED, fontWeight: 700 }}>Hoje</div>
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>{todayMinutes} min • {todayKcal} kcal</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: APP_TEXT }}>
+                    {todayMinutes} min • {todayKcal} kcal
+                  </div>
                 </div>
+
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 12, color: APP_MUTED }}>Semana</div>
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>{weekMinutes} min</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: APP_TEXT }}>{weekMinutes} min</div>
                 </div>
               </div>
 
-              <div style={{ height: 10 }} />
+              <div style={{ height: 12 }} />
 
               <div style={{ display: "flex", justifyContent: "center" }}>
-                <RingProgress progress={weekProgress} value={`${weekMinutes}m`} label="semana" sublabel={`${weekKcal} kcal`} />
+                <RingProgress
+                  progress={weekProgress}
+                  value={`${weekMinutes}m`}
+                  label="semana"
+                  sublabel={`${weekKcal} kcal`}
+                />
               </div>
 
-              <div style={{ marginTop: 10 }}>
+              <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 13, color: APP_MUTED, fontWeight: 700 }}>Histórico recente</div>
 
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                   {recentSessions.length === 0 ? (
                     <div className="empty">Nenhuma sessão registrada ainda.</div>
                   ) : (
                     recentSessions.map((s) => (
-                      <div key={s.id} className="history-item" style={{ marginTop: 8 }}>
+                      <div key={s.id} className="history-item">
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 800 }}>{s.workoutName}</div>
-                          <div style={{ color: APP_MUTED, fontSize: 13 }}>{s.minutes} min • {s.intensityLabel}</div>
+                          <div style={{ fontWeight: 800, color: APP_TEXT }}>{s.workoutName}</div>
+                          <div style={{ color: APP_MUTED, fontSize: 13, lineHeight: 1.4 }}>
+                            {s.minutes} min • {s.intensityLabel}
+                          </div>
                         </div>
-                        <div style={{ fontWeight: 800 }}>{s.calories} kcal</div>
+                        <div style={{ fontWeight: 800, color: APP_TEXT, flexShrink: 0 }}>{s.calories} kcal</div>
                       </div>
                     ))
                   )}
                 </div>
               </div>
 
-              <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+              <div className="side-buttons">
                 <button className="ghost" onClick={() => nav("/treino")}>Treinos</button>
                 <button className="ghost" onClick={() => nav("/nutricao")}>Nutrição</button>
               </div>
@@ -698,12 +1172,8 @@ export default function Cardio({ userWeightKg = 80 }) {
           </aside>
         </div>
 
-        <div ref={plannerRef} style={{ height: 36 }} />
-
-        {/* week timeline */}
-        <div style={{ marginTop: 12 }}>
-          <WeekTimeline sessions={sessions} />
-        </div>
+        <div style={{ height: 18 }} />
+        <WeekTimeline sessions={sessions} />
       </div>
     </div>
   );
@@ -728,8 +1198,9 @@ export function CardioMiniDock() {
         setTodayInfo({ minutes: 0, kcal: 0 });
       }
     }
+
     pull();
-    const t = setInterval(pull, 1200);
+    const t = setInterval(pull, 1500);
     return () => clearInterval(t);
   }, []);
 
@@ -744,10 +1215,10 @@ export function CardioMiniDock() {
         position: "fixed",
         left: 12,
         right: 12,
-        bottom: 16 + (typeof window !== "undefined" && window.navigator && /iphone|ipad|ipod/i.test(window.navigator.userAgent) ? 20 : 0),
+        bottom: `calc(84px + env(safe-area-inset-bottom))`,
         zIndex: 9999,
-        borderRadius: 14,
-        padding: "10px 14px",
+        borderRadius: 16,
+        padding: "12px 14px",
         background: `linear-gradient(90deg, ${APP_ORANGE}, ${APP_ACCENT})`,
         color: "#111",
         fontWeight: 800,
@@ -759,15 +1230,35 @@ export function CardioMiniDock() {
         cursor: "pointer",
       }}
     >
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <div style={{ width: 10, height: 10, borderRadius: 999, background: "#111" }} />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+        <div
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 999,
+            background: "#111",
+            flexShrink: 0,
+          }}
+        />
         <div style={{ minWidth: 0, textAlign: "left" }}>
-          <div style={{ fontSize: 13, fontWeight: 800 }}>Cardio hoje</div>
-          <div style={{ color: "rgba(17,17,17,0.7)", fontSize: 12 }}>{todayInfo.minutes} min • {todayInfo.kcal} kcal</div>
+          <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            Cardio hoje
+          </div>
+          <div
+            style={{
+              color: "rgba(17,17,17,0.7)",
+              fontSize: 12,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {todayInfo.minutes} min • {todayInfo.kcal} kcal
+          </div>
         </div>
       </div>
 
-      <div style={{ fontSize: 14, fontWeight: 900 }}>{todayInfo.minutes}m</div>
+      <div style={{ fontSize: 14, fontWeight: 900, flexShrink: 0 }}>{todayInfo.minutes}m</div>
     </button>
   );
 }
