@@ -1129,3 +1129,80 @@ export default function CardioTab({ userWeightKg = 80 }) {
     </div>
   );
 }
+
+/* ---------------- CardioMiniDock (export named) ----------------
+   Implementação simples: mostra um mini botão quando houver sessões hoje.
+   App.tsx pode importar { CardioMiniDock } sem erro.
+*/
+export function CardioMiniDock({ userWeightKg = 80 }) {
+  const navigate = useNavigate();
+  const [todayInfo, setTodayInfo] = useState({ minutes: 0, kcal: 0 });
+
+  useEffect(() => {
+    function pull() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const all = raw ? JSON.parse(raw) : [];
+        const todayKey = getDateKey();
+        const todaySessions = all.filter((s) => s.date === todayKey);
+        const minutes = todaySessions.reduce((acc, s) => acc + (s.minutes || 0), 0);
+        const kcal = todaySessions.reduce((acc, s) => acc + (s.calories || 0), 0);
+        setTodayInfo({ minutes, kcal });
+      } catch {
+        setTodayInfo({ minutes: 0, kcal: 0 });
+      }
+    }
+
+    pull();
+    const t = setInterval(pull, 2000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!todayInfo || (todayInfo.minutes || 0) <= 0) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate("/cardio")}
+      aria-label="Abrir cardio (mini)"
+      style={{
+        position: "fixed",
+        left: 12,
+        right: 12,
+        bottom: 92,
+        zIndex: 9999,
+        borderRadius: 18,
+        padding: "12px 16px",
+        background: "linear-gradient(90deg, rgba(255,106,0,1), rgba(255,152,64,1))",
+        color: "#111",
+        fontWeight: 800,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: "0 16px 40px rgba(255,106,0,0.18)",
+        border: "none",
+        cursor: "pointer",
+      }}
+    >
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: 999,
+            background: "#111",
+            boxShadow: "0 0 0 6px rgba(255,255,255,0.06)",
+          }}
+        />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>Cardio hoje</div>
+          <div style={{ fontSize: 12, color: "rgba(17,17,17,0.7)" }}>
+            {todayInfo.minutes} min • {todayInfo.kcal} kcal
+          </div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 14, fontWeight: 900 }}>{todayInfo.minutes}m</div>
+    </button>
+  );
+}
