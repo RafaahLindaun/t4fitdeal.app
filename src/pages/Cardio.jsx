@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 /* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
+const ORANGE_SOFT = "#FFB26B";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
@@ -13,8 +14,8 @@ const SOFT = "rgba(15,23,42,.04)";
 const SUCCESS = "#22c55e";
 
 /* ---------------- STORAGE ---------------- */
-const STORAGE_KEY = "cardio_sessions_fitdeal_v11";
-const LIVE_KEY = "cardio_live_fitdeal_v11";
+const STORAGE_KEY = "cardio_sessions_fitdeal_v12";
+const LIVE_KEY = "cardio_live_fitdeal_v12";
 const WEEKLY_GOAL_MINUTES = 150;
 
 /* ---------------- DATA ---------------- */
@@ -118,12 +119,10 @@ function formatMMSS(sec) {
 
 function vibrate(ms = 18) {
   try {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(ms);
+    }
   } catch {}
-}
-
-function caloriesFromMET({ met, minutes, weightKg }) {
-  return Math.round(minutes * ((met * 3.5 * weightKg) / 200));
 }
 
 function getLiveState(email) {
@@ -132,10 +131,6 @@ function getLiveState(email) {
 
 function setLiveState(email, data) {
   localStorage.setItem(`${LIVE_KEY}_${email}`, JSON.stringify(data));
-}
-
-function clearLiveState(email) {
-  localStorage.removeItem(`${LIVE_KEY}_${email}`);
 }
 
 function computeLiveElapsed(live) {
@@ -202,12 +197,17 @@ function IconFlame() {
   );
 }
 
-/* ---------------- UI BITS ---------------- */
-function Chip({ label, value }) {
+/* ---------------- UI ---------------- */
+function Chip({ label, value, mobile = false }) {
   return (
-    <div style={S.chip}>
+    <div
+      style={{
+        ...S.chip,
+        ...(mobile ? S.chipMobile : null),
+      }}
+    >
       <div style={S.chipLabel}>{label}</div>
-      <div style={S.chipValue}>{value}</div>
+      <div style={{ ...S.chipValue, ...(mobile ? S.chipValueMobile : null) }}>{value}</div>
       <div style={S.chipSheen} aria-hidden="true" />
     </div>
   );
@@ -231,19 +231,26 @@ function Toast({ toast, onClose }) {
   );
 }
 
-function RingProgress({ progress = 0, size = 148, stroke = 12, value, label, sublabel }) {
+function RingProgress({
+  progress = 0,
+  size = 132,
+  stroke = 12,
+  value,
+  label,
+  sublabel,
+}) {
   const clamped = Math.max(0, Math.min(100, progress));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clamped / 100) * circumference;
 
   return (
-    <div style={S.ringWrap}>
+    <div style={{ ...S.ringWrap, width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.ringSvg}>
         <defs>
-          <linearGradient id="cardioWeekGradientGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioWeekGradientGlassResponsive" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor="#FFB26B" />
+            <stop offset="100%" stopColor={ORANGE_SOFT} />
           </linearGradient>
         </defs>
 
@@ -260,7 +267,7 @@ function RingProgress({ progress = 0, size = 148, stroke = 12, value, label, sub
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioWeekGradientGlass)"
+          stroke="url(#cardioWeekGradientGlassResponsive)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -279,21 +286,35 @@ function RingProgress({ progress = 0, size = 148, stroke = 12, value, label, sub
   );
 }
 
-function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", running = false }) {
-  const size = 248;
-  const stroke = 18;
+function BigRing({
+  progress = 0,
+  value = "00:00",
+  top = "timer",
+  bottom = "",
+  running = false,
+  mobile = false,
+}) {
+  const size = mobile ? 190 : 248;
+  const stroke = mobile ? 14 : 18;
   const clamped = Math.max(0, Math.min(100, progress));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clamped / 100) * circumference;
 
   return (
-    <div style={{ ...S.bigRingWrap, ...(running ? S.bigRingRunning : null) }}>
+    <div
+      style={{
+        ...S.bigRingWrap,
+        width: size,
+        height: size,
+        ...(running ? S.bigRingRunning : null),
+      }}
+    >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.bigRingSvg}>
         <defs>
-          <linearGradient id="cardioBigGradientGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioBigGradientGlassResponsive" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor="#FFB26B" />
+            <stop offset="100%" stopColor={ORANGE_SOFT} />
           </linearGradient>
         </defs>
 
@@ -310,7 +331,7 @@ function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", ru
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioBigGradientGlass)"
+          stroke="url(#cardioBigGradientGlassResponsive)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -321,15 +342,15 @@ function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", ru
       </svg>
 
       <div style={S.bigRingCenter}>
-        <div style={S.bigRingTop}>{top}</div>
-        <div style={S.bigRingValue}>{value}</div>
-        {bottom ? <div style={S.bigRingBottom}>{bottom}</div> : null}
+        <div style={{ ...S.bigRingTop, ...(mobile ? S.bigRingTopMobile : null) }}>{top}</div>
+        <div style={{ ...S.bigRingValue, ...(mobile ? S.bigRingValueMobile : null) }}>{value}</div>
+        {bottom ? <div style={{ ...S.bigRingBottom, ...(mobile ? S.bigRingBottomMobile : null) }}>{bottom}</div> : null}
       </div>
     </div>
   );
 }
 
-function WeekTimeline({ sessions }) {
+function WeekTimeline({ sessions, mobile = false }) {
   const days = getLast7Days();
 
   return (
@@ -341,7 +362,7 @@ function WeekTimeline({ sessions }) {
         </div>
       </div>
 
-      <div style={S.timelineRow}>
+      <div style={{ ...S.timelineRow, ...(mobile ? S.timelineRowMobile : null) }}>
         {days.map((day) => {
           const key = getDateKey(day);
           const daySessions = sessions.filter((s) => s.date === key);
@@ -357,7 +378,7 @@ function WeekTimeline({ sessions }) {
                 <span style={{ ...S.bubbleInner, ...(done ? S.bubbleInnerDone : null) }} />
               </div>
               <div style={S.timelineDay}>{weekday}</div>
-              <div style={S.timelineMin}>{done ? `${totalMin} min` : "—"}</div>
+              <div style={S.timelineMin}>{done ? `${totalMin}m` : "—"}</div>
             </div>
           );
         })}
@@ -374,7 +395,14 @@ export default function Cardio() {
   const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  const [mode, setMode] = useState("timer"); // timer | chrono | calories
+  const [screenW, setScreenW] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 390
+  );
+
+  const isMobile = screenW <= 760;
+  const isVerySmall = screenW <= 390;
+
+  const [mode, setMode] = useState("timer");
   const [selectedWorkoutId, setSelectedWorkoutId] = useState("bike");
   const [selectedIntensity, setSelectedIntensity] = useState("moderate");
   const [minutes, setMinutes] = useState(25);
@@ -400,6 +428,12 @@ export default function Cardio() {
   const dragStartY = useRef(null);
   const dragMoved = useRef(false);
   const tickRef = useRef(null);
+
+  useEffect(() => {
+    const onResize = () => setScreenW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     try {
@@ -440,13 +474,12 @@ export default function Cardio() {
   const weekMinutes = weekSessions.reduce((a, b) => a + (b.minutes || 0), 0);
   const weekKcal = weekSessions.reduce((a, b) => a + (b.calories || 0), 0);
   const weekProgress = Math.min(100, Math.round((weekMinutes / WEEKLY_GOAL_MINUTES) * 100));
+
   const minutesLeft = Math.max(0, WEEKLY_GOAL_MINUTES - weekMinutes);
 
   const recentSessions = [...sessions]
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, 6);
-
-  const completedToday = todaySessions.length > 0;
 
   const timerRemainingSec = Math.max(0, durationSec - elapsedSec);
   const timerProgress = durationSec > 0 ? clamp((elapsedSec / durationSec) * 100, 0, 100) : 0;
@@ -564,7 +597,13 @@ export default function Cardio() {
     const total = minutes * 60;
     const live = getLiveState(email);
 
-    if (live && live.mode === "timer" && !live.running && Number(live.elapsedSec || 0) > 0 && Number(live.durationSec || 0) === total) {
+    if (
+      live &&
+      live.mode === "timer" &&
+      !live.running &&
+      Number(live.elapsedSec || 0) > 0 &&
+      Number(live.durationSec || 0) === total
+    ) {
       persistLive({
         mode: "timer",
         durationSec: total,
@@ -798,6 +837,7 @@ export default function Cardio() {
     dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
     dragMoved.current = false;
   }
+
   function onDockPointerMove(e) {
     if (dragStartY.current == null) return;
     const y = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
@@ -815,34 +855,19 @@ export default function Cardio() {
       persistDock(false);
     }
   }
+
   function onDockPointerUp() {
     dragStartY.current = null;
   }
+
   function onDockClick() {
     if (dragMoved.current) return;
     persistDock(!dockOpen);
   }
 
-  if (!paid) {
-    return (
-      <div style={S.page}>
-        <div style={S.lockCard}>
-          <div style={S.lockTitle}>Cardio premium</div>
-          <div style={S.lockText}>Assine para liberar timer, cronômetro, meta por calorias, histórico e mini dock flutuante.</div>
-          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="cd-press">
-            Ver planos
-          </button>
-          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="cd-press">
-            Voltar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "cardio-apple-glass-ui-v11";
+    const id = "cardio-apple-glass-ui-v12";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -869,21 +894,45 @@ export default function Cardio() {
     document.head.appendChild(style);
   }, []);
 
+  if (!paid) {
+    return (
+      <div style={S.page}>
+        <div style={S.lockCard}>
+          <div style={S.lockTitle}>Cardio premium</div>
+          <div style={S.lockText}>
+            Assine para liberar timer, cronômetro, meta por calorias, histórico e mini dock flutuante.
+          </div>
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="cd-press">
+            Ver planos
+          </button>
+          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="cd-press">
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, ...(isMobile ? S.pageMobile : null) }}>
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      {/* HEADER */}
-      <div style={S.head}>
+      <div style={{ ...S.head, ...(isMobile ? S.headMobile : null) }}>
         <div style={S.headGlow} aria-hidden="true" />
 
-        <button style={S.back} onClick={() => nav("/treino")} aria-label="Voltar" type="button" className="cd-press">
+        <button
+          style={S.back}
+          onClick={() => nav("/treino")}
+          aria-label="Voltar"
+          type="button"
+          className="cd-press"
+        >
           <IconChevronLeft />
         </button>
 
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={S.hKicker}>Cardio detalhado</div>
-          <div style={S.hTitle}>Seu cardio de hoje</div>
+          <div style={{ ...S.hTitle, ...(isMobile ? S.hTitleMobile : null) }}>Seu cardio de hoje</div>
 
           <div style={S.hLine}>
             <span style={S.tagStrong}>{selectedWorkout.name}</span>
@@ -894,13 +943,12 @@ export default function Cardio() {
           </div>
 
           <div style={S.hMeta}>
-            Escolha o tipo, ajuste o ritmo e registre tudo com visual limpo estilo Apple.
+            Escolha o tipo, ajuste o ritmo e registre tudo com visual limpo.
           </div>
         </div>
       </div>
 
-      {/* HERO */}
-      <div style={S.heroGrid}>
+      <div style={{ ...S.heroGrid, ...(isMobile ? S.heroGridMobile : null) }}>
         <div style={S.heroCard}>
           <div style={S.cardGlow} aria-hidden="true" />
           <div style={S.cardSheen} aria-hidden="true" />
@@ -912,18 +960,22 @@ export default function Cardio() {
             </div>
           </div>
 
-          <div style={S.heroSplit}>
-            <RingProgress
-              progress={weekProgress}
-              value={`${weekMinutes}m`}
-              label="meta semanal"
-              sublabel={weekProgress >= 100 ? "fechou!" : `faltam ${minutesLeft} min`}
-            />
+          <div style={{ ...S.heroSplit, ...(isMobile ? S.heroSplitMobile : null) }}>
+            <div style={{ display: "grid", justifyItems: "center" }}>
+              <RingProgress
+                progress={weekProgress}
+                value={`${weekMinutes}m`}
+                label="meta semanal"
+                sublabel={weekProgress >= 100 ? "fechou!" : `faltam ${minutesLeft} min`}
+                size={isVerySmall ? 118 : 132}
+                stroke={isVerySmall ? 10 : 12}
+              />
+            </div>
 
-            <div style={S.heroStats}>
-              <Chip label="Hoje" value={`${todayMinutes} min`} />
-              <Chip label="Calorias hoje" value={`${todayKcal} kcal`} />
-              <Chip label="Semana" value={`${weekKcal} kcal`} />
+            <div style={{ ...S.heroStats, ...(isMobile ? S.heroStatsMobile : null) }}>
+              <Chip label="Hoje" value={`${todayMinutes} min`} mobile={isMobile} />
+              <Chip label="Calorias hoje" value={`${todayKcal} kcal`} mobile={isMobile} />
+              <Chip label="Semana" value={`${weekKcal} kcal`} mobile={isMobile} />
             </div>
           </div>
         </div>
@@ -939,7 +991,7 @@ export default function Cardio() {
             </div>
           </div>
 
-          <div style={S.modeGrid}>
+          <div style={{ ...S.modeGrid, ...(isMobile ? S.modeGridMobile : null) }}>
             <button
               type="button"
               onClick={() => changeMode("timer")}
@@ -962,16 +1014,14 @@ export default function Cardio() {
               style={{ ...S.modeBtn, ...(mode === "calories" ? S.modeBtnOn : S.modeBtnOff) }}
               className="cd-press"
             >
-              Por calorias
+              Por kcal
             </button>
           </div>
         </div>
       </div>
 
-      {/* MAIN GRID */}
-      <div style={S.contentGrid}>
+      <div style={{ ...S.contentGrid, ...(isMobile ? S.contentGridMobile : null) }}>
         <div style={S.mainCol}>
-          {/* WORKOUT TYPE */}
           <div style={S.cardPage}>
             <div style={S.cardGlow} aria-hidden="true" />
             <div style={S.cardSheen} aria-hidden="true" />
@@ -979,11 +1029,11 @@ export default function Cardio() {
             <div style={S.sectionHead}>
               <div>
                 <h3 style={S.sectionTitle}>Escolha seu cardio</h3>
-                <p style={S.sectionSub}>Opções claras e bonitas, sem poluição visual.</p>
+                <p style={S.sectionSub}>Opções claras e bonitas, sem esmagar texto.</p>
               </div>
             </div>
 
-            <div style={S.workoutGrid}>
+            <div style={{ ...S.workoutGrid, ...(isMobile ? S.workoutGridMobile : null) }}>
               {WORKOUTS.map((w) => (
                 <button
                   key={w.id}
@@ -999,7 +1049,6 @@ export default function Cardio() {
             </div>
           </div>
 
-          {/* ACTIVE SESSION */}
           <div style={S.cardPage}>
             <div style={S.cardGlow} aria-hidden="true" />
             <div style={S.cardSheen} aria-hidden="true" />
@@ -1013,6 +1062,7 @@ export default function Cardio() {
 
             <div style={S.ringPanel}>
               <BigRing
+                mobile={isMobile}
                 progress={mode === "timer" ? timerProgress : mode === "chrono" ? 100 : 0}
                 value={
                   mode === "timer"
@@ -1060,7 +1110,6 @@ export default function Cardio() {
             </div>
           </div>
 
-          {/* CONFIG */}
           <div style={S.cardPage}>
             <div style={S.cardGlow} aria-hidden="true" />
             <div style={S.cardSheen} aria-hidden="true" />
@@ -1097,7 +1146,7 @@ export default function Cardio() {
 
                 <div style={S.block}>
                   <div style={S.blockLabel}>Intensidade</div>
-                  <div style={S.intensityGrid}>
+                  <div style={{ ...S.intensityGrid, ...(isMobile ? S.intensityGridMobile : null) }}>
                     {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
                         key={key}
@@ -1113,7 +1162,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.loadBox}>
+                <div style={{ ...S.loadBox, ...(isMobile ? S.loadBoxMobile : null) }}>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Estimativa atual</div>
                     <div style={S.loadVal}>~ {liveEstimatedKcal} kcal</div>
@@ -1129,7 +1178,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.actionRow}>
+                <div style={{ ...S.actionRow, ...(isMobile ? S.actionRowMobile : null) }}>
                   {!running ? (
                     <button type="button" onClick={startTimer} style={S.bigStart} className="cd-press">
                       {elapsedSec > 0 && !justFinished ? "Continuar timer" : "Iniciar timer"}
@@ -1169,7 +1218,7 @@ export default function Cardio() {
               <>
                 <div style={S.block}>
                   <div style={S.blockLabel}>Intensidade</div>
-                  <div style={S.intensityGrid}>
+                  <div style={{ ...S.intensityGrid, ...(isMobile ? S.intensityGridMobile : null) }}>
                     {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
                         key={key}
@@ -1185,7 +1234,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.loadBox}>
+                <div style={{ ...S.loadBox, ...(isMobile ? S.loadBoxMobile : null) }}>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Estimativa atual</div>
                     <div style={S.loadVal}>~ {liveEstimatedKcal} kcal</div>
@@ -1201,7 +1250,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.actionRow}>
+                <div style={{ ...S.actionRow, ...(isMobile ? S.actionRowMobile : null) }}>
                   {!running ? (
                     <button type="button" onClick={startChrono} style={S.bigStart} className="cd-press">
                       {elapsedSec > 0 ? "Continuar cronômetro" : "Iniciar cronômetro"}
@@ -1252,7 +1301,7 @@ export default function Cardio() {
 
                 <div style={S.block}>
                   <div style={S.blockLabel}>Intensidade</div>
-                  <div style={S.intensityGrid}>
+                  <div style={{ ...S.intensityGrid, ...(isMobile ? S.intensityGridMobile : null) }}>
                     {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
                         key={key}
@@ -1268,7 +1317,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.loadBox}>
+                <div style={{ ...S.loadBox, ...(isMobile ? S.loadBoxMobile : null) }}>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Tempo necessário</div>
                     <div style={S.loadVal}>
@@ -1291,7 +1340,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.actionRow}>
+                <div style={{ ...S.actionRow, ...(isMobile ? S.actionRowMobile : null) }}>
                   <button
                     type="button"
                     onClick={startByCalories}
@@ -1318,7 +1367,6 @@ export default function Cardio() {
           </div>
         </div>
 
-        {/* SIDE */}
         <div style={S.sideCol}>
           <div style={S.cardPage}>
             <div style={S.cardGlow} aria-hidden="true" />
@@ -1363,9 +1411,8 @@ export default function Cardio() {
         </div>
       </div>
 
-      <WeekTimeline sessions={sessions} />
+      <WeekTimeline sessions={sessions} mobile={isMobile} />
 
-      {/* DOCK */}
       <div
         style={{ ...S.dock, ...(dockOpen ? S.dockOpen : S.dockClosed) }}
         onMouseDown={onDockPointerDown}
@@ -1399,12 +1446,13 @@ export default function Cardio() {
             <div style={S.dockBigTime}>
               {mode === "timer" ? formatMMSS(timerRemainingSec) : formatMMSS(elapsedSec)}
             </div>
+
             <div style={S.dockSub}>
               <b style={{ color: TEXT }}>{selectedWorkout.name}</b> • {intensityInfo.label} •{" "}
               {mode === "timer" ? "Timer" : mode === "chrono" ? "Cronômetro" : "Por calorias"}
             </div>
 
-            <div style={S.dockBtns}>
+            <div style={{ ...S.dockBtns, ...(isMobile ? S.dockBtnsMobile : null) }}>
               {mode !== "calories" && !running ? (
                 <button
                   type="button"
@@ -1532,12 +1580,7 @@ export function CardioMiniDock() {
   if (!info.liveRunning) return null;
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate("/cardio")}
-      aria-label="Abrir Cardio"
-      style={MD.wrap}
-    >
+    <button type="button" onClick={() => navigate("/cardio")} aria-label="Abrir Cardio" style={MD.wrap}>
       <div style={MD.left}>
         <div style={MD.dot} />
         <div style={{ minWidth: 0 }}>
@@ -1557,9 +1600,13 @@ export function CardioMiniDock() {
 const S = {
   page: {
     padding: 18,
-    paddingBottom: "calc(110px + env(safe-area-inset-bottom))",
+    paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
     background: BG,
     minHeight: "100vh",
+  },
+  pageMobile: {
+    padding: 12,
+    paddingBottom: "calc(128px + env(safe-area-inset-bottom))",
   },
 
   head: {
@@ -1575,6 +1622,10 @@ const S = {
     overflow: "hidden",
     backdropFilter: "blur(14px)",
     WebkitBackdropFilter: "blur(14px)",
+  },
+  headMobile: {
+    borderRadius: 24,
+    padding: 14,
   },
   headGlow: {
     position: "absolute",
@@ -1596,6 +1647,7 @@ const S = {
   },
   hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
   hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
+  hTitleMobile: { fontSize: 20 },
   hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
   tagStrong: {
     display: "inline-flex",
@@ -1625,6 +1677,9 @@ const S = {
     gridTemplateColumns: "1.1fr .9fr",
     gap: 14,
   },
+  heroGridMobile: {
+    gridTemplateColumns: "1fr",
+  },
   heroCard: {
     borderRadius: 28,
     padding: 16,
@@ -1640,10 +1695,17 @@ const S = {
     gap: 14,
     alignItems: "center",
   },
+  heroSplitMobile: {
+    gridTemplateColumns: "1fr",
+    gap: 14,
+  },
   heroStats: {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
+  },
+  heroStatsMobile: {
+    gridTemplateColumns: "1fr",
   },
 
   contentGrid: {
@@ -1651,6 +1713,9 @@ const S = {
     display: "grid",
     gridTemplateColumns: "1fr 360px",
     gap: 14,
+  },
+  contentGridMobile: {
+    gridTemplateColumns: "1fr",
   },
   mainCol: {
     display: "grid",
@@ -1687,7 +1752,13 @@ const S = {
     pointerEvents: "none",
   },
 
-  sectionHead: { position: "relative", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" },
+  sectionHead: {
+    position: "relative",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "flex-start",
+  },
   sectionTitle: { margin: 0, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
   sectionSub: { margin: "6px 0 0", fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.4 },
 
@@ -1697,6 +1768,9 @@ const S = {
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
     position: "relative",
+  },
+  modeGridMobile: {
+    gridTemplateColumns: "1fr",
   },
   modeBtn: {
     minHeight: 54,
@@ -1723,6 +1797,9 @@ const S = {
     gap: 10,
     position: "relative",
   },
+  workoutGridMobile: {
+    gridTemplateColumns: "1fr",
+  },
   workoutCard: {
     minHeight: 100,
     borderRadius: 22,
@@ -1738,8 +1815,22 @@ const S = {
   workoutCardOff: {
     background: "rgba(255,255,255,.92)",
   },
-  workoutName: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.25, lineHeight: 1.15 },
-  workoutSub: { marginTop: 7, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  workoutName: {
+    fontSize: 16,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.25,
+    lineHeight: 1.15,
+    wordBreak: "break-word",
+  },
+  workoutSub: {
+    marginTop: 7,
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+    wordBreak: "break-word",
+  },
 
   ringPanel: {
     marginTop: 16,
@@ -1765,6 +1856,7 @@ const S = {
     fontWeight: 950,
     border: `1px solid ${BORDER}`,
     boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+    whiteSpace: "nowrap",
   },
   durationBtnOn: {
     background: "rgba(255,106,0,.10)",
@@ -1782,11 +1874,14 @@ const S = {
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
   },
+  intensityGridMobile: {
+    gridTemplateColumns: "1fr",
+  },
   intensityCard: {
     borderRadius: 20,
     padding: 14,
     textAlign: "left",
-    minHeight: 108,
+    minHeight: 96,
     border: `1px solid ${BORDER}`,
     boxShadow: "0 12px 30px rgba(15,23,42,.05)",
   },
@@ -1797,8 +1892,21 @@ const S = {
   intensityCardOff: {
     background: "rgba(255,255,255,.92)",
   },
-  intensityTitle: { fontSize: 15, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  intensityFeel: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  intensityTitle: {
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+    wordBreak: "break-word",
+  },
+  intensityFeel: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+    wordBreak: "break-word",
+  },
 
   chip: {
     borderRadius: 20,
@@ -1810,8 +1918,12 @@ const S = {
     overflow: "hidden",
     minHeight: 72,
   },
+  chipMobile: {
+    minHeight: 66,
+  },
   chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
+  chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45, wordBreak: "break-word" },
+  chipValueMobile: { fontSize: 16, marginTop: 8 },
   chipSheen: {
     position: "absolute",
     inset: 0,
@@ -1833,11 +1945,14 @@ const S = {
     alignItems: "end",
     position: "relative",
   },
+  loadBoxMobile: {
+    gridTemplateColumns: "1fr",
+  },
   loadLeft: { minWidth: 0 },
   loadRight: { minWidth: 0 },
   loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
-  loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
+  loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4, wordBreak: "break-word" },
+  loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35, wordBreak: "break-word" },
   input: {
     width: "100%",
     marginTop: 6,
@@ -1858,6 +1973,9 @@ const S = {
     gap: 10,
     alignItems: "center",
     position: "relative",
+  },
+  actionRowMobile: {
+    gridTemplateColumns: "1fr",
   },
 
   bigStart: {
@@ -1882,6 +2000,7 @@ const S = {
     background: "rgba(255,255,255,.10)",
     display: "grid",
     placeItems: "center",
+    flexShrink: 0,
   },
 
   smallPause: {
@@ -1893,8 +2012,10 @@ const S = {
     fontWeight: 950,
     display: "inline-flex",
     alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+    minHeight: 54,
   },
   smallPauseDisabled: { opacity: 0.45 },
 
@@ -1923,6 +2044,9 @@ const S = {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
     gap: 10,
+  },
+  timelineRowMobile: {
+    gap: 6,
   },
   timelineItem: { textAlign: "center" },
   bubble: {
@@ -1960,8 +2084,8 @@ const S = {
     background: "rgba(255,255,255,.04)",
     border: "1px solid rgba(15,23,42,.06)",
   },
-  historyTitle: { fontSize: 14, fontWeight: 800, letterSpacing: -0.02, color: TEXT },
-  historyMeta: { marginTop: 4, fontSize: 12, color: MUTED, lineHeight: 1.4 },
+  historyTitle: { fontSize: 14, fontWeight: 800, letterSpacing: -0.02, color: TEXT, wordBreak: "break-word" },
+  historyMeta: { marginTop: 4, fontSize: 12, color: MUTED, lineHeight: 1.4, wordBreak: "break-word" },
   historyKcal: { alignSelf: "center", fontSize: 15, fontWeight: 800, letterSpacing: -0.02, color: TEXT },
   emptyCard: {
     padding: 18,
@@ -1977,8 +2101,6 @@ const S = {
 
   ringWrap: {
     position: "relative",
-    width: 148,
-    height: 148,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1994,16 +2116,14 @@ const S = {
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    padding: 24,
+    padding: 18,
   },
-  ringValue: { fontSize: 24, lineHeight: 1, fontWeight: 800, letterSpacing: -0.05, color: TEXT },
-  ringLabel: { marginTop: 8, fontSize: 12, color: MUTED, lineHeight: 1.3 },
-  ringSub: { marginTop: 6, fontSize: 11, color: "#64748b", lineHeight: 1.35 },
+  ringValue: { fontSize: 22, lineHeight: 1, fontWeight: 800, letterSpacing: -0.05, color: TEXT },
+  ringLabel: { marginTop: 8, fontSize: 11, color: MUTED, lineHeight: 1.3 },
+  ringSub: { marginTop: 6, fontSize: 10, color: "#64748b", lineHeight: 1.35 },
 
   bigRingWrap: {
     position: "relative",
-    width: 248,
-    height: 248,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -2018,7 +2138,7 @@ const S = {
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    padding: 26,
+    padding: 20,
   },
   bigRingTop: {
     fontSize: 11,
@@ -2027,6 +2147,9 @@ const S = {
     letterSpacing: 0.9,
     textTransform: "uppercase",
   },
+  bigRingTopMobile: {
+    fontSize: 10,
+  },
   bigRingValue: {
     marginTop: 8,
     fontSize: 56,
@@ -2034,6 +2157,11 @@ const S = {
     fontWeight: 950,
     letterSpacing: -1.6,
     color: TEXT,
+    fontVariantNumeric: "tabular-nums",
+  },
+  bigRingValueMobile: {
+    fontSize: 42,
+    letterSpacing: -1.1,
   },
   bigRingBottom: {
     marginTop: 8,
@@ -2041,6 +2169,9 @@ const S = {
     fontWeight: 850,
     color: MUTED,
     lineHeight: 1.35,
+  },
+  bigRingBottomMobile: {
+    fontSize: 11,
   },
 
   dock: {
@@ -2062,7 +2193,6 @@ const S = {
   },
   dockOpen: { paddingBottom: 14 },
   dockClosed: { paddingBottom: 10 },
-
   dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
   dockPill: {
     display: "inline-flex",
@@ -2084,16 +2214,14 @@ const S = {
     border: "1px solid rgba(255,255,255,.55)",
   },
   dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
-
   dockMini: { display: "grid", justifyItems: "end", gap: 2 },
-  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2, fontVariantNumeric: "tabular-nums" },
   dockMiniState: { fontSize: 11, fontWeight: 900, color: MUTED },
-
   dockBody: { marginTop: 12, cursor: "default" },
-  dockBigTime: { fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0 },
-  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-
+  dockBigTime: { fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0, fontVariantNumeric: "tabular-nums" },
+  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, wordBreak: "break-word" },
   dockBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" },
+  dockBtnsMobile: { gridTemplateColumns: "1fr" },
   dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
 
   lockCard: {
@@ -2236,5 +2364,5 @@ const MD = {
     textOverflow: "ellipsis",
   },
   right: { display: "grid", justifyItems: "end", gap: 6, flexShrink: 0 },
-  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: 0.4 },
+  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: 0.4, fontVariantNumeric: "tabular-nums" },
 };
