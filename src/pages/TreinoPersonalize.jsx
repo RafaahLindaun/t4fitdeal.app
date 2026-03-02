@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -18,7 +18,6 @@ const SPLITS = [
 
 /**
  * ✅ Catálogo grande (20+ por “membro muscular” / foco)
- * Você pode expandir quando quiser — a UI já aguenta.
  */
 const EXERCISE_CATALOG = {
   peito: [
@@ -289,7 +288,6 @@ const MUSCLE_GROUPS = [
     name: "Peito + Tríceps",
     muscles: ["Peito", "Tríceps", "Ombro ant."],
     default: { sets: 4, reps: "6–12", rest: "75–120s" },
-    // UI usa isso pra decidir quais listas mostrar no picker
     pickerKeys: ["peito", "triceps", "ombro"],
     library: [
       { name: "Supino reto", group: "Peito" },
@@ -440,7 +438,6 @@ function uniq(arr) {
   return out;
 }
 
-/* ---------------------- APP ---------------------- */
 export default function TreinoPersonalize() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -448,7 +445,6 @@ export default function TreinoPersonalize() {
   const paid = localStorage.getItem(`paid_${email}`) === "1";
   const storageKey = `custom_split_${email}`;
 
-  // --------- não pagante ----------
   if (!paid) {
     return (
       <div style={S.page}>
@@ -473,7 +469,6 @@ export default function TreinoPersonalize() {
     );
   }
 
-  // --------- pagante ----------
   const saved = useMemo(() => {
     const raw = localStorage.getItem(storageKey);
     return raw ? JSON.parse(raw) : null;
@@ -506,12 +501,10 @@ export default function TreinoPersonalize() {
     return obj;
   });
 
-  // ✅ NOVO: exercícios escolhidos por dia
   const [dayExercises, setDayExercises] = useState(() => {
     const base = saved?.dayExercises;
     if (base && typeof base === "object") return base;
 
-    // default: usa a library do grupo (primeiros 8) como base
     const out = {};
     const n = clamp(initialDays, 2, 6);
     const baseGroups = pickDefaultSplit(n);
@@ -523,7 +516,6 @@ export default function TreinoPersonalize() {
     return out;
   });
 
-  // sheet (picker)
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerDayIndex, setPickerDayIndex] = useState(0);
 
@@ -556,7 +548,6 @@ export default function TreinoPersonalize() {
       return out;
     });
 
-    // ✅ garante dayExercises
     setDayExercises((prev) => {
       const out = { ...(prev || {}) };
       for (let i = 0; i < n; i++) {
@@ -609,7 +600,6 @@ export default function TreinoPersonalize() {
       return out;
     });
 
-    // ✅ quando troca grupo: preenche seleção de exercícios com base no grupo (não apaga se já existe e tem coisa)
     setDayExercises((prev) => {
       const out = { ...(prev || {}) };
       if (Array.isArray(out[dayIndex]) && out[dayIndex].length >= 5) return out;
@@ -650,14 +640,25 @@ export default function TreinoPersonalize() {
   const weeklyVolume = useMemo(() => calcWeeklyVolume(daysConfig), [daysConfig]);
 
   function save() {
+    const normalizedPrescriptions = {};
+
+    Object.keys(prescriptions || {}).forEach((key) => {
+      const item = prescriptions[key] || {};
+      normalizedPrescriptions[key] = {
+        ...item,
+        sets: clamp(Number(item.sets || 4), 1, 8),
+      };
+    });
+
     const payload = {
       splitId,
       days: daysPerWeek,
       dayGroups,
-      prescriptions,
-      dayExercises, // ✅ novo
+      prescriptions: normalizedPrescriptions,
+      dayExercises,
       updatedAt: Date.now(),
     };
+
     localStorage.setItem(storageKey, JSON.stringify(payload));
     nav("/treino", { replace: true });
   }
@@ -678,7 +679,6 @@ export default function TreinoPersonalize() {
     }
     setPrescriptions(obj);
 
-    // ✅ reset exercícios
     const ex = {};
     for (let i = 0; i < groups.length; i++) {
       const g = MUSCLE_GROUPS.find((x) => x.id === groups[i]);
@@ -701,7 +701,7 @@ export default function TreinoPersonalize() {
   function updateDayExercises(dayIndex, list) {
     setDayExercises((prev) => {
       const out = { ...(prev || {}) };
-      out[dayIndex] = uniq(list).slice(0, 40); // limite alto, mas controlado
+      out[dayIndex] = uniq(list).slice(0, 40);
       return out;
     });
   }
@@ -712,7 +712,6 @@ export default function TreinoPersonalize() {
 
       <HeaderBrand title="Personalizar treino" subtitle="Split, volume e exercícios do seu jeito." onBack={() => nav("/treino")} />
 
-      {/* CARD: Split */}
       <div style={S.card}>
         <div style={S.cardTitle}>1) Split</div>
 
@@ -750,7 +749,6 @@ export default function TreinoPersonalize() {
         </div>
       </div>
 
-      {/* CARD: Dias */}
       <div style={S.card}>
         <div style={S.cardTitle}>2) Músculos por dia</div>
 
@@ -764,7 +762,6 @@ export default function TreinoPersonalize() {
                   <div style={S.daySub}>Escolha o foco do dia</div>
                 </div>
 
-                {/* ✅ Apple button */}
                 <button style={S.appleBtn} onClick={() => openPicker(d.dayIndex)}>
                   <span style={S.appleBtnDot} />
                   Escolher exercícios
@@ -786,10 +783,26 @@ export default function TreinoPersonalize() {
                   <div style={S.presLabel}>Séries</div>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     max={8}
-                    value={d.prescription.sets}
-                    onChange={(e) => setPrescription(d.dayIndex, { sets: clamp(Number(e.target.value || 1), 1, 8) })}
+                    value={d.prescription.sets ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+
+                      if (raw === "") {
+                        setPrescription(d.dayIndex, { sets: "" });
+                        return;
+                      }
+
+                      if (!/^\d+$/.test(raw)) return;
+
+                      setPrescription(d.dayIndex, { sets: raw });
+                    }}
+                    onBlur={(e) => {
+                      const next = clamp(Number(e.target.value || 4), 1, 8);
+                      setPrescription(d.dayIndex, { sets: next });
+                    }}
                     style={S.input}
                   />
                 </div>
@@ -815,7 +828,6 @@ export default function TreinoPersonalize() {
                 </div>
               </div>
 
-              {/* ✅ selecionados */}
               <div style={S.pickPreview}>
                 <div style={S.pickPreviewTop}>
                   <div style={S.previewTitle}>Seu treino (exercícios escolhidos)</div>
@@ -836,7 +848,6 @@ export default function TreinoPersonalize() {
                 )}
               </div>
 
-              {/* antiga prévia (agora só como “sugestões”) */}
               <div style={S.previewBox}>
                 <div style={S.previewTitle}>Sugestões do grupo</div>
                 <div style={S.previewList}>
@@ -856,7 +867,6 @@ export default function TreinoPersonalize() {
         </div>
       </div>
 
-      {/* CARD: Volume semanal */}
       <div style={S.card}>
         <div style={S.cardTitle}>3) Volume semanal (estimativa)</div>
         <div style={S.volGrid}>
@@ -877,7 +887,6 @@ export default function TreinoPersonalize() {
         </div>
       </div>
 
-      {/* Actions */}
       <div style={S.actions}>
         <button style={S.save} onClick={save}>
           Salvar
@@ -889,7 +898,6 @@ export default function TreinoPersonalize() {
 
       <div style={{ height: 140 }} />
 
-      {/* ✅ SHEET: Picker */}
       <ExercisePickerSheet
         open={pickerOpen}
         onClose={closePicker}
@@ -900,8 +908,6 @@ export default function TreinoPersonalize() {
     </div>
   );
 }
-
-/* ---------------------- COMPONENTS ---------------------- */
 
 function HeaderBrand({ title, subtitle, onBack }) {
   return (
@@ -938,15 +944,13 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(() => (Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []));
 
-  // quando troca de dia/abre sheet: sincroniza
-  useMemo(() => {
+  useEffect(() => {
     if (open) {
       setSelected(Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []);
       setQ("");
       setTab(pickerKeys[0] || "peito");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, dayIndex]);
+  }, [open, dayIndex, day, pickerKeys]);
 
   const list = useMemo(() => {
     const base = (EXERCISE_CATALOG[tab] || []).map((name) => ({ name, key: tab }));
@@ -980,7 +984,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
   return (
     <div style={S.sheetOverlay} onMouseDown={onClose}>
       <div style={S.sheet} onMouseDown={(e) => e.stopPropagation()}>
-        {/* Top */}
         <div style={S.sheetTop}>
           <div style={{ minWidth: 0 }}>
             <div style={S.sheetTitle}>Escolher exercícios</div>
@@ -994,7 +997,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
           </button>
         </div>
 
-        {/* Search */}
         <div style={S.searchWrap}>
           <div style={S.searchIcon}>⌕</div>
           <input
@@ -1010,7 +1012,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
           ) : null}
         </div>
 
-        {/* Tabs */}
         <div style={S.tabsRow}>
           {pickerKeys.map((k) => (
             <button
@@ -1026,7 +1027,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
           ))}
         </div>
 
-        {/* Selected bar */}
         <div style={S.selectedBar}>
           <div style={S.selectedLeft}>
             <div style={S.selectedTitle}>Selecionados</div>
@@ -1038,13 +1038,14 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
           </button>
         </div>
 
-        {/* Selected chips */}
         {selected.length ? (
           <div style={S.selectedChips}>
             {selected.slice(0, 20).map((name) => (
               <button key={name} style={S.selChip} onClick={() => remove(name)} title="Remover">
                 <span style={S.selChipDot} />
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {name}
+                </span>
                 <span style={S.selChipX}>×</span>
               </button>
             ))}
@@ -1054,7 +1055,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
           <div style={S.selectedEmpty}>Nenhum selecionado ainda. Adicione abaixo 👇</div>
         )}
 
-        {/* List */}
         <div style={S.list}>
           {list.map((item) => {
             const isOn = selectedSet.has(item.name);
@@ -1078,12 +1078,9 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
             );
           })}
 
-          {list.length === 0 ? (
-            <div style={S.listEmpty}>Nada encontrado. Tente outro termo.</div>
-          ) : null}
+          {list.length === 0 ? <div style={S.listEmpty}>Nada encontrado. Tente outro termo.</div> : null}
         </div>
 
-        {/* Actions */}
         <div style={S.sheetActions}>
           <button style={S.sheetGhost} onClick={onClose}>
             Voltar
@@ -1099,7 +1096,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
   );
 }
 
-/* -------------------- styles (Apple clean + glass) -------------------- */
 const S = {
   page: { padding: 18, paddingBottom: 120, background: BG, minHeight: "100vh", position: "relative", overflowX: "hidden" },
 
@@ -1383,7 +1379,6 @@ const S = {
     fontWeight: 950,
   },
 
-  /* -------- Sheet -------- */
   sheetOverlay: {
     position: "fixed",
     inset: 0,
@@ -1525,7 +1520,7 @@ const S = {
   rowName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
   rowSub: { marginTop: 4, fontSize: 11, fontWeight: 800, color: MUTED },
 
-    addBtn: {
+  addBtn: {
     border: "none",
     background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
     color: "#111",
