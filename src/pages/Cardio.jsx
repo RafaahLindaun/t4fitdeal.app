@@ -13,66 +13,24 @@ const SOFT = "rgba(15,23,42,.04)";
 const SUCCESS = "#22c55e";
 
 /* ---------------- STORAGE ---------------- */
-const STORAGE_KEY = "cardio_sessions_fitdeal_v13";
-const LIVE_KEY = "cardio_live_fitdeal_v13";
+const STORAGE_KEY = "cardio_sessions_fitdeal_v14";
+const LIVE_KEY = "cardio_live_fitdeal_v14";
 const WEEKLY_GOAL_MINUTES = 150;
 
 /* ---------------- DATA ---------------- */
 const WORKOUTS = [
-  {
-    id: "walk",
-    name: "Caminhada",
-    subtitle: "Leve, constante e fácil de manter",
-    mets: { low: 3.0, moderate: 4.8, high: 5.5 },
-  },
-  {
-    id: "treadmill",
-    name: "Esteira",
-    subtitle: "Ritmo controlado e confortável",
-    mets: { low: 4.0, moderate: 5.2, high: 6.3 },
-  },
-  {
-    id: "bike",
-    name: "Bike",
-    subtitle: "Baixo impacto e boa queima",
-    mets: { low: 4.0, moderate: 6.8, high: 8.0 },
-  },
-  {
-    id: "run",
-    name: "Corrida leve",
-    subtitle: "Mais gasto em menos tempo",
-    mets: { low: 6.0, moderate: 8.3, high: 9.8 },
-  },
-  {
-    id: "stairs",
-    name: "Escada",
-    subtitle: "Fôlego e pernas",
-    mets: { low: 5.0, moderate: 8.8, high: 9.5 },
-  },
-  {
-    id: "hiit",
-    name: "HIIT",
-    subtitle: "Curto, forte e direto",
-    mets: { low: 6.0, moderate: 8.0, high: 10.0 },
-  },
+  { id: "walk", name: "Caminhada", subtitle: "Leve, constante e fácil de manter", mets: { low: 3.0, moderate: 4.8, high: 5.5 } },
+  { id: "treadmill", name: "Esteira", subtitle: "Ritmo controlado e confortável", mets: { low: 4.0, moderate: 5.2, high: 6.3 } },
+  { id: "bike", name: "Bike", subtitle: "Baixo impacto e boa queima", mets: { low: 4.0, moderate: 6.8, high: 8.0 } },
+  { id: "run", name: "Corrida leve", subtitle: "Mais gasto em menos tempo", mets: { low: 6.0, moderate: 8.3, high: 9.8 } },
+  { id: "stairs", name: "Escada", subtitle: "Fôlego e pernas", mets: { low: 5.0, moderate: 8.8, high: 9.5 } },
+  { id: "hiit", name: "HIIT", subtitle: "Curto, forte e direto", mets: { low: 6.0, moderate: 8.0, high: 10.0 } },
 ];
 
 const INTENSITIES = {
-  low: {
-    label: "Leve",
-    feel: "Consegue conversar normalmente",
-    multiplier: 0.85,
-  },
-  moderate: {
-    label: "Moderado",
-    feel: "Respiração acelerada, mas controlada",
-    multiplier: 1.0,
-  },
-  high: {
-    label: "Intenso",
-    feel: "Esforço alto em menos tempo",
-    multiplier: 1.15,
-  },
+  low: { label: "Leve", feel: "Consegue conversar normalmente", multiplier: 0.85 },
+  moderate: { label: "Moderado", feel: "Respiração acelerada, mas controlada", multiplier: 1.0 },
+  high: { label: "Intenso", feel: "Esforço alto em menos tempo", multiplier: 1.15 },
 };
 
 const DURATIONS = [10, 15, 20, 25, 30, 40, 45, 60];
@@ -142,10 +100,6 @@ function setLiveState(email, data) {
   localStorage.setItem(liveStorageKey(email), JSON.stringify(data));
 }
 
-function clearLiveState(email) {
-  localStorage.removeItem(liveStorageKey(email));
-}
-
 function computeLiveElapsed(live) {
   if (!live) return 0;
   if (!live.running) return Number(live.elapsedSec || 0);
@@ -209,6 +163,15 @@ function IconFlame() {
     </svg>
   );
 }
+function IconSave() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3v11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M8 10l4 4 4-4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 20h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /* ---------------- UI BITS ---------------- */
 function Toast({ toast, onClose }) {
@@ -249,7 +212,7 @@ function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sub
     <div style={S.ringWrap}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.ringSvg}>
         <defs>
-          <linearGradient id="cardioWeekGradientGlassV13" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioWeekGradientGlassV14" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
             <stop offset="100%" stopColor={ORANGE_2} />
           </linearGradient>
@@ -268,7 +231,7 @@ function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sub
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioWeekGradientGlassV13)"
+          stroke="url(#cardioWeekGradientGlassV14)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -299,7 +262,7 @@ function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", ru
     <div style={{ ...S.bigRingWrap, ...(running ? S.bigRingRunning : null) }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.bigRingSvg}>
         <defs>
-          <linearGradient id="cardioBigGradientGlassV13" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioBigGradientGlassV14" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
             <stop offset="100%" stopColor={ORANGE_2} />
           </linearGradient>
@@ -318,7 +281,7 @@ function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", ru
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioBigGradientGlassV13)"
+          stroke="url(#cardioBigGradientGlassV14)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -382,7 +345,7 @@ export default function Cardio() {
   const email = (user?.email || "anon").toLowerCase();
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
-  const [mode, setMode] = useState("timer"); // timer | chrono | calories
+  const [mode, setMode] = useState("timer");
   const [selectedWorkoutId, setSelectedWorkoutId] = useState("treadmill");
   const [selectedIntensity, setSelectedIntensity] = useState("moderate");
   const [minutes, setMinutes] = useState(20);
@@ -522,10 +485,11 @@ export default function Cardio() {
     setSelectedIntensity(live.selectedIntensity || "moderate");
 
     const mins = Number(live.minutes || 20);
-    setMinutes(clamp(mins, 1, 240));
-    setMinutesInput(String(clamp(mins, 1, 240)));
+    const safeMins = clamp(mins, 1, 240);
+    setMinutes(safeMins);
+    setMinutesInput(String(safeMins));
 
-    setDurationSec(Number(live.durationSec || mins * 60));
+    setDurationSec(Number(live.durationSec || safeMins * 60));
     setElapsedSec(computeLiveElapsed(live));
     setRunning(!!live.running);
   }, [email]);
@@ -554,7 +518,7 @@ export default function Cardio() {
         const total = Number(live.durationSec || 0);
         setDurationSec(total);
 
-        if (elapsed >= total && live.running) {
+        if (elapsed >= total && live.running && total > 0) {
           setElapsedSec(total);
           setRunning(false);
           setJustFinished(true);
@@ -588,7 +552,7 @@ export default function Cardio() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "cardio-apple-glass-ui-v13";
+    const id = "cardio-apple-glass-ui-v14";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -858,7 +822,8 @@ export default function Cardio() {
   }
 
   function applyMinutesValue(rawValue) {
-    const num = clamp(Number(rawValue || 1), 1, 240);
+    const fallbackBase = Number(rawValue || minutes || 1);
+    const num = clamp(fallbackBase, 1, 240);
     setMinutes(num);
     setMinutesInput(String(num));
     if (!running && mode === "timer") {
@@ -1194,7 +1159,11 @@ export default function Cardio() {
                         type="button"
                         onClick={() => applyMinutesValue(d)}
                         disabled={running}
-                        style={{ ...S.durationBtn, ...(minutes === d ? S.durationBtnOn : S.durationBtnOff), ...(running ? S.durationBtnDisabled : null) }}
+                        style={{
+                          ...S.durationBtn,
+                          ...(minutes === d ? S.durationBtnOn : S.durationBtnOff),
+                          ...(running ? S.durationBtnDisabled : null),
+                        }}
                         className="cd-press"
                       >
                         {d} min
@@ -2490,55 +2459,52 @@ const MD = {
 
 /* ---------------- RESPONSIVE ---------------- */
 if (typeof document !== "undefined") {
-  const id = "cardio-v13-responsive";
+  const id = "cardio-v14-responsive";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
       @media (min-width: 980px) {
-        [data-cardio-layout] {
+        .cardio-v14-content-grid {
           grid-template-columns: 1fr 360px !important;
         }
-        [data-cardio-hero] {
+        .cardio-v14-hero-grid {
           grid-template-columns: 1.1fr .9fr !important;
         }
       }
       @media (max-width: 860px) {
-        [data-cardio-hero-split] {
+        .cardio-v14-hero-split {
           grid-template-columns: 1fr !important;
-          justify-items: center;
+          justify-items: center !important;
         }
-        [data-cardio-hero-stats] {
+        .cardio-v14-hero-stats {
           grid-template-columns: 1fr !important;
-          width: 100%;
+          width: 100% !important;
         }
       }
       @media (max-width: 720px) {
-        [data-cardio-mode-grid],
-        [data-cardio-intensity-grid] {
+        .cardio-v14-mode-grid,
+        .cardio-v14-intensity-grid {
           grid-template-columns: 1fr !important;
         }
-        [data-cardio-workout-grid] {
-          grid-template-columns: 1fr 1fr !important;
-        }
-        [data-cardio-load-box] {
+        .cardio-v14-load-box,
+        .cardio-v14-action-row,
+        .cardio-v14-action-row-single,
+        .cardio-v14-dock-btns {
           grid-template-columns: 1fr !important;
         }
-        [data-cardio-action-row] {
-          grid-template-columns: 1fr !important;
-        }
-        [data-cardio-action-row-single] {
-          grid-template-columns: 1fr !important;
-        }
-        [data-cardio-dock-btns] {
-          grid-template-columns: 1fr !important;
+        .cardio-v14-minute-editor {
+          grid-template-columns: 44px minmax(0, 1fr) auto 44px !important;
         }
       }
       @media (max-width: 520px) {
-        [data-cardio-workout-grid] {
+        .cardio-v14-workout-grid {
           grid-template-columns: 1fr !important;
         }
-        [data-cardio-timeline-row] {
+        .cardio-v14-mode-grid {
+          grid-template-columns: 1fr !important;
+        }
+        .cardio-v14-timeline-row {
           gap: 6px !important;
         }
       }
