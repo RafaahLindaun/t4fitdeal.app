@@ -4,17 +4,20 @@ import { useAuth } from "../context/AuthContext";
 
 /* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
-const ORANGE_SOFT = "rgba(255,106,0,.12)";
+const ORANGE_2 = "#FFB26B";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 const BORDER = "rgba(15,23,42,.08)";
+const SOFT = "rgba(15,23,42,.04)";
 const SUCCESS = "#22c55e";
 
+/* ---------------- STORAGE ---------------- */
 const STORAGE_KEY = "cardio_sessions_fitdeal_v13";
 const LIVE_KEY = "cardio_live_fitdeal_v13";
 const WEEKLY_GOAL_MINUTES = 150;
 
+/* ---------------- DATA ---------------- */
 const WORKOUTS = [
   {
     id: "walk",
@@ -63,7 +66,7 @@ const INTENSITIES = {
   moderate: {
     label: "Moderado",
     feel: "Respiração acelerada, mas controlada",
-    multiplier: 1,
+    multiplier: 1.0,
   },
   high: {
     label: "Intenso",
@@ -72,7 +75,7 @@ const INTENSITIES = {
   },
 };
 
-const PRESET_MINUTES = [10, 15, 20, 25, 30, 40, 45, 60];
+const DURATIONS = [10, 15, 20, 25, 30, 40, 45, 60];
 
 /* ---------------- HELPERS ---------------- */
 function clamp(n, a, b) {
@@ -91,13 +94,6 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-function formatMMSS(sec) {
-  const s = Math.max(0, Math.floor(Number(sec || 0)));
-  const mm = String(Math.floor(s / 60)).padStart(2, "0");
-  const ss = String(s % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
-}
-
 function getDateKey(date = new Date()) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
@@ -113,46 +109,51 @@ function getLast7Days() {
   return res;
 }
 
+function formatMMSS(sec) {
+  const s = Math.max(0, Math.floor(Number(sec || 0)));
+  const mm = String(Math.floor(s / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
 function vibrate(ms = 18) {
   try {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
   } catch {}
 }
 
-function sessionsKey(email) {
-  return `${STORAGE_KEY}_${email}`;
+function caloriesFromMET({ met, minutes, weightKg }) {
+  return Math.round(minutes * ((met * 3.5 * weightKg) / 200));
 }
-function liveKey(email) {
+
+function liveStorageKey(email) {
   return `${LIVE_KEY}_${email}`;
 }
 
-function readSessions(email) {
-  return safeJsonParse(localStorage.getItem(sessionsKey(email)), []);
+function sessionsStorageKey(email) {
+  return `${STORAGE_KEY}_${email}`;
 }
 
-function writeSessions(email, sessions) {
-  localStorage.setItem(sessionsKey(email), JSON.stringify(sessions));
+function getLiveState(email) {
+  return safeJsonParse(localStorage.getItem(liveStorageKey(email)), null);
 }
 
-function readLive(email) {
-  return safeJsonParse(localStorage.getItem(liveKey(email)), null);
+function setLiveState(email, data) {
+  localStorage.setItem(liveStorageKey(email), JSON.stringify(data));
 }
 
-function writeLive(email, data) {
-  localStorage.setItem(liveKey(email), JSON.stringify(data));
-}
-
-function clearLive(email) {
-  localStorage.removeItem(liveKey(email));
+function clearLiveState(email) {
+  localStorage.removeItem(liveStorageKey(email));
 }
 
 function computeLiveElapsed(live) {
   if (!live) return 0;
-  const base = Number(live.elapsedSec || 0) || 0;
-  if (!live.running) return base;
-  const startedAt = Number(live.startedAt || 0) || 0;
-  const delta = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-  return base + delta;
+  if (!live.running) return Number(live.elapsedSec || 0);
+
+  const base = Number(live.elapsedSec || 0);
+  const startedAt = Number(live.startedAt || 0);
+  const extra = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+  return base + extra;
 }
 
 /* ---------------- ICONS ---------------- */
@@ -163,15 +164,13 @@ function IconChevronLeft() {
     </svg>
   );
 }
-
-function IconPlay() {
+function IconArrowRight() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 7l10 5-10 5V7Z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M10 17l5-5-5-5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
-
 function IconPause() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -180,7 +179,13 @@ function IconPause() {
     </svg>
   );
 }
-
+function IconPlay() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 7l10 5-10 5V7Z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function IconReset() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -189,17 +194,6 @@ function IconReset() {
     </svg>
   );
 }
-
-function IconSave() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 20h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M12 4v10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M8.8 10.8 12 14l3.2-3.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function IconClock() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -208,46 +202,27 @@ function IconClock() {
     </svg>
   );
 }
-
-function IconMinus() {
+function IconFlame() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M12 3c1.3 2 1.7 3.2 1.2 4.8-.3.9-1 1.7-1 2.8 0 1.2.9 2.2 2.1 2.2 1.6 0 2.9-1.6 2.9-3.8 2.2 1.8 3.8 4.6 3.8 7.5 0 4.1-3.4 7.5-8 7.5s-8-3.4-8-7.5c0-3.2 1.8-6 4.4-7.8-.1.5-.2.9-.2 1.4 0 1.5 1.1 2.7 2.5 2.7 1.6 0 2.9-1.3 2.9-3 .1-2.4-1.7-4.2-2.6-6.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function IconPlus() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 5v14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/* ---------------- UI ---------------- */
-function Toast({ item, onClose }) {
-  if (!item) return null;
+/* ---------------- UI BITS ---------------- */
+function Toast({ toast, onClose }) {
+  if (!toast) return null;
 
   return (
-    <div className="cardio-toast-wrap" role="status" aria-live="polite">
-      <div className="cardio-toast">
-        <div
-          className="cardio-toast-dot"
-          style={{
-            background: item.type === "success" ? SUCCESS : ORANGE,
-            boxShadow:
-              item.type === "success"
-                ? "0 0 0 7px rgba(34,197,94,.14)"
-                : "0 0 0 7px rgba(255,106,0,.12)",
-          }}
-        />
+    <div style={S.toastWrap} role="status" aria-live="polite">
+      <div style={S.toastCard}>
+        <div style={{ ...S.toastDot, ...(toast.type === "success" ? S.toastDotOk : null) }} />
         <div style={{ minWidth: 0 }}>
-          <div className="cardio-toast-title">{item.title}</div>
-          <div className="cardio-toast-text">{item.text}</div>
+          <div style={S.toastTitle}>{toast.title}</div>
+          <div style={S.toastText}>{toast.text}</div>
         </div>
-        <button type="button" className="cardio-toast-close" onClick={onClose}>
+        <button type="button" style={S.toastClose} onClick={onClose} aria-label="Fechar">
           ×
         </button>
       </div>
@@ -255,21 +230,28 @@ function Toast({ item, onClose }) {
   );
 }
 
-function WeekRing({ progress = 0, value, label, sublabel }) {
-  const size = 140;
-  const stroke = 12;
-  const clamped = clamp(progress, 0, 100);
+function Chip({ label, value }) {
+  return (
+    <div style={S.chip}>
+      <div style={S.chipLabel}>{label}</div>
+      <div style={S.chipValue}>{value}</div>
+    </div>
+  );
+}
+
+function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sublabel }) {
+  const clamped = Math.max(0, Math.min(100, progress));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clamped / 100) * circumference;
 
   return (
-    <div className="cardio-week-ring">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div style={S.ringWrap}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.ringSvg}>
         <defs>
-          <linearGradient id="cardioWeekGradV13" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioWeekGradientGlassV13" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor="#FFB26B" />
+            <stop offset="100%" stopColor={ORANGE_2} />
           </linearGradient>
         </defs>
 
@@ -286,39 +268,40 @@ function WeekRing({ progress = 0, value, label, sublabel }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioWeekGradV13)"
+          stroke="url(#cardioWeekGradientGlassV13)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: "stroke-dashoffset .25s ease" }}
         />
       </svg>
 
-      <div className="cardio-week-ring-center">
-        <div className="cardio-week-ring-value">{value}</div>
-        <div className="cardio-week-ring-label">{label}</div>
-        <div className="cardio-week-ring-sub">{sublabel}</div>
+      <div style={S.ringCenter}>
+        <div style={S.ringValue}>{value}</div>
+        <div style={S.ringLabel}>{label}</div>
+        {sublabel ? <div style={S.ringSub}>{sublabel}</div> : null}
       </div>
     </div>
   );
 }
 
-function MainTimerRing({ progress, top, value, bottom, running }) {
-  const size = 232;
-  const stroke = 16;
-  const clamped = clamp(progress, 0, 100);
+function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", running = false }) {
+  const size = 220;
+  const stroke = 15;
+  const clamped = Math.max(0, Math.min(100, progress));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clamped / 100) * circumference;
 
   return (
-    <div className={`cardio-main-ring ${running ? "running" : ""}`}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div style={{ ...S.bigRingWrap, ...(running ? S.bigRingRunning : null) }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.bigRingSvg}>
         <defs>
-          <linearGradient id="cardioMainGradV13" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioBigGradientGlassV13" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor="#FFB26B" />
+            <stop offset="100%" stopColor={ORANGE_2} />
           </linearGradient>
         </defs>
 
@@ -335,19 +318,20 @@ function MainTimerRing({ progress, top, value, bottom, running }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioMainGradV13)"
+          stroke="url(#cardioBigGradientGlassV13)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: "stroke-dashoffset .22s ease" }}
         />
       </svg>
 
-      <div className="cardio-main-ring-center">
-        <div className="cardio-main-ring-top">{top}</div>
-        <div className="cardio-main-ring-value">{value}</div>
-        <div className="cardio-main-ring-bottom">{bottom}</div>
+      <div style={S.bigRingCenter}>
+        <div style={S.bigRingTop}>{top}</div>
+        <div style={S.bigRingValue}>{value}</div>
+        {bottom ? <div style={S.bigRingBottom}>{bottom}</div> : null}
       </div>
     </div>
   );
@@ -357,37 +341,36 @@ function WeekTimeline({ sessions }) {
   const days = getLast7Days();
 
   return (
-    <div className="cardio-card">
-      <div className="cardio-section-head">
+    <section style={S.timelineCard}>
+      <div style={S.sectionHead}>
         <div>
-          <h3 className="cardio-section-title">Seu ritmo da semana</h3>
-          <p className="cardio-section-sub">Veja em quais dias você manteve o cardio.</p>
+          <h3 style={S.sectionTitle}>Seu ritmo da semana</h3>
+          <p style={S.sectionSub}>Constância sem poluição visual.</p>
         </div>
       </div>
 
-      <div className="cardio-timeline">
+      <div style={S.timelineRow}>
         {days.map((day) => {
           const key = getDateKey(day);
-          const daySessions = sessions.filter((item) => item.date === key);
-          const totalMin = daySessions.reduce((acc, item) => acc + (item.minutes || 0), 0);
+          const daySessions = sessions.filter((s) => s.date === key);
+          const totalMin = daySessions.reduce((a, b) => a + (b.minutes || 0), 0);
           const done = daySessions.length > 0;
-
           const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
             .format(day)
             .replace(".", "");
 
           return (
-            <div key={key} className="cardio-timeline-item">
-              <div className={`cardio-timeline-bubble ${done ? "done" : ""}`}>
-                <span />
+            <div style={S.timelineItem} key={key}>
+              <div style={{ ...S.bubble, ...(done ? S.bubbleDone : null) }}>
+                <span style={{ ...S.bubbleInner, ...(done ? S.bubbleInnerDone : null) }} />
               </div>
-              <div className="cardio-timeline-day">{weekday}</div>
-              <div className="cardio-timeline-min">{done ? `${totalMin} min` : "—"}</div>
+              <div style={S.timelineDay}>{weekday}</div>
+              <div style={S.timelineMin}>{done ? `${totalMin} min` : "—"}</div>
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -397,7 +380,7 @@ export default function Cardio() {
   const { user } = useAuth();
 
   const email = (user?.email || "anon").toLowerCase();
-  const paid = typeof window !== "undefined" ? localStorage.getItem(`paid_${email}`) === "1" : false;
+  const paid = localStorage.getItem(`paid_${email}`) === "1";
 
   const [mode, setMode] = useState("timer"); // timer | chrono | calories
   const [selectedWorkoutId, setSelectedWorkoutId] = useState("treadmill");
@@ -405,27 +388,26 @@ export default function Cardio() {
   const [minutes, setMinutes] = useState(20);
   const [minutesInput, setMinutesInput] = useState("20");
   const [calTarget, setCalTarget] = useState("");
-  const [sessions, setSessions] = useState(() => readSessions(email));
-
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [durationSec, setDurationSec] = useState(20 * 60);
-  const [running, setRunning] = useState(false);
   const [toast, setToast] = useState(null);
-  const [justFinished, setJustFinished] = useState(false);
-
-  const [dockOpen, setDockOpen] = useState(() => {
+  const [sessions, setSessions] = useState(() => {
     try {
-      return localStorage.getItem(`cardio_dock_open_${email}`) === "1";
+      const raw = localStorage.getItem(sessionsStorageKey(email));
+      return raw ? JSON.parse(raw) : [];
     } catch {
-      return false;
+      return [];
     }
   });
 
-  const tickRef = useRef(null);
+  const [running, setRunning] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(20 * 60);
+  const [justFinished, setJustFinished] = useState(false);
+
+  const dockKey = `cardio_dock_open_${email}`;
+  const [dockOpen, setDockOpen] = useState(() => localStorage.getItem(dockKey) === "1");
   const dragStartY = useRef(null);
   const dragMoved = useRef(false);
-
-  const weightKg = Number(user?.peso || user?.weight || 80) || 80;
+  const tickRef = useRef(null);
 
   const selectedWorkout = useMemo(
     () => WORKOUTS.find((w) => w.id === selectedWorkoutId) || WORKOUTS[0],
@@ -433,25 +415,26 @@ export default function Cardio() {
   );
 
   const intensityInfo = INTENSITIES[selectedIntensity] || INTENSITIES.moderate;
+  const weightKg = Number(user?.peso || user?.weight || 80) || 80;
 
   const metNow = useMemo(() => {
-    const raw = selectedWorkout?.mets?.[selectedIntensity] ?? selectedWorkout?.mets?.moderate ?? 5.5;
-    return +(raw * intensityInfo.multiplier).toFixed(2);
+    const metBase = selectedWorkout?.mets?.[selectedIntensity] ?? selectedWorkout?.mets?.moderate ?? 5.5;
+    return +(metBase * intensityInfo.multiplier).toFixed(2);
   }, [selectedWorkout, selectedIntensity, intensityInfo]);
 
   const kcalPerMin = useMemo(() => (metNow * 3.5 * weightKg) / 200, [metNow, weightKg]);
 
   const todayKey = getDateKey();
-  const todaySessions = useMemo(() => sessions.filter((item) => item.date === todayKey), [sessions, todayKey]);
-  const todayMinutes = todaySessions.reduce((acc, item) => acc + (item.minutes || 0), 0);
-  const todayKcal = todaySessions.reduce((acc, item) => acc + (item.calories || 0), 0);
+  const todaySessions = useMemo(() => sessions.filter((s) => s.date === todayKey), [sessions, todayKey]);
+  const todayMinutes = todaySessions.reduce((a, b) => a + (b.minutes || 0), 0);
+  const todayKcal = todaySessions.reduce((a, b) => a + (b.calories || 0), 0);
 
   const last7Boundary = new Date();
   last7Boundary.setDate(last7Boundary.getDate() - 6);
 
-  const weekSessions = sessions.filter((item) => new Date(`${item.date}T12:00:00`) >= last7Boundary);
-  const weekMinutes = weekSessions.reduce((acc, item) => acc + (item.minutes || 0), 0);
-  const weekKcal = weekSessions.reduce((acc, item) => acc + (item.calories || 0), 0);
+  const weekSessions = sessions.filter((s) => new Date(`${s.date}T12:00:00`) >= last7Boundary);
+  const weekMinutes = weekSessions.reduce((a, b) => a + (b.minutes || 0), 0);
+  const weekKcal = weekSessions.reduce((a, b) => a + (b.calories || 0), 0);
   const weekProgress = Math.min(100, Math.round((weekMinutes / WEEKLY_GOAL_MINUTES) * 100));
   const minutesLeft = Math.max(0, WEEKLY_GOAL_MINUTES - weekMinutes);
 
@@ -463,19 +446,63 @@ export default function Cardio() {
   const timerProgress = durationSec > 0 ? clamp((elapsedSec / durationSec) * 100, 0, 100) : 0;
   const liveEstimatedKcal = Math.round((elapsedSec / 60) * kcalPerMin);
 
-  const caloriesModeMinutes = useMemo(() => {
-    const kcal = Math.max(0, Math.round(Number(calTarget || 0)));
-    if (!kcal) return 0;
-    return Math.max(1, Math.ceil(kcal / Math.max(0.1, kcalPerMin)));
-  }, [calTarget, kcalPerMin]);
+  const nextActionLabel = useMemo(() => {
+    if (mode === "calories") {
+      if (!Number(calTarget) || Number(calTarget) <= 0) return "Defina uma meta de kcal";
+      return "Toque em iniciar meta";
+    }
+    if (running) return "Sessão em andamento";
+    if (elapsedSec > 0 && !justFinished) return "Toque em continuar";
+    if (justFinished) return "Toque em salvar sessão";
+    return mode === "timer" ? "Toque em iniciar timer" : "Toque em iniciar cronômetro";
+  }, [mode, calTarget, running, elapsedSec, justFinished]);
+
+  function persistDock(v) {
+    setDockOpen(v);
+    localStorage.setItem(dockKey, v ? "1" : "0");
+  }
+
+  function persistLive(next) {
+    setLiveState(email, {
+      selectedWorkoutId,
+      selectedIntensity,
+      minutes,
+      durationSec,
+      mode,
+      ...next,
+    });
+  }
+
+  function saveSessionFromMinutes(mins, modeLabel) {
+    const safeMinutes = Math.max(1, Math.round(mins));
+    const kcal = caloriesFromMET({
+      met: metNow,
+      minutes: safeMinutes,
+      weightKg,
+    });
+
+    const entry = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      date: todayKey,
+      workoutId: selectedWorkout.id,
+      workoutName: selectedWorkout.name,
+      intensity: selectedIntensity,
+      intensityLabel: intensityInfo.label,
+      minutes: safeMinutes,
+      calories: kcal,
+      weightKg,
+      mode: modeLabel,
+    };
+
+    setSessions((prev) => [entry, ...prev].slice(0, 200));
+  }
 
   useEffect(() => {
-    writeSessions(email, sessions);
-  }, [email, sessions]);
-
-  useEffect(() => {
-    setMinutesInput(String(minutes));
-  }, [minutes]);
+    try {
+      localStorage.setItem(sessionsStorageKey(email), JSON.stringify(sessions));
+    } catch {}
+  }, [sessions, email]);
 
   useEffect(() => {
     if (!toast) return;
@@ -484,32 +511,23 @@ export default function Cardio() {
   }, [toast]);
 
   useEffect(() => {
-    const live = readLive(email);
+    const live = getLiveState(email);
     if (!live) {
-      setMode("timer");
-      setSelectedWorkoutId("treadmill");
-      setSelectedIntensity("moderate");
-      setMinutes(20);
-      setMinutesInput("20");
-      setDurationSec(20 * 60);
-      setElapsedSec(0);
-      setRunning(false);
-      setJustFinished(false);
+      setDurationSec(minutes * 60);
       return;
     }
 
-    const safeMode = live.mode || "timer";
-    const safeMinutes = clamp(Number(live.minutes || 20), 5, 240);
-
-    setMode(safeMode);
+    setMode(live.mode || "timer");
     setSelectedWorkoutId(live.selectedWorkoutId || "treadmill");
     setSelectedIntensity(live.selectedIntensity || "moderate");
-    setMinutes(safeMinutes);
-    setMinutesInput(String(safeMinutes));
-    setDurationSec(Number(live.durationSec || safeMinutes * 60));
+
+    const mins = Number(live.minutes || 20);
+    setMinutes(clamp(mins, 1, 240));
+    setMinutesInput(String(clamp(mins, 1, 240)));
+
+    setDurationSec(Number(live.durationSec || mins * 60));
     setElapsedSec(computeLiveElapsed(live));
     setRunning(!!live.running);
-    setJustFinished(false);
   }, [email]);
 
   useEffect(() => {
@@ -524,8 +542,8 @@ export default function Cardio() {
       tickRef.current = null;
     }
 
-    function syncLive() {
-      const live = readLive(email);
+    const sync = () => {
+      const live = getLiveState(email);
       if (!live) return;
 
       const elapsed = computeLiveElapsed(live);
@@ -533,15 +551,15 @@ export default function Cardio() {
       setRunning(!!live.running);
 
       if (live.mode === "timer") {
-        const total = Number(live.durationSec || 0) || 0;
+        const total = Number(live.durationSec || 0);
         setDurationSec(total);
 
-        if (live.running && elapsed >= total && total > 0) {
+        if (elapsed >= total && live.running) {
           setElapsedSec(total);
           setRunning(false);
           setJustFinished(true);
 
-          writeLive(email, {
+          setLiveState(email, {
             ...live,
             running: false,
             elapsedSec: total,
@@ -549,85 +567,58 @@ export default function Cardio() {
             finishedAt: Date.now(),
           });
 
-          vibrate(40);
+          vibrate([40, 60, 40]);
           setToast({
             type: "success",
             title: "Timer concluído",
-            text: "Seu cardio terminou. Agora toque em salvar para registrar.",
+            text: "Seu cardio terminou. Agora salve a sessão.",
           });
           persistDock(true);
         }
       }
-    }
+    };
 
-    syncLive();
-    tickRef.current = setInterval(syncLive, 250);
+    sync();
+    tickRef.current = setInterval(sync, 250);
 
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
   }, [email]);
 
-  function persistDock(v) {
-    setDockOpen(v);
-    localStorage.setItem(`cardio_dock_open_${email}`, v ? "1" : "0");
-  }
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "cardio-apple-glass-ui-v13";
+    if (document.getElementById(id)) return;
 
-  function persistLive(next) {
-    writeLive(email, {
-      mode,
-      selectedWorkoutId,
-      selectedIntensity,
-      minutes,
-      durationSec,
-      ...next,
-    });
-  }
-
-  function saveSessionFromMinutes(mins, modeLabel) {
-    const safeMinutes = Math.max(1, Math.round(mins));
-    const calories = Math.round(safeMinutes * kcalPerMin);
-
-    const entry = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
-      date: todayKey,
-      workoutId: selectedWorkout.id,
-      workoutName: selectedWorkout.name,
-      intensity: selectedIntensity,
-      intensityLabel: intensityInfo.label,
-      minutes: safeMinutes,
-      calories,
-      weightKg,
-      mode: modeLabel,
-    };
-
-    setSessions((prev) => [entry, ...prev].slice(0, 200));
-  }
-
-  function applyMinutesFromInput() {
-    const parsed = Number(String(minutesInput || "").replace(/[^\d]/g, ""));
-    const safe = clamp(Number.isFinite(parsed) && parsed > 0 ? parsed : minutes, 5, 240);
-    setMinutes(safe);
-    setMinutesInput(String(safe));
-    if (!running && mode === "timer") {
-      setDurationSec(safe * 60);
-    }
-  }
-
-  function changeMinutes(next) {
-    const safe = clamp(next, 5, 240);
-    setMinutes(safe);
-    setMinutesInput(String(safe));
-    if (!running && mode === "timer") {
-      setDurationSec(safe * 60);
-    }
-  }
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes cdSheen {
+        0%,35% { transform: translateX(-70%); opacity:.18; }
+        55%,100% { transform: translateX(140%); opacity:.18; }
+      }
+      @keyframes cdPop {
+        0%,100% { transform: scale(1); }
+        50% { transform: scale(1.015); }
+      }
+      .cd-press { transition: transform .12s ease, filter .12s ease; }
+      .cd-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
+      input:focus {
+        border-color: rgba(255,106,0,.38) !important;
+        box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   function startTimer() {
     setJustFinished(false);
-    const total = clamp(minutes, 5, 240) * 60;
-    const live = readLive(email);
+    const total = clamp(minutes, 1, 240) * 60;
+    const live = getLiveState(email);
 
     if (
       live &&
@@ -636,83 +627,77 @@ export default function Cardio() {
       Number(live.elapsedSec || 0) > 0 &&
       Number(live.durationSec || 0) === total
     ) {
-      writeLive(email, {
-        ...live,
+      persistLive({
+        mode: "timer",
+        durationSec: total,
         running: true,
+        elapsedSec: Number(live.elapsedSec || 0),
         startedAt: Date.now(),
+        finishedAt: 0,
       });
       setRunning(true);
-      persistDock(true);
       vibrate(10);
+      persistDock(true);
       return;
     }
 
-    writeLive(email, {
+    persistLive({
       mode: "timer",
-      selectedWorkoutId,
-      selectedIntensity,
-      minutes,
       durationSec: total,
       running: true,
       elapsedSec: 0,
       startedAt: Date.now(),
       finishedAt: 0,
     });
-
-    setDurationSec(total);
     setElapsedSec(0);
+    setDurationSec(total);
     setRunning(true);
-    persistDock(true);
     vibrate(10);
+    persistDock(true);
   }
 
   function startChrono() {
     setJustFinished(false);
-    const live = readLive(email);
+    const live = getLiveState(email);
 
     if (live && live.mode === "chrono" && !live.running && Number(live.elapsedSec || 0) > 0) {
-      writeLive(email, {
-        ...live,
+      persistLive({
+        mode: "chrono",
         running: true,
+        elapsedSec: Number(live.elapsedSec || 0),
         startedAt: Date.now(),
+        finishedAt: 0,
       });
       setRunning(true);
-      persistDock(true);
       vibrate(10);
+      persistDock(true);
       return;
     }
 
-    writeLive(email, {
+    persistLive({
       mode: "chrono",
-      selectedWorkoutId,
-      selectedIntensity,
-      minutes,
-      durationSec: 0,
       running: true,
       elapsedSec: 0,
       startedAt: Date.now(),
       finishedAt: 0,
     });
-
     setElapsedSec(0);
     setRunning(true);
-    persistDock(true);
     vibrate(10);
+    persistDock(true);
   }
 
   function pauseCurrent() {
-    const live = readLive(email);
+    const live = getLiveState(email);
     if (!live) return;
 
     const elapsed = computeLiveElapsed(live);
-
-    writeLive(email, {
+    persistLive({
       ...live,
       running: false,
       elapsedSec: elapsed,
       startedAt: 0,
     });
-
     setElapsedSec(elapsed);
     setRunning(false);
     vibrate(8);
@@ -722,32 +707,24 @@ export default function Cardio() {
     setJustFinished(false);
 
     if (mode === "timer") {
-      const total = clamp(minutes, 5, 240) * 60;
-      writeLive(email, {
+      persistLive({
         mode: "timer",
-        selectedWorkoutId,
-        selectedIntensity,
-        minutes,
-        durationSec: total,
         running: false,
         elapsedSec: 0,
         startedAt: 0,
+        durationSec: minutes * 60,
         finishedAt: 0,
       });
       setElapsedSec(0);
-      setDurationSec(total);
+      setDurationSec(minutes * 60);
       setRunning(false);
       vibrate(8);
       return;
     }
 
     if (mode === "chrono") {
-      writeLive(email, {
+      persistLive({
         mode: "chrono",
-        selectedWorkoutId,
-        selectedIntensity,
-        minutes,
-        durationSec: 0,
         running: false,
         elapsedSec: 0,
         startedAt: 0,
@@ -762,58 +739,44 @@ export default function Cardio() {
   function saveTimerSession() {
     const doneMinutes = Math.max(1, Math.round(elapsedSec / 60));
     saveSessionFromMinutes(doneMinutes, "timer");
-
-    writeLive(email, {
+    persistLive({
       mode: "timer",
-      selectedWorkoutId,
-      selectedIntensity,
-      minutes,
-      durationSec: minutes * 60,
       running: false,
       elapsedSec: 0,
       startedAt: 0,
+      durationSec: minutes * 60,
       finishedAt: 0,
     });
-
     setElapsedSec(0);
-    setDurationSec(minutes * 60);
     setRunning(false);
     setJustFinished(false);
-
+    vibrate(20);
     setToast({
       type: "success",
       title: "Sessão salva",
       text: `${doneMinutes} min registrados com sucesso.`,
     });
-    vibrate(18);
   }
 
   function saveChronoSession() {
     const doneMinutes = Math.max(1, Math.round(elapsedSec / 60));
     saveSessionFromMinutes(doneMinutes, "chrono");
-
-    writeLive(email, {
+    persistLive({
       mode: "chrono",
-      selectedWorkoutId,
-      selectedIntensity,
-      minutes,
-      durationSec: 0,
       running: false,
       elapsedSec: 0,
       startedAt: 0,
       finishedAt: 0,
     });
-
     setElapsedSec(0);
     setRunning(false);
     setJustFinished(false);
-
+    vibrate(20);
     setToast({
       type: "success",
       title: "Sessão salva",
       text: `${doneMinutes} min registrados com sucesso.`,
     });
-    vibrate(18);
   }
 
   function startByCalories() {
@@ -821,68 +784,64 @@ export default function Cardio() {
     if (kcal <= 0) return;
 
     const mins = Math.max(1, Math.ceil(kcal / Math.max(0.1, kcalPerMin)));
-    const safeMinutes = clamp(mins, 5, 240);
-
+    setMinutes(mins);
+    setMinutesInput(String(mins));
     setMode("timer");
-    setMinutes(safeMinutes);
-    setMinutesInput(String(safeMinutes));
-    setDurationSec(safeMinutes * 60);
-    setElapsedSec(0);
     setJustFinished(false);
 
-    writeLive(email, {
-      mode: "timer",
+    setLiveState(email, {
       selectedWorkoutId,
       selectedIntensity,
-      minutes: safeMinutes,
-      durationSec: safeMinutes * 60,
+      minutes: mins,
+      durationSec: mins * 60,
+      mode: "timer",
       running: true,
       elapsedSec: 0,
       startedAt: Date.now(),
       finishedAt: 0,
     });
 
+    setDurationSec(mins * 60);
+    setElapsedSec(0);
     setRunning(true);
-    persistDock(true);
     vibrate(10);
+    persistDock(true);
     setToast({
       type: "success",
       title: "Meta iniciada",
-      text: `${safeMinutes} min estimados para bater ${kcal} kcal.`,
+      text: `${mins} min estimados para bater ${kcal} kcal.`,
     });
   }
 
   function changeMode(nextMode) {
     if (running) pauseCurrent();
-
     setMode(nextMode);
     setJustFinished(false);
 
     if (nextMode === "timer") {
-      const total = clamp(minutes, 5, 240) * 60;
-      writeLive(email, {
-        mode: "timer",
+      setLiveState(email, {
         selectedWorkoutId,
         selectedIntensity,
         minutes,
-        durationSec: total,
+        durationSec: minutes * 60,
+        mode: "timer",
         running: false,
         elapsedSec: 0,
         startedAt: 0,
         finishedAt: 0,
       });
       setElapsedSec(0);
-      setDurationSec(total);
+      setDurationSec(minutes * 60);
       setRunning(false);
     }
 
     if (nextMode === "chrono") {
-      writeLive(email, {
-        mode: "chrono",
+      setLiveState(email, {
         selectedWorkoutId,
         selectedIntensity,
         minutes,
         durationSec: 0,
+        mode: "chrono",
         running: false,
         elapsedSec: 0,
         startedAt: 0,
@@ -898,11 +857,29 @@ export default function Cardio() {
     }
   }
 
+  function applyMinutesValue(rawValue) {
+    const num = clamp(Number(rawValue || 1), 1, 240);
+    setMinutes(num);
+    setMinutesInput(String(num));
+    if (!running && mode === "timer") {
+      setDurationSec(num * 60);
+    }
+  }
+
+  function onMinutesInputChange(value) {
+    if (/^\d*$/.test(value)) {
+      setMinutesInput(value);
+    }
+  }
+
+  function onMinutesInputBlur() {
+    applyMinutesValue(minutesInput || String(minutes));
+  }
+
   function onDockPointerDown(e) {
     dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
     dragMoved.current = false;
   }
-
   function onDockPointerMove(e) {
     if (dragStartY.current == null) return;
     const y = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
@@ -920,65 +897,26 @@ export default function Cardio() {
       persistDock(false);
     }
   }
-
   function onDockPointerUp() {
     dragStartY.current = null;
   }
-
   function onDockClick() {
     if (dragMoved.current) return;
     persistDock(!dockOpen);
   }
 
-  const bigRingValue =
-    mode === "timer"
-      ? formatMMSS(timerRemainingSec)
-      : mode === "chrono"
-      ? formatMMSS(elapsedSec)
-      : caloriesModeMinutes > 0
-      ? `${pad2(caloriesModeMinutes)}:00`
-      : "--:--";
-
-  const bigRingTop =
-    mode === "timer"
-      ? running
-        ? "timer ativo"
-        : "timer"
-      : mode === "chrono"
-      ? running
-        ? "cronômetro ativo"
-        : "cronômetro"
-      : "meta por kcal";
-
-  const bigRingBottom =
-    mode === "timer"
-      ? `${liveEstimatedKcal} kcal estimadas`
-      : mode === "chrono"
-      ? `${liveEstimatedKcal} kcal estimadas`
-      : calTarget
-      ? `${calTarget} kcal alvo`
-      : "defina sua meta";
-
-  const heroSummaryText =
-    mode === "timer"
-      ? `Escolha o tempo e toque em iniciar timer.`
-      : mode === "chrono"
-      ? `Toque em iniciar cronômetro e salve quando terminar.`
-      : `Digite a meta de calorias e toque em iniciar por kcal.`;
-
   if (!paid) {
     return (
-      <div className="cardio-screen">
-        <style>{styles}</style>
-        <div className="cardio-lock-card">
-          <div className="cardio-lock-title">Cardio premium</div>
-          <div className="cardio-lock-text">
-            Assine para liberar timer, cronômetro, meta por calorias, histórico e dock flutuante.
+      <div style={S.page}>
+        <div style={S.lockCard}>
+          <div style={S.lockTitle}>Cardio premium</div>
+          <div style={S.lockText}>
+            Assine para liberar timer, cronômetro, meta por calorias, histórico e mini dock flutuante.
           </div>
-          <button className="cardio-primary" onClick={() => nav("/planos")} type="button">
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="cd-press">
             Ver planos
           </button>
-          <button className="cardio-secondary" onClick={() => nav("/treino")} type="button">
+          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="cd-press">
             Voltar
           </button>
         </div>
@@ -987,519 +925,570 @@ export default function Cardio() {
   }
 
   return (
-    <div className="cardio-screen">
-      <style>{styles}</style>
+    <div style={S.page}>
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <Toast item={toast} onClose={() => setToast(null)} />
+      <div style={S.head}>
+        <div style={S.headGlow} aria-hidden="true" />
 
-      <div className="cardio-container">
-        {/* HEADER */}
-        <div className="cardio-card cardio-header">
-          <button className="cardio-back-btn" onClick={() => nav("/treino")} type="button" aria-label="Voltar">
-            <IconChevronLeft />
-          </button>
+        <button style={S.back} onClick={() => nav("/treino")} aria-label="Voltar" type="button" className="cd-press">
+          <IconChevronLeft />
+        </button>
 
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="cardio-kicker">Cardio detalhado</div>
-            <div className="cardio-header-title">Seu cardio de hoje</div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={S.hKicker}>Cardio detalhado</div>
+          <div style={S.hTitle}>Seu cardio de hoje</div>
 
-            <div className="cardio-badges">
-              <span className="cardio-badge cardio-badge-strong">{selectedWorkout.name}</span>
-              <span className="cardio-badge">{intensityInfo.label}</span>
-              <span className="cardio-badge">
-                {mode === "timer" ? "Timer" : mode === "chrono" ? "Cronômetro" : "Por calorias"}
-              </span>
+          <div style={S.hLine}>
+            <span style={S.tagStrong}>{selectedWorkout.name}</span>
+            <span style={S.tagSoft}>{intensityInfo.label}</span>
+            <span style={S.tagSoft}>
+              {mode === "timer" ? "Timer" : mode === "chrono" ? "Cronômetro" : "Meta por calorias"}
+            </span>
+          </div>
+
+          <div style={S.hMeta}>
+            Escolha o modo, ajuste o ritmo e toque no botão principal para começar.
+          </div>
+        </div>
+      </div>
+
+      <div style={S.heroGrid}>
+        <div style={S.heroCard}>
+          <div style={S.cardGlow} aria-hidden="true" />
+          <div style={S.cardSheen} aria-hidden="true" />
+
+          <div style={S.sectionHead}>
+            <div>
+              <h3 style={S.sectionTitle}>Resumo da semana</h3>
+              <p style={S.sectionSub}>Meta simples para manter consistência.</p>
             </div>
+          </div>
 
-            <div className="cardio-header-sub">
-              {heroSummaryText}
+          <div style={S.heroSplit}>
+            <RingProgress
+              progress={weekProgress}
+              value={`${weekMinutes}m`}
+              label="meta semanal"
+              sublabel={weekProgress >= 100 ? "fechou!" : `faltam ${minutesLeft} min`}
+            />
+
+            <div style={S.heroStats}>
+              <Chip label="Hoje" value={`${todayMinutes} min`} />
+              <Chip label="Calorias hoje" value={`${todayKcal} kcal`} />
+              <Chip label="Semana" value={`${weekKcal} kcal`} />
             </div>
           </div>
         </div>
 
-        {/* TOP CARDS */}
-        <div className="cardio-top-grid">
-          <div className="cardio-card">
-            <div className="cardio-section-head">
-              <div>
-                <h3 className="cardio-section-title">Resumo da semana</h3>
-                <p className="cardio-section-sub">Meta simples para manter consistência.</p>
-              </div>
-            </div>
+        <div style={S.heroCard}>
+          <div style={S.cardGlow} aria-hidden="true" />
+          <div style={S.cardSheen} aria-hidden="true" />
 
-            <div className="cardio-week-summary">
-              <WeekRing
-                progress={weekProgress}
-                value={`${weekMinutes}m`}
-                label="meta semanal"
-                sublabel={weekProgress >= 100 ? "fechou!" : `faltam ${minutesLeft} min`}
-              />
-
-              <div className="cardio-stats-grid">
-                <div className="cardio-stat-box">
-                  <div className="cardio-stat-label">Hoje</div>
-                  <div className="cardio-stat-value">{todayMinutes} min</div>
-                </div>
-                <div className="cardio-stat-box">
-                  <div className="cardio-stat-label">Calorias hoje</div>
-                  <div className="cardio-stat-value">{todayKcal} kcal</div>
-                </div>
-                <div className="cardio-stat-box">
-                  <div className="cardio-stat-label">Semana</div>
-                  <div className="cardio-stat-value">{weekKcal} kcal</div>
-                </div>
-              </div>
+          <div style={S.sectionHead}>
+            <div>
+              <h3 style={S.sectionTitle}>Como usar</h3>
+              <p style={S.sectionSub}>Fluxo claro para não deixar dúvida.</p>
             </div>
           </div>
 
-          <div className="cardio-card">
-            <div className="cardio-section-head">
+          <div style={S.howList}>
+            <div style={S.howItem}>
+              <div style={S.howStep}>1</div>
+              <div style={S.howText}>Escolha o tipo de cardio.</div>
+            </div>
+            <div style={S.howItem}>
+              <div style={S.howStep}>2</div>
+              <div style={S.howText}>Selecione o modo: timer, cronômetro ou calorias.</div>
+            </div>
+            <div style={S.howItem}>
+              <div style={S.howStep}>3</div>
+              <div style={S.howText}>Ajuste o tempo ou a meta e toque no botão preto principal.</div>
+            </div>
+            <div style={S.howItem}>
+              <div style={S.howStep}>4</div>
+              <div style={S.howText}>Quando terminar, toque em salvar sessão.</div>
+            </div>
+          </div>
+
+          <div style={S.nextActionBox}>
+            <div style={S.nextActionLabel}>Próximo passo</div>
+            <div style={S.nextActionValue}>{nextActionLabel}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={S.contentGrid}>
+        <div style={S.mainCol}>
+          <div style={S.cardPage}>
+            <div style={S.cardGlow} aria-hidden="true" />
+            <div style={S.cardSheen} aria-hidden="true" />
+
+            <div style={S.sectionHead}>
               <div>
-                <h3 className="cardio-section-title">Modo da sessão</h3>
-                <p className="cardio-section-sub">Primeiro escolha como quer começar.</p>
+                <h3 style={S.sectionTitle}>Escolha seu cardio</h3>
+                <p style={S.sectionSub}>Toque em uma opção para definir a atividade.</p>
               </div>
             </div>
 
-            <div className="cardio-segmented">
+            <div style={S.workoutGrid}>
+              {WORKOUTS.map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => setSelectedWorkoutId(w.id)}
+                  style={{ ...S.workoutCard, ...(selectedWorkoutId === w.id ? S.workoutCardOn : S.workoutCardOff) }}
+                  className="cd-press"
+                >
+                  <div style={S.workoutName}>{w.name}</div>
+                  <div style={S.workoutSub}>{w.subtitle}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={S.cardPage}>
+            <div style={S.cardGlow} aria-hidden="true" />
+            <div style={S.cardSheen} aria-hidden="true" />
+
+            <div style={S.sectionHead}>
+              <div>
+                <h3 style={S.sectionTitle}>Sessão atual</h3>
+                <p style={S.sectionSub}>Tudo que importa aparece aqui no centro.</p>
+              </div>
+            </div>
+
+            <div style={S.modeGrid}>
               <button
                 type="button"
-                className={`cardio-segment-btn ${mode === "timer" ? "active" : ""}`}
                 onClick={() => changeMode("timer")}
+                style={{ ...S.modeBtn, ...(mode === "timer" ? S.modeBtnOn : S.modeBtnOff) }}
+                className="cd-press"
               >
                 Timer
               </button>
               <button
                 type="button"
-                className={`cardio-segment-btn ${mode === "chrono" ? "active" : ""}`}
                 onClick={() => changeMode("chrono")}
+                style={{ ...S.modeBtn, ...(mode === "chrono" ? S.modeBtnOn : S.modeBtnOff) }}
+                className="cd-press"
               >
                 Cronômetro
               </button>
               <button
                 type="button"
-                className={`cardio-segment-btn ${mode === "calories" ? "active" : ""}`}
                 onClick={() => changeMode("calories")}
+                style={{ ...S.modeBtn, ...(mode === "calories" ? S.modeBtnOn : S.modeBtnOff) }}
+                className="cd-press"
               >
-                Por kcal
+                Por calorias
               </button>
             </div>
 
-            <div className="cardio-mode-help">
-              {mode === "timer" && "Você escolhe quantos minutos quer fazer e inicia o contador regressivo."}
-              {mode === "chrono" && "Você inicia, faz o cardio e salva o tempo real no final."}
-              {mode === "calories" && "Você escolhe uma meta de calorias e o app calcula o tempo estimado."}
+            <div style={S.ringPanel}>
+              <BigRing
+                progress={mode === "timer" ? timerProgress : mode === "chrono" ? 100 : 0}
+                value={
+                  mode === "timer"
+                    ? formatMMSS(timerRemainingSec)
+                    : mode === "chrono"
+                    ? formatMMSS(elapsedSec)
+                    : (() => {
+                        const kcal = Math.max(0, Math.round(Number(calTarget || 0)));
+                        if (!kcal) return "--:--";
+                        const mins = Math.max(1, Math.ceil(kcal / Math.max(0.1, kcalPerMin)));
+                        return `${pad2(mins)}:00`;
+                      })()
+                }
+                top={
+                  mode === "timer"
+                    ? running
+                      ? "timer ativo"
+                      : "timer"
+                    : mode === "chrono"
+                    ? running
+                      ? "cronômetro ativo"
+                      : "cronômetro"
+                    : "meta por calorias"
+                }
+                bottom={
+                  mode === "timer"
+                    ? `${liveEstimatedKcal} kcal estimadas`
+                    : mode === "chrono"
+                    ? `${liveEstimatedKcal} kcal estimadas`
+                    : calTarget
+                    ? `${calTarget} kcal alvo`
+                    : "defina sua meta"
+                }
+                running={running}
+              />
+
+              {mode === "timer" && justFinished ? (
+                <div style={S.finishBanner}>
+                  <div style={S.finishTitle}>Cardio concluído</div>
+                  <div style={S.finishText}>Seu timer terminou. Agora toque em salvar sessão.</div>
+                </div>
+              ) : null}
             </div>
           </div>
-        </div>
 
-        {/* MAIN GRID */}
-        <div className="cardio-main-grid">
-          <div className="cardio-main-col">
-            {/* SESSION CURRENT */}
-            <div className="cardio-card">
-              <div className="cardio-section-head">
-                <div>
-                  <h3 className="cardio-section-title">Sessão atual</h3>
-                  <p className="cardio-section-sub">Aqui fica o centro da sessão e o botão principal para começar.</p>
-                </div>
-              </div>
+          <div style={S.cardPage}>
+            <div style={S.cardGlow} aria-hidden="true" />
+            <div style={S.cardSheen} aria-hidden="true" />
 
-              <div className="cardio-current-panel">
-                <MainTimerRing
-                  progress={mode === "timer" ? timerProgress : mode === "chrono" ? 100 : 0}
-                  top={bigRingTop}
-                  value={bigRingValue}
-                  bottom={bigRingBottom}
-                  running={running}
-                />
-
-                <div className="cardio-current-info">
-                  <div className="cardio-current-line">
-                    <strong>Cardio escolhido:</strong> {selectedWorkout.name}
-                  </div>
-                  <div className="cardio-current-line">
-                    <strong>Intensidade:</strong> {intensityInfo.label}
-                  </div>
-                  <div className="cardio-current-line">
-                    <strong>Gasto médio:</strong> ~{Math.round(kcalPerMin)} kcal/min
-                  </div>
-                </div>
-
-                {justFinished && mode === "timer" ? (
-                  <div className="cardio-finish-banner">
-                    <div className="cardio-finish-title">Cardio concluído</div>
-                    <div className="cardio-finish-text">
-                      Seu timer terminou. Agora toque em <strong>Salvar sessão</strong>.
-                    </div>
-                  </div>
-                ) : null}
+            <div style={S.sectionHead}>
+              <div>
+                <h3 style={S.sectionTitle}>Configuração</h3>
+                <p style={S.sectionSub}>Aqui você ajusta o que precisa antes de começar.</p>
               </div>
             </div>
 
-            {/* WORKOUT */}
-            <div className="cardio-card">
-              <div className="cardio-section-head">
-                <div>
-                  <h3 className="cardio-section-title">Escolha seu cardio</h3>
-                  <p className="cardio-section-sub">Toque em uma opção para selecionar o tipo de cardio.</p>
-                </div>
-              </div>
+            {mode === "timer" && (
+              <>
+                <div style={S.block}>
+                  <div style={S.blockLabel}>Quanto tempo?</div>
 
-              <div className="cardio-workout-grid">
-                {WORKOUTS.map((w) => (
-                  <button
-                    key={w.id}
-                    type="button"
-                    className={`cardio-workout-card ${selectedWorkoutId === w.id ? "active" : ""}`}
-                    onClick={() => setSelectedWorkoutId(w.id)}
-                  >
-                    <div className="cardio-workout-name">{w.name}</div>
-                    <div className="cardio-workout-sub">{w.subtitle}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
+                  <div style={S.minuteEditor}>
+                    <button
+                      type="button"
+                      onClick={() => applyMinutesValue(Math.max(1, minutes - 1))}
+                      disabled={running}
+                      style={{ ...S.stepBtn, ...(running ? S.stepBtnDisabled : null) }}
+                      className="cd-press"
+                    >
+                      −
+                    </button>
 
-            {/* SETTINGS */}
-            <div className="cardio-card">
-              <div className="cardio-section-head">
-                <div>
-                  <h3 className="cardio-section-title">Ajustes</h3>
-                  <p className="cardio-section-sub">Aqui você configura o tempo, intensidade e salva a sessão.</p>
-                </div>
-              </div>
+                    <input
+                      value={minutesInput}
+                      onChange={(e) => onMinutesInputChange(e.target.value)}
+                      onBlur={onMinutesInputBlur}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          applyMinutesValue(minutesInput || String(minutes));
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      disabled={running}
+                      inputMode="numeric"
+                      style={{ ...S.minuteInput, ...(running ? S.minuteInputDisabled : null) }}
+                    />
 
-              {mode === "timer" && (
-                <>
-                  <div className="cardio-block">
-                    <div className="cardio-block-title">1. Defina o tempo</div>
+                    <div style={S.minuteSuffix}>min</div>
 
-                    <div className="cardio-time-editor">
+                    <button
+                      type="button"
+                      onClick={() => applyMinutesValue(Math.min(240, minutes + 1))}
+                      disabled={running}
+                      style={{ ...S.stepBtn, ...(running ? S.stepBtnDisabled : null) }}
+                      className="cd-press"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div style={S.quickMinutesWrap}>
+                    {DURATIONS.map((d) => (
                       <button
+                        key={d}
                         type="button"
-                        className="cardio-step-btn"
-                        onClick={() => changeMinutes(minutes - 5)}
+                        onClick={() => applyMinutesValue(d)}
                         disabled={running}
+                        style={{ ...S.durationBtn, ...(minutes === d ? S.durationBtnOn : S.durationBtnOff), ...(running ? S.durationBtnDisabled : null) }}
+                        className="cd-press"
                       >
-                        <IconMinus />
+                        {d} min
                       </button>
+                    ))}
+                  </div>
+                </div>
 
-                      <div className="cardio-time-input-wrap">
-                        <input
-                          className="cardio-time-input"
-                          inputMode="numeric"
-                          value={minutesInput}
-                          disabled={running}
-                          onChange={(e) => setMinutesInput(e.target.value.replace(/[^\d]/g, ""))}
-                          onBlur={applyMinutesFromInput}
-                        />
-                        <span className="cardio-time-unit">min</span>
-                      </div>
-
+                <div style={S.block}>
+                  <div style={S.blockLabel}>Intensidade</div>
+                  <div style={S.intensityGrid}>
+                    {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
+                        key={key}
                         type="button"
-                        className="cardio-step-btn"
-                        onClick={() => changeMinutes(minutes + 5)}
-                        disabled={running}
+                        onClick={() => setSelectedIntensity(key)}
+                        style={{ ...S.intensityCard, ...(selectedIntensity === key ? S.intensityCardOn : S.intensityCardOff) }}
+                        className="cd-press"
                       >
-                        <IconPlus />
+                        <div style={S.intensityTitle}>{info.label}</div>
+                        <div style={S.intensityFeel}>{info.feel}</div>
                       </button>
-                    </div>
+                    ))}
+                  </div>
+                </div>
 
-                    <div className="cardio-presets">
-                      {PRESET_MINUTES.map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          className={`cardio-preset-btn ${minutes === d ? "active" : ""}`}
-                          disabled={running}
-                          onClick={() => changeMinutes(d)}
-                        >
-                          {d} min
-                        </button>
-                      ))}
+                <div style={S.loadBox}>
+                  <div style={S.loadLeft}>
+                    <div style={S.loadLabel}>Estimativa atual</div>
+                    <div style={S.loadVal}>~ {liveEstimatedKcal} kcal</div>
+                    <div style={S.loadHint}>
+                      {formatMMSS(elapsedSec)} feitos • {selectedWorkout.name} • {intensityInfo.label}
                     </div>
                   </div>
 
-                  <div className="cardio-block">
-                    <div className="cardio-block-title">2. Escolha a intensidade</div>
-
-                    <div className="cardio-intensity-grid">
-                      {Object.entries(INTENSITIES).map(([key, info]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`cardio-intensity-card ${selectedIntensity === key ? "active" : ""}`}
-                          onClick={() => setSelectedIntensity(key)}
-                        >
-                          <div className="cardio-intensity-title">{info.label}</div>
-                          <div className="cardio-intensity-feel">{info.feel}</div>
-                        </button>
-                      ))}
-                    </div>
+                  <div style={S.loadRight}>
+                    <div style={S.loadLabel}>kcal/min</div>
+                    <div style={S.loadVal}>{Math.round(kcalPerMin)}</div>
+                    <div style={S.loadHint}>Baseado no seu peso e intensidade.</div>
                   </div>
+                </div>
 
-                  <div className="cardio-estimate-box">
-                    <div className="cardio-estimate-title">3. Revise a estimativa</div>
-                    <div className="cardio-estimate-grid">
-                      <div className="cardio-estimate-item">
-                        <span>Tempo atual</span>
-                        <strong>{minutes} min</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Tipo</span>
-                        <strong>{selectedWorkout.name}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Intensidade</span>
-                        <strong>{intensityInfo.label}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Estimativa</span>
-                        <strong>~ {caloriesFromMET({ met: metNow, minutes, weightKg })} kcal</strong>
-                      </div>
-                    </div>
-                  </div>
+                <div style={S.ctaGuide}>
+                  <div style={S.ctaGuideTitle}>Botão para começar</div>
+                  <div style={S.ctaGuideText}>Use o botão preto abaixo para iniciar ou continuar o timer.</div>
+                </div>
 
-                  <div className="cardio-actions">
-                    {!running ? (
-                      <button type="button" className="cardio-primary-wide" onClick={startTimer}>
-                        <span>{elapsedSec > 0 && !justFinished ? "Continuar timer" : "Iniciar timer"}</span>
-                        <span className="cardio-btn-icon">
-                          <IconPlay />
-                        </span>
-                      </button>
-                    ) : (
-                      <button type="button" className="cardio-primary-wide" onClick={pauseCurrent}>
-                        <span>Pausar timer</span>
-                        <span className="cardio-btn-icon">
-                          <IconPause />
-                        </span>
-                      </button>
-                    )}
-
-                    <button type="button" className="cardio-secondary" onClick={resetCurrent}>
-                      <IconReset />
-                      Reset
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cardio-secondary"
-                      disabled={elapsedSec < 30}
-                      onClick={saveTimerSession}
-                    >
-                      <IconSave />
-                      Salvar sessão
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {mode === "chrono" && (
-                <>
-                  <div className="cardio-block">
-                    <div className="cardio-block-title">1. Escolha a intensidade</div>
-
-                    <div className="cardio-intensity-grid">
-                      {Object.entries(INTENSITIES).map(([key, info]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`cardio-intensity-card ${selectedIntensity === key ? "active" : ""}`}
-                          onClick={() => setSelectedIntensity(key)}
-                        >
-                          <div className="cardio-intensity-title">{info.label}</div>
-                          <div className="cardio-intensity-feel">{info.feel}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="cardio-estimate-box">
-                    <div className="cardio-estimate-title">2. O que vai ser salvo</div>
-                    <div className="cardio-estimate-grid">
-                      <div className="cardio-estimate-item">
-                        <span>Tempo rodado</span>
-                        <strong>{formatMMSS(elapsedSec)}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Estimativa</span>
-                        <strong>~ {liveEstimatedKcal} kcal</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Tipo</span>
-                        <strong>{selectedWorkout.name}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Intensidade</span>
-                        <strong>{intensityInfo.label}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="cardio-actions">
-                    {!running ? (
-                      <button type="button" className="cardio-primary-wide" onClick={startChrono}>
-                        <span>{elapsedSec > 0 ? "Continuar cronômetro" : "Iniciar cronômetro"}</span>
-                        <span className="cardio-btn-icon">
-                          <IconPlay />
-                        </span>
-                      </button>
-                    ) : (
-                      <button type="button" className="cardio-primary-wide" onClick={pauseCurrent}>
-                        <span>Pausar cronômetro</span>
-                        <span className="cardio-btn-icon">
-                          <IconPause />
-                        </span>
-                      </button>
-                    )}
-
-                    <button type="button" className="cardio-secondary" onClick={resetCurrent}>
-                      <IconReset />
-                      Reset
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cardio-secondary"
-                      disabled={elapsedSec < 30}
-                      onClick={saveChronoSession}
-                    >
-                      <IconSave />
-                      Salvar sessão
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {mode === "calories" && (
-                <>
-                  <div className="cardio-block">
-                    <div className="cardio-block-title">1. Digite a meta de calorias</div>
-
-                    <div className="cardio-kcal-input-wrap">
-                      <input
-                        className="cardio-kcal-input"
-                        inputMode="numeric"
-                        value={calTarget}
-                        onChange={(e) => setCalTarget(e.target.value.replace(/[^\d]/g, ""))}
-                        placeholder="Ex.: 250"
-                      />
-                      <span className="cardio-kcal-unit">kcal</span>
-                    </div>
-                  </div>
-
-                  <div className="cardio-block">
-                    <div className="cardio-block-title">2. Escolha a intensidade</div>
-
-                    <div className="cardio-intensity-grid">
-                      {Object.entries(INTENSITIES).map(([key, info]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`cardio-intensity-card ${selectedIntensity === key ? "active" : ""}`}
-                          onClick={() => setSelectedIntensity(key)}
-                        >
-                          <div className="cardio-intensity-title">{info.label}</div>
-                          <div className="cardio-intensity-feel">{info.feel}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="cardio-estimate-box">
-                    <div className="cardio-estimate-title">3. Tempo estimado para bater a meta</div>
-                    <div className="cardio-estimate-grid">
-                      <div className="cardio-estimate-item">
-                        <span>Meta</span>
-                        <strong>{calTarget ? `${calTarget} kcal` : "—"}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Tempo</span>
-                        <strong>{caloriesModeMinutes ? `${caloriesModeMinutes} min` : "—"}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Tipo</span>
-                        <strong>{selectedWorkout.name}</strong>
-                      </div>
-                      <div className="cardio-estimate-item">
-                        <span>Base</span>
-                        <strong>{Math.round(kcalPerMin)} kcal/min</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="cardio-actions">
-                    <button
-                      type="button"
-                      className="cardio-primary-wide"
-                      disabled={!Number(calTarget) || Number(calTarget) <= 0}
-                      onClick={startByCalories}
-                    >
-                      <span>Iniciar por kcal</span>
-                      <span className="cardio-btn-icon">
+                <div style={S.actionRow}>
+                  {!running ? (
+                    <button type="button" onClick={startTimer} style={S.bigStart} className="cd-press">
+                      {elapsedSec > 0 && !justFinished ? "Continuar timer" : "Iniciar timer"}
+                      <span style={S.bigStartIcon} aria-hidden="true">
                         <IconPlay />
                       </span>
                     </button>
-
-                    <button type="button" className="cardio-secondary" onClick={() => setCalTarget("")}>
-                      <IconReset />
-                      Limpar
+                  ) : (
+                    <button type="button" onClick={pauseCurrent} style={S.bigStart} className="cd-press">
+                      Pausar
+                      <span style={S.bigStartIcon} aria-hidden="true">
+                        <IconPause />
+                      </span>
                     </button>
+                  )}
+
+                  <button type="button" onClick={resetCurrent} style={S.smallPause} className="cd-press">
+                    <IconReset />
+                    Reset
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={saveTimerSession}
+                    disabled={elapsedSec < 30}
+                    style={{ ...S.smallPause, ...(elapsedSec < 30 ? S.smallPauseDisabled : null) }}
+                    className="cd-press"
+                  >
+                    <IconFlame />
+                    Salvar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {mode === "chrono" && (
+              <>
+                <div style={S.block}>
+                  <div style={S.blockLabel}>Intensidade</div>
+                  <div style={S.intensityGrid}>
+                    {Object.entries(INTENSITIES).map(([key, info]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedIntensity(key)}
+                        style={{ ...S.intensityCard, ...(selectedIntensity === key ? S.intensityCardOn : S.intensityCardOff) }}
+                        className="cd-press"
+                      >
+                        <div style={S.intensityTitle}>{info.label}</div>
+                        <div style={S.intensityFeel}>{info.feel}</div>
+                      </button>
+                    ))}
                   </div>
-                </>
-              )}
+                </div>
+
+                <div style={S.loadBox}>
+                  <div style={S.loadLeft}>
+                    <div style={S.loadLabel}>Estimativa atual</div>
+                    <div style={S.loadVal}>~ {liveEstimatedKcal} kcal</div>
+                    <div style={S.loadHint}>
+                      {Math.max(1, Math.round(elapsedSec / 60))} min • {selectedWorkout.name} • {intensityInfo.label}
+                    </div>
+                  </div>
+
+                  <div style={S.loadRight}>
+                    <div style={S.loadLabel}>kcal/min</div>
+                    <div style={S.loadVal}>{Math.round(kcalPerMin)}</div>
+                    <div style={S.loadHint}>Leitura rápida e limpa.</div>
+                  </div>
+                </div>
+
+                <div style={S.ctaGuide}>
+                  <div style={S.ctaGuideTitle}>Botão para começar</div>
+                  <div style={S.ctaGuideText}>Use o botão preto abaixo para iniciar ou continuar o cronômetro.</div>
+                </div>
+
+                <div style={S.actionRow}>
+                  {!running ? (
+                    <button type="button" onClick={startChrono} style={S.bigStart} className="cd-press">
+                      {elapsedSec > 0 ? "Continuar cronômetro" : "Iniciar cronômetro"}
+                      <span style={S.bigStartIcon} aria-hidden="true">
+                        <IconPlay />
+                      </span>
+                    </button>
+                  ) : (
+                    <button type="button" onClick={pauseCurrent} style={S.bigStart} className="cd-press">
+                      Pausar
+                      <span style={S.bigStartIcon} aria-hidden="true">
+                        <IconPause />
+                      </span>
+                    </button>
+                  )}
+
+                  <button type="button" onClick={resetCurrent} style={S.smallPause} className="cd-press">
+                    <IconReset />
+                    Reset
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={saveChronoSession}
+                    disabled={elapsedSec < 30}
+                    style={{ ...S.smallPause, ...(elapsedSec < 30 ? S.smallPauseDisabled : null) }}
+                    className="cd-press"
+                  >
+                    <IconSave />
+                    Salvar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {mode === "calories" && (
+              <>
+                <div style={S.block}>
+                  <div style={S.blockLabel}>Meta de calorias</div>
+                  <input
+                    value={calTarget}
+                    onChange={(e) => setCalTarget(e.target.value.replace(/[^\d]/g, ""))}
+                    placeholder="Ex.: 250"
+                    inputMode="numeric"
+                    style={S.input}
+                  />
+                </div>
+
+                <div style={S.block}>
+                  <div style={S.blockLabel}>Intensidade</div>
+                  <div style={S.intensityGrid}>
+                    {Object.entries(INTENSITIES).map(([key, info]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedIntensity(key)}
+                        style={{ ...S.intensityCard, ...(selectedIntensity === key ? S.intensityCardOn : S.intensityCardOff) }}
+                        className="cd-press"
+                      >
+                        <div style={S.intensityTitle}>{info.label}</div>
+                        <div style={S.intensityFeel}>{info.feel}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={S.loadBox}>
+                  <div style={S.loadLeft}>
+                    <div style={S.loadLabel}>Tempo necessário</div>
+                    <div style={S.loadVal}>
+                      {(() => {
+                        const kcal = Math.max(0, Math.round(Number(calTarget || 0)));
+                        if (!kcal) return "—";
+                        const mins = Math.max(1, Math.ceil(kcal / Math.max(0.1, kcalPerMin)));
+                        return `${mins} min`;
+                      })()}
+                    </div>
+                    <div style={S.loadHint}>
+                      {selectedWorkout.name} • {intensityInfo.label}
+                    </div>
+                  </div>
+
+                  <div style={S.loadRight}>
+                    <div style={S.loadLabel}>Base</div>
+                    <div style={S.loadVal}>{Math.round(kcalPerMin)} kcal/min</div>
+                    <div style={S.loadHint}>Peso {weightKg}kg • MET {metNow}</div>
+                  </div>
+                </div>
+
+                <div style={S.ctaGuide}>
+                  <div style={S.ctaGuideTitle}>Botão para começar</div>
+                  <div style={S.ctaGuideText}>Defina a meta e use o botão preto abaixo para iniciar automaticamente.</div>
+                </div>
+
+                <div style={S.actionRowSingle}>
+                  <button
+                    type="button"
+                    onClick={startByCalories}
+                    disabled={!Number(calTarget) || Number(calTarget) <= 0}
+                    style={{
+                      ...S.bigStart,
+                      ...((!Number(calTarget) || Number(calTarget) <= 0) ? S.bigStartDisabled : null),
+                    }}
+                    className="cd-press"
+                  >
+                    Iniciar meta
+                    <span style={S.bigStartIcon} aria-hidden="true">
+                      <IconArrowRight />
+                    </span>
+                  </button>
+
+                  <button type="button" onClick={() => setCalTarget("")} style={S.smallPause} className="cd-press">
+                    <IconReset />
+                    Limpar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div style={S.sideCol}>
+          <div style={S.cardPage}>
+            <div style={S.cardGlow} aria-hidden="true" />
+            <div style={S.cardSheen} aria-hidden="true" />
+
+            <div style={S.sectionHead}>
+              <div>
+                <h3 style={S.sectionTitle}>Histórico recente</h3>
+                <p style={S.sectionSub}>Feedback visual rápido da sua evolução.</p>
+              </div>
             </div>
 
-            <WeekTimeline sessions={sessions} />
-          </div>
-
-          <div className="cardio-side-col">
-            <div className="cardio-card">
-              <div className="cardio-section-head">
-                <div>
-                  <h3 className="cardio-section-title">Histórico recente</h3>
-                  <p className="cardio-section-sub">As últimas sessões que você salvou.</p>
-                </div>
+            {recentSessions.length === 0 ? (
+              <div style={S.emptyCard}>
+                Sua primeira sessão vai aparecer aqui assim que você salvar um cardio.
               </div>
-
-              {recentSessions.length === 0 ? (
-                <div className="cardio-empty">
-                  Sua primeira sessão vai aparecer aqui quando você salvar o cardio.
-                </div>
-              ) : (
-                <div className="cardio-history-list">
-                  {recentSessions.map((s) => (
-                    <div className="cardio-history-item" key={s.id}>
-                      <div style={{ minWidth: 0 }}>
-                        <div className="cardio-history-title">{s.workoutName}</div>
-                        <div className="cardio-history-meta">
-                          {s.minutes} min • {s.intensityLabel}
-                        </div>
+            ) : (
+              <div style={S.historyList}>
+                {recentSessions.map((s) => (
+                  <div key={s.id} style={S.historyItem}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={S.historyTitle}>{s.workoutName}</div>
+                      <div style={S.historyMeta}>
+                        {s.minutes} min • {s.intensityLabel}
                       </div>
-                      <div className="cardio-history-kcal">{s.calories} kcal</div>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="cardio-side-buttons">
-                <button type="button" className="cardio-secondary" onClick={() => nav("/treino")}>
-                  Ver treino
-                </button>
-                <button type="button" className="cardio-secondary" onClick={() => nav("/nutricao")}>
-                  Ver nutrição
-                </button>
+                    <div style={S.historyKcal}>{s.calories} kcal</div>
+                  </div>
+                ))}
               </div>
+            )}
+
+            <div style={S.sideBtns}>
+              <button type="button" onClick={() => nav("/treino")} style={S.endGhost} className="cd-press">
+                Ver treino
+              </button>
+              <button type="button" onClick={() => nav("/nutricao")} style={S.endGhost} className="cd-press">
+                Ver nutrição
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* DOCK */}
+      <WeekTimeline sessions={sessions} />
+
       <div
-        className={`cardio-dock ${dockOpen ? "open" : "closed"}`}
+        style={{ ...S.dock, ...(dockOpen ? S.dockOpen : S.dockClosed) }}
         onMouseDown={onDockPointerDown}
         onMouseMove={onDockPointerMove}
         onMouseUp={onDockPointerUp}
@@ -1508,72 +1497,83 @@ export default function Cardio() {
         onTouchEnd={onDockPointerUp}
         onClick={onDockClick}
         role="button"
-        aria-label="Controle da sessão"
+        aria-label="Controle do cardio"
       >
-        <div className="cardio-dock-head">
-          <div className="cardio-dock-pill">
-            <span className="cardio-dock-icon">
+        <div style={S.dockHeader}>
+          <div style={S.dockPill}>
+            <span style={S.dockIcon} aria-hidden="true">
               <IconClock />
             </span>
-            <span className="cardio-dock-title">Sessão de cardio</span>
+            <span style={S.dockTitle}>Sessão de cardio</span>
           </div>
 
-          <div className="cardio-dock-mini">
-            <div className="cardio-dock-mini-time">
+          <div style={S.dockMini}>
+            <span style={S.dockMiniTime}>
               {mode === "timer" ? formatMMSS(timerRemainingSec) : formatMMSS(elapsedSec)}
-            </div>
-            <div className="cardio-dock-mini-state">{running ? "rodando" : "parado"}</div>
+            </span>
+            <span style={S.dockMiniState}>{running ? "rodando" : "parado"}</span>
           </div>
         </div>
 
-        {dockOpen ? (
-          <div className="cardio-dock-body" onClick={(e) => e.stopPropagation()}>
-            <div className="cardio-dock-big-time">
+        {dockOpen && (
+          <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
+            <div style={S.dockBigTime}>
               {mode === "timer" ? formatMMSS(timerRemainingSec) : formatMMSS(elapsedSec)}
             </div>
-
-            <div className="cardio-dock-sub">
-              <strong>{selectedWorkout.name}</strong> • {intensityInfo.label} •{" "}
-              {mode === "timer" ? "Timer" : mode === "chrono" ? "Cronômetro" : "Por calorias"}
+            <div style={S.dockSub}>
+              <b style={{ color: TEXT }}>{selectedWorkout.name}</b> • {intensityInfo.label} •{" "}
+              {mode === "timer" ? "Timer" : mode === "chrono" ? "Cronômetro" : "Meta por calorias"}
             </div>
 
-            <div className="cardio-dock-actions">
+            <div style={S.dockBtns}>
               {mode !== "calories" && !running ? (
                 <button
                   type="button"
-                  className="cardio-primary-wide"
                   onClick={mode === "timer" ? startTimer : startChrono}
+                  style={S.bigStart}
+                  className="cd-press"
                 >
-                  <span>{mode === "timer" ? "Começar timer" : "Começar cronômetro"}</span>
-                  <span className="cardio-btn-icon">
+                  {mode === "timer"
+                    ? elapsedSec > 0 && !justFinished
+                      ? "Continuar"
+                      : "Começar"
+                    : elapsedSec > 0
+                    ? "Continuar"
+                    : "Começar"}
+                  <span style={S.bigStartIcon} aria-hidden="true">
                     <IconPlay />
                   </span>
                 </button>
               ) : mode !== "calories" ? (
-                <button type="button" className="cardio-primary-wide" onClick={pauseCurrent}>
-                  <span>Pausar</span>
-                  <span className="cardio-btn-icon">
+                <button type="button" onClick={pauseCurrent} style={S.bigStart} className="cd-press">
+                  Pausar
+                  <span style={S.bigStartIcon} aria-hidden="true">
                     <IconPause />
                   </span>
                 </button>
               ) : (
                 <button
                   type="button"
-                  className="cardio-primary-wide"
-                  disabled={!Number(calTarget) || Number(calTarget) <= 0}
                   onClick={startByCalories}
+                  disabled={!Number(calTarget) || Number(calTarget) <= 0}
+                  style={{
+                    ...S.bigStart,
+                    ...((!Number(calTarget) || Number(calTarget) <= 0) ? S.bigStartDisabled : null),
+                  }}
+                  className="cd-press"
                 >
-                  <span>Iniciar</span>
-                  <span className="cardio-btn-icon">
-                    <IconPlay />
+                  Iniciar
+                  <span style={S.bigStartIcon} aria-hidden="true">
+                    <IconArrowRight />
                   </span>
                 </button>
               )}
 
               <button
                 type="button"
-                className="cardio-secondary"
-                onClick={mode === "calories" ? () => setCalTarget("") : resetCurrent}
+                onClick={mode === "timer" || mode === "chrono" ? resetCurrent : () => setCalTarget("")}
+                style={S.smallPause}
+                className="cd-press"
               >
                 <IconReset />
                 {mode === "calories" ? "Limpar" : "Reset"}
@@ -1581,24 +1581,28 @@ export default function Cardio() {
 
               <button
                 type="button"
-                className="cardio-secondary"
-                disabled={mode === "calories" || elapsedSec < 30}
                 onClick={mode === "timer" ? saveTimerSession : saveChronoSession}
+                disabled={mode === "calories" || elapsedSec < 30}
+                style={{
+                  ...S.smallPause,
+                  ...(mode === "calories" || elapsedSec < 30 ? S.smallPauseDisabled : null),
+                }}
+                className="cd-press"
               >
                 <IconSave />
                 Salvar
               </button>
             </div>
 
-            <div className="cardio-dock-hint">Arraste para cima para abrir e para baixo para fechar.</div>
+            <div style={S.dockHint}>Arraste pra cima pra abrir, pra baixo pra fechar.</div>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
 }
 
-/* ---------------- MINI DOCK ---------------- */
+/* ---------------- MINI DOCK EXPORT ---------------- */
 export function CardioMiniDock() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -1612,9 +1616,13 @@ export function CardioMiniDock() {
 
   useEffect(() => {
     function pull() {
-      const live = readLive(email);
+      const live = getLiveState(email);
       if (!live) {
-        setInfo({ liveRunning: false, liveTime: "00:00", title: "Cardio" });
+        setInfo({
+          liveRunning: false,
+          liveTime: "00:00",
+          title: "Cardio",
+        });
         return;
       }
 
@@ -1645,1115 +1653,896 @@ export function CardioMiniDock() {
   if (!info.liveRunning) return null;
 
   return (
-    <button type="button" onClick={() => navigate("/cardio")} className="cardio-mini-dock">
-      <div className="cardio-mini-left">
-        <div className="cardio-mini-dot" />
+    <button
+      type="button"
+      onClick={() => navigate("/cardio")}
+      aria-label="Abrir Cardio"
+      style={MD.wrap}
+    >
+      <div style={MD.left}>
+        <div style={MD.dot} />
         <div style={{ minWidth: 0 }}>
-          <div className="cardio-mini-top">Cardio em andamento</div>
-          <div className="cardio-mini-sub">{info.title}</div>
+          <div style={MD.top}>Cardio em andamento</div>
+          <div style={MD.sub}>{info.title}</div>
         </div>
       </div>
 
-      <div className="cardio-mini-time">{info.liveTime}</div>
+      <div style={MD.right}>
+        <div style={MD.time}>{info.liveTime}</div>
+      </div>
     </button>
   );
 }
 
 /* ---------------- STYLES ---------------- */
-const styles = `
-  * { box-sizing: border-box; }
-
-  .cardio-screen {
-    min-height: 100vh;
-    background: ${BG};
-    padding: 18px;
-    padding-bottom: calc(116px + env(safe-area-inset-bottom));
-    color: ${TEXT};
-  }
-
-  .cardio-container {
-    width: 100%;
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .cardio-card,
-  .cardio-lock-card {
-    position: relative;
-    overflow: hidden;
-    border-radius: 28px;
-    background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.94));
-    border: 1px solid ${BORDER};
-    box-shadow: 0 18px 70px rgba(15,23,42,.06);
-    padding: 16px;
-  }
-
-  .cardio-header {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .cardio-back-btn {
-    width: 46px;
-    height: 46px;
-    border-radius: 18px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.76);
-    box-shadow: 0 14px 34px rgba(15,23,42,.06);
-    color: ${TEXT};
-    flex-shrink: 0;
-  }
-
-  .cardio-kicker {
-    font-size: 11px;
-    font-weight: 950;
-    color: ${MUTED};
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-
-  .cardio-header-title {
-    margin-top: 6px;
-    font-size: 24px;
-    line-height: 1.05;
-    font-weight: 950;
-    letter-spacing: -.04em;
-  }
-
-  .cardio-header-sub {
-    margin-top: 10px;
-    font-size: 13px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.4;
-  }
-
-  .cardio-badges {
-    margin-top: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .cardio-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 10px;
-    border-radius: 999px;
-    background: rgba(15,23,42,.04);
-    border: 1px solid ${BORDER};
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .cardio-badge-strong {
-    background: rgba(255,106,0,.10);
-    border-color: rgba(255,106,0,.20);
-  }
-
-  .cardio-top-grid {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: 1.08fr .92fr;
-    gap: 14px;
-  }
-
-  .cardio-main-grid {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: 1fr 350px;
-    gap: 14px;
-  }
-
-  .cardio-main-col,
-  .cardio-side-col {
-    display: grid;
-    gap: 14px;
-    align-content: start;
-  }
-
-  .cardio-section-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .cardio-section-title {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 950;
-    letter-spacing: -.03em;
-  }
-
-  .cardio-section-sub {
-    margin: 6px 0 0;
-    font-size: 13px;
-    font-weight: 800;
-    color: ${MUTED};
-    line-height: 1.4;
-  }
-
-  .cardio-week-summary {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: 160px 1fr;
-    gap: 14px;
-    align-items: center;
-  }
-
-  .cardio-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-
-  .cardio-stat-box {
-    min-height: 86px;
-    padding: 14px;
-    border-radius: 20px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .cardio-stat-label {
-    font-size: 11px;
-    color: ${MUTED};
-    font-weight: 950;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-  }
-
-  .cardio-stat-value {
-    margin-top: 8px;
-    font-size: 17px;
-    font-weight: 950;
-    line-height: 1.1;
-  }
-
-  .cardio-segmented {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-
-  .cardio-segment-btn {
-    min-height: 52px;
-    border-radius: 18px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    color: ${TEXT};
-    font-size: 14px;
-    font-weight: 950;
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-  }
-
-  .cardio-segment-btn.active {
-    background: #0B0B0C;
-    color: #fff;
-    border-color: rgba(255,255,255,.10);
-  }
-
-  .cardio-mode-help {
-    margin-top: 12px;
-    font-size: 13px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.4;
-  }
-
-  .cardio-current-panel {
-    margin-top: 14px;
-    display: grid;
-    justify-items: center;
-    gap: 14px;
-  }
-
-  .cardio-current-info {
-    width: 100%;
-    display: grid;
-    gap: 8px;
-  }
-
-  .cardio-current-line {
-    padding: 12px 14px;
-    border-radius: 18px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    font-size: 13px;
-    font-weight: 800;
-    color: ${MUTED};
-    line-height: 1.4;
-  }
-
-  .cardio-current-line strong {
-    color: ${TEXT};
-  }
-
-  .cardio-workout-grid {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .cardio-workout-card {
-    text-align: left;
-    padding: 16px;
-    min-height: 108px;
-    border-radius: 22px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-  }
-
-  .cardio-workout-card.active {
-    background: linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,255,255,.96));
-    border-color: rgba(255,106,0,.20);
-  }
-
-  .cardio-workout-name {
-    font-size: 16px;
-    font-weight: 950;
-    line-height: 1.15;
-    letter-spacing: -.02em;
-  }
-
-  .cardio-workout-sub {
-    margin-top: 8px;
-    font-size: 13px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.35;
-  }
-
-  .cardio-block {
-    margin-top: 14px;
-  }
-
-  .cardio-block-title {
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 950;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-  }
-
-  .cardio-time-editor {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: 52px 1fr 52px;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .cardio-step-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 18px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-    color: ${TEXT};
-    display: grid;
-    place-items: center;
-  }
-
-  .cardio-step-btn:disabled {
-    opacity: .45;
-  }
-
-  .cardio-time-input-wrap,
-  .cardio-kcal-input-wrap {
-    min-height: 56px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 14px;
-    border-radius: 20px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-  }
-
-  .cardio-time-input,
-  .cardio-kcal-input {
-    width: 100%;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: ${TEXT};
-    font-size: 20px;
-    font-weight: 950;
-    letter-spacing: -.03em;
-    min-width: 0;
-  }
-
-  .cardio-time-unit,
-  .cardio-kcal-unit {
-    white-space: nowrap;
-    color: ${MUTED};
-    font-size: 13px;
-    font-weight: 900;
-  }
-
-  .cardio-presets {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .cardio-preset-btn {
-    min-height: 46px;
-    border-radius: 16px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    color: ${TEXT};
-    font-size: 14px;
-    font-weight: 950;
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-  }
-
-  .cardio-preset-btn.active {
-    background: rgba(255,106,0,.10);
-    border-color: rgba(255,106,0,.20);
-  }
-
-  .cardio-preset-btn:disabled {
-    opacity: .45;
-  }
-
-  .cardio-intensity-grid {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .cardio-intensity-card {
-    text-align: left;
-    min-height: 108px;
-    padding: 14px;
-    border-radius: 20px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-  }
-
-  .cardio-intensity-card.active {
-    background: linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,255,255,.96));
-    border-color: rgba(255,106,0,.20);
-  }
-
-  .cardio-intensity-title {
-    font-size: 15px;
-    font-weight: 950;
-    line-height: 1.1;
-  }
-
-  .cardio-intensity-feel {
-    margin-top: 8px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.35;
-  }
-
-  .cardio-estimate-box {
-    margin-top: 14px;
-    padding: 14px;
-    border-radius: 22px;
-    border: 1px solid rgba(255,106,0,.18);
-    background: rgba(255,106,0,.06);
-  }
-
-  .cardio-estimate-title {
-    font-size: 13px;
-    font-weight: 950;
-    color: ${TEXT};
-  }
-
-  .cardio-estimate-grid {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .cardio-estimate-item {
-    padding: 12px;
-    border-radius: 16px;
-    border: 1px solid rgba(15,23,42,.08);
-    background: rgba(255,255,255,.82);
-    display: grid;
-    gap: 6px;
-  }
-
-  .cardio-estimate-item span {
-    font-size: 11px;
-    color: ${MUTED};
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-  }
-
-  .cardio-estimate-item strong {
-    font-size: 15px;
-    color: ${TEXT};
-    font-weight: 950;
-    line-height: 1.25;
-    word-break: break-word;
-  }
-
-  .cardio-actions {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 10px;
-    align-items: stretch;
-  }
-
-  .cardio-primary-wide,
-  .cardio-primary,
-  .cardio-secondary {
-    border-radius: 22px;
-    font-weight: 950;
-    font-size: 14px;
-  }
-
-  .cardio-primary-wide,
-  .cardio-primary {
-    border: none;
-    background: #0B0B0C;
-    color: #fff;
-    box-shadow: 0 18px 44px rgba(0,0,0,.16);
-  }
-
-  .cardio-primary-wide {
-    min-height: 58px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .cardio-btn-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 16px;
-    background: rgba(255,255,255,.10);
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-
-  .cardio-secondary {
-    min-height: 58px;
-    padding: 0 16px;
-    border: 1px solid ${BORDER};
-    background: rgba(255,255,255,.94);
-    color: ${TEXT};
-    box-shadow: 0 12px 30px rgba(15,23,42,.05);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-  }
-
-  .cardio-secondary:disabled,
-  .cardio-primary-wide:disabled,
-  .cardio-primary:disabled {
-    opacity: .45;
-  }
-
-  .cardio-history-list {
-    margin-top: 12px;
-    display: grid;
-    gap: 10px;
-  }
-
-  .cardio-history-item {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    padding: 14px;
-    border-radius: 20px;
-    background: rgba(255,255,255,.94);
-    border: 1px solid ${BORDER};
-  }
-
-  .cardio-history-title {
-    font-size: 14px;
-    font-weight: 900;
-    color: ${TEXT};
-  }
-
-  .cardio-history-meta {
-    margin-top: 4px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.4;
-  }
-
-  .cardio-history-kcal {
-    align-self: center;
-    font-size: 14px;
-    font-weight: 950;
-    color: ${TEXT};
-  }
-
-  .cardio-empty {
-    margin-top: 10px;
-    padding: 16px;
-    border-radius: 20px;
-    border: 1px dashed rgba(15,23,42,.12);
-    color: ${MUTED};
-    font-size: 14px;
-    line-height: 1.45;
-    background: rgba(255,255,255,.84);
-  }
-
-  .cardio-side-buttons {
-    margin-top: 14px;
-    display: grid;
-    gap: 10px;
-  }
-
-  .cardio-week-ring {
-    position: relative;
-    width: 140px;
-    height: 140px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .cardio-week-ring-center {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 18px;
-  }
-
-  .cardio-week-ring-value {
-    font-size: 22px;
-    font-weight: 950;
-    line-height: 1;
-  }
-
-  .cardio-week-ring-label {
-    margin-top: 8px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.25;
-  }
-
-  .cardio-week-ring-sub {
-    margin-top: 6px;
-    font-size: 11px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.25;
-  }
-
-  .cardio-main-ring {
-    position: relative;
-    width: 232px;
-    height: 232px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .cardio-main-ring.running {
-    animation: cardioPulseV13 2.2s ease-in-out infinite;
-  }
-
-  .cardio-main-ring-center {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
-  }
-
-  .cardio-main-ring-top {
-    font-size: 11px;
-    color: ${MUTED};
-    font-weight: 950;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-  }
-
-  .cardio-main-ring-value {
-    margin-top: 8px;
-    font-size: 56px;
-    line-height: .95;
-    font-weight: 950;
-    letter-spacing: -.06em;
-    color: ${TEXT};
-    font-variant-numeric: tabular-nums;
-  }
-
-  .cardio-main-ring-bottom {
-    margin-top: 8px;
-    font-size: 13px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.3;
-  }
-
-  .cardio-finish-banner {
-    width: 100%;
-    padding: 14px;
-    border-radius: 20px;
-    border: 1px solid rgba(34,197,94,.18);
-    background: rgba(34,197,94,.08);
-  }
-
-  .cardio-finish-title {
-    font-size: 14px;
-    font-weight: 950;
-    color: ${TEXT};
-  }
-
-  .cardio-finish-text {
-    margin-top: 6px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.4;
-  }
-
-  .cardio-timeline {
-    margin-top: 12px;
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
-  }
-
-  .cardio-timeline-item {
-    text-align: center;
-  }
-
-  .cardio-timeline-bubble {
-    width: 18px;
-    height: 18px;
-    margin: 0 auto 8px;
-    border-radius: 999px;
-    background: rgba(15,23,42,.08);
-    box-shadow: 0 0 0 6px rgba(15,23,42,.02);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .cardio-timeline-bubble span {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(15,23,42,.34);
-  }
-
-  .cardio-timeline-bubble.done {
-    background: linear-gradient(180deg, rgba(255,106,0,.96), rgba(255,178,107,.96));
-    box-shadow: 0 0 0 6px rgba(255,106,0,.08);
-  }
-
-  .cardio-timeline-bubble.done span {
-    background: rgba(255,255,255,.94);
-  }
-
-  .cardio-timeline-day {
-    font-size: 12px;
-    color: ${TEXT};
-    font-weight: 800;
-    text-transform: capitalize;
-  }
-
-  .cardio-timeline-min {
-    margin-top: 4px;
-    font-size: 11px;
-    color: ${MUTED};
-    font-weight: 800;
-  }
-
-  .cardio-dock {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    z-index: 999;
-    border-radius: 26px;
-    padding: 12px;
-    background: rgba(255,255,255,.94);
-    border: 1px solid rgba(255,255,255,.45);
-    box-shadow: 0 28px 90px rgba(0,0,0,.18);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    overflow: hidden;
-    cursor: pointer;
-  }
-
-  .cardio-dock-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .cardio-dock-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 999px;
-    background: rgba(255,106,0,.10);
-    border: 1px solid rgba(255,106,0,.18);
-    min-width: 0;
-  }
-
-  .cardio-dock-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 16px;
-    display: grid;
-    place-items: center;
-    background: rgba(255,255,255,.78);
-    border: 1px solid rgba(255,255,255,.55);
-    flex-shrink: 0;
-  }
-
-  .cardio-dock-title {
-    font-size: 12px;
-    font-weight: 950;
-    color: ${TEXT};
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .cardio-dock-mini {
-    display: grid;
-    justify-items: end;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-
-  .cardio-dock-mini-time {
-    font-size: 14px;
-    font-weight: 950;
-    color: ${TEXT};
-    font-variant-numeric: tabular-nums;
-  }
-
-  .cardio-dock-mini-state {
-    font-size: 11px;
-    font-weight: 900;
-    color: ${MUTED};
-  }
-
-  .cardio-dock-body {
-    margin-top: 12px;
-    cursor: default;
-  }
-
-  .cardio-dock-big-time {
-    font-size: 34px;
-    font-weight: 950;
-    letter-spacing: -.05em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .cardio-dock-sub {
-    margin-top: 6px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.4;
-  }
-
-  .cardio-dock-sub strong {
-    color: ${TEXT};
-  }
-
-  .cardio-dock-actions {
-    margin-top: 12px;
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 10px;
-    align-items: stretch;
-  }
-
-  .cardio-dock-hint {
-    margin-top: 10px;
-    font-size: 11px;
-    color: ${MUTED};
-    font-weight: 800;
-  }
-
-  .cardio-mini-dock {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(84px + env(safe-area-inset-bottom));
-    z-index: 9999;
-    border-radius: 22px;
-    padding: 12px;
-    background: rgba(255,255,255,.94);
-    border: 1px solid rgba(255,255,255,.45);
-    box-shadow: 0 22px 70px rgba(0,0,0,.18);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    color: ${TEXT};
-  }
-
-  .cardio-mini-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .cardio-mini-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    background: ${ORANGE};
-    box-shadow: 0 0 0 6px rgba(255,106,0,.12);
-    flex-shrink: 0;
-  }
-
-  .cardio-mini-top {
-    font-size: 12px;
-    font-weight: 950;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .cardio-mini-sub {
-    margin-top: 2px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .cardio-mini-time {
-    font-size: 14px;
-    font-weight: 950;
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-  }
-
-  .cardio-lock-card {
-    max-width: 520px;
-    margin: 32px auto 0;
-    text-align: center;
-  }
-
-  .cardio-lock-title {
-    font-size: 18px;
-    font-weight: 950;
-    color: ${TEXT};
-  }
-
-  .cardio-lock-text {
-    margin-top: 8px;
-    font-size: 14px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.5;
-  }
-
-  .cardio-primary {
-    width: 100%;
-    min-height: 56px;
-    margin-top: 14px;
-  }
-
-  .cardio-toast-wrap {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    top: calc(12px + env(safe-area-inset-top));
-    z-index: 99999;
-    display: grid;
-    place-items: center;
-    pointer-events: none;
-  }
-
-  .cardio-toast {
-    width: min(520px, 100%);
-    border-radius: 22px;
-    padding: 12px;
-    background: rgba(255,255,255,.94);
-    border: 1px solid rgba(255,255,255,.45);
-    box-shadow: 0 22px 70px rgba(0,0,0,.18);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    pointer-events: auto;
-  }
-
-  .cardio-toast-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    flex-shrink: 0;
-  }
-
-  .cardio-toast-title {
-    font-size: 13px;
-    font-weight: 950;
-    color: ${TEXT};
-  }
-
-  .cardio-toast-text {
-    margin-top: 2px;
-    font-size: 12px;
-    color: ${MUTED};
-    font-weight: 800;
-    line-height: 1.3;
-  }
-
-  .cardio-toast-close {
-    margin-left: auto;
-    width: 40px;
-    height: 40px;
-    border-radius: 16px;
-    border: none;
-    background: rgba(15,23,42,.06);
-    color: ${TEXT};
-    font-size: 20px;
-    line-height: 1;
-  }
-
-  button {
-    appearance: none;
-    cursor: pointer;
-    transition: transform .14s ease, opacity .14s ease, filter .14s ease;
-  }
-
-  button:active {
-    transform: scale(.99);
-  }
-
-  input {
-    appearance: none;
-  }
-
-  @keyframes cardioPulseV13 {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.015); }
-  }
-
-  @media (max-width: 980px) {
-    .cardio-top-grid,
-    .cardio-main-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-side-col {
-      order: 3;
-    }
-  }
-
-  @media (max-width: 720px) {
-    .cardio-screen {
-      padding: 14px;
-      padding-bottom: calc(118px + env(safe-area-inset-bottom));
-    }
-
-    .cardio-header-title {
-      font-size: 22px;
-    }
-
-    .cardio-week-summary {
-      grid-template-columns: 1fr;
-      justify-items: center;
-    }
-
-    .cardio-stats-grid {
-      width: 100%;
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-workout-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-intensity-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-presets {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .cardio-estimate-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-actions,
-    .cardio-dock-actions {
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-segmented {
-      grid-template-columns: 1fr;
-    }
-
-    .cardio-timeline {
-      gap: 6px;
-    }
-
-    .cardio-main-ring {
-      width: 206px;
-      height: 206px;
-    }
-
-    .cardio-main-ring-value {
-      font-size: 46px;
-    }
-
-    .cardio-dock-head {
-      gap: 10px;
-    }
-
-    .cardio-dock-pill {
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-
-    .cardio-dock-title {
-      white-space: normal;
-      line-height: 1.2;
-    }
-  }
-`;
+const S = {
+  page: {
+    padding: 16,
+    paddingBottom: "calc(110px + env(safe-area-inset-bottom))",
+    background: BG,
+    minHeight: "100vh",
+  },
+
+  head: {
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.88))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 20px 80px rgba(15,23,42,.10)",
+    display: "flex",
+    gap: 12,
+    alignItems: "flex-start",
+    position: "relative",
+    overflow: "hidden",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+  },
+  headGlow: {
+    position: "absolute",
+    inset: -40,
+    background:
+      "radial-gradient(600px 260px at 20% 10%, rgba(255,106,0,.18), transparent 55%), radial-gradient(520px 260px at 92% 0%, rgba(15,23,42,.10), transparent 58%)",
+    pointerEvents: "none",
+  },
+  back: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(255,255,255,.72)",
+    color: TEXT,
+    boxShadow: "0 16px 44px rgba(15,23,42,.08)",
+    display: "grid",
+    placeItems: "center",
+    flexShrink: 0,
+  },
+  hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, lineHeight: 1.1 },
+  hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+  tagStrong: {
+    display: "inline-flex",
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.20)",
+    fontSize: 12,
+    fontWeight: 900,
+    color: TEXT,
+  },
+  tagSoft: {
+    display: "inline-flex",
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: SOFT,
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 900,
+    color: TEXT,
+  },
+  hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+
+  heroGrid: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 14,
+  },
+  heroCard: {
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.94))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 70px rgba(15,23,42,.06)",
+    position: "relative",
+    overflow: "hidden",
+  },
+  heroSplit: {
+    display: "grid",
+    gridTemplateColumns: "140px 1fr",
+    gap: 14,
+    alignItems: "center",
+  },
+  heroStats: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 10,
+  },
+
+  howList: {
+    marginTop: 14,
+    display: "grid",
+    gap: 10,
+  },
+  howItem: {
+    display: "grid",
+    gridTemplateColumns: "28px 1fr",
+    gap: 10,
+    alignItems: "center",
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(255,255,255,.78)",
+    border: `1px solid ${BORDER}`,
+  },
+  howStep: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,106,0,.12)",
+    border: "1px solid rgba(255,106,0,.18)",
+    fontSize: 12,
+    fontWeight: 950,
+    color: TEXT,
+  },
+  howText: {
+    fontSize: 13,
+    fontWeight: 850,
+    color: TEXT,
+    lineHeight: 1.35,
+  },
+  nextActionBox: {
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(255,255,255,.92))",
+    border: "1px solid rgba(255,106,0,.16)",
+  },
+  nextActionLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  nextActionValue: { marginTop: 6, fontSize: 15, fontWeight: 950, color: TEXT, lineHeight: 1.3 },
+
+  contentGrid: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 14,
+  },
+  mainCol: {
+    display: "grid",
+    gap: 14,
+  },
+  sideCol: {
+    display: "grid",
+    gap: 14,
+    alignContent: "start",
+  },
+
+  cardPage: {
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.94))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 70px rgba(15,23,42,.06)",
+    position: "relative",
+    overflow: "hidden",
+  },
+  cardGlow: {
+    position: "absolute",
+    inset: -40,
+    background:
+      "radial-gradient(620px 260px at 18% 0%, rgba(255,106,0,.14), transparent 60%), radial-gradient(520px 240px at 95% 0%, rgba(15,23,42,.10), transparent 62%)",
+    pointerEvents: "none",
+  },
+  cardSheen: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(110deg, transparent 0%, rgba(255,255,255,.22) 22%, transparent 50%)",
+    transform: "translateX(-70%)",
+    animation: "cdSheen 6.2s ease-in-out infinite",
+    pointerEvents: "none",
+  },
+
+  sectionHead: { position: "relative", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" },
+  sectionTitle: { margin: 0, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4, lineHeight: 1.15 },
+  sectionSub: { margin: "6px 0 0", fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.4 },
+
+  modeGrid: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 10,
+    position: "relative",
+  },
+  modeBtn: {
+    minHeight: 52,
+    borderRadius: 16,
+    fontWeight: 950,
+    fontSize: 13,
+    border: "1px solid rgba(15,23,42,.10)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+    whiteSpace: "nowrap",
+  },
+  modeBtnOn: {
+    background: "#0B0B0C",
+    color: "#fff",
+    borderColor: "rgba(255,255,255,.10)",
+  },
+  modeBtnOff: {
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+  },
+
+  workoutGrid: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+    position: "relative",
+  },
+  workoutCard: {
+    minHeight: 98,
+    borderRadius: 20,
+    padding: 14,
+    textAlign: "left",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    overflow: "hidden",
+  },
+  workoutCardOn: {
+    background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,106,0,.05))",
+    borderColor: "rgba(255,106,0,.18)",
+  },
+  workoutCardOff: {
+    background: "rgba(255,255,255,.92)",
+  },
+  workoutName: { fontSize: 15, fontWeight: 950, color: TEXT, letterSpacing: -0.25, lineHeight: 1.15 },
+  workoutSub: { marginTop: 7, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  ringPanel: {
+    marginTop: 16,
+    display: "grid",
+    justifyItems: "center",
+    gap: 14,
+    position: "relative",
+  },
+
+  block: { marginTop: 14, position: "relative" },
+  blockLabel: { fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.6, textTransform: "uppercase" },
+
+  minuteEditor: {
+    marginTop: 10,
+    display: "grid",
+    gridTemplateColumns: "44px minmax(0, 110px) auto 44px",
+    gap: 8,
+    alignItems: "center",
+  },
+  stepBtn: {
+    height: 44,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "#fff",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 22,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+  },
+  stepBtnDisabled: { opacity: 0.45 },
+  minuteInput: {
+    width: "100%",
+    height: 52,
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    background: "#fff",
+    textAlign: "center",
+    fontSize: 24,
+    fontWeight: 950,
+    color: TEXT,
+    boxShadow: "0 12px 26px rgba(15,23,42,.05)",
+  },
+  minuteInputDisabled: { opacity: 0.65 },
+  minuteSuffix: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: MUTED,
+    whiteSpace: "nowrap",
+  },
+
+  quickMinutesWrap: {
+    marginTop: 12,
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  durationBtn: {
+    minHeight: 42,
+    padding: "0 12px",
+    borderRadius: 14,
+    fontWeight: 950,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+    whiteSpace: "nowrap",
+  },
+  durationBtnOn: {
+    background: "rgba(255,106,0,.10)",
+    borderColor: "rgba(255,106,0,.20)",
+    color: TEXT,
+  },
+  durationBtnOff: {
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+  },
+  durationBtnDisabled: { opacity: 0.45 },
+
+  intensityGrid: {
+    marginTop: 10,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 10,
+  },
+  intensityCard: {
+    borderRadius: 18,
+    padding: 14,
+    textAlign: "left",
+    minHeight: 102,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+    overflow: "hidden",
+  },
+  intensityCardOn: {
+    background: "linear-gradient(180deg, rgba(255,106,0,.10), rgba(255,255,255,.92))",
+    borderColor: "rgba(255,106,0,.18)",
+  },
+  intensityCardOff: {
+    background: "rgba(255,255,255,.92)",
+  },
+  intensityTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  intensityFeel: { marginTop: 8, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  chip: {
+    borderRadius: 18,
+    padding: 12,
+    background: "linear-gradient(135deg, rgba(15,23,42,.03), rgba(255,255,255,.98))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 34px rgba(15,23,42,.05)",
+    minHeight: 70,
+  },
+  chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
+  chipValue: {
+    marginTop: 10,
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.45,
+    lineHeight: 1.1,
+    wordBreak: "break-word",
+  },
+
+  loadBox: {
+    marginTop: 14,
+    borderRadius: 20,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    alignItems: "start",
+    position: "relative",
+  },
+  loadLeft: { minWidth: 0 },
+  loadRight: { minWidth: 0 },
+  loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
+  loadVal: {
+    marginTop: 6,
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.4,
+    lineHeight: 1.1,
+    wordBreak: "break-word",
+  },
+  loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
+  input: {
+    width: "100%",
+    marginTop: 8,
+    padding: "14px 12px",
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    outline: "none",
+    fontSize: 16,
+    fontWeight: 850,
+    background: "rgba(255,255,255,.96)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.7), 0 12px 26px rgba(15,23,42,.05)",
+  },
+
+  ctaGuide: {
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    background: "rgba(15,23,42,.03)",
+    border: `1px solid ${BORDER}`,
+  },
+  ctaGuideTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
+  ctaGuideText: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.4 },
+
+  actionRow: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr auto auto",
+    gap: 10,
+    alignItems: "center",
+    position: "relative",
+  },
+  actionRowSingle: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 10,
+    alignItems: "center",
+    position: "relative",
+  },
+
+  bigStart: {
+    width: "100%",
+    minHeight: 56,
+    padding: 16,
+    borderRadius: 20,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    boxShadow: "0 18px 55px rgba(0,0,0,.18)",
+    overflow: "hidden",
+  },
+  bigStartDisabled: { opacity: 0.5 },
+  bigStartIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.10)",
+    display: "grid",
+    placeItems: "center",
+    flexShrink: 0,
+  },
+
+  smallPause: {
+    minHeight: 54,
+    padding: "14px 14px",
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+    whiteSpace: "nowrap",
+  },
+  smallPauseDisabled: { opacity: 0.45 },
+
+  finishBanner: {
+    width: "100%",
+    borderRadius: 20,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(34,197,94,.12), rgba(255,255,255,.96))",
+    border: "1px solid rgba(34,197,94,.16)",
+  },
+  finishTitle: { fontSize: 14, fontWeight: 950, color: TEXT },
+  finishText: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.4 },
+
+  timelineCard: {
+    marginTop: 14,
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.94))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 70px rgba(15,23,42,.06)",
+    position: "relative",
+    overflow: "hidden",
+  },
+  timelineRow: {
+    marginTop: 12,
+    display: "grid",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+    gap: 10,
+  },
+  timelineItem: { textAlign: "center", minWidth: 0 },
+  bubble: {
+    width: 18,
+    height: 18,
+    margin: "0 auto 8px",
+    borderRadius: 999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(15,23,42,.08)",
+    boxShadow: "0 0 0 6px rgba(15,23,42,.02)",
+  },
+  bubbleInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.34)",
+  },
+  bubbleDone: {
+    background: "linear-gradient(180deg, rgba(255,106,0,.96), rgba(255,178,107,.96))",
+    boxShadow: "0 0 0 6px rgba(255,106,0,.08)",
+  },
+  bubbleInnerDone: { background: "rgba(255,255,255,.94)" },
+  timelineDay: { fontSize: 12, fontWeight: 700, color: TEXT, textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis" },
+  timelineMin: { marginTop: 4, fontSize: 11, color: MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+
+  historyList: { marginTop: 12, display: "grid", gap: 10 },
+  historyItem: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 10,
+    padding: 14,
+    borderRadius: 20,
+    background: "rgba(255,255,255,.04)",
+    border: "1px solid rgba(15,23,42,.06)",
+  },
+  historyTitle: { fontSize: 14, fontWeight: 800, letterSpacing: -0.02, color: TEXT, lineHeight: 1.2 },
+  historyMeta: { marginTop: 4, fontSize: 12, color: MUTED, lineHeight: 1.4 },
+  historyKcal: { alignSelf: "center", fontSize: 15, fontWeight: 800, letterSpacing: -0.02, color: TEXT, whiteSpace: "nowrap" },
+  emptyCard: {
+    padding: 18,
+    borderRadius: 20,
+    background: "rgba(255,255,255,.04)",
+    border: "1px dashed rgba(15,23,42,.12)",
+    color: MUTED,
+    fontSize: 14,
+    lineHeight: 1.5,
+    marginTop: 10,
+  },
+  sideBtns: { marginTop: 14, display: "grid", gap: 10 },
+
+  ringWrap: {
+    position: "relative",
+    width: 140,
+    height: 140,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto",
+  },
+  ringSvg: {
+    filter: "drop-shadow(0 10px 24px rgba(255,106,0,.12))",
+  },
+  ringCenter: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    padding: 20,
+  },
+  ringValue: { fontSize: 22, lineHeight: 1, fontWeight: 800, letterSpacing: -0.05, color: TEXT },
+  ringLabel: { marginTop: 8, fontSize: 12, color: MUTED, lineHeight: 1.3 },
+  ringSub: { marginTop: 6, fontSize: 11, color: "#64748b", lineHeight: 1.35 },
+
+  bigRingWrap: {
+    position: "relative",
+    width: 220,
+    height: 220,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    maxWidth: "100%",
+  },
+  bigRingRunning: { animation: "cdPop 2.2s ease-in-out infinite" },
+  bigRingSvg: { filter: "drop-shadow(0 16px 34px rgba(255,106,0,.12))", maxWidth: "100%", height: "auto" },
+  bigRingCenter: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    padding: 26,
+  },
+  bigRingTop: {
+    fontSize: 11,
+    color: MUTED,
+    fontWeight: 900,
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+  },
+  bigRingValue: {
+    marginTop: 8,
+    fontSize: 50,
+    lineHeight: 1,
+    fontWeight: 950,
+    letterSpacing: -1.4,
+    color: TEXT,
+  },
+  bigRingBottom: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+  },
+
+  dock: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    bottom: "calc(12px + env(safe-area-inset-bottom))",
+    zIndex: 999,
+    borderRadius: 24,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.20)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    overflow: "hidden",
+    cursor: "pointer",
+    animation: "cdPop 6s ease-in-out infinite",
+  },
+  dockOpen: { paddingBottom: 14 },
+  dockClosed: { paddingBottom: 10 },
+
+  dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  dockPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.18)",
+    boxShadow: "0 14px 34px rgba(255,106,0,.10)",
+    minWidth: 0,
+  },
+  dockIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,255,255,.70)",
+    border: "1px solid rgba(255,255,255,.55)",
+    color: TEXT,
+    flexShrink: 0,
+  },
+  dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT, whiteSpace: "nowrap" },
+
+  dockMini: { display: "grid", justifyItems: "end", gap: 2, flexShrink: 0 },
+  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  dockMiniState: { fontSize: 11, fontWeight: 900, color: MUTED },
+
+  dockBody: { marginTop: 12, cursor: "default" },
+  dockBigTime: { fontSize: 32, fontWeight: 950, color: TEXT, letterSpacing: -1.0, lineHeight: 1 },
+  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+
+  dockBtns: {
+    marginTop: 12,
+    display: "grid",
+    gridTemplateColumns: "1fr auto auto",
+    gap: 10,
+    alignItems: "center",
+  },
+  dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
+
+  lockCard: {
+    borderRadius: 26,
+    padding: 16,
+    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))",
+    border: "1px solid rgba(255,106,0,.22)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
+  },
+  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
+  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  lockBtn: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 20,
+    border: "none",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontWeight: 950,
+    boxShadow: "0 18px 55px rgba(255,106,0,.22)",
+  },
+  lockGhost: {
+    marginTop: 10,
+    width: "100%",
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.90)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+
+  endGhost: {
+    width: "100%",
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.92)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+
+  toastWrap: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    top: "calc(12px + env(safe-area-inset-top))",
+    zIndex: 99999,
+    display: "grid",
+    placeItems: "center",
+    pointerEvents: "none",
+  },
+  toastCard: {
+    width: "min(520px, 100%)",
+    borderRadius: 22,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 22px 70px rgba(0,0,0,.18)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    pointerEvents: "auto",
+  },
+  toastDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 7px rgba(255,106,0,.12)",
+    flexShrink: 0,
+  },
+  toastDotOk: {
+    background: SUCCESS,
+    boxShadow: "0 0 0 7px rgba(34,197,94,.14)",
+  },
+  toastTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  toastText: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.25 },
+  toastClose: {
+    marginLeft: "auto",
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    border: "none",
+    background: "rgba(15,23,42,.06)",
+    color: TEXT,
+    fontWeight: 950,
+    display: "grid",
+    placeItems: "center",
+  },
+};
+
+const MD = {
+  wrap: {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    bottom: "calc(84px + env(safe-area-inset-bottom))",
+    zIndex: 9999,
+    borderRadius: 22,
+    padding: 12,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 22px 70px rgba(0,0,0,.18)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    textAlign: "left",
+  },
+  left: { display: "flex", alignItems: "center", gap: 10, minWidth: 0 },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.12)",
+  },
+  top: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  sub: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: 800,
+    color: MUTED,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  right: { display: "grid", justifyItems: "end", gap: 6, flexShrink: 0 },
+  time: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: 0.4 },
+};
+
+/* ---------------- RESPONSIVE ---------------- */
+if (typeof document !== "undefined") {
+  const id = "cardio-v13-responsive";
+  if (!document.getElementById(id)) {
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @media (min-width: 980px) {
+        [data-cardio-layout] {
+          grid-template-columns: 1fr 360px !important;
+        }
+        [data-cardio-hero] {
+          grid-template-columns: 1.1fr .9fr !important;
+        }
+      }
+      @media (max-width: 860px) {
+        [data-cardio-hero-split] {
+          grid-template-columns: 1fr !important;
+          justify-items: center;
+        }
+        [data-cardio-hero-stats] {
+          grid-template-columns: 1fr !important;
+          width: 100%;
+        }
+      }
+      @media (max-width: 720px) {
+        [data-cardio-mode-grid],
+        [data-cardio-intensity-grid] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-workout-grid] {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        [data-cardio-load-box] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-action-row] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-action-row-single] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-dock-btns] {
+          grid-template-columns: 1fr !important;
+        }
+      }
+      @media (max-width: 520px) {
+        [data-cardio-workout-grid] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-timeline-row] {
+          gap: 6px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
