@@ -13,24 +13,66 @@ const SOFT = "rgba(15,23,42,.04)";
 const SUCCESS = "#22c55e";
 
 /* ---------------- STORAGE ---------------- */
-const STORAGE_KEY = "cardio_sessions_fitdeal_v14";
-const LIVE_KEY = "cardio_live_fitdeal_v14";
+const STORAGE_KEY = "cardio_sessions_fitdeal_v13";
+const LIVE_KEY = "cardio_live_fitdeal_v13";
 const WEEKLY_GOAL_MINUTES = 150;
 
 /* ---------------- DATA ---------------- */
 const WORKOUTS = [
-  { id: "walk", name: "Caminhada", subtitle: "Leve, constante e fácil de manter", mets: { low: 3.0, moderate: 4.8, high: 5.5 } },
-  { id: "treadmill", name: "Esteira", subtitle: "Ritmo controlado e confortável", mets: { low: 4.0, moderate: 5.2, high: 6.3 } },
-  { id: "bike", name: "Bike", subtitle: "Baixo impacto e boa queima", mets: { low: 4.0, moderate: 6.8, high: 8.0 } },
-  { id: "run", name: "Corrida leve", subtitle: "Mais gasto em menos tempo", mets: { low: 6.0, moderate: 8.3, high: 9.8 } },
-  { id: "stairs", name: "Escada", subtitle: "Fôlego e pernas", mets: { low: 5.0, moderate: 8.8, high: 9.5 } },
-  { id: "hiit", name: "HIIT", subtitle: "Curto, forte e direto", mets: { low: 6.0, moderate: 8.0, high: 10.0 } },
+  {
+    id: "walk",
+    name: "Caminhada",
+    subtitle: "Leve, constante e fácil de manter",
+    mets: { low: 3.0, moderate: 4.8, high: 5.5 },
+  },
+  {
+    id: "treadmill",
+    name: "Esteira",
+    subtitle: "Ritmo controlado e confortável",
+    mets: { low: 4.0, moderate: 5.2, high: 6.3 },
+  },
+  {
+    id: "bike",
+    name: "Bike",
+    subtitle: "Baixo impacto e boa queima",
+    mets: { low: 4.0, moderate: 6.8, high: 8.0 },
+  },
+  {
+    id: "run",
+    name: "Corrida leve",
+    subtitle: "Mais gasto em menos tempo",
+    mets: { low: 6.0, moderate: 8.3, high: 9.8 },
+  },
+  {
+    id: "stairs",
+    name: "Escada",
+    subtitle: "Fôlego e pernas",
+    mets: { low: 5.0, moderate: 8.8, high: 9.5 },
+  },
+  {
+    id: "hiit",
+    name: "HIIT",
+    subtitle: "Curto, forte e direto",
+    mets: { low: 6.0, moderate: 8.0, high: 10.0 },
+  },
 ];
 
 const INTENSITIES = {
-  low: { label: "Leve", feel: "Consegue conversar normalmente", multiplier: 0.85 },
-  moderate: { label: "Moderado", feel: "Respiração acelerada, mas controlada", multiplier: 1.0 },
-  high: { label: "Intenso", feel: "Esforço alto em menos tempo", multiplier: 1.15 },
+  low: {
+    label: "Leve",
+    feel: "Consegue conversar normalmente",
+    multiplier: 0.85,
+  },
+  moderate: {
+    label: "Moderado",
+    feel: "Respiração acelerada, mas controlada",
+    multiplier: 1.0,
+  },
+  high: {
+    label: "Intenso",
+    feel: "Esforço alto em menos tempo",
+    multiplier: 1.15,
+  },
 };
 
 const DURATIONS = [10, 15, 20, 25, 30, 40, 45, 60];
@@ -163,15 +205,6 @@ function IconFlame() {
     </svg>
   );
 }
-function IconSave() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3v11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M8 10l4 4 4-4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 20h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 /* ---------------- UI BITS ---------------- */
 function Toast({ toast, onClose }) {
@@ -212,7 +245,7 @@ function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sub
     <div style={S.ringWrap}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.ringSvg}>
         <defs>
-          <linearGradient id="cardioWeekGradientGlassV14" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioWeekGradientGlassV13" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
             <stop offset="100%" stopColor={ORANGE_2} />
           </linearGradient>
@@ -231,7 +264,7 @@ function RingProgress({ progress = 0, size = 140, stroke = 12, value, label, sub
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioWeekGradientGlassV14)"
+          stroke="url(#cardioWeekGradientGlassV13)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -262,7 +295,7 @@ function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", ru
     <div style={{ ...S.bigRingWrap, ...(running ? S.bigRingRunning : null) }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={S.bigRingSvg}>
         <defs>
-          <linearGradient id="cardioBigGradientGlassV14" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="cardioBigGradientGlassV13" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={ORANGE} />
             <stop offset="100%" stopColor={ORANGE_2} />
           </linearGradient>
@@ -281,7 +314,7 @@ function BigRing({ progress = 0, value = "00:00", top = "timer", bottom = "", ru
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#cardioBigGradientGlassV14)"
+          stroke="url(#cardioBigGradientGlassV13)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -312,7 +345,7 @@ function WeekTimeline({ sessions }) {
         </div>
       </div>
 
-      <div style={S.timelineRow}>
+      <div style={S.timelineRow} data-cardio-timeline-row>
         {days.map((day) => {
           const key = getDateKey(day);
           const daySessions = sessions.filter((s) => s.date === key);
@@ -485,11 +518,10 @@ export default function Cardio() {
     setSelectedIntensity(live.selectedIntensity || "moderate");
 
     const mins = Number(live.minutes || 20);
-    const safeMins = clamp(mins, 1, 240);
-    setMinutes(safeMins);
-    setMinutesInput(String(safeMins));
+    setMinutes(clamp(mins, 1, 240));
+    setMinutesInput(String(clamp(mins, 1, 240)));
 
-    setDurationSec(Number(live.durationSec || safeMins * 60));
+    setDurationSec(Number(live.durationSec || mins * 60));
     setElapsedSec(computeLiveElapsed(live));
     setRunning(!!live.running);
   }, [email]);
@@ -518,7 +550,7 @@ export default function Cardio() {
         const total = Number(live.durationSec || 0);
         setDurationSec(total);
 
-        if (elapsed >= total && live.running && total > 0) {
+        if (elapsed >= total && live.running) {
           setElapsedSec(total);
           setRunning(false);
           setJustFinished(true);
@@ -552,7 +584,7 @@ export default function Cardio() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "cardio-apple-glass-ui-v14";
+    const id = "cardio-apple-glass-ui-v13";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -822,8 +854,7 @@ export default function Cardio() {
   }
 
   function applyMinutesValue(rawValue) {
-    const fallbackBase = Number(rawValue || minutes || 1);
-    const num = clamp(fallbackBase, 1, 240);
+    const num = clamp(Number(rawValue || 1), 1, 240);
     setMinutes(num);
     setMinutesInput(String(num));
     if (!running && mode === "timer") {
@@ -918,7 +949,7 @@ export default function Cardio() {
         </div>
       </div>
 
-      <div style={S.heroGrid}>
+      <div style={S.heroGrid} data-cardio-hero>
         <div style={S.heroCard}>
           <div style={S.cardGlow} aria-hidden="true" />
           <div style={S.cardSheen} aria-hidden="true" />
@@ -930,7 +961,7 @@ export default function Cardio() {
             </div>
           </div>
 
-          <div style={S.heroSplit}>
+          <div style={S.heroSplit} data-cardio-hero-split>
             <RingProgress
               progress={weekProgress}
               value={`${weekMinutes}m`}
@@ -938,7 +969,7 @@ export default function Cardio() {
               sublabel={weekProgress >= 100 ? "fechou!" : `faltam ${minutesLeft} min`}
             />
 
-            <div style={S.heroStats}>
+            <div style={S.heroStats} data-cardio-hero-stats>
               <Chip label="Hoje" value={`${todayMinutes} min`} />
               <Chip label="Calorias hoje" value={`${todayKcal} kcal`} />
               <Chip label="Semana" value={`${weekKcal} kcal`} />
@@ -946,44 +977,51 @@ export default function Cardio() {
           </div>
         </div>
 
-        <div style={S.heroCard}>
-          <div style={S.cardGlow} aria-hidden="true" />
-          <div style={S.cardSheen} aria-hidden="true" />
-
+        <div style={{ ...S.heroCard, ...S.heroCardBlack }}>
           <div style={S.sectionHead}>
             <div>
-              <h3 style={S.sectionTitle}>Como usar</h3>
-              <p style={S.sectionSub}>Fluxo claro para não deixar dúvida.</p>
+              <h3 style={{ ...S.sectionTitle, color: "#fff" }}>Como usar</h3>
+              <p style={{ ...S.sectionSub, color: "rgba(255,255,255,.72)" }}>
+                Fluxo claro para não deixar dúvida.
+              </p>
             </div>
           </div>
 
           <div style={S.howList}>
-            <div style={S.howItem}>
-              <div style={S.howStep}>1</div>
-              <div style={S.howText}>Escolha o tipo de cardio.</div>
+            <div style={{ ...S.howItem, ...S.howItemBlack }}>
+              <div style={{ ...S.howStep, ...S.howStepBlack }}>1</div>
+              <div style={{ ...S.howText, color: "#fff" }}>Escolha o tipo de cardio.</div>
             </div>
-            <div style={S.howItem}>
-              <div style={S.howStep}>2</div>
-              <div style={S.howText}>Selecione o modo: timer, cronômetro ou calorias.</div>
+            <div style={{ ...S.howItem, ...S.howItemBlack }}>
+              <div style={{ ...S.howStep, ...S.howStepBlack }}>2</div>
+              <div style={{ ...S.howText, color: "#fff" }}>
+                Selecione o modo: timer, cronômetro ou calorias.
+              </div>
             </div>
-            <div style={S.howItem}>
-              <div style={S.howStep}>3</div>
-              <div style={S.howText}>Ajuste o tempo ou a meta e toque no botão preto principal.</div>
+            <div style={{ ...S.howItem, ...S.howItemBlack }}>
+              <div style={{ ...S.howStep, ...S.howStepBlack }}>3</div>
+              <div style={{ ...S.howText, color: "#fff" }}>
+                Ajuste o tempo ou a meta e toque no botão principal para começar.
+              </div>
             </div>
-            <div style={S.howItem}>
-              <div style={S.howStep}>4</div>
-              <div style={S.howText}>Quando terminar, toque em salvar sessão.</div>
+            <div style={{ ...S.howItem, ...S.howItemBlack }}>
+              <div style={{ ...S.howStep, ...S.howStepBlack }}>4</div>
+              <div style={{ ...S.howText, color: "#fff" }}>
+                Quando terminar, toque em salvar sessão.
+              </div>
             </div>
           </div>
 
-          <div style={S.nextActionBox}>
-            <div style={S.nextActionLabel}>Próximo passo</div>
-            <div style={S.nextActionValue}>{nextActionLabel}</div>
+          <div style={{ ...S.nextActionBox, ...S.nextActionBoxBlack }}>
+            <div style={{ ...S.nextActionLabel, color: "rgba(255,255,255,.68)" }}>
+              Próximo passo
+            </div>
+            <div style={{ ...S.nextActionValue, color: "#fff" }}>{nextActionLabel}</div>
           </div>
         </div>
       </div>
 
-      <div style={S.contentGrid}>
+      <div style={S.contentGrid} data-cardio-layout>
         <div style={S.mainCol}>
           <div style={S.cardPage}>
             <div style={S.cardGlow} aria-hidden="true" />
@@ -996,7 +1034,7 @@ export default function Cardio() {
               </div>
             </div>
 
-            <div style={S.workoutGrid}>
+            <div style={S.workoutGrid} data-cardio-workout-grid>
               {WORKOUTS.map((w) => (
                 <button
                   key={w.id}
@@ -1023,7 +1061,7 @@ export default function Cardio() {
               </div>
             </div>
 
-            <div style={S.modeGrid}>
+            <div style={S.modeGrid} data-cardio-mode-grid>
               <button
                 type="button"
                 onClick={() => changeMode("timer")}
@@ -1174,7 +1212,7 @@ export default function Cardio() {
 
                 <div style={S.block}>
                   <div style={S.blockLabel}>Intensidade</div>
-                  <div style={S.intensityGrid}>
+                  <div style={S.intensityGrid} data-cardio-intensity-grid>
                     {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
                         key={key}
@@ -1190,7 +1228,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.loadBox}>
+                <div style={S.loadBox} data-cardio-load-box>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Estimativa atual</div>
                     <div style={S.loadVal}>~ {liveEstimatedKcal} kcal</div>
@@ -1211,7 +1249,7 @@ export default function Cardio() {
                   <div style={S.ctaGuideText}>Use o botão preto abaixo para iniciar ou continuar o timer.</div>
                 </div>
 
-                <div style={S.actionRow}>
+                <div style={S.actionRow} data-cardio-action-row>
                   {!running ? (
                     <button type="button" onClick={startTimer} style={S.bigStart} className="cd-press">
                       {elapsedSec > 0 && !justFinished ? "Continuar timer" : "Iniciar timer"}
@@ -1251,7 +1289,7 @@ export default function Cardio() {
               <>
                 <div style={S.block}>
                   <div style={S.blockLabel}>Intensidade</div>
-                  <div style={S.intensityGrid}>
+                  <div style={S.intensityGrid} data-cardio-intensity-grid>
                     {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
                         key={key}
@@ -1267,7 +1305,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.loadBox}>
+                <div style={S.loadBox} data-cardio-load-box>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Estimativa atual</div>
                     <div style={S.loadVal}>~ {liveEstimatedKcal} kcal</div>
@@ -1288,7 +1326,7 @@ export default function Cardio() {
                   <div style={S.ctaGuideText}>Use o botão preto abaixo para iniciar ou continuar o cronômetro.</div>
                 </div>
 
-                <div style={S.actionRow}>
+                <div style={S.actionRow} data-cardio-action-row>
                   {!running ? (
                     <button type="button" onClick={startChrono} style={S.bigStart} className="cd-press">
                       {elapsedSec > 0 ? "Continuar cronômetro" : "Iniciar cronômetro"}
@@ -1317,7 +1355,7 @@ export default function Cardio() {
                     style={{ ...S.smallPause, ...(elapsedSec < 30 ? S.smallPauseDisabled : null) }}
                     className="cd-press"
                   >
-                    <IconSave />
+                    <IconFlame />
                     Salvar
                   </button>
                 </div>
@@ -1339,7 +1377,7 @@ export default function Cardio() {
 
                 <div style={S.block}>
                   <div style={S.blockLabel}>Intensidade</div>
-                  <div style={S.intensityGrid}>
+                  <div style={S.intensityGrid} data-cardio-intensity-grid>
                     {Object.entries(INTENSITIES).map(([key, info]) => (
                       <button
                         key={key}
@@ -1355,7 +1393,7 @@ export default function Cardio() {
                   </div>
                 </div>
 
-                <div style={S.loadBox}>
+                <div style={S.loadBox} data-cardio-load-box>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Tempo necessário</div>
                     <div style={S.loadVal}>
@@ -1383,7 +1421,7 @@ export default function Cardio() {
                   <div style={S.ctaGuideText}>Defina a meta e use o botão preto abaixo para iniciar automaticamente.</div>
                 </div>
 
-                <div style={S.actionRowSingle}>
+                <div style={S.actionRowSingle} data-cardio-action-row-single>
                   <button
                     type="button"
                     onClick={startByCalories}
@@ -1494,7 +1532,7 @@ export default function Cardio() {
               {mode === "timer" ? "Timer" : mode === "chrono" ? "Cronômetro" : "Meta por calorias"}
             </div>
 
-            <div style={S.dockBtns}>
+            <div style={S.dockBtns} data-cardio-dock-btns>
               {mode !== "calories" && !running ? (
                 <button
                   type="button"
@@ -1558,7 +1596,7 @@ export default function Cardio() {
                 }}
                 className="cd-press"
               >
-                <IconSave />
+                <IconFlame />
                 Salvar
               </button>
             </div>
@@ -1620,6 +1658,7 @@ export function CardioMiniDock() {
   }, [email]);
 
   if (!info.liveRunning) return null;
+  if (typeof window !== "undefined" && window.location.pathname === "/cardio") return null;
 
   return (
     <button
@@ -1725,6 +1764,11 @@ const S = {
     position: "relative",
     overflow: "hidden",
   },
+  heroCardBlack: {
+    background: "#0B0B0C",
+    border: "1px solid rgba(255,255,255,.08)",
+    boxShadow: "0 24px 80px rgba(0,0,0,.22)",
+  },
   heroSplit: {
     display: "grid",
     gridTemplateColumns: "140px 1fr",
@@ -1752,6 +1796,10 @@ const S = {
     background: "rgba(255,255,255,.78)",
     border: `1px solid ${BORDER}`,
   },
+  howItemBlack: {
+    background: "rgba(255,255,255,.06)",
+    border: "1px solid rgba(255,255,255,.08)",
+  },
   howStep: {
     width: 28,
     height: 28,
@@ -1763,6 +1811,11 @@ const S = {
     fontSize: 12,
     fontWeight: 950,
     color: TEXT,
+  },
+  howStepBlack: {
+    background: "rgba(255,106,0,.18)",
+    border: "1px solid rgba(255,106,0,.28)",
+    color: "#fff",
   },
   howText: {
     fontSize: 13,
@@ -1776,6 +1829,10 @@ const S = {
     padding: 14,
     background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(255,255,255,.92))",
     border: "1px solid rgba(255,106,0,.16)",
+  },
+  nextActionBoxBlack: {
+    background: "linear-gradient(135deg, rgba(255,106,0,.14), rgba(255,255,255,.06))",
+    border: "1px solid rgba(255,255,255,.08)",
   },
   nextActionLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
   nextActionValue: { marginTop: 6, fontSize: 15, fontWeight: 950, color: TEXT, lineHeight: 1.3 },
@@ -2459,52 +2516,55 @@ const MD = {
 
 /* ---------------- RESPONSIVE ---------------- */
 if (typeof document !== "undefined") {
-  const id = "cardio-v14-responsive";
+  const id = "cardio-v13-responsive";
   if (!document.getElementById(id)) {
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
       @media (min-width: 980px) {
-        .cardio-v14-content-grid {
+        [data-cardio-layout] {
           grid-template-columns: 1fr 360px !important;
         }
-        .cardio-v14-hero-grid {
+        [data-cardio-hero] {
           grid-template-columns: 1.1fr .9fr !important;
         }
       }
       @media (max-width: 860px) {
-        .cardio-v14-hero-split {
+        [data-cardio-hero-split] {
           grid-template-columns: 1fr !important;
-          justify-items: center !important;
+          justify-items: center;
         }
-        .cardio-v14-hero-stats {
+        [data-cardio-hero-stats] {
           grid-template-columns: 1fr !important;
-          width: 100% !important;
+          width: 100%;
         }
       }
       @media (max-width: 720px) {
-        .cardio-v14-mode-grid,
-        .cardio-v14-intensity-grid {
+        [data-cardio-mode-grid],
+        [data-cardio-intensity-grid] {
           grid-template-columns: 1fr !important;
         }
-        .cardio-v14-load-box,
-        .cardio-v14-action-row,
-        .cardio-v14-action-row-single,
-        .cardio-v14-dock-btns {
+        [data-cardio-workout-grid] {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        [data-cardio-load-box] {
           grid-template-columns: 1fr !important;
         }
-        .cardio-v14-minute-editor {
-          grid-template-columns: 44px minmax(0, 1fr) auto 44px !important;
+        [data-cardio-action-row] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-action-row-single] {
+          grid-template-columns: 1fr !important;
+        }
+        [data-cardio-dock-btns] {
+          grid-template-columns: 1fr !important;
         }
       }
       @media (max-width: 520px) {
-        .cardio-v14-workout-grid {
+        [data-cardio-workout-grid] {
           grid-template-columns: 1fr !important;
         }
-        .cardio-v14-mode-grid {
-          grid-template-columns: 1fr !important;
-        }
-        .cardio-v14-timeline-row {
+        [data-cardio-timeline-row] {
           gap: 6px !important;
         }
       }
