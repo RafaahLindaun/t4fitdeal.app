@@ -1,126 +1,276 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext(null);
 
-// “banco local”
-const USERS_KEY = "fitdeal_users_v1";
-const SESSION_KEY = "fitdeal_session_v1";
+function normalizeProfile(profile, authUser) {
+  if (!authUser) return null;
 
-function safeGetItem(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function safeSetItem(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {}
-}
-function safeRemoveItem(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch {}
-}
-
-function readJSON(key, fallback) {
-  try {
-    const raw = safeGetItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function writeJSON(key, value) {
-  try {
-    safeSetItem(key, JSON.stringify(value));
-  } catch {}
+  return {
+    id: authUser.id,
+    email: authUser.email || profile?.email || "",
+    nome: profile?.nome || authUser.user_metadata?.nome || "",
+    idade: profile?.idade ?? "",
+    altura: profile?.altura ?? "",
+    peso: profile?.peso ?? "",
+    objetivo: profile?.objetivo || "",
+    frequencia: profile?.frequencia ?? "",
+    nivel: profile?.nivel || "",
+    split: profile?.split || "",
+    intensidade: profile?.intensidade || "",
+    onboarded: !!profile?.onboarded,
+    photoUrl: profile?.photo_url || authUser.user_metadata?.avatar_url || "",
+    provider:
+      authUser.app_metadata?.provider ||
+      profile?.provider ||
+      "email",
+    createdAt: profile?.created_at || authUser.created_at || "",
+  };
 }
 
 export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Rehidrata sessão ao abrir o app
-  useEffect(() => {
-    const sessionEmail = safeGetItem(SESSION_KEY);
-    if (!sessionEmail) return;
+  async function fetchProfile(authUser) {
+    if (!authUser?.id) {
+      setUser(null);
+      return null;
+    }
 
-    const users = readJSON(USERS_KEY, {});
-    const found = users[String(sessionEmail).toLowerCase()];
-    if (found) setUser(found);
-  }, []);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authUser.id)
+      .maybeSingle();
 
-  function signup(form) {
-    const nome = String(form?.nome || "").trim();
-    const email = String(form?.email || "").trim().toLowerCase();
-    const senha = String(form?.senha || "").trim();
-    const altura = String(form?.altura || "").trim();
-    const peso = String(form?.peso || "").trim();
+    if (error) {
+      console.error("Erro ao buscar profile:", error);
+    }
 
-    if (!nome) return { ok: false, msg: "Nome é obrigatório." };
-    if (!email || !email.includes("@")) return { ok: false, msg: "Email inválido." };
-    if (!senha || senha.length < 4) return { ok: false, msg: "Senha muito curta." };
+    const merged = normalizeProfile(data, authUser);
+    setUser(merged);
+    return merged;
+  }
 
-    const users = readJSON(USERS_KEY, {});
-    if (users[email]) return { ok: false, msg: "Esse email já tem conta. Use Log in." };
+  async function ensureProfile(authUser) {
+    if (!authUser?.id) return null;
 
-    const newUser = {
-      id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      nome,
-      email,
-      senha,
-      altura,
-      peso,
-      objetivo: "hipertrofia",
-      frequencia: 4,
-      photoUrl: "",
-      plano: "basic", // basic | nutri+
-      createdAt: Date.now(),
+    const payload = {
+      id: authUser.id,
+      email: authUser.email || "",
+      nome: authUser.user_metadata?.nome || authUser.user_metadata?.full_name || "",
+      photo_url: authUser.user_metadata?.avatar_url || "",
+      provider: authUser.app_metadata?.provider || "email",
     };
 
-    users[email] = newUser;
-    writeJSON(USERS_KEY, users);
-    safeSetItem(SESSION_KEY, email);
+    const { error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" });
 
-    setUser(newUser);
-    return { ok: true };
+    if (error) {
+      console.error("Erro ao garantir profile:", error);
+    }
+
+    return fetchProfile(authUser);
   }
 
-  function loginWithEmail(emailInput, senhaInput) {
-    const email = String(emailInput || "").trim().toLowerCase();
-    const senha = String(senhaInput || "").trim();
+  useEffect(() => {
+    let mounted = true;
 
-    const users = readJSON(USERS_KEY, {});
-    const found = users[email];
-    if (!found) return { ok: false, msg: "Conta não encontrada. Use Sign up." };
-    if (found.senha !== senha) return { ok: false, msg: "Senha incorreta." };
+    async function bootstrap() {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
 
-    safeSetItem(SESSION_KEY, email);
-    setUser(found);
-    return { ok: true };
-  }
+      const currentSession = data?.session || null;
+      setSession(currentSession);
 
-  function updateUser(patch) {
-    setUser((prev) => {
-      if (!prev) return prev;
+      if (currentSession?.user) {
+        await ensureProfile(currentSession.user);
+      } else {
+        setUser(null);
+      }
 
-      const next = { ...prev, ...patch };
-      const users = readJSON(USERS_KEY, {});
-      users[next.email.toLowerCase()] = next;
-      writeJSON(USERS_KEY, users);
+      if (mounted) setLoading(false);
+    }
 
-      safeSetItem(SESSION_KEY, next.email.toLowerCase());
-      return next;
+    bootstrap();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setSession(newSession || null);
+
+      if (newSession?.user) {
+        await ensureProfile(newSession.user);
+      } else {
+        setUser(null);
+      }
+
+      setLoading(false);
     });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function signup(payload) {
+    try {
+      const email = String(payload?.email || "").trim().toLowerCase();
+      const password = String(payload?.senha || "");
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nome: payload?.nome || "",
+          },
+        },
+      });
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      if (data?.user) {
+        await supabase.from("profiles").upsert(
+          {
+            id: data.user.id,
+            email,
+            nome: payload?.nome || "",
+            altura: payload?.altura ? Number(payload.altura) : null,
+            peso: payload?.peso ? Number(payload.peso) : null,
+            provider: "email",
+          },
+          { onConflict: "id" }
+        );
+      }
+
+      return { ok: true, user: data?.user || null };
+    } catch (err) {
+      return { ok: false, msg: err?.message || "Erro ao criar conta." };
+    }
   }
 
-  function logout() {
-    safeRemoveItem(SESSION_KEY);
+  async function loginWithEmail(email, senha) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: String(email || "").trim().toLowerCase(),
+        password: String(senha || ""),
+      });
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      if (data?.user) {
+        await ensureProfile(data.user);
+      }
+
+      return { ok: true, user: data?.user || null };
+    } catch (err) {
+      return { ok: false, msg: err?.message || "Erro ao entrar." };
+    }
+  }
+
+  async function loginWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (error) {
+      console.error("Erro Google:", error);
+      return { ok: false, msg: error.message };
+    }
+
+    return { ok: true };
+  }
+
+  async function loginWithApple() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (error) {
+      console.error("Erro Apple:", error);
+      return { ok: false, msg: error.message };
+    }
+
+    return { ok: true };
+  }
+
+  async function updateUser(patch) {
+    try {
+      const authUser = session?.user;
+      if (!authUser?.id) return { ok: false, msg: "Usuário não autenticado." };
+
+      const payload = {};
+
+      if ("nome" in patch) payload.nome = patch.nome || "";
+      if ("email" in patch) payload.email = String(patch.email || "").toLowerCase();
+      if ("idade" in patch) payload.idade = patch.idade ? Number(patch.idade) : null;
+      if ("altura" in patch) payload.altura = patch.altura ? Number(patch.altura) : null;
+      if ("peso" in patch) payload.peso = patch.peso ? Number(patch.peso) : null;
+      if ("objetivo" in patch) payload.objetivo = patch.objetivo || "";
+      if ("frequencia" in patch) payload.frequencia = patch.frequencia ? Number(patch.frequencia) : null;
+      if ("nivel" in patch) payload.nivel = patch.nivel || "";
+      if ("split" in patch) payload.split = patch.split || "";
+      if ("intensidade" in patch) payload.intensidade = patch.intensidade || "";
+      if ("onboarded" in patch) payload.onboarded = !!patch.onboarded;
+      if ("photoUrl" in patch) payload.photo_url = patch.photoUrl || "";
+      if ("provider" in patch) payload.provider = patch.provider || "";
+
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: authUser.id,
+            ...payload,
+          },
+          { onConflict: "id" }
+        );
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      await fetchProfile(authUser);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, msg: err?.message || "Erro ao atualizar perfil." };
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   }
 
-  const value = useMemo(() => ({ user, signup, loginWithEmail, updateUser, logout }), [user]);
+  const value = useMemo(
+    () => ({
+      user,
+      session,
+      loading,
+      signup,
+      loginWithEmail,
+      loginWithGoogle,
+      loginWithApple,
+      updateUser,
+      logout,
+    }),
+    [user, session, loading]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
