@@ -21,6 +21,7 @@ import ComoFunciona from "./pages/ComoFunciona.jsx";
 import BottomMenu from "./components/BottomMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthCallback from "./pages/AuthCallback";
 
 /* ✅ Só pra controlar onde o BottomMenu aparece (sem mexer no BottomMenu.jsx) */
 function BottomMenuGate() {
@@ -81,7 +82,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
+<Route path="/auth/callback" element={<AuthCallback />} />
         {/* ✅ Eu recomendo proteger também (igual as outras) */}
         <Route
           path="/treino/detalhe"
@@ -219,3 +220,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
