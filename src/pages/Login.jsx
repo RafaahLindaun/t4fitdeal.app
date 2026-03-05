@@ -201,34 +201,30 @@ export default function Login() {
     setTimeout(() => setErro(""), 1700);
   }
 
-  function submit() {
-    setErro("");
-    const email = (form.email || "").trim().toLowerCase();
+ async function submit() {
+  setErro("");
+  const email = (form.email || "").trim().toLowerCase();
 
-    if (remember) {
-      localStorage.setItem("remember_login", "1");
-      if (email) localStorage.setItem("last_login_email", email);
-    } else {
-      localStorage.setItem("remember_login", "0");
-      localStorage.removeItem("last_login_email");
-    }
-
-    if (isSignup) {
-      if (!localStorage.getItem("account_created_at")) {
-        localStorage.setItem("account_created_at", new Date().toISOString());
-        setCreatedAt(localStorage.getItem("account_created_at") || "");
-      }
-
-      const res = signup({ ...form, email });
-      if (!res.ok) return setErro(res.msg);
-      return nav("/onboarding");
-    } else {
-      const res = loginWithEmail(email, form.senha);
-      if (!res.ok) return setErro(res.msg);
-      return nav("/dashboard");
-    }
+  if (remember) {
+    localStorage.setItem("remember_login", "1");
+    if (email) localStorage.setItem("last_login_email", email);
+  } else {
+    localStorage.setItem("remember_login", "0");
+    localStorage.removeItem("last_login_email");
   }
 
+  if (isSignup) {
+    const res = await signup({ ...form, email });
+    if (!res.ok) return setErro(res.msg);
+
+    return nav("/onboarding");
+  } else {
+    const res = await loginWithEmail(email, form.senha);
+    if (!res.ok) return setErro(res.msg);
+
+    return nav("/dashboard");
+  }
+}
   const quickEmail = lastEmail && lastEmail.includes("@") ? lastEmail : "";
   function continueAsLast() {
     if (!quickEmail) return;
@@ -402,33 +398,27 @@ export default function Login() {
         <div style={styles.dividerLine} />
       </div>
 
-      <div style={styles.socialWrap}>
-        <button
-          type="button"
-          className="tap"
-          style={styles.socialBtn}
-          onClick={() => toastSoon("Continuar com Apple — em breve.")}
-          aria-label="Continuar com Apple"
-        >
-          <span style={styles.socialIcon}>
-            <Icon name="apple" />
-          </span>
-          Continuar com Apple
-        </button>
+    <button
+  type="button"
+  className="tap"
+  style={styles.socialBtn}
+  onClick={async () => {
+    const res = await loginWithApple();
+    if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Apple.");
+  }}
+  aria-label="Continuar com Apple"
+>
 
         <button
-          type="button"
-          className="tap"
-          style={styles.socialBtn}
-          onClick={() => toastSoon("Continuar com Google — em breve.")}
-          aria-label="Continuar com Google"
-        >
-          <span style={styles.socialIcon}>
-            <Icon name="google" />
-          </span>
-          Continuar com Google
-        </button>
-      </div>
+  type="button"
+  className="tap"
+  style={styles.socialBtn}
+  onClick={async () => {
+    const res = await loginWithGoogle();
+    if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Google.");
+  }}
+  aria-label="Continuar com Google"
+>
 
       {/* -------- Footer links -------- */}
       <div style={styles.footerRow}>
@@ -688,5 +678,6 @@ const styles = {
   },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
+
 
 
