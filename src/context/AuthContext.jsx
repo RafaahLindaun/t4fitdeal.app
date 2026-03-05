@@ -210,7 +210,7 @@ export function AuthProvider({ children }) {
 
   async function loginWithGoogle() {
     try {
-      const redirectTo = `${window.location.origin}/`;
+      const redirectTo: `${window.location.origin}/auth/callback`,
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -356,3 +356,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
