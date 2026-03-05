@@ -50,9 +50,7 @@ export function AuthProvider({ children }) {
       .eq("id", authUser.id)
       .maybeSingle();
 
-    if (error) {
-      console.error("Erro ao buscar profile:", error);
-    }
+    if (error) console.error("Erro ao buscar profile:", error);
 
     const merged = normalizeProfile(data, authUser);
     setUser(merged);
@@ -80,9 +78,7 @@ export function AuthProvider({ children }) {
       .from("profiles")
       .upsert(payload, { onConflict: "id" });
 
-    if (error) {
-      console.error("Erro ao garantir profile:", error);
-    }
+    if (error) console.error("Erro ao garantir profile:", error);
 
     return fetchProfile(authUser);
   }
@@ -116,22 +112,22 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      // IMPORTANTE: setar loading true pra não “cair” pro login no meio do callback
+      setLoading(true);
       setSession(newSession || null);
 
-      Promise.resolve().then(async () => {
-        try {
-          if (newSession?.user) {
-            await ensureProfile(newSession.user);
-          } else {
-            setUser(null);
-          }
-        } catch (err) {
-          console.error("Erro no onAuthStateChange:", err);
-        } finally {
-          setLoading(false);
+      try {
+        if (newSession?.user) {
+          await ensureProfile(newSession.user);
+        } else {
+          setUser(null);
         }
-      });
+      } catch (err) {
+        console.error("Erro no onAuthStateChange:", err);
+      } finally {
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -142,24 +138,18 @@ export function AuthProvider({ children }) {
 
   async function signup(payload) {
     try {
-      const email = String(payload?.email || "")
-        .trim()
-        .toLowerCase();
+      const email = String(payload?.email || "").trim().toLowerCase();
       const password = String(payload?.senha || "");
 
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            nome: payload?.nome || "",
-          },
+          data: { nome: payload?.nome || "" },
         },
       });
 
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
+      if (error) return { ok: false, msg: error.message };
 
       if (data?.user) {
         const { error: profileError } = await supabase.from("profiles").upsert(
@@ -170,13 +160,12 @@ export function AuthProvider({ children }) {
             altura: payload?.altura ? Number(payload.altura) : null,
             peso: payload?.peso ? Number(payload.peso) : null,
             provider: "email",
+            onboarded: false,
           },
           { onConflict: "id" }
         );
 
-        if (profileError) {
-          console.error("Erro ao criar profile no signup:", profileError);
-        }
+        if (profileError) console.error("Erro ao criar profile no signup:", profileError);
       }
 
       return { ok: true, user: data?.user || null };
@@ -188,19 +177,13 @@ export function AuthProvider({ children }) {
   async function loginWithEmail(email, senha) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: String(email || "")
-          .trim()
-          .toLowerCase(),
+        email: String(email || "").trim().toLowerCase(),
         password: String(senha || ""),
       });
 
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
+      if (error) return { ok: false, msg: error.message };
 
-      if (data?.user) {
-        await ensureProfile(data.user);
-      }
+      if (data?.user) await ensureProfile(data.user);
 
       return { ok: true, user: data?.user || null };
     } catch (err) {
@@ -208,9 +191,11 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ✅ AQUI ESTÁ A CORREÇÃO PRINCIPAL:
+  // OAuth NÃO deve voltar pra "/" ou "/dashboard". Tem que voltar pra "/auth/callback".
   async function loginWithGoogle() {
     try {
-      const redirectTo = `${window.location.origin}/`;
+      const redirectTo = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -237,13 +222,11 @@ export function AuthProvider({ children }) {
 
   async function loginWithApple() {
     try {
-      const redirectTo = `${window.location.origin}/`;
+      const redirectTo = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
-        options: {
-          redirectTo,
-        },
+        options: { redirectTo },
       });
 
       if (error) {
@@ -261,9 +244,7 @@ export function AuthProvider({ children }) {
   async function updateUser(patch) {
     try {
       const authUser = session?.user;
-      if (!authUser?.id) {
-        return { ok: false, msg: "Usuário não autenticado." };
-      }
+      if (!authUser?.id) return { ok: false, msg: "Usuário não autenticado." };
 
       const payload = {};
 
@@ -281,46 +262,30 @@ export function AuthProvider({ children }) {
       if ("photoUrl" in patch) payload.photo_url = patch.photoUrl || "";
       if ("provider" in patch) payload.provider = patch.provider || "";
 
+      // atualizar email também no auth (se permitido)
       if ("email" in patch) {
         const newEmail = String(patch.email || "").trim().toLowerCase();
         if (newEmail && newEmail !== authUser.email) {
-          const { error: authEmailError } = await supabase.auth.updateUser({
-            email: newEmail,
-          });
-
-          if (authEmailError) {
-            return { ok: false, msg: authEmailError.message };
-          }
+          const { error: authEmailError } = await supabase.auth.updateUser({ email: newEmail });
+          if (authEmailError) return { ok: false, msg: authEmailError.message };
         }
       }
 
+      // atualizar metadata (nome / avatar)
       if ("nome" in patch || "photoUrl" in patch) {
         const metadataPatch = {};
         if ("nome" in patch) metadataPatch.nome = patch.nome || "";
         if ("photoUrl" in patch) metadataPatch.avatar_url = patch.photoUrl || "";
 
-        const { error: metaError } = await supabase.auth.updateUser({
-          data: metadataPatch,
-        });
-
-        if (metaError) {
-          console.error("Erro ao atualizar metadata:", metaError);
-        }
+        const { error: metaError } = await supabase.auth.updateUser({ data: metadataPatch });
+        if (metaError) console.error("Erro ao atualizar metadata:", metaError);
       }
 
       const { error } = await supabase
         .from("profiles")
-        .upsert(
-          {
-            id: authUser.id,
-            ...payload,
-          },
-          { onConflict: "id" }
-        );
+        .upsert({ id: authUser.id, ...payload }, { onConflict: "id" });
 
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
+      if (error) return { ok: false, msg: error.message };
 
       await fetchProfile(session?.user || authUser);
       return { ok: true };
