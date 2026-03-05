@@ -346,21 +346,18 @@ export default function Login() {
       </div>
 
       <div style={styles.socialWrap}>
+        {/* ✅ ALTERADO SOMENTE AQUI: Apple vira "Em breve!" (não chama OAuth) */}
         <button
           type="button"
           className="tap"
-          style={styles.socialBtn}
-          onClick={async () => {
-            setErro("");
-            const res = await loginWithApple();
-            if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Apple.");
-          }}
-          aria-label="Continuar com Apple"
+          style={{ ...styles.socialBtn, opacity: 0.75, cursor: "not-allowed" }}
+          onClick={() => toastSoon("Apple: em breve!")}
+          aria-label="Continuar com Apple (em breve)"
         >
           <span style={styles.socialIcon}>
             <Icon name="apple" />
           </span>
-          Continuar com Apple
+          Em breve!
         </button>
 
         <button
