@@ -138,7 +138,7 @@ function Icon({ name }) {
 }
 
 export default function Login() {
-  const { signup, loginWithEmail } = useAuth();
+  const { signup, loginWithEmail, loginWithGoogle, loginWithApple, user } = useAuth();
   const nav = useNavigate();
 
   const [mode, setMode] = useState("signup");
@@ -688,4 +688,5 @@ const styles = {
   },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
+
 
