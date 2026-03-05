@@ -1,10 +1,3 @@
-
-
-// ✅ COLE EM: src/pages/Login.jsx
-// ✅ SIGNUP VAI PARA /onboarding
-// ✅ Símbolo: /src/assets/fitdeal-mark.png
-// ✅ Olhinho corrigido: alinhado no centro e SEM quadrado (botão transparente)
-
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -45,11 +38,7 @@ function Icon({ name }) {
           strokeWidth="1.8"
           strokeLinejoin="round"
         />
-        <path
-          d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"
-          stroke={stroke}
-          strokeWidth="1.8"
-        />
+        <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke={stroke} strokeWidth="1.8" />
       </svg>
     );
   }
@@ -64,12 +53,7 @@ function Icon({ name }) {
           strokeWidth="1.8"
           strokeLinecap="round"
         />
-        <path
-          d="M10.2 10.2a3.2 3.2 0 0 0 3.6 3.6"
-          stroke={stroke2}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
+        <path d="M10.2 10.2a3.2 3.2 0 0 0 3.6 3.6" stroke={stroke2} strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -91,13 +75,7 @@ function Icon({ name }) {
   if (name === "chev") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="M9 6l6 6-6 6"
-          stroke={stroke2}
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M9 6l6 6-6 6" stroke={stroke2} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -138,7 +116,7 @@ function Icon({ name }) {
 }
 
 export default function Login() {
-  const { signup, loginWithEmail, loginWithGoogle, loginWithApple, user } = useAuth();
+  const { signup, loginWithEmail, loginWithGoogle, loginWithApple } = useAuth();
   const nav = useNavigate();
 
   const [mode, setMode] = useState("signup");
@@ -156,14 +134,9 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
 
   const [remember, setRemember] = useState(() => localStorage.getItem("remember_login") === "1");
-  const [lastEmail, setLastEmail] = useState(() => localStorage.getItem("last_login_email") || "");
+  const [lastEmail] = useState(() => localStorage.getItem("last_login_email") || "");
   const [createdAt, setCreatedAt] = useState(() => localStorage.getItem("account_created_at") || "");
   const createdLabel = useMemo(() => timeAgo(createdAt), [createdAt]);
-
-  useEffect(() => {
-    if (!form.email && lastEmail) setForm((p) => ({ ...p, email: lastEmail }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -201,30 +174,34 @@ export default function Login() {
     setTimeout(() => setErro(""), 1700);
   }
 
- async function submit() {
-  setErro("");
-  const email = (form.email || "").trim().toLowerCase();
+  async function submit() {
+    setErro("");
+    const email = (form.email || "").trim().toLowerCase();
 
-  if (remember) {
-    localStorage.setItem("remember_login", "1");
-    if (email) localStorage.setItem("last_login_email", email);
-  } else {
-    localStorage.setItem("remember_login", "0");
-    localStorage.removeItem("last_login_email");
+    if (remember) {
+      localStorage.setItem("remember_login", "1");
+      if (email) localStorage.setItem("last_login_email", email);
+    } else {
+      localStorage.setItem("remember_login", "0");
+      localStorage.removeItem("last_login_email");
+    }
+
+    if (isSignup) {
+      if (!localStorage.getItem("account_created_at")) {
+        localStorage.setItem("account_created_at", new Date().toISOString());
+        setCreatedAt(localStorage.getItem("account_created_at") || "");
+      }
+
+      const res = await signup({ ...form, email });
+      if (!res.ok) return setErro(res.msg);
+      return nav("/onboarding");
+    } else {
+      const res = await loginWithEmail(email, form.senha);
+      if (!res.ok) return setErro(res.msg);
+      return nav("/dashboard");
+    }
   }
 
-  if (isSignup) {
-    const res = await signup({ ...form, email });
-    if (!res.ok) return setErro(res.msg);
-
-    return nav("/onboarding");
-  } else {
-    const res = await loginWithEmail(email, form.senha);
-    if (!res.ok) return setErro(res.msg);
-
-    return nav("/dashboard");
-  }
-}
   const quickEmail = lastEmail && lastEmail.includes("@") ? lastEmail : "";
   function continueAsLast() {
     if (!quickEmail) return;
@@ -304,43 +281,15 @@ export default function Login() {
 
       {isSignup && (
         <>
-          <input
-            name="nome"
-            value={form.nome}
-            onChange={onChange}
-            placeholder="Nome"
-            style={styles.input}
-            autoComplete="name"
-          />
+          <input name="nome" value={form.nome} onChange={onChange} placeholder="Nome" style={styles.input} autoComplete="name" />
           <div style={styles.row}>
-            <input
-              name="altura"
-              value={form.altura}
-              onChange={onChange}
-              placeholder="Altura (cm)"
-              style={styles.input}
-              inputMode="numeric"
-            />
-            <input
-              name="peso"
-              value={form.peso}
-              onChange={onChange}
-              placeholder="Peso (kg)"
-              style={styles.input}
-              inputMode="numeric"
-            />
+            <input name="altura" value={form.altura} onChange={onChange} placeholder="Altura (cm)" style={styles.input} inputMode="numeric" />
+            <input name="peso" value={form.peso} onChange={onChange} placeholder="Peso (kg)" style={styles.input} inputMode="numeric" />
           </div>
         </>
       )}
 
-      <input
-        name="email"
-        value={form.email}
-        onChange={onChange}
-        placeholder="Email"
-        style={styles.input}
-        autoComplete="email"
-      />
+      <input name="email" value={form.email} onChange={onChange} placeholder="Email" style={styles.input} autoComplete="email" />
 
       <div style={styles.passWrap}>
         <input
@@ -353,7 +302,6 @@ export default function Login() {
           autoComplete={isSignup ? "new-password" : "current-password"}
         />
 
-        {/* ✅ Olhinho: alinhado, sem quadrado, só ícone */}
         <button
           type="button"
           style={styles.eyeBtn}
@@ -391,36 +339,48 @@ export default function Login() {
         {isSignup ? "Continuar" : "Entrar"}
       </button>
 
-      {/* -------- Social -------- */}
       <div style={styles.dividerRow}>
         <div style={styles.dividerLine} />
         <div style={styles.dividerText}>ou</div>
         <div style={styles.dividerLine} />
       </div>
 
-    <button
-  type="button"
-  className="tap"
-  style={styles.socialBtn}
-  onClick={async () => {
-    const res = await loginWithApple();
-    if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Apple.");
-  }}
-  aria-label="Continuar com Apple"
->
+      <div style={styles.socialWrap}>
+        <button
+          type="button"
+          className="tap"
+          style={styles.socialBtn}
+          onClick={async () => {
+            setErro("");
+            const res = await loginWithApple();
+            if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Apple.");
+          }}
+          aria-label="Continuar com Apple"
+        >
+          <span style={styles.socialIcon}>
+            <Icon name="apple" />
+          </span>
+          Continuar com Apple
+        </button>
 
         <button
-  type="button"
-  className="tap"
-  style={styles.socialBtn}
-  onClick={async () => {
-    const res = await loginWithGoogle();
-    if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Google.");
-  }}
-  aria-label="Continuar com Google"
->
+          type="button"
+          className="tap"
+          style={styles.socialBtn}
+          onClick={async () => {
+            setErro("");
+            const res = await loginWithGoogle();
+            if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Google.");
+          }}
+          aria-label="Continuar com Google"
+        >
+          <span style={styles.socialIcon}>
+            <Icon name="google" />
+          </span>
+          Continuar com Google
+        </button>
+      </div>
 
-      {/* -------- Footer links -------- */}
       <div style={styles.footerRow}>
         <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
           Ver planos
@@ -442,9 +402,7 @@ export default function Login() {
 
 const styles = {
   page: { paddingTop: 40 },
-
   logoWrap: { display: "grid", placeItems: "center", marginBottom: 18 },
-
   logoBox: {
     width: 68,
     height: 68,
@@ -459,24 +417,8 @@ const styles = {
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
   logoImg: { width: 50, height: 50, objectFit: "contain", display: "block" },
-  logoFallback: {
-    display: "none",
-    width: "100%",
-    height: "100%",
-    placeItems: "center",
-    fontWeight: 950,
-    color: ORANGE,
-    fontSize: 22,
-  },
-
-  logoText: {
-    fontSize: 26,
-    fontWeight: 950,
-    color: TEXT,
-    letterSpacing: -0.6,
-    lineHeight: 1.05,
-  },
-
+  logoFallback: { display: "none", width: "100%", height: "100%", placeItems: "center", fontWeight: 950, color: ORANGE, fontSize: 22 },
+  logoText: { fontSize: 26, fontWeight: 950, color: TEXT, letterSpacing: -0.6, lineHeight: 1.05 },
   metaRow: { marginTop: 10 },
   metaPill: {
     padding: "8px 12px",
@@ -489,10 +431,8 @@ const styles = {
     color: MUTED,
   },
   metaBold: { fontWeight: 950 },
-
   title: { fontSize: 26, fontWeight: 950, color: TEXT, textAlign: "center" },
   subtitle: { marginTop: 6, fontSize: 14, color: MUTED, textAlign: "center" },
-
   lastUser: {
     width: "100%",
     marginTop: 14,
@@ -507,47 +447,14 @@ const styles = {
     gap: 10,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  lastDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
-    flexShrink: 0,
-  },
+  lastDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)", flexShrink: 0 },
   lastChev: { marginLeft: "auto", display: "grid", placeItems: "center", opacity: 0.55 },
-
-  switchRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  switchBtn: {
-    padding: 12,
-    borderRadius: 14,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    fontWeight: 900,
-    color: MUTED,
-  },
+  switchRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18, marginBottom: 12 },
+  switchBtn: { padding: 12, borderRadius: 14, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, color: MUTED },
   switchActive: { border: `1px solid ${ORANGE}`, background: ORANGE_SOFT, color: ORANGE },
-
-  input: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 14,
-    border: "1px solid #e5e7eb",
-    marginTop: 12,
-    fontSize: 14,
-    outline: "none",
-  },
+  input: { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #e5e7eb", marginTop: 12, fontSize: 14, outline: "none" },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-
   passWrap: { position: "relative", marginTop: 12 },
-
-  // ✅ Olhinho sem quadrado: botão transparente + área de toque correta
   eyeBtn: {
     position: "absolute",
     right: 12,
@@ -564,7 +471,6 @@ const styles = {
     color: TEXT,
     opacity: 0.9,
   },
-
   auxRow: { marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
   auxBtn: {
     border: "1px solid rgba(15,23,42,.10)",
@@ -578,27 +484,9 @@ const styles = {
     gap: 10,
   },
   auxOn: { borderColor: "rgba(255,106,0,.35)", background: "rgba(255,106,0,.08)", color: TEXT },
-
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 9,
-    border: "1px solid rgba(15,23,42,.14)",
-    display: "grid",
-    placeItems: "center",
-    background: "#fff",
-  },
+  checkbox: { width: 22, height: 22, borderRadius: 9, border: "1px solid rgba(15,23,42,.14)", display: "grid", placeItems: "center", background: "#fff" },
   checkboxOn: { borderColor: "rgba(255,106,0,.45)", background: "rgba(255,106,0,.18)" },
-
-  linkBtn: {
-    border: "none",
-    background: "transparent",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 10px",
-    borderRadius: 999,
-  },
-
+  linkBtn: { border: "none", background: "transparent", color: TEXT, fontWeight: 950, padding: "10px 10px", borderRadius: 999 },
   cta: {
     width: "100%",
     padding: 16,
@@ -611,18 +499,9 @@ const styles = {
     fontSize: 15,
     boxShadow: "0 16px 40px rgba(255,106,0,.28)",
   },
-
-  dividerRow: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "1fr auto 1fr",
-    alignItems: "center",
-    gap: 10,
-    color: MUTED,
-  },
+  dividerRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 10, color: MUTED },
   dividerLine: { height: 1, background: "rgba(15,23,42,.10)" },
   dividerText: { fontSize: 12, fontWeight: 900, color: MUTED },
-
   socialWrap: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   socialBtn: {
     padding: 12,
@@ -647,7 +526,6 @@ const styles = {
     placeItems: "center",
     flexShrink: 0,
   },
-
   error: {
     marginTop: 12,
     padding: "10px 12px",
@@ -658,26 +536,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
   },
-
-  footerRow: {
-    marginTop: 14,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    color: MUTED,
-    flexWrap: "wrap",
-  },
-  footerLink: {
-    border: "none",
-    background: "transparent",
-    color: MUTED,
-    fontWeight: 900,
-    padding: "8px 10px",
-    borderRadius: 999,
-  },
+  footerRow: { marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: MUTED, flexWrap: "wrap" },
+  footerLink: { border: "none", background: "transparent", color: MUTED, fontWeight: 900, padding: "8px 10px", borderRadius: 999 },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
-
-
-
