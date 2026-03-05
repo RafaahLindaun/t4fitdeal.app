@@ -608,50 +608,41 @@ export default function Onboarding() {
     setStep((s) => Math.max(1, s - 1));
   }
 
-  function finish() {
-    if (!goal || !days || !level) return;
+ async function finish() {
+  if (!goal || !days || !level) return;
 
-    const email = String(user?.email || "anon").toLowerCase();
+  const email = String(user?.email || "anon").toLowerCase();
 
-    // ✅ gera plano único e congelado (determinístico)
-    const plan = generatePlan({
-      email,
-      goal,
-      days: Number(days),
-      level,
-      intensity,
-      splitLabel: split,
-      userProfile: user || {},
-    });
+  const plan = generatePlan({
+    email,
+    goal,
+    days: Number(days),
+    level,
+    intensity,
+    splitLabel: split,
+    userProfile: user || {},
+  });
 
-    // salva plano completo
-    localStorage.setItem(`generated_plan_${email}`, JSON.stringify(plan));
+  localStorage.setItem(`generated_plan_${email}`, JSON.stringify(plan));
 
-    // salva também compatível com o Treino atual (dayGroups + prescriptions)
-    const compat = buildCustomSplitCompat(plan);
-    localStorage.setItem(`custom_split_${email}`, JSON.stringify(compat));
+  const compat = buildCustomSplitCompat(plan);
+  localStorage.setItem(`custom_split_${email}`, JSON.stringify(compat));
 
-    // marca que o plano foi criado (pra você usar depois no premium “recalcular”)
-    localStorage.setItem(`plan_seed_${email}`, String(plan.seed));
-    localStorage.setItem(`plan_version_${email}`, String(plan.version));
-    localStorage.setItem(`plan_created_${email}`, plan.createdAt);
+  localStorage.setItem(`plan_seed_${email}`, String(plan.seed));
+  localStorage.setItem(`plan_version_${email}`, String(plan.version));
+  localStorage.setItem(`plan_created_${email}`, plan.createdAt);
 
-    updateUser({
-      objetivo: goal,
-      frequencia: Number(days),
-      nivel: level,
-      split,
-      intensidade: intensity,
-      onboarded: true,
+  await updateUser({
+    objetivo: goal,
+    frequencia: Number(days),
+    nivel: level,
+    split,
+    intensidade: intensity,
+    onboarded: true,
+  });
 
-      // ✅ meta do plano (não precisa salvar o plano inteiro no user agora)
-      planSeed: plan.seed,
-      planVersion: plan.version,
-      planCreatedAt: plan.createdAt,
-    });
-
-    nav("/treino", { replace: true });
-  }
+  nav("/treino", { replace: true });
+}
 
   const stepTitle =
     step === 1 ? "1) Qual é sua meta?" : step === 2 ? "2) Quantos dias por semana?" : "3) Seu nível atual?";
@@ -977,3 +968,4 @@ const styles = {
 
   safeBottom: { height: "calc(12px + env(safe-area-inset-bottom))" },
 };
+
