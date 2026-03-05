@@ -9,7 +9,11 @@ function normalizeProfile(profile, authUser) {
   return {
     id: authUser.id,
     email: authUser.email || profile?.email || "",
-    nome: profile?.nome || authUser.user_metadata?.nome || "",
+    nome:
+      profile?.nome ||
+      authUser.user_metadata?.nome ||
+      authUser.user_metadata?.full_name ||
+      "",
     idade: profile?.idade ?? "",
     altura: profile?.altura ?? "",
     peso: profile?.peso ?? "",
@@ -19,11 +23,12 @@ function normalizeProfile(profile, authUser) {
     split: profile?.split || "",
     intensidade: profile?.intensidade || "",
     onboarded: !!profile?.onboarded,
-    photoUrl: profile?.photo_url || authUser.user_metadata?.avatar_url || "",
-    provider:
-      authUser.app_metadata?.provider ||
-      profile?.provider ||
-      "email",
+    photoUrl:
+      profile?.photo_url ||
+      authUser.user_metadata?.avatar_url ||
+      authUser.user_metadata?.picture ||
+      "",
+    provider: authUser.app_metadata?.provider || profile?.provider || "email",
     createdAt: profile?.created_at || authUser.created_at || "",
   };
 }
@@ -60,8 +65,14 @@ export function AuthProvider({ children }) {
     const payload = {
       id: authUser.id,
       email: authUser.email || "",
-      nome: authUser.user_metadata?.nome || authUser.user_metadata?.full_name || "",
-      photo_url: authUser.user_metadata?.avatar_url || "",
+      nome:
+        authUser.user_metadata?.nome ||
+        authUser.user_metadata?.full_name ||
+        "",
+      photo_url:
+        authUser.user_metadata?.avatar_url ||
+        authUser.user_metadata?.picture ||
+        "",
       provider: authUser.app_metadata?.provider || "email",
     };
 
@@ -80,35 +91,47 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     async function bootstrap() {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
+      try {
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
 
-      const currentSession = data?.session || null;
-      setSession(currentSession);
+        if (!mounted) return;
 
-      if (currentSession?.user) {
-        await ensureProfile(currentSession.user);
-      } else {
-        setUser(null);
+        setSession(currentSession || null);
+
+        if (currentSession?.user) {
+          await ensureProfile(currentSession.user);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Erro no bootstrap auth:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      if (mounted) setLoading(false);
     }
 
     bootstrap();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession || null);
 
-      if (newSession?.user) {
-        await ensureProfile(newSession.user);
-      } else {
-        setUser(null);
-      }
-
-      setLoading(false);
+      Promise.resolve().then(async () => {
+        try {
+          if (newSession?.user) {
+            await ensureProfile(newSession.user);
+          } else {
+            setUser(null);
+          }
+        } catch (err) {
+          console.error("Erro no onAuthStateChange:", err);
+        } finally {
+          setLoading(false);
+        }
+      });
     });
 
     return () => {
@@ -119,7 +142,9 @@ export function AuthProvider({ children }) {
 
   async function signup(payload) {
     try {
-      const email = String(payload?.email || "").trim().toLowerCase();
+      const email = String(payload?.email || "")
+        .trim()
+        .toLowerCase();
       const password = String(payload?.senha || "");
 
       const { data, error } = await supabase.auth.signUp({
@@ -137,7 +162,7 @@ export function AuthProvider({ children }) {
       }
 
       if (data?.user) {
-        await supabase.from("profiles").upsert(
+        const { error: profileError } = await supabase.from("profiles").upsert(
           {
             id: data.user.id,
             email,
@@ -148,6 +173,10 @@ export function AuthProvider({ children }) {
           },
           { onConflict: "id" }
         );
+
+        if (profileError) {
+          console.error("Erro ao criar profile no signup:", profileError);
+        }
       }
 
       return { ok: true, user: data?.user || null };
@@ -159,7 +188,9 @@ export function AuthProvider({ children }) {
   async function loginWithEmail(email, senha) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: String(email || "").trim().toLowerCase(),
+        email: String(email || "")
+          .trim()
+          .toLowerCase(),
         password: String(senha || ""),
       });
 
@@ -178,41 +209,61 @@ export function AuthProvider({ children }) {
   }
 
   async function loginWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
-    });
+    try {
+      const redirectTo = `${window.location.origin}/`;
 
-    if (error) {
-      console.error("Erro Google:", error);
-      return { ok: false, msg: error.message };
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Erro Google:", error);
+        return { ok: false, msg: error.message };
+      }
+
+      return { ok: true };
+    } catch (err) {
+      console.error("Erro loginWithGoogle:", err);
+      return { ok: false, msg: err?.message || "Erro ao entrar com Google." };
     }
-
-    return { ok: true };
   }
 
   async function loginWithApple() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "apple",
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
-    });
+    try {
+      const redirectTo = `${window.location.origin}/`;
 
-    if (error) {
-      console.error("Erro Apple:", error);
-      return { ok: false, msg: error.message };
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "apple",
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (error) {
+        console.error("Erro Apple:", error);
+        return { ok: false, msg: error.message };
+      }
+
+      return { ok: true };
+    } catch (err) {
+      console.error("Erro loginWithApple:", err);
+      return { ok: false, msg: err?.message || "Erro ao entrar com Apple." };
     }
-
-    return { ok: true };
   }
 
   async function updateUser(patch) {
     try {
       const authUser = session?.user;
-      if (!authUser?.id) return { ok: false, msg: "Usuário não autenticado." };
+      if (!authUser?.id) {
+        return { ok: false, msg: "Usuário não autenticado." };
+      }
 
       const payload = {};
 
@@ -230,6 +281,33 @@ export function AuthProvider({ children }) {
       if ("photoUrl" in patch) payload.photo_url = patch.photoUrl || "";
       if ("provider" in patch) payload.provider = patch.provider || "";
 
+      if ("email" in patch) {
+        const newEmail = String(patch.email || "").trim().toLowerCase();
+        if (newEmail && newEmail !== authUser.email) {
+          const { error: authEmailError } = await supabase.auth.updateUser({
+            email: newEmail,
+          });
+
+          if (authEmailError) {
+            return { ok: false, msg: authEmailError.message };
+          }
+        }
+      }
+
+      if ("nome" in patch || "photoUrl" in patch) {
+        const metadataPatch = {};
+        if ("nome" in patch) metadataPatch.nome = patch.nome || "";
+        if ("photoUrl" in patch) metadataPatch.avatar_url = patch.photoUrl || "";
+
+        const { error: metaError } = await supabase.auth.updateUser({
+          data: metadataPatch,
+        });
+
+        if (metaError) {
+          console.error("Erro ao atualizar metadata:", metaError);
+        }
+      }
+
       const { error } = await supabase
         .from("profiles")
         .upsert(
@@ -244,7 +322,7 @@ export function AuthProvider({ children }) {
         return { ok: false, msg: error.message };
       }
 
-      await fetchProfile(authUser);
+      await fetchProfile(session?.user || authUser);
       return { ok: true };
     } catch (err) {
       return { ok: false, msg: err?.message || "Erro ao atualizar perfil." };
