@@ -1,5 +1,8 @@
 // ✅ COLE EM: src/pages/Conta.jsx
-// Fix: salvar perfil não crasha mais (await + tratamento de erro + loading)
+// FIX DEFINITIVO: salvar não trava mais
+// - Não altera EMAIL pelo app (evita loop/loading no Supabase OAuth/iOS)
+// - Salva apenas: nome / idade / altura / peso / foto
+// - loading + tratamento de erro
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,12 +19,6 @@ function safeJsonParse(raw, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function clamp(n, a, b) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return a;
-  return Math.max(a, Math.min(b, v));
 }
 
 function formatPtDate(iso) {
@@ -169,10 +166,7 @@ function Toggle({ on, onChange, ariaLabel }) {
       aria-label={ariaLabel}
       onClick={() => onChange(!on)}
       className="tap"
-      style={{
-        ...styles.toggle,
-        ...(on ? styles.toggleOn : styles.toggleOff),
-      }}
+      style={{ ...styles.toggle, ...(on ? styles.toggleOn : styles.toggleOff) }}
     >
       <span style={{ ...styles.knob, ...(on ? styles.knobOn : styles.knobOff) }} />
     </button>
@@ -185,11 +179,7 @@ function Row({ icon, title, subtitle, right, onClick, danger, compact }) {
       type="button"
       className="tap"
       onClick={onClick}
-      style={{
-        ...styles.row,
-        ...(danger ? styles.rowDanger : null),
-        ...(compact ? styles.rowCompact : null),
-      }}
+      style={{ ...styles.row, ...(danger ? styles.rowDanger : null), ...(compact ? styles.rowCompact : null) }}
     >
       <div style={{ ...styles.rowIconWrap, ...(danger ? styles.rowIconDanger : styles.rowIcon) }}>
         <Icon name={icon} />
@@ -243,7 +233,7 @@ export default function Conta() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editMsg, setEditMsg] = useState("");
-  const [saving, setSaving] = useState(false); // ✅ novo
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState(() => ({
     nome: user?.nome || "",
@@ -293,6 +283,7 @@ export default function Conta() {
     document.head.appendChild(style);
   }, []);
 
+  // garante createdAt local (sem chamar updateUser aqui)
   useEffect(() => {
     if (!user) return;
 
@@ -313,12 +304,6 @@ export default function Conta() {
     const now = new Date().toISOString();
     setCreatedAt(now);
     localStorage.setItem(createdKey, now);
-
-    try {
-      updateUser({ createdAt: now });
-    } catch {
-      // ok
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
@@ -378,30 +363,6 @@ export default function Conta() {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
-  function migrateEmailData(oldEmail, newEmail) {
-    const oldKeyPay = `payments_${oldEmail}`;
-    const newKeyPay = `payments_${newEmail}`;
-    const payRaw = localStorage.getItem(oldKeyPay);
-    if (payRaw && !localStorage.getItem(newKeyPay)) localStorage.setItem(newKeyPay, payRaw);
-    if (payRaw) localStorage.removeItem(oldKeyPay);
-
-    const oldPaid = `paid_${oldEmail}`;
-    const newPaid = `paid_${newEmail}`;
-    const paid = localStorage.getItem(oldPaid);
-    if (paid && !localStorage.getItem(newPaid)) localStorage.setItem(newPaid, paid);
-    if (paid) localStorage.removeItem(oldPaid);
-
-    const keysToMove = [`supp_stack_${oldEmail}`, `acct_created_${oldEmail}`, `acct_prefs_${oldEmail}`, `acct_links_${oldEmail}`];
-    keysToMove.forEach((k) => {
-      const raw = localStorage.getItem(k);
-      if (!raw) return;
-      const nk = k.replace(oldEmail, newEmail);
-      if (!localStorage.getItem(nk)) localStorage.setItem(nk, raw);
-      localStorage.removeItem(k);
-    });
-  }
-
-  // ✅ FIX PRINCIPAL: await + tratamento de erro
   async function saveProfile() {
     if (saving) return;
 
@@ -410,17 +371,12 @@ export default function Conta() {
 
     try {
       const nome = String(form.nome || "").trim();
-      const emailNew = String(form.email || "").trim().toLowerCase();
       const idade = String(form.idade || "").trim();
       const altura = String(form.altura || "").trim();
       const peso = String(form.peso || "").trim();
 
       if (!nome) {
         setEditMsg("Nome é obrigatório.");
-        return;
-      }
-      if (!emailNew || !emailNew.includes("@")) {
-        setEditMsg("Email inválido.");
         return;
       }
       if (idade && Number(idade) <= 0) {
@@ -436,10 +392,8 @@ export default function Conta() {
         return;
       }
 
-      const oldEmail = String(user?.email || "").toLowerCase();
-      if (oldEmail && emailNew !== oldEmail) migrateEmailData(oldEmail, emailNew);
-
-      const res = await updateUser({ nome, email: emailNew, idade, altura, peso });
+      // ✅ NÃO ALTERA EMAIL AQUI (evita travar/loop no Supabase)
+      const res = await updateUser({ nome, idade, altura, peso });
 
       if (!res?.ok) {
         setEditMsg(res?.msg || "Não foi possível salvar. Tente novamente.");
@@ -523,7 +477,14 @@ export default function Conta() {
   }
 
   function exportMyData() {
-    const keys = [`paid_${email}`, `payments_${email}`, `supp_stack_${email}`, `acct_created_${email}`, `acct_prefs_${email}`, `acct_links_${email}`];
+    const keys = [
+      `paid_${email}`,
+      `payments_${email}`,
+      `supp_stack_${email}`,
+      `acct_created_${email}`,
+      `acct_prefs_${email}`,
+      `acct_links_${email}`,
+    ];
 
     const pack = {
       exportedAt: new Date().toISOString(),
@@ -539,7 +500,14 @@ export default function Conta() {
   }
 
   function clearLocalData() {
-    const keys = [`paid_${email}`, `payments_${email}`, `supp_stack_${email}`, `acct_created_${email}`, `acct_prefs_${email}`, `acct_links_${email}`];
+    const keys = [
+      `paid_${email}`,
+      `payments_${email}`,
+      `supp_stack_${email}`,
+      `acct_created_${email}`,
+      `acct_prefs_${email}`,
+      `acct_links_${email}`,
+    ];
     keys.forEach((k) => localStorage.removeItem(k));
     setToast("Dados locais removidos");
     closeSheet();
@@ -567,12 +535,16 @@ export default function Conta() {
         </button>
       </div>
 
-      {/* HERO PROFILE */}
+      {/* HERO */}
       <div style={styles.hero}>
         <div style={styles.heroBgGlow} />
         <div style={styles.heroRow}>
           <div style={styles.avatarWrap} className="tap" onClick={pickPhoto} role="button" aria-label="Trocar foto">
-            {photo ? <img src={photo} alt="Foto" style={styles.avatarImg} /> : <div style={styles.avatarFallback}>{user.nome?.[0]?.toUpperCase() || "U"}</div>}
+            {photo ? (
+              <img src={photo} alt="Foto" style={styles.avatarImg} />
+            ) : (
+              <div style={styles.avatarFallback}>{user.nome?.[0]?.toUpperCase() || "U"}</div>
+            )}
             <div style={styles.avatarBadge}>Trocar</div>
           </div>
 
@@ -582,12 +554,24 @@ export default function Conta() {
             <div style={styles.heroMeta}>{memberSinceText}</div>
 
             <div style={styles.chipsRow}>
-              {profileChips.length ? profileChips.map((t) => <div key={t} style={styles.chip}>{t}</div>) : <div style={styles.chipSoft}>Complete seu perfil para metas melhores</div>}
+              {profileChips.length ? (
+                profileChips.map((t) => (
+                  <div key={t} style={styles.chip}>
+                    {t}
+                  </div>
+                ))
+              ) : (
+                <div style={styles.chipSoft}>Complete seu perfil para metas melhores</div>
+              )}
             </div>
 
             <div style={styles.heroPills}>
-              <button style={styles.heroPillDark} className="tap" onClick={openEdit} type="button">Editar</button>
-              <button style={styles.heroPillSoft} className="tap" onClick={() => nav("/pagamentos")} type="button">Pagamentos</button>
+              <button style={styles.heroPillDark} className="tap" onClick={openEdit} type="button">
+                Editar
+              </button>
+              <button style={styles.heroPillSoft} className="tap" onClick={() => nav("/pagamentos")} type="button">
+                Pagamentos
+              </button>
             </div>
           </div>
         </div>
@@ -595,7 +579,7 @@ export default function Conta() {
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
       </div>
 
-      {/* STATS STRIP */}
+      {/* STATS */}
       <div style={styles.statsStrip}>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Plano</div>
@@ -610,13 +594,13 @@ export default function Conta() {
         </div>
       </div>
 
-      {/* SETTINGS SECTIONS */}
+      {/* SETTINGS */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Perfil</div>
         <div style={styles.card}>
-          <Row icon="edit" title="Editar dados" subtitle="Nome, email, idade, altura e peso" onClick={openEdit} />
+          <Row icon="edit" title="Editar dados" subtitle="Nome, idade, altura e peso" onClick={openEdit} />
           <Row icon="share" title="Compartilhar perfil" subtitle="Enviar link ou copiar" onClick={() => openSheet("share")} />
-          <Row icon="link" title="Conectar contas" subtitle="Apple / Google (rápido e seguro)" onClick={() => openSheet("link")} />
+          <Row icon="link" title="Conectar contas" subtitle="Apple / Google (mock)" onClick={() => openSheet("link")} />
         </div>
       </div>
 
@@ -717,7 +701,18 @@ export default function Conta() {
 
             <div style={styles.formGrid}>
               <input name="nome" value={form.nome} onChange={onFormChange} placeholder="Nome" style={styles.input} disabled={saving} />
-              <input name="email" value={form.email} onChange={onFormChange} placeholder="Email" style={styles.input} disabled={saving} />
+
+              {/* ✅ Email somente leitura (evita travar Supabase) */}
+              <input
+                name="email"
+                value={form.email}
+                readOnly
+                placeholder="Email"
+                style={{ ...styles.input, opacity: 0.7 }}
+              />
+              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 }}>
+                Para mudar o email, faça isso depois (quando você ativar o fluxo completo). Assim evitamos travar o app.
+              </div>
 
               <div style={styles.row2}>
                 <input name="idade" value={form.idade} onChange={onFormChange} placeholder="Idade" style={styles.input} inputMode="numeric" disabled={saving} />
@@ -741,7 +736,7 @@ export default function Conta() {
         </div>
       )}
 
-      {/* BOTTOM SHEET (Share / Link / Export / Danger) */}
+      {/* BOTTOM SHEET */}
       {sheetKind && (
         <div
           style={{ ...styles.sheetOverlay, ...(sheetOpen ? styles.overlayOn : styles.overlayOff) }}
@@ -809,8 +804,7 @@ export default function Conta() {
               {sheetKind === "link" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Conectar contas facilita login e melhora segurança. Aqui é um mock local (sem OAuth). Se você
-                    integrar autenticação real depois, pode reaproveitar o layout.
+                    Aqui é um mock local (sem OAuth). Você pode manter esse layout e ligar com backend depois.
                   </div>
 
                   <div style={styles.linkCard}>
@@ -852,16 +846,13 @@ export default function Conta() {
                       />
                     </div>
                   </div>
-
-                  <div style={styles.hint}>Dica: quando houver backend, guarde as conexões por UID do usuário (não só email).</div>
                 </div>
               )}
 
               {sheetKind === "export" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Exporta um arquivo JSON com seus dados do perfil e as principais chaves locais relacionadas à sua conta
-                    (assinatura, pagamentos, stack de suplementos e preferências).
+                    Exporta um arquivo JSON com seus dados do perfil e as principais chaves locais relacionadas à sua conta.
                   </div>
 
                   <div style={styles.sheetButtons}>
@@ -880,7 +871,7 @@ export default function Conta() {
               {sheetKind === "danger" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Isso remove dados do dispositivo (localStorage) desta conta. Seu perfil em memória (auth) continua até você sair.
+                    Isso remove dados do dispositivo (localStorage) desta conta.
                   </div>
 
                   <div style={styles.warnBox}>
