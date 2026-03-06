@@ -56,13 +56,11 @@ function mkDownload(filename, content, mime = "application/json") {
   }
 }
 
-// ✅ evita "Salvando..." infinito
-function withTimeout(promise, ms = 10000) {
-  let t;
-  const timeout = new Promise((_, reject) => {
-    t = setTimeout(() => reject(new Error("Tempo esgotado ao salvar. Tente novamente.")), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+function withTimeout(promise, ms = 8000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo limite ao salvar. Verifique sua internet.")), ms)),
+  ]);
 }
 
 function Icon({ name }) {
@@ -313,7 +311,7 @@ export default function Conta() {
     const now = new Date().toISOString();
     setCreatedAt(now);
     localStorage.setItem(createdKey, now);
-  }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   useEffect(() => {
     localStorage.setItem(prefsKey, JSON.stringify(prefs));
@@ -340,7 +338,7 @@ export default function Conta() {
     try {
       const reader = new FileReader();
       reader.onload = async () => {
-        const res = await withTimeout(updateUser({ photoUrl: reader.result }), 12000);
+        const res = await withTimeout(updateUser({ photoUrl: reader.result }), 8000);
         if (!res?.ok) setToast(res?.msg || "Falha ao atualizar foto");
       };
       reader.readAsDataURL(file);
@@ -371,7 +369,7 @@ export default function Conta() {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
-  // ✅ SALVAR SEM EMAIL + TIMEOUT (não trava mais)
+  // ✅ SALVAR ESTÁVEL: SEM trocar email (isso é o que estava travando)
   async function saveProfile() {
     if (saving) return;
 
@@ -401,11 +399,7 @@ export default function Conta() {
         return;
       }
 
-      // ✅ não manda email aqui (é o que mais causa travamento)
-      const res = await withTimeout(
-        updateUser({ nome, idade, altura, peso }),
-        12000
-      );
+      const res = await withTimeout(updateUser({ nome, idade, altura, peso }), 9000);
 
       if (!res?.ok) {
         setEditMsg(res?.msg || "Não foi possível salvar. Tente novamente.");
@@ -489,15 +483,7 @@ export default function Conta() {
   }
 
   function exportMyData() {
-    const keys = [
-      `paid_${email}`,
-      `payments_${email}`,
-      `supp_stack_${email}`,
-      `acct_created_${email}`,
-      `acct_prefs_${email}`,
-      `acct_links_${email}`,
-    ];
-
+    const keys = [`paid_${email}`, `payments_${email}`, `supp_stack_${email}`, `acct_created_${email}`, `acct_prefs_${email}`, `acct_links_${email}`];
     const pack = {
       exportedAt: new Date().toISOString(),
       user: user || null,
@@ -506,20 +492,12 @@ export default function Conta() {
         return acc;
       }, {}),
     };
-
     const ok = mkDownload(`minha-conta-${email}.json`, JSON.stringify(pack, null, 2));
     setToast(ok ? "Exportado" : "Falha ao exportar");
   }
 
   function clearLocalData() {
-    const keys = [
-      `paid_${email}`,
-      `payments_${email}`,
-      `supp_stack_${email}`,
-      `acct_created_${email}`,
-      `acct_prefs_${email}`,
-      `acct_links_${email}`,
-    ];
+    const keys = [`paid_${email}`, `payments_${email}`, `supp_stack_${email}`, `acct_created_${email}`, `acct_prefs_${email}`, `acct_links_${email}`];
     keys.forEach((k) => localStorage.removeItem(k));
     setToast("Dados locais removidos");
     closeSheet();
@@ -534,7 +512,6 @@ export default function Conta() {
 
   return (
     <div style={styles.page}>
-      {/* TOP BAR */}
       <div style={styles.topBar}>
         <button style={styles.backBtn} className="tap" onClick={() => nav("/dashboard")} type="button" aria-label="Voltar">
           ←
@@ -547,16 +524,11 @@ export default function Conta() {
         </button>
       </div>
 
-      {/* HERO */}
       <div style={styles.hero}>
         <div style={styles.heroBgGlow} />
         <div style={styles.heroRow}>
           <div style={styles.avatarWrap} className="tap" onClick={pickPhoto} role="button" aria-label="Trocar foto">
-            {photo ? (
-              <img src={photo} alt="Foto" style={styles.avatarImg} />
-            ) : (
-              <div style={styles.avatarFallback}>{user.nome?.[0]?.toUpperCase() || "U"}</div>
-            )}
+            {photo ? <img src={photo} alt="Foto" style={styles.avatarImg} /> : <div style={styles.avatarFallback}>{user.nome?.[0]?.toUpperCase() || "U"}</div>}
             <div style={styles.avatarBadge}>Trocar</div>
           </div>
 
@@ -566,24 +538,12 @@ export default function Conta() {
             <div style={styles.heroMeta}>{memberSinceText}</div>
 
             <div style={styles.chipsRow}>
-              {profileChips.length ? (
-                profileChips.map((t) => (
-                  <div key={t} style={styles.chip}>
-                    {t}
-                  </div>
-                ))
-              ) : (
-                <div style={styles.chipSoft}>Complete seu perfil para metas melhores</div>
-              )}
+              {profileChips.length ? profileChips.map((t) => <div key={t} style={styles.chip}>{t}</div>) : <div style={styles.chipSoft}>Complete seu perfil para metas melhores</div>}
             </div>
 
             <div style={styles.heroPills}>
-              <button style={styles.heroPillDark} className="tap" onClick={openEdit} type="button">
-                Editar
-              </button>
-              <button style={styles.heroPillSoft} className="tap" onClick={() => nav("/pagamentos")} type="button">
-                Pagamentos
-              </button>
+              <button style={styles.heroPillDark} className="tap" onClick={openEdit} type="button">Editar</button>
+              <button style={styles.heroPillSoft} className="tap" onClick={() => nav("/pagamentos")} type="button">Pagamentos</button>
             </div>
           </div>
         </div>
@@ -591,7 +551,6 @@ export default function Conta() {
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
       </div>
 
-      {/* STATS */}
       <div style={styles.statsStrip}>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Plano</div>
@@ -606,13 +565,12 @@ export default function Conta() {
         </div>
       </div>
 
-      {/* SETTINGS */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Perfil</div>
         <div style={styles.card}>
           <Row icon="edit" title="Editar dados" subtitle="Nome, idade, altura e peso" onClick={openEdit} />
           <Row icon="share" title="Compartilhar perfil" subtitle="Enviar link ou copiar" onClick={() => openSheet("share")} />
-          <Row icon="link" title="Conectar contas" subtitle="Apple / Google (mock local)" onClick={() => openSheet("link")} />
+          <Row icon="link" title="Conectar contas" subtitle="Mock local (não OAuth)" onClick={() => openSheet("link")} />
         </div>
       </div>
 
@@ -645,7 +603,7 @@ export default function Conta() {
             <div style={styles.rowIconWrap}><Icon name="shield" /></div>
             <div style={{ minWidth: 0 }}>
               <div style={styles.rowTitle}>Resumo semanal</div>
-              <div style={styles.rowSub}>Evolução, consistência e metas</div>
+              <div style={styles.rowSub}>Evolução e consistência</div>
             </div>
             <Toggle on={!!prefs.resumoSemanal} onChange={(v) => setPrefs((p) => ({ ...p, resumoSemanal: v }))} ariaLabel="Alternar resumo semanal" />
           </div>
@@ -656,13 +614,13 @@ export default function Conta() {
             <div style={styles.rowIconWrap}><Icon name="theme" /></div>
             <div style={{ minWidth: 0 }}>
               <div style={styles.rowTitle}>Modo Focus</div>
-              <div style={styles.rowSub}>Menos distração no app</div>
+              <div style={styles.rowSub}>Menos distração</div>
             </div>
             <Toggle on={!!prefs.modoFocus} onChange={(v) => setPrefs((p) => ({ ...p, modoFocus: v }))} ariaLabel="Alternar modo focus" />
           </div>
         </div>
 
-        <div style={styles.hint}>Essas preferências ficam salvas no dispositivo por conta.</div>
+        <div style={styles.hint}>Preferências salvas no dispositivo por conta.</div>
       </div>
 
       <div style={styles.section}>
@@ -679,32 +637,31 @@ export default function Conta() {
           <Row
             icon="shield"
             title="Privacidade do perfil"
-            subtitle={prefs.privacidadePerfil ? "Seu perfil está privado" : "Seu perfil está público"}
+            subtitle={prefs.privacidadePerfil ? "Privado" : "Público"}
             right={<Toggle on={!!prefs.privacidadePerfil} onChange={(v) => setPrefs((p) => ({ ...p, privacidadePerfil: v }))} ariaLabel="Alternar privacidade do perfil" />}
             onClick={() => setPrefs((p) => ({ ...p, privacidadePerfil: !p.privacidadePerfil }))}
           />
-          <Row icon="download" title="Exportar meus dados" subtitle="Baixar JSON com sua conta e dados locais" onClick={() => openSheet("export")} />
-          <Row icon="trash" title="Apagar dados locais" subtitle="Remove informações do dispositivo" danger onClick={() => openSheet("danger")} />
+          <Row icon="download" title="Exportar meus dados" subtitle="Baixar JSON" onClick={() => openSheet("export")} />
+          <Row icon="trash" title="Apagar dados locais" subtitle="Remove do dispositivo" danger onClick={() => openSheet("danger")} />
         </div>
       </div>
 
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Sessão</div>
         <div style={styles.card}>
-          <Row icon="logout" title="Sair" subtitle="Encerrar sessão nesta conta" danger onClick={doLogout} />
+          <Row icon="logout" title="Sair" subtitle="Encerrar sessão" danger onClick={doLogout} />
         </div>
       </div>
 
       <div style={{ height: 110 }} />
 
-      {/* EDIT MODAL */}
       {editOpen && (
         <div style={styles.modalOverlay} className="overlayIn" onClick={closeEdit}>
           <div style={styles.modal} className="sheetIn" onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalTop}>
               <div>
                 <div style={styles.modalTitle}>Editar dados</div>
-                <div style={styles.modalSub}>Esses dados serão usados para metas e treinos.</div>
+                <div style={styles.modalSub}>Email fica bloqueado por enquanto (evita travar o app).</div>
               </div>
               <button style={styles.modalX} className="tap" onClick={closeEdit} type="button" aria-label="Fechar" disabled={saving}>
                 ✕
@@ -714,19 +671,16 @@ export default function Conta() {
             <div style={styles.formGrid}>
               <input name="nome" value={form.nome} onChange={onFormChange} placeholder="Nome" style={styles.input} disabled={saving} />
 
-              {/* ✅ email desativado pra não travar */}
+              {/* ✅ EMAIL BLOQUEADO (isso evita o travamento) */}
               <input
                 name="email"
                 value={form.email}
-                onChange={onFormChange}
+                onChange={() => {}}
                 placeholder="Email"
-                style={{ ...styles.input, opacity: 0.85 }}
+                style={{ ...styles.input, opacity: 0.7 }}
                 disabled
                 readOnly
               />
-              <div style={styles.emailHint}>
-                Para mudar o email, faça isso depois (quando você ativar o fluxo completo). Assim evitamos travar o app.
-              </div>
 
               <div style={styles.row2}>
                 <input name="idade" value={form.idade} onChange={onFormChange} placeholder="Idade" style={styles.input} inputMode="numeric" disabled={saving} />
@@ -742,13 +696,7 @@ export default function Conta() {
               <button style={styles.modalCancel} className="tap" onClick={closeEdit} type="button" disabled={saving}>
                 Cancelar
               </button>
-              <button
-                style={{ ...styles.modalSave, opacity: saving ? 0.8 : 1 }}
-                className="tap"
-                onClick={saveProfile}
-                type="button"
-                disabled={saving}
-              >
+              <button style={{ ...styles.modalSave, opacity: saving ? 0.8 : 1 }} className="tap" onClick={saveProfile} type="button" disabled={saving}>
                 {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -756,7 +704,6 @@ export default function Conta() {
         </div>
       )}
 
-      {/* BOTTOM SHEET */}
       {sheetKind && (
         <div
           style={{ ...styles.sheetOverlay, ...(sheetOpen ? styles.overlayOn : styles.overlayOff) }}
@@ -789,8 +736,7 @@ export default function Conta() {
               {sheetKind === "share" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Use um link simples para compartilhar seu perfil. Se o compartilhamento nativo não estiver disponível,
-                    o app copia o link automaticamente.
+                    Se o compartilhamento nativo não estiver disponível, o app copia o link.
                   </div>
 
                   <div style={styles.kvBox}>
@@ -824,7 +770,7 @@ export default function Conta() {
               {sheetKind === "link" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Conectar contas facilita login e melhora segurança. Aqui é um mock local (sem OAuth). Se você integrar autenticação real depois, pode reaproveitar o layout.
+                    Mock local (não OAuth). Serve só de UI por enquanto.
                   </div>
 
                   <div style={styles.linkCard}>
@@ -866,18 +812,12 @@ export default function Conta() {
                       />
                     </div>
                   </div>
-
-                  <div style={styles.hint}>Dica: quando houver backend, guarde as conexões por UID do usuário (não só email).</div>
                 </div>
               )}
 
               {sheetKind === "export" && (
                 <div style={styles.sheetSection}>
-                  <div style={styles.sheetSub}>
-                    Exporta um arquivo JSON com seus dados do perfil e as principais chaves locais relacionadas à sua conta
-                    (assinatura, pagamentos, stack de suplementos e preferências).
-                  </div>
-
+                  <div style={styles.sheetSub}>Baixa um JSON com seus dados e chaves locais principais.</div>
                   <div style={styles.sheetButtons}>
                     <button style={styles.primaryBtn} className="tap" onClick={exportMyData} type="button">
                       Baixar arquivo
@@ -886,28 +826,13 @@ export default function Conta() {
                       Copiar perfil (JSON)
                     </button>
                   </div>
-
-                  <div style={styles.disclaimer}>Arquivo gerado no dispositivo. Não envia nada para servidores.</div>
+                  <div style={styles.disclaimer}>Gerado no dispositivo. Não envia nada para servidores.</div>
                 </div>
               )}
 
               {sheetKind === "danger" && (
                 <div style={styles.sheetSection}>
-                  <div style={styles.sheetSub}>
-                    Isso remove dados do dispositivo (localStorage) desta conta.
-                  </div>
-
-                  <div style={styles.warnBox}>
-                    <div style={styles.warnLine}>
-                      <span style={styles.warnDot} />
-                      <span style={styles.warnTxt}>Remove preferências, stack, flags de assinatura/pagamento e datas locais.</span>
-                    </div>
-                    <div style={styles.warnLine}>
-                      <span style={styles.warnDot} />
-                      <span style={styles.warnTxt}>Use quando precisar “resetar” o app nesta conta.</span>
-                    </div>
-                  </div>
-
+                  <div style={styles.sheetSub}>Remove dados locais (localStorage) desta conta.</div>
                   <div style={styles.sheetButtons}>
                     <button style={styles.dangerBtn} className="tap" onClick={clearLocalData} type="button">
                       Apagar dados locais
@@ -932,7 +857,6 @@ export default function Conta() {
         </div>
       )}
 
-      {/* TOAST */}
       {toast ? (
         <div style={styles.toastWrap} className="toastIn" role="status" aria-live="polite">
           <div style={styles.toast}>{toast}</div>
@@ -944,6 +868,7 @@ export default function Conta() {
 
 const styles = {
   page: { padding: 18, paddingBottom: 120, background: BG },
+
   orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
 
   topBar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
@@ -1087,13 +1012,9 @@ const styles = {
   modalTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   modalSub: { marginTop: 6, fontSize: 13, color: MUTED, lineHeight: 1.45, fontWeight: 850 },
   modalX: { width: 42, height: 42, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, flexShrink: 0 },
-
   formGrid: { marginTop: 14, display: "flex", flexDirection: "column", gap: 10 },
   row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   input: { width: "100%", padding: "12px 12px", borderRadius: 14, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontSize: 14, fontWeight: 850, background: "rgba(255,255,255,.92)" },
-
-  emailHint: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, marginTop: 2, marginBottom: 6 },
-
   modalMsg: { marginTop: 10, padding: "10px 12px", borderRadius: 14, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.22)", color: TEXT, fontSize: 13, fontWeight: 900 },
   modalActions: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   modalCancel: { padding: 14, borderRadius: 18, background: "rgba(255,255,255,.90)", border: "1px solid rgba(15,23,42,.10)", color: TEXT, fontWeight: 950 },
@@ -1132,11 +1053,6 @@ const styles = {
   linkLogo: { width: 44, height: 44, borderRadius: 18, background: "rgba(255,106,0,.14)", border: "1px solid rgba(255,106,0,.18)", display: "grid", placeItems: "center", fontWeight: 950, color: TEXT, flexShrink: 0 },
   linkTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   linkSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED },
-
-  warnBox: { marginTop: 12, borderRadius: 22, padding: 12, background: "linear-gradient(135deg, rgba(2,6,23,.06), rgba(255,255,255,.86))", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
-  warnLine: { display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 4px" },
-  warnDot: { width: 7, height: 7, borderRadius: 999, background: "rgba(15,23,42,.55)", marginTop: 6, flexShrink: 0 },
-  warnTxt: { fontSize: 12, fontWeight: 850, color: TEXT, lineHeight: 1.35, opacity: 0.92 },
 
   sheetFooter: { padding: "12px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, borderTop: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.86)" },
   footerGhost: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
