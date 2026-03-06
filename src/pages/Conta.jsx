@@ -1,9 +1,3 @@
-// ✅ COLE EM: src/pages/Conta.jsx
-// FIX DEFINITIVO: salvar não trava mais
-// - Não altera EMAIL pelo app (evita loop/loading no Supabase OAuth/iOS)
-// - Salva apenas: nome / idade / altura / peso / foto
-// - loading + tratamento de erro
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -60,6 +54,15 @@ function mkDownload(filename, content, mime = "application/json") {
   } catch {
     return false;
   }
+}
+
+// ✅ evita "Salvando..." infinito
+function withTimeout(promise, ms = 10000) {
+  let t;
+  const timeout = new Promise((_, reject) => {
+    t = setTimeout(() => reject(new Error("Tempo esgotado ao salvar. Tente novamente.")), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
 }
 
 function Icon({ name }) {
@@ -166,7 +169,10 @@ function Toggle({ on, onChange, ariaLabel }) {
       aria-label={ariaLabel}
       onClick={() => onChange(!on)}
       className="tap"
-      style={{ ...styles.toggle, ...(on ? styles.toggleOn : styles.toggleOff) }}
+      style={{
+        ...styles.toggle,
+        ...(on ? styles.toggleOn : styles.toggleOff),
+      }}
     >
       <span style={{ ...styles.knob, ...(on ? styles.knobOn : styles.knobOff) }} />
     </button>
@@ -179,7 +185,11 @@ function Row({ icon, title, subtitle, right, onClick, danger, compact }) {
       type="button"
       className="tap"
       onClick={onClick}
-      style={{ ...styles.row, ...(danger ? styles.rowDanger : null), ...(compact ? styles.rowCompact : null) }}
+      style={{
+        ...styles.row,
+        ...(danger ? styles.rowDanger : null),
+        ...(compact ? styles.rowCompact : null),
+      }}
     >
       <div style={{ ...styles.rowIconWrap, ...(danger ? styles.rowIconDanger : styles.rowIcon) }}>
         <Icon name={icon} />
@@ -283,7 +293,6 @@ export default function Conta() {
     document.head.appendChild(style);
   }, []);
 
-  // garante createdAt local (sem chamar updateUser aqui)
   useEffect(() => {
     if (!user) return;
 
@@ -304,8 +313,7 @@ export default function Conta() {
     const now = new Date().toISOString();
     setCreatedAt(now);
     localStorage.setItem(createdKey, now);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
+  }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     localStorage.setItem(prefsKey, JSON.stringify(prefs));
@@ -332,7 +340,7 @@ export default function Conta() {
     try {
       const reader = new FileReader();
       reader.onload = async () => {
-        const res = await updateUser({ photoUrl: reader.result });
+        const res = await withTimeout(updateUser({ photoUrl: reader.result }), 12000);
         if (!res?.ok) setToast(res?.msg || "Falha ao atualizar foto");
       };
       reader.readAsDataURL(file);
@@ -363,6 +371,7 @@ export default function Conta() {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
+  // ✅ SALVAR SEM EMAIL + TIMEOUT (não trava mais)
   async function saveProfile() {
     if (saving) return;
 
@@ -392,8 +401,11 @@ export default function Conta() {
         return;
       }
 
-      // ✅ NÃO ALTERA EMAIL AQUI (evita travar/loop no Supabase)
-      const res = await updateUser({ nome, idade, altura, peso });
+      // ✅ não manda email aqui (é o que mais causa travamento)
+      const res = await withTimeout(
+        updateUser({ nome, idade, altura, peso }),
+        12000
+      );
 
       if (!res?.ok) {
         setEditMsg(res?.msg || "Não foi possível salvar. Tente novamente.");
@@ -600,7 +612,7 @@ export default function Conta() {
         <div style={styles.card}>
           <Row icon="edit" title="Editar dados" subtitle="Nome, idade, altura e peso" onClick={openEdit} />
           <Row icon="share" title="Compartilhar perfil" subtitle="Enviar link ou copiar" onClick={() => openSheet("share")} />
-          <Row icon="link" title="Conectar contas" subtitle="Apple / Google (mock)" onClick={() => openSheet("link")} />
+          <Row icon="link" title="Conectar contas" subtitle="Apple / Google (mock local)" onClick={() => openSheet("link")} />
         </div>
       </div>
 
@@ -702,15 +714,17 @@ export default function Conta() {
             <div style={styles.formGrid}>
               <input name="nome" value={form.nome} onChange={onFormChange} placeholder="Nome" style={styles.input} disabled={saving} />
 
-              {/* ✅ Email somente leitura (evita travar Supabase) */}
+              {/* ✅ email desativado pra não travar */}
               <input
                 name="email"
                 value={form.email}
-                readOnly
+                onChange={onFormChange}
                 placeholder="Email"
-                style={{ ...styles.input, opacity: 0.7 }}
+                style={{ ...styles.input, opacity: 0.85 }}
+                disabled
+                readOnly
               />
-              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 }}>
+              <div style={styles.emailHint}>
                 Para mudar o email, faça isso depois (quando você ativar o fluxo completo). Assim evitamos travar o app.
               </div>
 
@@ -728,7 +742,13 @@ export default function Conta() {
               <button style={styles.modalCancel} className="tap" onClick={closeEdit} type="button" disabled={saving}>
                 Cancelar
               </button>
-              <button style={{ ...styles.modalSave, opacity: saving ? 0.8 : 1 }} className="tap" onClick={saveProfile} type="button" disabled={saving}>
+              <button
+                style={{ ...styles.modalSave, opacity: saving ? 0.8 : 1 }}
+                className="tap"
+                onClick={saveProfile}
+                type="button"
+                disabled={saving}
+              >
                 {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -804,7 +824,7 @@ export default function Conta() {
               {sheetKind === "link" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Aqui é um mock local (sem OAuth). Você pode manter esse layout e ligar com backend depois.
+                    Conectar contas facilita login e melhora segurança. Aqui é um mock local (sem OAuth). Se você integrar autenticação real depois, pode reaproveitar o layout.
                   </div>
 
                   <div style={styles.linkCard}>
@@ -846,13 +866,16 @@ export default function Conta() {
                       />
                     </div>
                   </div>
+
+                  <div style={styles.hint}>Dica: quando houver backend, guarde as conexões por UID do usuário (não só email).</div>
                 </div>
               )}
 
               {sheetKind === "export" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Exporta um arquivo JSON com seus dados do perfil e as principais chaves locais relacionadas à sua conta.
+                    Exporta um arquivo JSON com seus dados do perfil e as principais chaves locais relacionadas à sua conta
+                    (assinatura, pagamentos, stack de suplementos e preferências).
                   </div>
 
                   <div style={styles.sheetButtons}>
@@ -921,7 +944,6 @@ export default function Conta() {
 
 const styles = {
   page: { padding: 18, paddingBottom: 120, background: BG },
-
   orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
 
   topBar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
@@ -1065,9 +1087,13 @@ const styles = {
   modalTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   modalSub: { marginTop: 6, fontSize: 13, color: MUTED, lineHeight: 1.45, fontWeight: 850 },
   modalX: { width: 42, height: 42, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, flexShrink: 0 },
+
   formGrid: { marginTop: 14, display: "flex", flexDirection: "column", gap: 10 },
   row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   input: { width: "100%", padding: "12px 12px", borderRadius: 14, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontSize: 14, fontWeight: 850, background: "rgba(255,255,255,.92)" },
+
+  emailHint: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, marginTop: 2, marginBottom: 6 },
+
   modalMsg: { marginTop: 10, padding: "10px 12px", borderRadius: 14, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.22)", color: TEXT, fontSize: 13, fontWeight: 900 },
   modalActions: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   modalCancel: { padding: 14, borderRadius: 18, background: "rgba(255,255,255,.90)", border: "1px solid rgba(15,23,42,.10)", color: TEXT, fontWeight: 950 },
