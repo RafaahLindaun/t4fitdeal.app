@@ -1,3 +1,8 @@
+// ✅ COLE EM: src/pages/Conta.jsx
+// Conta — versão enxuta (sem exportar/apagar dados, sem gerenciar plano, sem modo focus/resumo semanal, sem conectar contas)
+// + ✅ NOVO: área "Código de criador" (sem lógica, só UI)
+// + ✅ NOVO: "Enviar meu treino" (abre compartilhar; você pluga as funções depois)
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -37,30 +42,6 @@ function daysSince(iso) {
   const diff = Date.now() - d.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   return days >= 0 ? days : null;
-}
-
-function mkDownload(filename, content, mime = "application/json") {
-  try {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function withTimeout(promise, ms = 8000) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo limite ao salvar. Verifique sua internet.")), ms)),
-  ]);
 }
 
 function Icon({ name }) {
@@ -118,31 +99,16 @@ function Icon({ name }) {
       </svg>
     );
   }
-  if (name === "theme") {
+  if (name === "code") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 3a9 9 0 1 0 9 9c-5 2-9-2-9-9Z" stroke={s} strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M8 9l-3 3 3 3" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16 9l3 3-3 3" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 6l-4 12" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
-  if (name === "download") {
-    return (
-      <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 3v10" stroke={s} strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M8.5 10.5 12 13.8l3.5-3.3" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M5 20h14" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (name === "trash") {
-    return (
-      <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M6 7h12l-1 14H7L6 7Z" stroke={s} strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M9 7V4h6v3" stroke={s2} strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M10 11v6M14 11v6" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
+
   if (name === "logout") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -211,6 +177,7 @@ export default function Conta() {
   const photo = user?.photoUrl || "";
   const email = (user?.email || "anon").toLowerCase();
 
+  // data “membro desde”
   const createdKey = `acct_created_${email}`;
   const [createdAt, setCreatedAt] = useState(() => {
     const u = user?.createdAt;
@@ -218,6 +185,7 @@ export default function Conta() {
     return u || fromLs || "";
   });
 
+  // preferências (mantém só notificações treino/pagamento + privacidade)
   const prefsKey = `acct_prefs_${email}`;
   const [prefs, setPrefs] = useState(() => {
     const init = safeJsonParse(localStorage.getItem(prefsKey), null);
@@ -225,23 +193,21 @@ export default function Conta() {
       init || {
         notifTreino: true,
         notifPagamento: true,
-        resumoSemanal: true,
-        modoFocus: false,
         privacidadePerfil: false,
         haptics: true,
       }
     );
   });
 
-  const linksKey = `acct_links_${email}`;
-  const [links, setLinks] = useState(() => {
-    const init = safeJsonParse(localStorage.getItem(linksKey), null);
-    return init || { google: false, apple: false };
-  });
-
+  // UI: edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editMsg, setEditMsg] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // ✅ NOVO: código de criador (sem lógica)
+  const creatorKey = `creator_code_${email}`;
+  const [creatorCode, setCreatorCode] = useState(() => localStorage.getItem(creatorKey) || "");
+  const [creatorMsg, setCreatorMsg] = useState("");
 
   const [form, setForm] = useState(() => ({
     nome: user?.nome || "",
@@ -251,10 +217,12 @@ export default function Conta() {
     peso: user?.peso || "",
   }));
 
+  // UI: sheet (bottom sheet)
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetKind, setSheetKind] = useState(null);
+  const [sheetKind, setSheetKind] = useState(null); // "share" | "creator"
   const [toast, setToast] = useState("");
 
+  // animações
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "fitdeal-conta-ui";
@@ -268,7 +236,6 @@ export default function Conta() {
       @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes overlayOut { from { opacity: 1; } to { opacity: 0; } }
       @keyframes toastIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-      @keyframes toastOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(8px); opacity: 0; } }
 
       .tap { transition: transform .12s ease; }
       .tap:active { transform: scale(.99); }
@@ -277,12 +244,10 @@ export default function Conta() {
       .sheetOut { animation: sheetOut .18s ease both; }
       .overlayIn { animation: overlayIn .18s ease both; }
       .overlayOut { animation: overlayOut .18s ease both; }
-
       .toastIn { animation: toastIn .18s ease both; }
-      .toastOut { animation: toastOut .16s ease both; }
 
       @media (prefers-reduced-motion: reduce) {
-        .tap, .sheetIn, .sheetOut, .overlayIn, .overlayOut, .toastIn, .toastOut { 
+        .tap, .sheetIn, .sheetOut, .overlayIn, .overlayOut, .toastIn { 
           animation: none !important; 
           transition: none !important; 
         }
@@ -291,6 +256,7 @@ export default function Conta() {
     document.head.appendChild(style);
   }, []);
 
+  // garante createdAt persistido
   useEffect(() => {
     if (!user) return;
 
@@ -311,16 +277,23 @@ export default function Conta() {
     const now = new Date().toISOString();
     setCreatedAt(now);
     localStorage.setItem(createdKey, now);
+
+    // se seu updateUser suportar createdAt, você pluga depois
+    // try { updateUser({ createdAt: now }); } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
+  // persiste prefs
   useEffect(() => {
     localStorage.setItem(prefsKey, JSON.stringify(prefs));
   }, [prefsKey, prefs]);
 
+  // persist creator code local (sem lógica)
   useEffect(() => {
-    localStorage.setItem(linksKey, JSON.stringify(links));
-  }, [linksKey, links]);
+    localStorage.setItem(creatorKey, creatorCode);
+  }, [creatorKey, creatorCode]);
 
+  // toast auto
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2200);
@@ -338,7 +311,7 @@ export default function Conta() {
     try {
       const reader = new FileReader();
       reader.onload = async () => {
-        const res = await withTimeout(updateUser({ photoUrl: reader.result }), 8000);
+        const res = await updateUser({ photoUrl: reader.result });
         if (!res?.ok) setToast(res?.msg || "Falha ao atualizar foto");
       };
       reader.readAsDataURL(file);
@@ -369,42 +342,47 @@ export default function Conta() {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
-  // ✅ SALVAR ESTÁVEL: SEM trocar email (isso é o que estava travando)
+  function migrateEmailData(oldEmail, newEmail) {
+    const keysToMove = [
+      `payments_${oldEmail}`,
+      `paid_${oldEmail}`,
+      `supp_stack_${oldEmail}`,
+      `acct_created_${oldEmail}`,
+      `acct_prefs_${oldEmail}`,
+      `creator_code_${oldEmail}`,
+    ];
+    keysToMove.forEach((k) => {
+      const raw = localStorage.getItem(k);
+      if (!raw) return;
+      const nk = k.replace(oldEmail, newEmail);
+      if (!localStorage.getItem(nk)) localStorage.setItem(nk, raw);
+      localStorage.removeItem(k);
+    });
+  }
+
   async function saveProfile() {
     if (saving) return;
-
     setEditMsg("");
     setSaving(true);
 
     try {
       const nome = String(form.nome || "").trim();
+      const emailNew = String(form.email || "").trim().toLowerCase();
       const idade = String(form.idade || "").trim();
       const altura = String(form.altura || "").trim();
       const peso = String(form.peso || "").trim();
 
-      if (!nome) {
-        setEditMsg("Nome é obrigatório.");
-        return;
-      }
-      if (idade && Number(idade) <= 0) {
-        setEditMsg("Idade inválida.");
-        return;
-      }
-      if (altura && Number(altura) <= 0) {
-        setEditMsg("Altura inválida.");
-        return;
-      }
-      if (peso && Number(peso) <= 0) {
-        setEditMsg("Peso inválido.");
-        return;
-      }
+      if (!nome) return setEditMsg("Nome é obrigatório.");
+      if (!emailNew || !emailNew.includes("@")) return setEditMsg("Email inválido.");
+      if (idade && Number(idade) <= 0) return setEditMsg("Idade inválida.");
+      if (altura && Number(altura) <= 0) return setEditMsg("Altura inválida.");
+      if (peso && Number(peso) <= 0) return setEditMsg("Peso inválido.");
 
-      const res = await withTimeout(updateUser({ nome, idade, altura, peso }), 9000);
+      const oldEmail = String(user?.email || "").toLowerCase();
+      if (oldEmail && emailNew !== oldEmail) migrateEmailData(oldEmail, emailNew);
 
-      if (!res?.ok) {
-        setEditMsg(res?.msg || "Não foi possível salvar. Tente novamente.");
-        return;
-      }
+      const res = await updateUser({ nome, email: emailNew, idade, altura, peso });
+      if (!res?.ok) return setEditMsg(res?.msg || "Não foi possível salvar. Tente novamente.");
 
       setEditOpen(false);
       setToast("Dados atualizados");
@@ -416,6 +394,7 @@ export default function Conta() {
   }
 
   function openSheet(kind) {
+    setCreatorMsg("");
     setSheetKind(kind);
     setSheetOpen(true);
   }
@@ -468,9 +447,13 @@ export default function Conta() {
     }
   }
 
-  async function doShare() {
+  async function doShareProfile() {
     try {
-      const payload = { title: "Meu perfil", text: `Meu perfil no app: ${user?.nome || ""}`, url: profileLink };
+      const payload = {
+        title: "Meu perfil",
+        text: `Meu perfil no app: ${user?.nome || ""}`,
+        url: profileLink,
+      };
       if (navigator.share) {
         await navigator.share(payload);
         setToast("Compartilhado");
@@ -482,24 +465,47 @@ export default function Conta() {
     }
   }
 
-  function exportMyData() {
-    const keys = [`paid_${email}`, `payments_${email}`, `supp_stack_${email}`, `acct_created_${email}`, `acct_prefs_${email}`, `acct_links_${email}`];
-    const pack = {
-      exportedAt: new Date().toISOString(),
-      user: user || null,
-      localStorage: keys.reduce((acc, k) => {
-        acc[k] = localStorage.getItem(k);
-        return acc;
-      }, {}),
-    };
-    const ok = mkDownload(`minha-conta-${email}.json`, JSON.stringify(pack, null, 2));
-    setToast(ok ? "Exportado" : "Falha ao exportar");
+  // ✅ NOVO: Enviar meu treino (stub) — você pluga a string do treino depois
+  async function shareWorkout() {
+    try {
+      // TODO: você vai montar o texto do treino real (Treino + TreinoDetalhe)
+      const workoutText =
+        "Meu treino (completo)\n\n" +
+        "• (Exemplo) A - Peito/Tríceps\n" +
+        "  Supino reto 4x8-12\n" +
+        "  Crossover 3x12\n\n" +
+        "• (Exemplo) B - Costas/Bíceps\n" +
+        "  Puxada 4x10\n\n" +
+        "Obs: aqui você vai substituir por dados reais.";
+
+      const payload = {
+        title: "Meu treino",
+        text: workoutText,
+      };
+
+      if (navigator.share) {
+        await navigator.share(payload);
+        setToast("Treino compartilhado");
+        return;
+      }
+
+      await copy(workoutText);
+      setToast("Treino copiado");
+    } catch {
+      setToast("Não foi possível compartilhar");
+    }
   }
 
-  function clearLocalData() {
-    const keys = [`paid_${email}`, `payments_${email}`, `supp_stack_${email}`, `acct_created_${email}`, `acct_prefs_${email}`, `acct_links_${email}`];
-    keys.forEach((k) => localStorage.removeItem(k));
-    setToast("Dados locais removidos");
+  // ✅ NOVO: salvar código de criador (stub)
+  function saveCreatorCode() {
+    const code = String(creatorCode || "").trim();
+    if (!code) {
+      setCreatorMsg("Digite um código.");
+      return;
+    }
+    // TODO: aqui você vai validar/aplicar no backend depois
+    setCreatorMsg("Código salvo (local).");
+    setToast("Código aplicado");
     closeSheet();
   }
 
@@ -512,18 +518,20 @@ export default function Conta() {
 
   return (
     <div style={styles.page}>
+      {/* TOP BAR */}
       <div style={styles.topBar}>
         <button style={styles.backBtn} className="tap" onClick={() => nav("/dashboard")} type="button" aria-label="Voltar">
           ←
         </button>
         <div style={styles.topTitle}>Conta</div>
-        <button style={styles.topPill} className="tap" onClick={() => openSheet("share")} type="button" aria-label="Compartilhar">
+        <button style={styles.topPill} className="tap" onClick={doShareProfile} type="button" aria-label="Compartilhar">
           <span style={styles.topPillTxt}>
             Compartilhar<span style={styles.orangeDot}>.</span>
           </span>
         </button>
       </div>
 
+      {/* HERO PROFILE */}
       <div style={styles.hero}>
         <div style={styles.heroBgGlow} />
         <div style={styles.heroRow}>
@@ -551,6 +559,7 @@ export default function Conta() {
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
       </div>
 
+      {/* STATS STRIP */}
       <div style={styles.statsStrip}>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Plano</div>
@@ -565,12 +574,14 @@ export default function Conta() {
         </div>
       </div>
 
+      {/* SETTINGS SECTIONS */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Perfil</div>
         <div style={styles.card}>
-          <Row icon="edit" title="Editar dados" subtitle="Nome, idade, altura e peso" onClick={openEdit} />
-          <Row icon="share" title="Compartilhar perfil" subtitle="Enviar link ou copiar" onClick={() => openSheet("share")} />
-          <Row icon="link" title="Conectar contas" subtitle="Mock local (não OAuth)" onClick={() => openSheet("link")} />
+          <Row icon="edit" title="Editar dados" subtitle="Nome, email, idade, altura e peso" onClick={openEdit} />
+          <Row icon="share" title="Compartilhar perfil" subtitle="Enviar link ou copiar" onClick={doShareProfile} />
+          <Row icon="share" title="Mandar meu treino" subtitle="Compartilhe seu treino completo" onClick={shareWorkout} />
+          <Row icon="code" title="Código de criador" subtitle={creatorCode ? `Ativo: ${creatorCode}` : "Adicionar/alterar código"} onClick={() => openSheet("creator")} />
         </div>
       </div>
 
@@ -583,7 +594,11 @@ export default function Conta() {
               <div style={styles.rowTitle}>Notificações de treino</div>
               <div style={styles.rowSub}>Lembretes e consistência</div>
             </div>
-            <Toggle on={!!prefs.notifTreino} onChange={(v) => setPrefs((p) => ({ ...p, notifTreino: v }))} ariaLabel="Alternar notificações de treino" />
+            <Toggle
+              on={!!prefs.notifTreino}
+              onChange={(v) => setPrefs((p) => ({ ...p, notifTreino: v }))}
+              ariaLabel="Alternar notificações de treino"
+            />
           </div>
 
           <div style={styles.divider} />
@@ -594,74 +609,55 @@ export default function Conta() {
               <div style={styles.rowTitle}>Notificações de pagamentos</div>
               <div style={styles.rowSub}>Recibos e status</div>
             </div>
-            <Toggle on={!!prefs.notifPagamento} onChange={(v) => setPrefs((p) => ({ ...p, notifPagamento: v }))} ariaLabel="Alternar notificações de pagamentos" />
-          </div>
-
-          <div style={styles.divider} />
-
-          <div style={styles.rowStatic}>
-            <div style={styles.rowIconWrap}><Icon name="shield" /></div>
-            <div style={{ minWidth: 0 }}>
-              <div style={styles.rowTitle}>Resumo semanal</div>
-              <div style={styles.rowSub}>Evolução e consistência</div>
-            </div>
-            <Toggle on={!!prefs.resumoSemanal} onChange={(v) => setPrefs((p) => ({ ...p, resumoSemanal: v }))} ariaLabel="Alternar resumo semanal" />
-          </div>
-
-          <div style={styles.divider} />
-
-          <div style={styles.rowStatic}>
-            <div style={styles.rowIconWrap}><Icon name="theme" /></div>
-            <div style={{ minWidth: 0 }}>
-              <div style={styles.rowTitle}>Modo Focus</div>
-              <div style={styles.rowSub}>Menos distração</div>
-            </div>
-            <Toggle on={!!prefs.modoFocus} onChange={(v) => setPrefs((p) => ({ ...p, modoFocus: v }))} ariaLabel="Alternar modo focus" />
+            <Toggle
+              on={!!prefs.notifPagamento}
+              onChange={(v) => setPrefs((p) => ({ ...p, notifPagamento: v }))}
+              ariaLabel="Alternar notificações de pagamentos"
+            />
           </div>
         </div>
 
-        <div style={styles.hint}>Preferências salvas no dispositivo por conta.</div>
-      </div>
-
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Assinatura</div>
-        <div style={styles.card}>
-          <Row icon="pay" title="Pagamentos" subtitle="Histórico, status e recibos" onClick={() => nav("/pagamentos")} />
-          <Row icon="shield" title="Gerenciar plano" subtitle={paid ? "Ver detalhes do plano" : "Ver planos e liberar recursos"} onClick={() => nav(paid ? "/pagamentos" : "/planos")} />
+        <div style={styles.hint}>
+          Essas preferências ficam salvas no dispositivo por conta.
         </div>
       </div>
 
       <div style={styles.section}>
-        <div style={styles.sectionTitle}>Privacidade & Dados</div>
+        <div style={styles.sectionTitle}>Privacidade</div>
         <div style={styles.card}>
           <Row
             icon="shield"
             title="Privacidade do perfil"
-            subtitle={prefs.privacidadePerfil ? "Privado" : "Público"}
-            right={<Toggle on={!!prefs.privacidadePerfil} onChange={(v) => setPrefs((p) => ({ ...p, privacidadePerfil: v }))} ariaLabel="Alternar privacidade do perfil" />}
+            subtitle={prefs.privacidadePerfil ? "Seu perfil está privado" : "Seu perfil está público"}
+            right={
+              <Toggle
+                on={!!prefs.privacidadePerfil}
+                onChange={(v) => setPrefs((p) => ({ ...p, privacidadePerfil: v }))}
+                ariaLabel="Alternar privacidade do perfil"
+              />
+            }
             onClick={() => setPrefs((p) => ({ ...p, privacidadePerfil: !p.privacidadePerfil }))}
           />
-          <Row icon="download" title="Exportar meus dados" subtitle="Baixar JSON" onClick={() => openSheet("export")} />
-          <Row icon="trash" title="Apagar dados locais" subtitle="Remove do dispositivo" danger onClick={() => openSheet("danger")} />
         </div>
       </div>
 
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Sessão</div>
         <div style={styles.card}>
-          <Row icon="logout" title="Sair" subtitle="Encerrar sessão" danger onClick={doLogout} />
+          <Row icon="logout" title="Sair" subtitle="Encerrar sessão nesta conta" danger onClick={doLogout} />
         </div>
       </div>
 
       <div style={{ height: 110 }} />
 
+      {/* EDIT MODAL */}
       {editOpen && (
         <div style={styles.modalOverlay} className="overlayIn" onClick={closeEdit}>
           <div style={styles.modal} className="sheetIn" onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalTop}>
               <div>
                 <div style={styles.modalTitle}>Editar dados</div>
-                <div style={styles.modalSub}>Email fica bloqueado por enquanto (evita travar o app).</div>
+                <div style={styles.modalSub}>Esses dados serão usados para metas e treinos.</div>
               </div>
               <button style={styles.modalX} className="tap" onClick={closeEdit} type="button" aria-label="Fechar" disabled={saving}>
                 ✕
@@ -670,17 +666,7 @@ export default function Conta() {
 
             <div style={styles.formGrid}>
               <input name="nome" value={form.nome} onChange={onFormChange} placeholder="Nome" style={styles.input} disabled={saving} />
-
-              {/* ✅ EMAIL BLOQUEADO (isso evita o travamento) */}
-              <input
-                name="email"
-                value={form.email}
-                onChange={() => {}}
-                placeholder="Email"
-                style={{ ...styles.input, opacity: 0.7 }}
-                disabled
-                readOnly
-              />
+              <input name="email" value={form.email} onChange={onFormChange} placeholder="Email" style={styles.input} disabled={saving} />
 
               <div style={styles.row2}>
                 <input name="idade" value={form.idade} onChange={onFormChange} placeholder="Idade" style={styles.input} inputMode="numeric" disabled={saving} />
@@ -696,7 +682,13 @@ export default function Conta() {
               <button style={styles.modalCancel} className="tap" onClick={closeEdit} type="button" disabled={saving}>
                 Cancelar
               </button>
-              <button style={{ ...styles.modalSave, opacity: saving ? 0.8 : 1 }} className="tap" onClick={saveProfile} type="button" disabled={saving}>
+              <button
+                style={{ ...styles.modalSave, opacity: saving ? 0.8 : 1 }}
+                className="tap"
+                onClick={saveProfile}
+                type="button"
+                disabled={saving}
+              >
                 {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -704,6 +696,7 @@ export default function Conta() {
         </div>
       )}
 
+      {/* BOTTOM SHEET (Creator code) */}
       {sheetKind && (
         <div
           style={{ ...styles.sheetOverlay, ...(sheetOpen ? styles.overlayOn : styles.overlayOff) }}
@@ -721,125 +714,37 @@ export default function Conta() {
             <div style={styles.sheetGrab} />
 
             <div style={styles.sheetHead}>
-              <div style={styles.sheetTitle}>
-                {sheetKind === "share" ? "Compartilhar" : null}
-                {sheetKind === "link" ? "Conectar contas" : null}
-                {sheetKind === "export" ? "Exportar dados" : null}
-                {sheetKind === "danger" ? "Atenção" : null}
-              </div>
+              <div style={styles.sheetTitle}>{sheetKind === "creator" ? "Código de criador" : ""}</div>
               <button style={styles.sheetX} className="tap" onClick={closeSheet} type="button" aria-label="Fechar">
                 ✕
               </button>
             </div>
 
             <div style={styles.sheetBody}>
-              {sheetKind === "share" && (
+              {sheetKind === "creator" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Se o compartilhamento nativo não estiver disponível, o app copia o link.
+                    Digite um código de criador. (Depois você conecta com suas funções/validação.)
                   </div>
 
                   <div style={styles.kvBox}>
-                    <div style={styles.kvK}>Link</div>
-                    <div style={styles.kvV}>{profileLink}</div>
+                    <div style={styles.kvK}>Código</div>
+                    <input
+                      value={creatorCode}
+                      onChange={(e) => setCreatorCode(e.target.value)}
+                      placeholder="Ex: FITDEAL10"
+                      style={styles.input}
+                    />
+                    {creatorMsg ? <div style={{ ...styles.modalMsg, marginTop: 10 }}>{creatorMsg}</div> : null}
+
                     <div style={styles.kvActions}>
-                      <button style={styles.softBtn} className="tap" onClick={() => copy(profileLink)} type="button">
-                        Copiar
+                      <button style={styles.softBtn} className="tap" onClick={() => setCreatorCode("")} type="button">
+                        Limpar
                       </button>
-                      <button style={styles.primaryBtn} className="tap" onClick={doShare} type="button">
-                        Compartilhar
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={styles.kvBox}>
-                    <div style={styles.kvK}>ID da conta</div>
-                    <div style={styles.kvV}>{email}</div>
-                    <div style={styles.kvActions}>
-                      <button style={styles.softBtn} className="tap" onClick={() => copy(email)} type="button">
-                        Copiar ID
-                      </button>
-                      <button style={styles.ghostBtn} className="tap" onClick={() => nav("/dashboard")} type="button">
-                        Ir ao Dashboard
+                      <button style={styles.primaryBtn} className="tap" onClick={saveCreatorCode} type="button">
+                        Salvar
                       </button>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {sheetKind === "link" && (
-                <div style={styles.sheetSection}>
-                  <div style={styles.sheetSub}>
-                    Mock local (não OAuth). Serve só de UI por enquanto.
-                  </div>
-
-                  <div style={styles.linkCard}>
-                    <div style={styles.linkRow}>
-                      <div style={styles.linkLeft}>
-                        <div style={styles.linkLogo}>G</div>
-                        <div>
-                          <div style={styles.linkTitle}>Google</div>
-                          <div style={styles.linkSub}>{links.google ? "Conectado" : "Não conectado"}</div>
-                        </div>
-                      </div>
-                      <Toggle
-                        on={!!links.google}
-                        onChange={(v) => {
-                          setLinks((p) => ({ ...p, google: v }));
-                          setToast(v ? "Google conectado" : "Google desconectado");
-                        }}
-                        ariaLabel="Alternar conta Google"
-                      />
-                    </div>
-
-                    <div style={styles.divider} />
-
-                    <div style={styles.linkRow}>
-                      <div style={styles.linkLeft}>
-                        <div style={{ ...styles.linkLogo, background: "rgba(15,23,42,.10)" }}></div>
-                        <div>
-                          <div style={styles.linkTitle}>Apple</div>
-                          <div style={styles.linkSub}>{links.apple ? "Conectado" : "Não conectado"}</div>
-                        </div>
-                      </div>
-                      <Toggle
-                        on={!!links.apple}
-                        onChange={(v) => {
-                          setLinks((p) => ({ ...p, apple: v }));
-                          setToast(v ? "Apple conectado" : "Apple desconectado");
-                        }}
-                        ariaLabel="Alternar conta Apple"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {sheetKind === "export" && (
-                <div style={styles.sheetSection}>
-                  <div style={styles.sheetSub}>Baixa um JSON com seus dados e chaves locais principais.</div>
-                  <div style={styles.sheetButtons}>
-                    <button style={styles.primaryBtn} className="tap" onClick={exportMyData} type="button">
-                      Baixar arquivo
-                    </button>
-                    <button style={styles.ghostBtn} className="tap" onClick={() => copy(JSON.stringify(user || {}, null, 2))} type="button">
-                      Copiar perfil (JSON)
-                    </button>
-                  </div>
-                  <div style={styles.disclaimer}>Gerado no dispositivo. Não envia nada para servidores.</div>
-                </div>
-              )}
-
-              {sheetKind === "danger" && (
-                <div style={styles.sheetSection}>
-                  <div style={styles.sheetSub}>Remove dados locais (localStorage) desta conta.</div>
-                  <div style={styles.sheetButtons}>
-                    <button style={styles.dangerBtn} className="tap" onClick={clearLocalData} type="button">
-                      Apagar dados locais
-                    </button>
-                    <button style={styles.ghostBtn} className="tap" onClick={closeSheet} type="button">
-                      Cancelar
-                    </button>
                   </div>
                 </div>
               )}
@@ -857,6 +762,7 @@ export default function Conta() {
         </div>
       )}
 
+      {/* TOAST */}
       {toast ? (
         <div style={styles.toastWrap} className="toastIn" role="status" aria-live="polite">
           <div style={styles.toast}>{toast}</div>
@@ -871,6 +777,7 @@ const styles = {
 
   orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
 
+  // Top bar
   topBar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
   backBtn: {
     width: 44,
@@ -896,6 +803,7 @@ const styles = {
   },
   topPillTxt: { display: "inline-flex", alignItems: "baseline" },
 
+  // Hero
   hero: {
     position: "relative",
     borderRadius: 26,
@@ -944,7 +852,15 @@ const styles = {
     border: "1px solid rgba(255,255,255,.14)",
   },
 
-  heroName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  heroName: {
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.3,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
   heroEmail: { marginTop: 4, fontSize: 12, fontWeight: 850, color: "rgba(15,23,42,.72)", wordBreak: "break-word" },
   heroMeta: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED },
 
@@ -970,20 +886,52 @@ const styles = {
   },
 
   heroPills: { marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" },
-  heroPillDark: { padding: "10px 12px", borderRadius: 16, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 18px 55px rgba(0,0,0,.16)" },
-  heroPillSoft: { padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950, boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
+  heroPillDark: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 18px 55px rgba(0,0,0,.16)",
+  },
+  heroPillSoft: {
+    padding: "10px 12px",
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.86)",
+    color: TEXT,
+    fontWeight: 950,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+  },
 
+  // Stats
   statsStrip: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  statCard: { borderRadius: 22, padding: 14, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
+  statCard: {
+    borderRadius: 22,
+    padding: 14,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+  },
   statLabel: { fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.2, textTransform: "uppercase" },
   statValue: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   statSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
+  // Sections
   section: { marginTop: 16 },
   sectionTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  card: { marginTop: 10, borderRadius: 24, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 18px 60px rgba(15,23,42,.06)", overflow: "hidden" },
+  card: {
+    marginTop: 10,
+    borderRadius: 24,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.06)",
+    overflow: "hidden",
+  },
   hint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
+  // Rows
   row: { width: "100%", textAlign: "left", padding: 14, border: "none", background: "transparent", display: "flex", gap: 12, alignItems: "center" },
   rowCompact: { padding: 12 },
   rowDanger: { background: "rgba(255,106,0,.00)" },
@@ -999,6 +947,7 @@ const styles = {
   rowStatic: { padding: 14, display: "flex", gap: 12, alignItems: "center" },
   divider: { height: 1, background: "rgba(15,23,42,.06)", marginLeft: 14, marginRight: 14 },
 
+  // Toggle
   toggle: { width: 48, height: 28, borderRadius: 999, border: "1px solid rgba(15,23,42,.10)", padding: 2, display: "flex", alignItems: "center", justifyContent: "flex-start", background: "rgba(15,23,42,.08)" },
   toggleOn: { background: "rgba(255,106,0,.95)", borderColor: "rgba(255,106,0,.35)", justifyContent: "flex-end" },
   toggleOff: { background: "rgba(15,23,42,.10)" },
@@ -1006,6 +955,7 @@ const styles = {
   knobOn: {},
   knobOff: { opacity: 0.98 },
 
+  // Modal
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(2,6,23,0.45)", display: "grid", placeItems: "center", zIndex: 9999, padding: 18 },
   modal: { width: "min(560px, 100%)", background: "rgba(255,255,255,.94)", borderRadius: 26, padding: 18, border: "1px solid rgba(255,255,255,.35)", boxShadow: "0 30px 90px rgba(0,0,0,.25)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" },
   modalTop: { display: "flex", gap: 10, alignItems: "flex-start", justifyContent: "space-between" },
@@ -1020,6 +970,7 @@ const styles = {
   modalCancel: { padding: 14, borderRadius: 18, background: "rgba(255,255,255,.90)", border: "1px solid rgba(15,23,42,.10)", color: TEXT, fontWeight: 950 },
   modalSave: { padding: 14, borderRadius: 18, background: "#0B0B0C", border: "none", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.16)" },
 
+  // Sheet
   sheetOverlay: { position: "fixed", inset: 0, zIndex: 9999, display: "grid", alignItems: "end", padding: 12 },
   overlayOn: { background: "rgba(2,6,23,.44)" },
   overlayOff: { background: "rgba(2,6,23,0)" },
@@ -1036,28 +987,16 @@ const styles = {
 
   kvBox: { marginTop: 12, borderRadius: 22, padding: 12, background: "rgba(255,255,255,.86)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 12px 34px rgba(15,23,42,.06)" },
   kvK: { fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.2, textTransform: "uppercase" },
-  kvV: { marginTop: 6, fontSize: 13, fontWeight: 900, color: TEXT, lineHeight: 1.35, wordBreak: "break-word" },
   kvActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  sheetButtons: { marginTop: 12, display: "grid", gap: 10 },
 
   primaryBtn: { padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.16)" },
   softBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
-  ghostBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
-  dangerBtn: { padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 16px 40px rgba(255,106,0,.18)" },
-
-  disclaimer: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-
-  linkCard: { marginTop: 12, borderRadius: 24, background: "rgba(255,255,255,.86)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 12px 34px rgba(15,23,42,.06)", overflow: "hidden" },
-  linkRow: { padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  linkLeft: { display: "flex", alignItems: "center", gap: 12, minWidth: 0 },
-  linkLogo: { width: 44, height: 44, borderRadius: 18, background: "rgba(255,106,0,.14)", border: "1px solid rgba(255,106,0,.18)", display: "grid", placeItems: "center", fontWeight: 950, color: TEXT, flexShrink: 0 },
-  linkTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  linkSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED },
 
   sheetFooter: { padding: "12px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, borderTop: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.86)" },
   footerGhost: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
   footerPrimary: { padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.16)" },
 
+  // toast
   toastWrap: { position: "fixed", left: 0, right: 0, bottom: 18, display: "grid", placeItems: "center", zIndex: 10000, padding: 12, pointerEvents: "none" },
   toast: { padding: "10px 12px", borderRadius: 999, background: "rgba(11,11,12,.92)", color: "#fff", fontWeight: 900, fontSize: 12, boxShadow: "0 18px 60px rgba(0,0,0,.25)", border: "1px solid rgba(255,255,255,.10)" },
 };
