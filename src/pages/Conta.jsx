@@ -1,8 +1,3 @@
-// ✅ COLE EM: src/pages/Conta.jsx
-// Conta — versão enxuta (sem exportar/apagar dados, sem gerenciar plano, sem modo focus/resumo semanal, sem conectar contas)
-// + ✅ NOVO: área "Código de criador" (sem lógica, só UI)
-// + ✅ NOVO: "Enviar meu treino" (abre compartilhar; você pluga as funções depois)
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -44,19 +39,28 @@ function daysSince(iso) {
   return days >= 0 ? days : null;
 }
 
+function mkDownload(filename, content, mime = "application/json") {
+  try {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function Icon({ name }) {
   const s = "rgba(15,23,42,.75)";
   const s2 = "rgba(15,23,42,.55)";
   const w = 20;
 
-  if (name === "edit") {
-    return (
-      <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M4 20h4l11-11a2 2 0 0 0-4-4L4 16v4Z" stroke={s} strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M14 6l4 4" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
   if (name === "pay") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -66,6 +70,7 @@ function Icon({ name }) {
       </svg>
     );
   }
+
   if (name === "share") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -75,14 +80,17 @@ function Icon({ name }) {
       </svg>
     );
   }
-  if (name === "link") {
+
+  if (name === "code") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M10 13a4 4 0 0 1 0-6l1-1a4 4 0 0 1 6 6l-1 1" stroke={s} strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M14 11a4 4 0 0 1 0 6l-1 1a4 4 0 0 1-6-6l1-1" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8 8 4 12l4 4" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16 8l4 4-4 4" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M13 5 11 19" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
+
   if (name === "shield") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -91,20 +99,12 @@ function Icon({ name }) {
       </svg>
     );
   }
+
   if (name === "bell") {
     return (
       <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 22a2.2 2.2 0 0 0 2.2-2.2H9.8A2.2 2.2 0 0 0 12 22Z" stroke={s2} strokeWidth="1.8" strokeLinejoin="round" />
         <path d="M18 16H6c1.2-1.2 2-2.6 2-5V9a4 4 0 0 1 8 0v2c0 2.4.8 3.8 2 5Z" stroke={s} strokeWidth="1.8" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (name === "code") {
-    return (
-      <svg width={w} height={w} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M8 9l-3 3 3 3" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16 9l3 3-3 3" stroke={s} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M14 6l-4 12" stroke={s2} strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -143,7 +143,7 @@ function Toggle({ on, onChange, ariaLabel }) {
   );
 }
 
-function Row({ icon, title, subtitle, right, onClick, danger, compact }) {
+function Row({ icon, title, subtitle, right, onClick, danger }) {
   return (
     <button
       type="button"
@@ -152,16 +152,17 @@ function Row({ icon, title, subtitle, right, onClick, danger, compact }) {
       style={{
         ...styles.row,
         ...(danger ? styles.rowDanger : null),
-        ...(compact ? styles.rowCompact : null),
       }}
     >
       <div style={{ ...styles.rowIconWrap, ...(danger ? styles.rowIconDanger : styles.rowIcon) }}>
         <Icon name={icon} />
       </div>
-      <div style={{ minWidth: 0 }}>
+
+      <div style={styles.rowMid}>
         <div style={{ ...styles.rowTitle, ...(danger ? styles.rowTitleDanger : null) }}>{title}</div>
         {subtitle ? <div style={styles.rowSub}>{subtitle}</div> : null}
       </div>
+
       <div style={styles.rowRight}>
         {right ? <div style={styles.rowRightCustom}>{right}</div> : <div style={styles.chev}>›</div>}
       </div>
@@ -174,10 +175,12 @@ export default function Conta() {
   const nav = useNavigate();
   const fileRef = useRef(null);
 
-  const photo = user?.photoUrl || "";
   const email = (user?.email || "anon").toLowerCase();
+  const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
 
-  // data “membro desde”
+  const localPhotoKey = `acct_photo_${email}`;
+  const photo = user?.photoUrl || localStorage.getItem(localPhotoKey) || "";
+
   const createdKey = `acct_created_${email}`;
   const [createdAt, setCreatedAt] = useState(() => {
     const u = user?.createdAt;
@@ -185,7 +188,6 @@ export default function Conta() {
     return u || fromLs || "";
   });
 
-  // preferências (mantém só notificações treino/pagamento + privacidade)
   const prefsKey = `acct_prefs_${email}`;
   const [prefs, setPrefs] = useState(() => {
     const init = safeJsonParse(localStorage.getItem(prefsKey), null);
@@ -194,20 +196,16 @@ export default function Conta() {
         notifTreino: true,
         notifPagamento: true,
         privacidadePerfil: false,
-        haptics: true,
       }
     );
   });
 
-  // UI: edit modal
+  const creatorCodeKey = `creator_code_${email}`;
+  const [creatorCode, setCreatorCode] = useState(() => localStorage.getItem(creatorCodeKey) || "");
+
   const [editOpen, setEditOpen] = useState(false);
   const [editMsg, setEditMsg] = useState("");
   const [saving, setSaving] = useState(false);
-
-  // ✅ NOVO: código de criador (sem lógica)
-  const creatorKey = `creator_code_${email}`;
-  const [creatorCode, setCreatorCode] = useState(() => localStorage.getItem(creatorKey) || "");
-  const [creatorMsg, setCreatorMsg] = useState("");
 
   const [form, setForm] = useState(() => ({
     nome: user?.nome || "",
@@ -217,15 +215,13 @@ export default function Conta() {
     peso: user?.peso || "",
   }));
 
-  // UI: sheet (bottom sheet)
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetKind, setSheetKind] = useState(null); // "share" | "creator"
+  const [sheetKind, setSheetKind] = useState(null); // share | treino | creator
   const [toast, setToast] = useState("");
 
-  // animações
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "fitdeal-conta-ui";
+    const id = "fitdeal-conta-ui-v2";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -236,27 +232,31 @@ export default function Conta() {
       @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes overlayOut { from { opacity: 1; } to { opacity: 0; } }
       @keyframes toastIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes fitdealFloat {
+        0% { transform: translateY(0px); opacity: .88; }
+        50% { transform: translateY(-2px); opacity: 1; }
+        100% { transform: translateY(0px); opacity: .88; }
+      }
 
       .tap { transition: transform .12s ease; }
       .tap:active { transform: scale(.99); }
-
       .sheetIn { animation: sheetIn .18s ease both; }
       .sheetOut { animation: sheetOut .18s ease both; }
       .overlayIn { animation: overlayIn .18s ease both; }
       .overlayOut { animation: overlayOut .18s ease both; }
       .toastIn { animation: toastIn .18s ease both; }
+      .fitdealFloat { animation: fitdealFloat 2.2s ease-in-out infinite; }
 
       @media (prefers-reduced-motion: reduce) {
-        .tap, .sheetIn, .sheetOut, .overlayIn, .overlayOut, .toastIn { 
-          animation: none !important; 
-          transition: none !important; 
+        .tap, .sheetIn, .sheetOut, .overlayIn, .overlayOut, .toastIn, .fitdealFloat {
+          animation: none !important;
+          transition: none !important;
         }
       }
     `;
     document.head.appendChild(style);
   }, []);
 
-  // garante createdAt persistido
   useEffect(() => {
     if (!user) return;
 
@@ -277,23 +277,16 @@ export default function Conta() {
     const now = new Date().toISOString();
     setCreatedAt(now);
     localStorage.setItem(createdKey, now);
+  }, [user, createdKey]);
 
-    // se seu updateUser suportar createdAt, você pluga depois
-    // try { updateUser({ createdAt: now }); } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
-
-  // persiste prefs
   useEffect(() => {
     localStorage.setItem(prefsKey, JSON.stringify(prefs));
   }, [prefsKey, prefs]);
 
-  // persist creator code local (sem lógica)
   useEffect(() => {
-    localStorage.setItem(creatorKey, creatorCode);
-  }, [creatorKey, creatorCode]);
+    localStorage.setItem(creatorCodeKey, creatorCode);
+  }, [creatorCodeKey, creatorCode]);
 
-  // toast auto
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2200);
@@ -311,12 +304,22 @@ export default function Conta() {
     try {
       const reader = new FileReader();
       reader.onload = async () => {
-        const res = await updateUser({ photoUrl: reader.result });
-        if (!res?.ok) setToast(res?.msg || "Falha ao atualizar foto");
+        const base64 = String(reader.result || "");
+        localStorage.setItem(localPhotoKey, base64);
+
+        const res = await updateUser({ photoUrl: base64 });
+        if (!res?.ok) {
+          setToast("Foto salva neste aparelho");
+          return;
+        }
+
+        setToast("Foto atualizada");
       };
       reader.readAsDataURL(file);
     } catch {
       setToast("Falha ao atualizar foto");
+    } finally {
+      e.target.value = "";
     }
   }
 
@@ -342,47 +345,47 @@ export default function Conta() {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
-  function migrateEmailData(oldEmail, newEmail) {
-    const keysToMove = [
-      `payments_${oldEmail}`,
-      `paid_${oldEmail}`,
-      `supp_stack_${oldEmail}`,
-      `acct_created_${oldEmail}`,
-      `acct_prefs_${oldEmail}`,
-      `creator_code_${oldEmail}`,
-    ];
-    keysToMove.forEach((k) => {
-      const raw = localStorage.getItem(k);
-      if (!raw) return;
-      const nk = k.replace(oldEmail, newEmail);
-      if (!localStorage.getItem(nk)) localStorage.setItem(nk, raw);
-      localStorage.removeItem(k);
-    });
-  }
-
   async function saveProfile() {
     if (saving) return;
+
     setEditMsg("");
     setSaving(true);
 
     try {
       const nome = String(form.nome || "").trim();
-      const emailNew = String(form.email || "").trim().toLowerCase();
       const idade = String(form.idade || "").trim();
       const altura = String(form.altura || "").trim();
       const peso = String(form.peso || "").trim();
 
-      if (!nome) return setEditMsg("Nome é obrigatório.");
-      if (!emailNew || !emailNew.includes("@")) return setEditMsg("Email inválido.");
-      if (idade && Number(idade) <= 0) return setEditMsg("Idade inválida.");
-      if (altura && Number(altura) <= 0) return setEditMsg("Altura inválida.");
-      if (peso && Number(peso) <= 0) return setEditMsg("Peso inválido.");
+      if (!nome) {
+        setEditMsg("Nome é obrigatório.");
+        return;
+      }
+      if (idade && Number(idade) <= 0) {
+        setEditMsg("Idade inválida.");
+        return;
+      }
+      if (altura && Number(altura) <= 0) {
+        setEditMsg("Altura inválida.");
+        return;
+      }
+      if (peso && Number(peso) <= 0) {
+        setEditMsg("Peso inválido.");
+        return;
+      }
 
-      const oldEmail = String(user?.email || "").toLowerCase();
-      if (oldEmail && emailNew !== oldEmail) migrateEmailData(oldEmail, emailNew);
+      // email não altera por aqui pra evitar travar o app
+      const res = await updateUser({
+        nome,
+        idade,
+        altura,
+        peso,
+      });
 
-      const res = await updateUser({ nome, email: emailNew, idade, altura, peso });
-      if (!res?.ok) return setEditMsg(res?.msg || "Não foi possível salvar. Tente novamente.");
+      if (!res?.ok) {
+        setEditMsg(res?.msg || "Não foi possível salvar.");
+        return;
+      }
 
       setEditOpen(false);
       setToast("Dados atualizados");
@@ -394,10 +397,10 @@ export default function Conta() {
   }
 
   function openSheet(kind) {
-    setCreatorMsg("");
     setSheetKind(kind);
     setSheetOpen(true);
   }
+
   function closeSheet() {
     setSheetOpen(false);
     setTimeout(() => setSheetKind(null), 170);
@@ -412,8 +415,6 @@ export default function Conta() {
     return `Membro desde ${d} • ${days} dias`;
   }, [createdAt]);
 
-  const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
-
   const profileChips = useMemo(() => {
     const idade = user?.idade ? `${user.idade} anos` : null;
     const altura = user?.altura ? `${user.altura} cm` : null;
@@ -426,20 +427,45 @@ export default function Conta() {
     return `${window?.location?.origin || ""}/perfil/${id}`;
   }, [user?.email]);
 
-  async function copy(text) {
+  const treinoShare = useMemo(() => {
+    const plan = safeJsonParse(localStorage.getItem(`generated_plan_${email}`), null);
+    const compat = safeJsonParse(localStorage.getItem(`custom_split_${email}`), null);
+
+    const shareCode =
+      localStorage.getItem(`share_workout_code_${email}`) ||
+      `FD${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+    localStorage.setItem(`share_workout_code_${email}`, shareCode);
+
+    const payload = {
+      owner: email,
+      nome: user?.nome || "",
+      createdAt: new Date().toISOString(),
+      plan,
+      compat,
+    };
+
+    localStorage.setItem(`shared_workout_${shareCode}`, JSON.stringify(payload));
+
+    const link = `${window.location.origin}/treino/compartilhado?code=${shareCode}`;
+    return { shareCode, link, plan, compat };
+  }, [email, user?.nome]);
+
+  async function copy(text, successMsg = "Copiado") {
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
-        setToast("Copiado");
+        setToast(successMsg);
         return true;
       }
+
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
       ta.remove();
-      setToast("Copiado");
+      setToast(successMsg);
       return true;
     } catch {
       setToast("Não foi possível copiar");
@@ -454,59 +480,62 @@ export default function Conta() {
         text: `Meu perfil no app: ${user?.nome || ""}`,
         url: profileLink,
       };
+
       if (navigator.share) {
         await navigator.share(payload);
         setToast("Compartilhado");
         return;
       }
+
       await copy(profileLink);
     } catch {
       await copy(profileLink);
     }
   }
 
-  // ✅ NOVO: Enviar meu treino (stub) — você pluga a string do treino depois
   async function shareWorkout() {
-    try {
-      // TODO: você vai montar o texto do treino real (Treino + TreinoDetalhe)
-      const workoutText =
-        "Meu treino (completo)\n\n" +
-        "• (Exemplo) A - Peito/Tríceps\n" +
-        "  Supino reto 4x8-12\n" +
-        "  Crossover 3x12\n\n" +
-        "• (Exemplo) B - Costas/Bíceps\n" +
-        "  Puxada 4x10\n\n" +
-        "Obs: aqui você vai substituir por dados reais.";
+    if (!paid) {
+      setToast("Função disponível só para pagantes");
+      return;
+    }
 
-      const payload = {
-        title: "Meu treino",
-        text: workoutText,
-      };
+    try {
+      const text =
+        `Treino de ${user?.nome || "usuário"}\n` +
+        `Código: ${treinoShare.shareCode}\n` +
+        `Abrir no app: ${treinoShare.link}`;
 
       if (navigator.share) {
-        await navigator.share(payload);
+        await navigator.share({
+          title: "Meu treino fitdeal",
+          text,
+          url: treinoShare.link,
+        });
         setToast("Treino compartilhado");
         return;
       }
 
-      await copy(workoutText);
-      setToast("Treino copiado");
+      await copy(text, "Código e link copiados");
     } catch {
-      setToast("Não foi possível compartilhar");
+      await copy(
+        `Código: ${treinoShare.shareCode}\n${treinoShare.link}`,
+        "Código e link copiados"
+      );
     }
   }
 
-  // ✅ NOVO: salvar código de criador (stub)
-  function saveCreatorCode() {
-    const code = String(creatorCode || "").trim();
-    if (!code) {
-      setCreatorMsg("Digite um código.");
-      return;
-    }
-    // TODO: aqui você vai validar/aplicar no backend depois
-    setCreatorMsg("Código salvo (local).");
-    setToast("Código aplicado");
+  async function saveCreatorCode() {
+    const code = String(creatorCode || "").trim().toUpperCase();
+    setCreatorCode(code);
+    localStorage.setItem(creatorCodeKey, code);
+    setToast(code ? "Código salvo" : "Código limpo");
     closeSheet();
+  }
+
+  function clearCreatorCode() {
+    setCreatorCode("");
+    localStorage.removeItem(creatorCodeKey);
+    setToast("Código removido");
   }
 
   function doLogout() {
@@ -518,20 +547,18 @@ export default function Conta() {
 
   return (
     <div style={styles.page}>
-      {/* TOP BAR */}
       <div style={styles.topBar}>
         <button style={styles.backBtn} className="tap" onClick={() => nav("/dashboard")} type="button" aria-label="Voltar">
           ←
         </button>
         <div style={styles.topTitle}>Conta</div>
-        <button style={styles.topPill} className="tap" onClick={doShareProfile} type="button" aria-label="Compartilhar">
+        <button style={styles.topPill} className="tap" onClick={() => openSheet("share")} type="button" aria-label="Compartilhar">
           <span style={styles.topPillTxt}>
             Compartilhar<span style={styles.orangeDot}>.</span>
           </span>
         </button>
       </div>
 
-      {/* HERO PROFILE */}
       <div style={styles.hero}>
         <div style={styles.heroBgGlow} />
         <div style={styles.heroRow}>
@@ -540,18 +567,28 @@ export default function Conta() {
             <div style={styles.avatarBadge}>Trocar</div>
           </div>
 
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div style={styles.heroName}>{user.nome || "Usuário"}</div>
             <div style={styles.heroEmail}>{user.email || "—"}</div>
             <div style={styles.heroMeta}>{memberSinceText}</div>
 
             <div style={styles.chipsRow}>
-              {profileChips.length ? profileChips.map((t) => <div key={t} style={styles.chip}>{t}</div>) : <div style={styles.chipSoft}>Complete seu perfil para metas melhores</div>}
+              {profileChips.length
+                ? profileChips.map((t) => (
+                    <div key={t} style={styles.chip}>
+                      {t}
+                    </div>
+                  ))
+                : <div style={styles.chipSoft}>Complete seu perfil para metas melhores</div>}
             </div>
 
             <div style={styles.heroPills}>
-              <button style={styles.heroPillDark} className="tap" onClick={openEdit} type="button">Editar</button>
-              <button style={styles.heroPillSoft} className="tap" onClick={() => nav("/pagamentos")} type="button">Pagamentos</button>
+              <button style={styles.heroPillDark} className="tap" onClick={openEdit} type="button">
+                Perfil
+              </button>
+              <button style={styles.heroPillSoft} className="tap" onClick={() => nav("/pagamentos")} type="button">
+                Pagamentos
+              </button>
             </div>
           </div>
         </div>
@@ -559,7 +596,6 @@ export default function Conta() {
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
       </div>
 
-      {/* STATS STRIP */}
       <div style={styles.statsStrip}>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Plano</div>
@@ -574,14 +610,27 @@ export default function Conta() {
         </div>
       </div>
 
-      {/* SETTINGS SECTIONS */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Perfil</div>
         <div style={styles.card}>
-          <Row icon="edit" title="Editar dados" subtitle="Nome, email, idade, altura e peso" onClick={openEdit} />
-          <Row icon="share" title="Compartilhar perfil" subtitle="Enviar link ou copiar" onClick={doShareProfile} />
-          <Row icon="share" title="Mandar meu treino" subtitle="Compartilhe seu treino completo" onClick={shareWorkout} />
-          <Row icon="code" title="Código de criador" subtitle={creatorCode ? `Ativo: ${creatorCode}` : "Adicionar/alterar código"} onClick={() => openSheet("creator")} />
+          <Row
+            icon="share"
+            title="Compartilhar perfil"
+            subtitle="Enviar link ou copiar"
+            onClick={() => openSheet("share")}
+          />
+          <Row
+            icon="share"
+            title="Mandar meu treino"
+            subtitle={paid ? "Compartilhe seu treino completo" : "Disponível só para pagantes"}
+            onClick={() => (paid ? openSheet("treino") : setToast("Função disponível só para pagantes"))}
+          />
+          <Row
+            icon="code"
+            title="Código de criador"
+            subtitle={creatorCode ? `Código salvo: ${creatorCode}` : "Adicionar código"}
+            onClick={() => openSheet("creator")}
+          />
         </div>
       </div>
 
@@ -589,42 +638,43 @@ export default function Conta() {
         <div style={styles.sectionTitle}>Preferências</div>
         <div style={styles.card}>
           <div style={styles.rowStatic}>
-            <div style={styles.rowIconWrap}><Icon name="bell" /></div>
-            <div style={{ minWidth: 0 }}>
+            <div style={styles.rowIconWrap}>
+              <Icon name="bell" />
+            </div>
+            <div style={styles.rowMid}>
               <div style={styles.rowTitle}>Notificações de treino</div>
               <div style={styles.rowSub}>Lembretes e consistência</div>
             </div>
-            <Toggle
-              on={!!prefs.notifTreino}
-              onChange={(v) => setPrefs((p) => ({ ...p, notifTreino: v }))}
-              ariaLabel="Alternar notificações de treino"
-            />
+            <div style={styles.rowEnd}>
+              <Toggle
+                on={!!prefs.notifTreino}
+                onChange={(v) => setPrefs((p) => ({ ...p, notifTreino: v }))}
+                ariaLabel="Alternar notificações de treino"
+              />
+            </div>
           </div>
 
           <div style={styles.divider} />
 
           <div style={styles.rowStatic}>
-            <div style={styles.rowIconWrap}><Icon name="bell" /></div>
-            <div style={{ minWidth: 0 }}>
+            <div style={styles.rowIconWrap}>
+              <Icon name="bell" />
+            </div>
+            <div style={styles.rowMid}>
               <div style={styles.rowTitle}>Notificações de pagamentos</div>
               <div style={styles.rowSub}>Recibos e status</div>
             </div>
-            <Toggle
-              on={!!prefs.notifPagamento}
-              onChange={(v) => setPrefs((p) => ({ ...p, notifPagamento: v }))}
-              ariaLabel="Alternar notificações de pagamentos"
-            />
+            <div style={styles.rowEnd}>
+              <Toggle
+                on={!!prefs.notifPagamento}
+                onChange={(v) => setPrefs((p) => ({ ...p, notifPagamento: v }))}
+                ariaLabel="Alternar notificações de pagamentos"
+              />
+            </div>
           </div>
-        </div>
 
-        <div style={styles.hint}>
-          Essas preferências ficam salvas no dispositivo por conta.
-        </div>
-      </div>
+          <div style={styles.divider} />
 
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Privacidade</div>
-        <div style={styles.card}>
           <Row
             icon="shield"
             title="Privacidade do perfil"
@@ -642,15 +692,40 @@ export default function Conta() {
       </div>
 
       <div style={styles.section}>
-        <div style={styles.sectionTitle}>Sessão</div>
+        <div style={styles.sectionTitle}>Assinatura</div>
         <div style={styles.card}>
-          <Row icon="logout" title="Sair" subtitle="Encerrar sessão nesta conta" danger onClick={doLogout} />
+          <Row
+            icon="pay"
+            title="Pagamentos"
+            subtitle="Histórico, status e recibos"
+            onClick={() => nav("/pagamentos")}
+          />
         </div>
       </div>
 
-      <div style={{ height: 110 }} />
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Sessão</div>
+        <div style={styles.card}>
+          <Row
+            icon="logout"
+            title="Sair"
+            subtitle="Encerrar sessão nesta conta"
+            danger
+            onClick={doLogout}
+          />
+        </div>
+      </div>
 
-      {/* EDIT MODAL */}
+      <div style={{ height: 34 }} />
+
+      <div style={styles.fitdealWrap}>
+        <div className="fitdealFloat" style={styles.fitdealText}>
+          fitdeal<span style={{ color: ORANGE }}>.</span>
+        </div>
+      </div>
+
+      <div style={{ height: 120 }} />
+
       {editOpen && (
         <div style={styles.modalOverlay} className="overlayIn" onClick={closeEdit}>
           <div style={styles.modal} className="sheetIn" onClick={(e) => e.stopPropagation()}>
@@ -666,7 +741,18 @@ export default function Conta() {
 
             <div style={styles.formGrid}>
               <input name="nome" value={form.nome} onChange={onFormChange} placeholder="Nome" style={styles.input} disabled={saving} />
-              <input name="email" value={form.email} onChange={onFormChange} placeholder="Email" style={styles.input} disabled={saving} />
+              <input
+                name="email"
+                value={form.email}
+                readOnly
+                placeholder="Email"
+                style={{ ...styles.input, opacity: 0.72 }}
+                disabled
+              />
+
+              <div style={styles.modalHint}>
+                Para mudar o email, faça isso depois. Assim evitamos travar o app.
+              </div>
 
               <div style={styles.row2}>
                 <input name="idade" value={form.idade} onChange={onFormChange} placeholder="Idade" style={styles.input} inputMode="numeric" disabled={saving} />
@@ -696,7 +782,6 @@ export default function Conta() {
         </div>
       )}
 
-      {/* BOTTOM SHEET (Creator code) */}
       {sheetKind && (
         <div
           style={{ ...styles.sheetOverlay, ...(sheetOpen ? styles.overlayOn : styles.overlayOff) }}
@@ -714,31 +799,90 @@ export default function Conta() {
             <div style={styles.sheetGrab} />
 
             <div style={styles.sheetHead}>
-              <div style={styles.sheetTitle}>{sheetKind === "creator" ? "Código de criador" : ""}</div>
+              <div style={styles.sheetTitle}>
+                {sheetKind === "share" ? "Compartilhar perfil" : null}
+                {sheetKind === "treino" ? "Mandar meu treino" : null}
+                {sheetKind === "creator" ? "Código de criador" : null}
+              </div>
               <button style={styles.sheetX} className="tap" onClick={closeSheet} type="button" aria-label="Fechar">
                 ✕
               </button>
             </div>
 
             <div style={styles.sheetBody}>
+              {sheetKind === "share" && (
+                <div style={styles.sheetSection}>
+                  <div style={styles.sheetSub}>
+                    Compartilhe seu perfil por link.
+                  </div>
+
+                  <div style={styles.kvBox}>
+                    <div style={styles.kvK}>Link</div>
+                    <div style={styles.kvV}>{profileLink}</div>
+                    <div style={styles.kvActions}>
+                      <button style={styles.softBtn} className="tap" onClick={() => copy(profileLink)} type="button">
+                        Copiar
+                      </button>
+                      <button style={styles.primaryBtn} className="tap" onClick={doShareProfile} type="button">
+                        Compartilhar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {sheetKind === "treino" && (
+                <div style={styles.sheetSection}>
+                  <div style={styles.sheetSub}>
+                    Essa função envia um código e um link do seu treino atual. Apenas usuários pagantes podem usar.
+                  </div>
+
+                  <div style={styles.kvBox}>
+                    <div style={styles.kvK}>Código</div>
+                    <div style={styles.kvV}>{treinoShare.shareCode}</div>
+                  </div>
+
+                  <div style={styles.kvBox}>
+                    <div style={styles.kvK}>Link</div>
+                    <div style={styles.kvV}>{treinoShare.link}</div>
+                    <div style={styles.kvActions}>
+                      <button
+                        style={styles.softBtn}
+                        className="tap"
+                        onClick={() => copy(treinoShare.shareCode, "Código copiado")}
+                        type="button"
+                      >
+                        Copiar código
+                      </button>
+                      <button
+                        style={styles.primaryBtn}
+                        className="tap"
+                        onClick={shareWorkout}
+                        type="button"
+                      >
+                        Mandar treino
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {sheetKind === "creator" && (
                 <div style={styles.sheetSection}>
                   <div style={styles.sheetSub}>
-                    Digite um código de criador. (Depois você conecta com suas funções/validação.)
+                    Digite um código de criador. Depois você conecta com suas funções e validação.
                   </div>
 
                   <div style={styles.kvBox}>
                     <div style={styles.kvK}>Código</div>
                     <input
                       value={creatorCode}
-                      onChange={(e) => setCreatorCode(e.target.value)}
+                      onChange={(e) => setCreatorCode(e.target.value.toUpperCase())}
                       placeholder="Ex: FITDEAL10"
-                      style={styles.input}
+                      style={styles.creatorInput}
                     />
-                    {creatorMsg ? <div style={{ ...styles.modalMsg, marginTop: 10 }}>{creatorMsg}</div> : null}
-
                     <div style={styles.kvActions}>
-                      <button style={styles.softBtn} className="tap" onClick={() => setCreatorCode("")} type="button">
+                      <button style={styles.softBtn} className="tap" onClick={clearCreatorCode} type="button">
                         Limpar
                       </button>
                       <button style={styles.primaryBtn} className="tap" onClick={saveCreatorCode} type="button">
@@ -750,19 +894,15 @@ export default function Conta() {
               )}
             </div>
 
-            <div style={styles.sheetFooter}>
-              <button style={styles.footerGhost} className="tap" onClick={closeSheet} type="button">
+            <div style={styles.sheetFooterSingle}>
+              <button style={styles.footerGhostWide} className="tap" onClick={closeSheet} type="button">
                 Fechar
-              </button>
-              <button style={styles.footerPrimary} className="tap" onClick={() => nav("/dashboard")} type="button">
-                Voltar
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TOAST */}
       {toast ? (
         <div style={styles.toastWrap} className="toastIn" role="status" aria-live="polite">
           <div style={styles.toast}>{toast}</div>
@@ -777,7 +917,6 @@ const styles = {
 
   orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
 
-  // Top bar
   topBar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
   backBtn: {
     width: 44,
@@ -803,7 +942,6 @@ const styles = {
   },
   topPillTxt: { display: "inline-flex", alignItems: "baseline" },
 
-  // Hero
   hero: {
     position: "relative",
     borderRadius: 26,
@@ -852,15 +990,7 @@ const styles = {
     border: "1px solid rgba(255,255,255,.14)",
   },
 
-  heroName: {
-    fontSize: 18,
-    fontWeight: 950,
-    color: TEXT,
-    letterSpacing: -0.3,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
+  heroName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   heroEmail: { marginTop: 4, fontSize: 12, fontWeight: 850, color: "rgba(15,23,42,.72)", wordBreak: "break-word" },
   heroMeta: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED },
 
@@ -905,7 +1035,6 @@ const styles = {
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
   },
 
-  // Stats
   statsStrip: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   statCard: {
     borderRadius: 22,
@@ -918,7 +1047,6 @@ const styles = {
   statValue: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   statSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  // Sections
   section: { marginTop: 16 },
   sectionTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   card: {
@@ -929,52 +1057,188 @@ const styles = {
     boxShadow: "0 18px 60px rgba(15,23,42,.06)",
     overflow: "hidden",
   },
-  hint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  // Rows
-  row: { width: "100%", textAlign: "left", padding: 14, border: "none", background: "transparent", display: "flex", gap: 12, alignItems: "center" },
-  rowCompact: { padding: 12 },
+  row: {
+    width: "100%",
+    textAlign: "left",
+    padding: 14,
+    border: "none",
+    background: "transparent",
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
   rowDanger: { background: "rgba(255,106,0,.00)" },
-  rowIconWrap: { width: 42, height: 42, borderRadius: 16, display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.06)", background: "rgba(15,23,42,.04)", flexShrink: 0 },
+  rowIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    border: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(15,23,42,.04)",
+    flexShrink: 0,
+  },
   rowIcon: {},
   rowIconDanger: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.18)" },
+  rowMid: { minWidth: 0, flex: 1 },
   rowTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   rowTitleDanger: { color: TEXT },
   rowSub: { marginTop: 4, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-  rowRight: { marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 },
+  rowRight: { marginLeft: "auto", display: "flex", alignItems: "center", flexShrink: 0 },
   rowRightCustom: { display: "flex", alignItems: "center" },
-  chev: { width: 34, height: 34, borderRadius: 16, background: "rgba(15,23,42,.06)", display: "grid", placeItems: "center", color: TEXT, fontWeight: 950, flexShrink: 0 },
-  rowStatic: { padding: 14, display: "flex", gap: 12, alignItems: "center" },
+  rowEnd: { marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 },
+  chev: {
+    width: 34,
+    height: 34,
+    borderRadius: 16,
+    background: "rgba(15,23,42,.06)",
+    display: "grid",
+    placeItems: "center",
+    color: TEXT,
+    fontWeight: 950,
+    flexShrink: 0,
+  },
+  rowStatic: {
+    padding: 14,
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
   divider: { height: 1, background: "rgba(15,23,42,.06)", marginLeft: 14, marginRight: 14 },
 
-  // Toggle
-  toggle: { width: 48, height: 28, borderRadius: 999, border: "1px solid rgba(15,23,42,.10)", padding: 2, display: "flex", alignItems: "center", justifyContent: "flex-start", background: "rgba(15,23,42,.08)" },
+  toggle: {
+    width: 48,
+    height: 28,
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,.10)",
+    padding: 2,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    background: "rgba(15,23,42,.08)",
+  },
   toggleOn: { background: "rgba(255,106,0,.95)", borderColor: "rgba(255,106,0,.35)", justifyContent: "flex-end" },
   toggleOff: { background: "rgba(15,23,42,.10)" },
   knob: { width: 24, height: 24, borderRadius: 999, background: "#fff", boxShadow: "0 8px 20px rgba(15,23,42,.16)" },
   knobOn: {},
   knobOff: { opacity: 0.98 },
 
-  // Modal
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(2,6,23,0.45)", display: "grid", placeItems: "center", zIndex: 9999, padding: 18 },
-  modal: { width: "min(560px, 100%)", background: "rgba(255,255,255,.94)", borderRadius: 26, padding: 18, border: "1px solid rgba(255,255,255,.35)", boxShadow: "0 30px 90px rgba(0,0,0,.25)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" },
+  fitdealWrap: {
+    display: "grid",
+    placeItems: "center",
+    paddingTop: 6,
+  },
+  fitdealText: {
+    fontSize: 26,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.7,
+    opacity: 0.92,
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(2,6,23,0.45)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 9999,
+    padding: 18,
+  },
+  modal: {
+    width: "min(560px, 100%)",
+    background: "rgba(255,255,255,.94)",
+    borderRadius: 26,
+    padding: 18,
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 30px 90px rgba(0,0,0,.25)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+  },
   modalTop: { display: "flex", gap: 10, alignItems: "flex-start", justifyContent: "space-between" },
   modalTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   modalSub: { marginTop: 6, fontSize: 13, color: MUTED, lineHeight: 1.45, fontWeight: 850 },
-  modalX: { width: 42, height: 42, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, flexShrink: 0 },
+  modalX: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    border: "none",
+    background: "rgba(15,23,42,.06)",
+    color: TEXT,
+    fontWeight: 950,
+    flexShrink: 0,
+  },
   formGrid: { marginTop: 14, display: "flex", flexDirection: "column", gap: 10 },
   row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  input: { width: "100%", padding: "12px 12px", borderRadius: 14, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontSize: 14, fontWeight: 850, background: "rgba(255,255,255,.92)" },
-  modalMsg: { marginTop: 10, padding: "10px 12px", borderRadius: 14, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.22)", color: TEXT, fontSize: 13, fontWeight: 900 },
+  input: {
+    width: "100%",
+    padding: "12px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,.10)",
+    outline: "none",
+    fontSize: 14,
+    fontWeight: 850,
+    background: "rgba(255,255,255,.92)",
+  },
+  modalHint: {
+    fontSize: 12,
+    lineHeight: 1.45,
+    color: MUTED,
+    fontWeight: 850,
+    paddingTop: 2,
+  },
+  modalMsg: {
+    marginTop: 10,
+    padding: "10px 12px",
+    borderRadius: 14,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.22)",
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: 900,
+  },
   modalActions: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  modalCancel: { padding: 14, borderRadius: 18, background: "rgba(255,255,255,.90)", border: "1px solid rgba(15,23,42,.10)", color: TEXT, fontWeight: 950 },
-  modalSave: { padding: 14, borderRadius: 18, background: "#0B0B0C", border: "none", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.16)" },
+  modalCancel: {
+    padding: 14,
+    borderRadius: 18,
+    background: "rgba(255,255,255,.90)",
+    border: "1px solid rgba(15,23,42,.10)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+  modalSave: {
+    padding: 14,
+    borderRadius: 18,
+    background: "#0B0B0C",
+    border: "none",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 16px 40px rgba(0,0,0,.16)",
+  },
 
-  // Sheet
-  sheetOverlay: { position: "fixed", inset: 0, zIndex: 9999, display: "grid", alignItems: "end", padding: 12 },
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+  },
   overlayOn: { background: "rgba(2,6,23,.44)" },
   overlayOff: { background: "rgba(2,6,23,0)" },
-  sheet: { width: "100%", maxWidth: 560, margin: "0 auto", borderRadius: 26, background: "rgba(255,255,255,.92)", border: "1px solid rgba(255,255,255,.35)", boxShadow: "0 28px 90px rgba(0,0,0,.28)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", overflow: "hidden" },
+  sheet: {
+    width: "100%",
+    maxWidth: 560,
+    margin: "0 auto",
+    borderRadius: 26,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.28)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    overflow: "hidden",
+  },
   sheetOn: { opacity: 1 },
   sheetOff: { opacity: 0.98 },
   sheetGrab: { width: 52, height: 6, borderRadius: 999, background: "rgba(15,23,42,.12)", margin: "10px auto 0" },
@@ -985,18 +1249,84 @@ const styles = {
   sheetSection: { padding: "0 14px 14px" },
   sheetSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
 
-  kvBox: { marginTop: 12, borderRadius: 22, padding: 12, background: "rgba(255,255,255,.86)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 12px 34px rgba(15,23,42,.06)" },
+  kvBox: {
+    marginTop: 12,
+    borderRadius: 22,
+    padding: 12,
+    background: "rgba(255,255,255,.86)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
+  },
   kvK: { fontSize: 12, fontWeight: 950, color: MUTED, letterSpacing: 0.2, textTransform: "uppercase" },
+  kvV: { marginTop: 6, fontSize: 13, fontWeight: 900, color: TEXT, lineHeight: 1.35, wordBreak: "break-word" },
   kvActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
 
-  primaryBtn: { padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.16)" },
-  softBtn: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
+  creatorInput: {
+    width: "100%",
+    marginTop: 8,
+    padding: "14px 14px",
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.10)",
+    fontSize: 16,
+    fontWeight: 900,
+    color: TEXT,
+    outline: "none",
+    background: "#fff",
+    textTransform: "uppercase",
+  },
 
-  sheetFooter: { padding: "12px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, borderTop: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.86)" },
-  footerGhost: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.86)", color: TEXT, fontWeight: 950 },
-  footerPrimary: { padding: 14, borderRadius: 18, border: "none", background: "#0B0B0C", color: "#fff", fontWeight: 950, boxShadow: "0 16px 40px rgba(0,0,0,.16)" },
+  primaryBtn: {
+    padding: 14,
+    borderRadius: 18,
+    border: "none",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontWeight: 950,
+    boxShadow: "0 16px 40px rgba(0,0,0,.16)",
+  },
+  softBtn: {
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.86)",
+    color: TEXT,
+    fontWeight: 950,
+  },
 
-  // toast
-  toastWrap: { position: "fixed", left: 0, right: 0, bottom: 18, display: "grid", placeItems: "center", zIndex: 10000, padding: 12, pointerEvents: "none" },
-  toast: { padding: "10px 12px", borderRadius: 999, background: "rgba(11,11,12,.92)", color: "#fff", fontWeight: 900, fontSize: 12, boxShadow: "0 18px 60px rgba(0,0,0,.25)", border: "1px solid rgba(255,255,255,.10)" },
+  sheetFooterSingle: {
+    padding: "12px 14px 14px",
+    borderTop: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(255,255,255,.86)",
+  },
+  footerGhostWide: {
+    width: "100%",
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "rgba(255,255,255,.86)",
+    color: TEXT,
+    fontWeight: 950,
+  },
+
+  toastWrap: {
+    position: "fixed",
+    left: 0,
+    right: 0,
+    bottom: 18,
+    display: "grid",
+    placeItems: "center",
+    zIndex: 10000,
+    padding: 12,
+    pointerEvents: "none",
+  },
+  toast: {
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(11,11,12,.92)",
+    color: "#fff",
+    fontWeight: 900,
+    fontSize: 12,
+    boxShadow: "0 18px 60px rgba(0,0,0,.25)",
+    border: "1px solid rgba(255,255,255,.10)",
+  },
 };
