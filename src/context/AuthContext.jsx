@@ -198,22 +198,16 @@ export function AuthProvider({ children }) {
   }
 
   async function loginWithGoogle() {
-    try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          queryParams: { access_type: "offline", prompt: "consent" },
-        },
-      });
-
-      if (error) return { ok: false, msg: error.message };
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, msg: err?.message || "Erro ao entrar com Google." };
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: "https://fitdeal.vercel.app/auth/callback"
     }
+  });
+
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
   }
 
   async function loginWithApple() {
@@ -326,3 +320,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
