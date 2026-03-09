@@ -1,84 +1,74 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { supabase } from "../supabaseClient"
 
 export default function AuthCallback() {
-  const nav = useNavigate();
-  const [msg, setMsg] = useState("Conectando...");
+  const [step, setStep] = useState("Conectando")
+  const navigate = useNavigate()
 
   useEffect(() => {
-    let alive = true;
+    async function handleAuth() {
 
-    async function run() {
-      try {
-        // 1) tenta pegar session normal
-        let { data } = await supabase.auth.getSession();
-        let session = data?.session || null;
+      setStep("Conectando")
 
-        // 2) fallback: se veio com ?code= (PKCE), troca por session
-        if (!session) {
-          const url = new URL(window.location.href);
-          const code = url.searchParams.get("code");
-          if (code) {
-            const exchanged = await supabase.auth.exchangeCodeForSession(code);
-            session = exchanged?.data?.session || null;
-          }
-        }
+      await supabase.auth.getSession()
 
-        if (!alive) return;
+      setStep("Verificando conta")
 
-        if (!session?.user) {
-          setMsg("Não foi possível autenticar. Voltando…");
-          setTimeout(() => nav("/login", { replace: true }), 600);
-          return;
-        }
+      await new Promise((r) => setTimeout(r, 600))
 
-        // 3) garante profile e lê onboarded
-        setMsg("Preparando sua conta...");
-        const authUser = session.user;
+      setStep("Carregando menu")
 
-        await supabase.from("profiles").upsert(
-          {
-            id: authUser.id,
-            email: authUser.email || "",
-            nome:
-              authUser.user_metadata?.nome ||
-              authUser.user_metadata?.full_name ||
-              "",
-            photo_url:
-              authUser.user_metadata?.avatar_url ||
-              authUser.user_metadata?.picture ||
-              "",
-            provider: authUser.app_metadata?.provider || "oauth",
-          },
-          { onConflict: "id" }
-        );
+      await new Promise((r) => setTimeout(r, 600))
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarded")
-          .eq("id", authUser.id)
-          .maybeSingle();
-
-        const onboarded = !!profile?.onboarded;
-
-        nav(onboarded ? "/dashboard" : "/onboarding", { replace: true });
-      } catch (e) {
-        console.error(e);
-        setMsg("Erro no login. Voltando…");
-        setTimeout(() => nav("/login", { replace: true }), 700);
-      }
+      navigate("/dashboard")
     }
 
-    run();
-    return () => {
-      alive = false;
-    };
-  }, [nav]);
+    handleAuth()
+  }, [])
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-      {msg}
+    <div className="auth-wrapper">
+
+      <div className="loader"></div>
+
+      <p className="auth-text">{step}...</p>
+
+      <style jsx>{`
+
+        .auth-wrapper {
+          height:100vh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          flex-direction:column;
+          background:#ffffff;
+          font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+        }
+
+        .loader {
+          width:38px;
+          height:38px;
+          border-radius:50%;
+          border:3px solid rgba(255,120,0,0.15);
+          border-top:3px solid #ff7a00;
+          animation:spin 0.8s linear infinite;
+        }
+
+        .auth-text {
+          margin-top:18px;
+          font-size:15px;
+          color:#555;
+          letter-spacing:0.2px;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+      `}</style>
+
     </div>
-  );
+  )
 }
