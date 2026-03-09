@@ -1,164 +1,74 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-
-const ORANGE = "#FF6A00";
-const BG = "#f8fafc";
-const TEXT = "#0f172a";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function AuthCallback() {
 
-  const nav = useNavigate();
-  const [visible, setVisible] = useState(false);
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
 
-    const start = async () => {
+    if (loading) return;
 
-      setVisible(true);
-
-      // pega sessão atual
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user) {
-        finish("/login");
-        return;
-      }
-
-      // busca profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarded")
-        .eq("id", session.user.id)
-        .single();
-
-      if (!profile) {
-        finish("/onboarding");
-        return;
-      }
-
-      if (profile.onboarded) {
-        finish("/dashboard");
-      } else {
-        finish("/onboarding");
-      }
-
-    };
-
-    function finish(path) {
-
-      setVisible(false);
-
-      setTimeout(() => {
-        nav(path, { replace: true });
-      }, 350);
-
+    if (!user) {
+      navigate("/login", { replace: true });
+      return;
     }
 
-    start();
+    const timer = setTimeout(() => {
 
-  }, [nav]);
-
-  useEffect(() => {
-
-    const originalOverflow = document.body.style.overflow;
-    const originalHeight = document.body.style.height;
-
-    document.body.style.overflow = "hidden";
-    document.body.style.height = "100vh";
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.height = originalHeight;
-    };
-
-  }, []);
-
-  useEffect(() => {
-
-    const style = document.createElement("style");
-
-    style.innerHTML = `
-
-      @keyframes fadeApp {
-        from {opacity:0; transform:scale(.98);}
-        to {opacity:1; transform:scale(1);}
+      if (!user.onboarded) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
       }
 
-      @keyframes dotBounce {
-        0% { transform: translateY(0px); }
-        30% { transform: translateY(-8px); }
-        60% { transform: translateY(2px); }
-        100% { transform: translateY(0px); }
-      }
+    }, 30000); // 30 segundos
 
-      .fitdealFade {
-        animation: fadeApp .45s ease forwards;
-      }
+    return () => clearTimeout(timer);
 
-      .dotJump {
-        display:inline-block;
-        animation: dotBounce .9s ease infinite;
-      }
-
-    `;
-
-    document.head.appendChild(style);
-
-  }, []);
+  }, [user, loading, navigate]);
 
   return (
+    <div style={styles.container}>
 
-    <div style={S.page}>
+      <div style={styles.spinner}></div>
 
-      <div
-        className="fitdealFade"
-        style={{
-          ...S.center,
-          opacity: visible ? 1 : 0,
-          transition:"opacity .45s ease"
-        }}
-      >
-
-        <div style={S.logo}>
-          fitdeal<span className="dotJump" style={S.dot}>.</span>
-        </div>
-
-      </div>
+      <p style={styles.text}>
+        Preparando seu treino...
+      </p>
 
     </div>
-
   );
-
 }
 
-const S = {
+const styles = {
 
-  page:{
-    height:"100vh",
-    width:"100%",
-    overflow:"hidden",
-    display:"flex",
-    alignItems:"center",
-    justifyContent:"center",
-    background:BG
+  container: {
+    height: "100vh",
+    width: "100%",
+    background: "#0f0f0f",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden"
   },
 
-  center:{
-    textAlign:"center"
+  spinner: {
+    width: 60,
+    height: 60,
+    border: "4px solid transparent",
+    borderTop: "4px solid #22c55e",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite"
   },
 
-  logo:{
-    fontSize:36,
-    fontWeight:800,
-    letterSpacing:-0.5,
-    color:TEXT
-  },
-
-  dot:{
-    color:ORANGE
+  text: {
+    marginTop: 20,
+    color: "#aaa",
+    fontSize: 14
   }
 
 };
