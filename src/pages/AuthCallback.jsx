@@ -19,16 +19,12 @@ export default function AuthCallback() {
 
       try {
 
-        // 🔑 FAZ O SUPABASE PROCESSAR O HASH DO GOOGLE
-        if (window.location.hash) {
-          await supabase.auth.getSessionFromUrl({ storeSession: true });
-        }
+        // processa retorno OAuth
+        await supabase.auth.getSessionFromUrl({ storeSession: true });
 
-      } catch (e) {
-        console.log("oauth exchange ignored");
-      }
+      } catch (e) {}
 
-      // pega sessão atual depois do exchange
+      // pega sessão
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
@@ -41,11 +37,11 @@ export default function AuthCallback() {
 
       }
 
-      // escuta evento de login caso sessão demore
+      // escuta caso sessão chegue depois
       const { data: listener } = supabase.auth.onAuthStateChange(
         (event, session) => {
 
-          if (event === "SIGNED_IN" && session) {
+          if (session) {
 
             setTimeout(() => {
               nav("/dashboard", { replace: true });
@@ -55,11 +51,6 @@ export default function AuthCallback() {
 
         }
       );
-
-      // fallback segurança
-      setTimeout(() => {
-        nav("/login", { replace: true });
-      }, 7000);
 
       return () => listener.subscription.unsubscribe();
 
@@ -74,7 +65,6 @@ export default function AuthCallback() {
     const style = document.createElement("style");
 
     style.innerHTML = `
-
       @keyframes fadeApp {
         from {opacity:0; transform:scale(.98);}
         to {opacity:1; transform:scale(1);}
@@ -92,7 +82,6 @@ export default function AuthCallback() {
       .fitdealSpin {
         animation: spin .9s linear infinite;
       }
-
     `;
 
     document.head.appendChild(style);
