@@ -17,40 +17,25 @@ export default function AuthCallback() {
 
       setVisible(true);
 
-      try {
-        await supabase.auth.getSessionFromUrl({ storeSession: true });
-      } catch(e){}
+      const { data: { session } } = await supabase.auth.getSession();
 
-      const { data } = await supabase.auth.getSession();
-
-      if (data?.session) {
-        finish();
-        return;
+      if (session) {
+        finish("/dashboard");
+      } else {
+        finish("/login");
       }
-
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-
-          if (event === "SIGNED_IN" && session) {
-            finish();
-          }
-
-        }
-      );
-
-      function finish() {
-
-        setVisible(false);
-
-        setTimeout(() => {
-          nav("/dashboard", { replace: true });
-        }, 450);
-
-      }
-
-      return () => listener.subscription.unsubscribe();
 
     };
+
+    function finish(path) {
+
+      setVisible(false);
+
+      setTimeout(() => {
+        nav(path, { replace: true });
+      }, 200);
+
+    }
 
     start();
 
