@@ -18,13 +18,9 @@ export default function AuthCallback() {
       setVisible(true);
 
       try {
-
-        // processa retorno OAuth
         await supabase.auth.getSessionFromUrl({ storeSession: true });
+      } catch(e){}
 
-      } catch (e) {}
-
-      // pega sessão
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
@@ -34,10 +30,8 @@ export default function AuthCallback() {
         }, 600);
 
         return;
-
       }
 
-      // escuta caso sessão chegue depois
       const { data: listener } = supabase.auth.onAuthStateChange(
         (event, session) => {
 
@@ -59,6 +53,22 @@ export default function AuthCallback() {
     start();
 
   }, [nav]);
+
+  // trava scroll da página
+  useEffect(() => {
+
+    const originalOverflow = document.body.style.overflow;
+    const originalHeight = document.body.style.height;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.height = originalHeight;
+    };
+
+  }, []);
 
   useEffect(() => {
 
@@ -105,9 +115,7 @@ export default function AuthCallback() {
         </div>
 
         <div style={S.loaderWrap}>
-          <div style={S.loaderTrack}>
-            <div className="fitdealSpin" style={S.loader}/>
-          </div>
+          <div className="fitdealSpin" style={S.loader}/>
         </div>
 
       </div>
@@ -123,6 +131,7 @@ const S = {
   page:{
     height:"100vh",
     width:"100%",
+    overflow:"hidden",
     display:"flex",
     alignItems:"center",
     justifyContent:"center",
@@ -150,19 +159,10 @@ const S = {
     justifyContent:"center"
   },
 
-  loaderTrack:{
-    width:32,
-    height:32,
-    borderRadius:"50%",
-    border:"2px solid rgba(255,106,0,.2)",
-    display:"flex",
-    alignItems:"center",
-    justifyContent:"center"
-  },
-
+  // spinner sem borda externa
   loader:{
-    width:22,
-    height:22,
+    width:26,
+    height:26,
     borderRadius:"50%",
     border:"2px solid transparent",
     borderTop:`2px solid ${ORANGE}`
