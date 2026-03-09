@@ -30,13 +30,20 @@ export default function AuthCallback() {
   }, []);
 
   useEffect(() => {
+    // trava scroll da página
     const originalOverflow = document.body.style.overflow;
     const originalHeight = document.body.style.height;
+
+    // adiciona a classe que oculta o bottom menu (mantém consistência com onboarding)
+    document.body.classList.add("onboarding-mode");
 
     document.body.style.overflow = "hidden";
     document.body.style.height = "100vh";
 
     return () => {
+      // remove a classe ao desmontar para restaurar a navegação normal
+      document.body.classList.remove("onboarding-mode");
+
       document.body.style.overflow = originalOverflow;
       document.body.style.height = originalHeight;
     };
