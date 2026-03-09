@@ -17,7 +17,18 @@ export default function AuthCallback() {
 
       setVisible(true);
 
-      // pega sessão atual
+      try {
+
+        // 🔑 FAZ O SUPABASE PROCESSAR O HASH DO GOOGLE
+        if (window.location.hash) {
+          await supabase.auth.getSessionFromUrl({ storeSession: true });
+        }
+
+      } catch (e) {
+        console.log("oauth exchange ignored");
+      }
+
+      // pega sessão atual depois do exchange
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
@@ -27,9 +38,10 @@ export default function AuthCallback() {
         }, 600);
 
         return;
+
       }
 
-      // escuta login OAuth terminar
+      // escuta evento de login caso sessão demore
       const { data: listener } = supabase.auth.onAuthStateChange(
         (event, session) => {
 
