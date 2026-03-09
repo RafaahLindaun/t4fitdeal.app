@@ -17,17 +17,28 @@ export default function AuthCallback() {
 
       setVisible(true);
 
-      // 1️⃣ verifica sessão existente
+      try {
+
+        // troca código OAuth por sessão
+        await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        );
+
+      } catch (e) {
+        console.log("exchange fallback");
+      }
+
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
+
         setTimeout(() => {
           nav("/dashboard", { replace: true });
-        }, 500);
+        }, 600);
+
         return;
       }
 
-      // 2️⃣ escuta evento de login OAuth
       const { data: listener } = supabase.auth.onAuthStateChange(
         (event, session) => {
 
@@ -35,21 +46,19 @@ export default function AuthCallback() {
 
             setTimeout(() => {
               nav("/dashboard", { replace: true });
-            }, 500);
+            }, 600);
 
           }
 
         }
       );
 
-      // 3️⃣ fallback de segurança
+      // fallback segurança
       setTimeout(() => {
         nav("/login", { replace: true });
-      }, 6000);
+      }, 7000);
 
-      return () => {
-        listener.subscription.unsubscribe();
-      };
+      return () => listener.subscription.unsubscribe();
 
     };
 
@@ -68,18 +77,17 @@ export default function AuthCallback() {
         to {opacity:1; transform:scale(1);}
       }
 
-      @keyframes pulseDot {
-        0% {opacity:.4}
-        50% {opacity:1}
-        100% {opacity:.4}
+      @keyframes spin {
+        from {transform:rotate(0deg)}
+        to {transform:rotate(360deg)}
       }
 
       .fitdealFade {
         animation: fadeApp .45s ease forwards;
       }
 
-      .fitdealDot {
-        animation: pulseDot 1.2s ease infinite;
+      .fitdealSpin {
+        animation: spin .9s linear infinite;
       }
 
     `;
@@ -102,6 +110,12 @@ export default function AuthCallback() {
 
         <div style={S.logo}>
           fitdeal<span style={S.dot}>.</span>
+        </div>
+
+        <div style={S.loaderWrap}>
+          <div style={S.loaderTrack}>
+            <div className="fitdealSpin" style={S.loader}/>
+          </div>
         </div>
 
       </div>
@@ -135,8 +149,31 @@ const S = {
   },
 
   dot:{
-    color:ORANGE,
-    marginLeft:2
+    color:ORANGE
+  },
+
+  loaderWrap:{
+    marginTop:18,
+    display:"flex",
+    justifyContent:"center"
+  },
+
+  loaderTrack:{
+    width:32,
+    height:32,
+    borderRadius:"50%",
+    border:"2px solid rgba(255,106,0,.2)",
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center"
+  },
+
+  loader:{
+    width:22,
+    height:22,
+    borderRadius:"50%",
+    border:"2px solid transparent",
+    borderTop:`2px solid ${ORANGE}`
   }
 
 };
