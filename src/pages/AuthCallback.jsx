@@ -13,64 +13,63 @@ export default function AuthCallback() {
 
   useEffect(() => {
 
-    const finishLogin = async () => {
+    const start = async () => {
 
       setVisible(true);
 
       try {
+        await supabase.auth.getSessionFromUrl({ storeSession: true });
+      } catch(e){}
 
-        // 1️⃣ troca o code do Google por sessão
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+      const { data } = await supabase.auth.getSession();
 
-        if (error) {
-          console.error("OAuth error:", error);
-          nav("/login", { replace: true });
-          return;
-        }
+      if (data?.session) {
 
-        // 2️⃣ pega sessão já salva
-        const { data } = await supabase.auth.getSession();
+        setTimeout(() => {
+          nav("/dashboard", { replace: true });
+        }, 600);
 
-        if (data?.session) {
-
-          // pequena pausa só para o efeito visual
-          setTimeout(() => {
-            nav("/dashboard", { replace: true });
-          }, 700);
-
-        } else {
-
-          nav("/login", { replace: true });
-
-        }
-
-      } catch (err) {
-
-        console.error("AuthCallback error:", err);
-        nav("/login", { replace: true });
-
+        return;
       }
+
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+
+          if (session) {
+
+            setTimeout(() => {
+              nav("/dashboard", { replace: true });
+            }, 600);
+
+          }
+
+        }
+      );
+
+      return () => listener.subscription.unsubscribe();
 
     };
 
-    finishLogin();
+    start();
 
   }, [nav]);
 
-  // trava scroll
+  // trava scroll da página
   useEffect(() => {
+
+    const originalOverflow = document.body.style.overflow;
+    const originalHeight = document.body.style.height;
 
     document.body.style.overflow = "hidden";
     document.body.style.height = "100vh";
 
     return () => {
-      document.body.style.overflow = "";
-      document.body.style.height = "";
+      document.body.style.overflow = originalOverflow;
+      document.body.style.height = originalHeight;
     };
 
   }, []);
 
-  // animações
   useEffect(() => {
 
     const style = document.createElement("style");
@@ -82,14 +81,15 @@ export default function AuthCallback() {
         to {opacity:1; transform:scale(1);}
       }
 
+      /* animação do ponto */
       @keyframes dotBounce {
         0% { transform: translateY(0px); }
-        40% { transform: translateY(-8px); }
-        70% { transform: translateY(2px); }
+        30% { transform: translateY(-8px); }
+        60% { transform: translateY(2px); }
         100% { transform: translateY(0px); }
       }
 
-      .fadeApp {
+      .fitdealFade {
         animation: fadeApp .45s ease forwards;
       }
 
@@ -109,7 +109,7 @@ export default function AuthCallback() {
     <div style={S.page}>
 
       <div
-        className="fadeApp"
+        className="fitdealFade"
         style={{
           ...S.center,
           opacity: visible ? 1 : 0
