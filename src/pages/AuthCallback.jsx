@@ -75,23 +75,29 @@ export default function AuthCallback() {
     const style = document.createElement("style");
 
     style.innerHTML = `
+
       @keyframes fadeApp {
         from {opacity:0; transform:scale(.98);}
         to {opacity:1; transform:scale(1);}
       }
 
-      @keyframes spin {
-        from {transform:rotate(0deg)}
-        to {transform:rotate(360deg)}
+      /* animação do ponto */
+      @keyframes dotBounce {
+        0% { transform: translateY(0px); }
+        30% { transform: translateY(-8px); }
+        60% { transform: translateY(2px); }
+        100% { transform: translateY(0px); }
       }
 
       .fitdealFade {
         animation: fadeApp .45s ease forwards;
       }
 
-      .fitdealSpin {
-        animation: spin .9s linear infinite;
+      .dotJump {
+        display:inline-block;
+        animation: dotBounce .9s ease infinite;
       }
+
     `;
 
     document.head.appendChild(style);
@@ -111,11 +117,7 @@ export default function AuthCallback() {
       >
 
         <div style={S.logo}>
-          fitdeal<span style={S.dot}>.</span>
-        </div>
-
-        <div style={S.loaderWrap}>
-          <div className="fitdealSpin" style={S.loader}/>
+          fitdeal<span className="dotJump" style={S.dot}>.</span>
         </div>
 
       </div>
@@ -151,21 +153,6 @@ const S = {
 
   dot:{
     color:ORANGE
-  },
-
-  loaderWrap:{
-    marginTop:18,
-    display:"flex",
-    justifyContent:"center"
-  },
-
-  // spinner sem borda externa
-  loader:{
-    width:26,
-    height:26,
-    borderRadius:"50%",
-    border:"2px solid transparent",
-    borderTop:`2px solid ${ORANGE}`
   }
 
 };
