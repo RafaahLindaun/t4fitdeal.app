@@ -6,9 +6,7 @@ const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 
-// Duração mínima de carregamento (milissegundos)
-const MIN_LOAD_MS = 30_000;
-// duração do fadeout antes do nav (ms) — mantém impressão suave
+const MIN_LOAD_MS = 5_000;
 const FADE_MS = 450;
 
 export default function AuthCallback() {
@@ -26,13 +24,12 @@ export default function AuthCallback() {
       if (listenerRef.current) {
         try {
           listenerRef.current.subscription.unsubscribe();
-        } catch (e) {}
+        } catch {}
       }
     };
   }, []);
 
   useEffect(() => {
-    // trava scroll da página
     const originalOverflow = document.body.style.overflow;
     const originalHeight = document.body.style.height;
 
@@ -46,7 +43,6 @@ export default function AuthCallback() {
   }, []);
 
   useEffect(() => {
-    // injeta estilos de animação (mesmo visual)
     const id = "fitdeal-auth-style";
     if (!document.getElementById(id)) {
       const style = document.createElement("style");
@@ -73,64 +69,54 @@ export default function AuthCallback() {
     let start = Date.now();
     setVisible(true);
 
-    // função utilitária de sleep
-    const sleep = (ms) => new Promise((r) => (timeoutRef.current = setTimeout(r, ms)));
+    const sleep = (ms) =>
+      new Promise((r) => (timeoutRef.current = setTimeout(r, ms)));
 
-    // tenta trocar code por sessão (supabase v2). se falhar, ignora.
     const tryExchange = async () => {
       try {
         if (typeof supabase?.auth?.exchangeCodeForSession === "function") {
-          // passa a URL completa (onde o provider retornou o code)
           await supabase.auth.exchangeCodeForSession(window.location.href);
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch {}
     };
 
-    // espera por sessão: retorna session object ou null após timeout
     const waitForSession = async (timeoutMs) => {
-      // checa imediatamente
       const { data: current } = await supabase.auth.getSession();
       if (current?.session) return current.session;
 
-      // senão, ouve evento SIGNED_IN por até timeoutMs
       return await new Promise((resolve) => {
         let resolved = false;
 
-        // listener
-        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-          if (resolved) return;
-          if (event === "SIGNED_IN" && newSession) {
-            resolved = true;
-            // pequeno delay para garantir session persisted
-            setTimeout(() => resolve(newSession), 50);
+        const { data: listener } = supabase.auth.onAuthStateChange(
+          (event, newSession) => {
+            if (resolved) return;
+            if (event === "SIGNED_IN" && newSession) {
+              resolved = true;
+              setTimeout(() => resolve(newSession), 50);
+            }
           }
-        });
+        );
 
         listenerRef.current = listener;
 
-        // timeout fallback
         const to = setTimeout(async () => {
           if (resolved) return;
           resolved = true;
           try {
             const { data } = await supabase.auth.getSession();
             resolve(data?.session || null);
-          } catch (e) {
+          } catch {
             resolve(null);
           }
         }, timeoutMs);
 
-        // cleanup quando já resolvido
         const cleanup = () => {
           clearTimeout(to);
           try {
             listener.subscription.unsubscribe();
-          } catch (e) {}
+          } catch {}
         };
 
-        // attach resolve hook to cleanup after resolution
         const origResolve = resolve;
         resolve = (val) => {
           cleanup();
@@ -141,36 +127,30 @@ export default function AuthCallback() {
 
     (async () => {
       try {
-        // 1) tenta exchange (se aplicável)
         await tryExchange();
 
-        // 2) espera por sessão até MIN_LOAD_MS (para garantir fluxo OAuth)
         const session = await waitForSession(MIN_LOAD_MS);
 
-        // 3) decide rota (busca profile.onboarded se houver sessão)
         let target = "/login";
+
         if (session?.user) {
           try {
-            const { data: profile, error } = await supabase
+            const { data: profile } = await supabase
               .from("profiles")
               .select("onboarded")
               .eq("id", session.user.id)
               .maybeSingle();
 
-            if (!error && profile) {
+            if (profile) {
               target = profile.onboarded ? "/dashboard" : "/onboarding";
             } else {
-              // se não encontrou profile, considerar onboarding
               target = "/onboarding";
             }
-          } catch (e) {
+          } catch {
             target = "/dashboard";
           }
-        } else {
-          target = "/login";
         }
 
-        // 4) garante que o total visível seja ao menos MIN_LOAD_MS
         const elapsed = Date.now() - start;
         const remaining = Math.max(0, MIN_LOAD_MS - elapsed);
 
@@ -178,25 +158,20 @@ export default function AuthCallback() {
           await sleep(remaining);
         }
 
-        // 5) fadeout e navegar
         setVisible(false);
 
         await sleep(FADE_MS);
+
         if (!mountedRef.current) return;
 
         nav(target, { replace: true });
-      } catch (err) {
-        // fallback seguro: fade e voltar ao login
-        try {
-          setVisible(false);
-          await sleep(FADE_MS);
-          if (!mountedRef.current) return;
-          nav("/login", { replace: true });
-        } catch (e) {}
+      } catch {
+        setVisible(false);
+        await sleep(FADE_MS);
+        if (!mountedRef.current) return;
+        nav("/login", { replace: true });
       }
     })();
-
-    // cleanup já tratado no useEffect top
   }, [nav]);
 
   return (
