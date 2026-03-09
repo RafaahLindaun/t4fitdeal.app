@@ -1,3 +1,5 @@
+/* ---------- index.css (com adição para ocultar bottom menu durante AuthCallback) ---------- */
+
 * {
   margin: 0;
   padding: 0;
@@ -36,6 +38,7 @@ html, body {
   color: var(--text);
 }
 
+/* layout principal */
 .container {
   max-width: 420px;
   margin: 0 auto;
@@ -95,6 +98,7 @@ p {
   border-radius: 14px;
   object-fit: cover;
 }
+
 /* SPLASH ANIMATIONS */
 .splash-logo {
   position: relative;
@@ -127,8 +131,6 @@ p {
   opacity: 0.9;
 }
 
-
-
 /* “passadas” (efeito simples de steps) */
 .splash-steps {
   position: absolute;
@@ -151,7 +153,6 @@ p {
   animation: splashSteps 0.45s steps(7) infinite;
   z-index: 0;
 }
-
 
 /* dots loader */
 .splash-dots span {
@@ -186,6 +187,7 @@ p {
   0%, 100% { transform: translateY(0); opacity: 0.55; }
   50%      { transform: translateY(-4px); opacity: 1; }
 }
+
 /* SPLASH (imagem + passada) */
 .splash-wrap {
   min-height: 100vh;
@@ -236,7 +238,6 @@ p {
   );
   opacity: 0.95;
 
-  /* “quadriculado” para parecer passos */
   mask-image: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 22px);
   -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 22px);
 
@@ -288,6 +289,7 @@ p {
   55%  { opacity: 0.2; transform: translateY(-2px) rotate(-18deg) scale(1.02); }
   100% { opacity: 0; transform: translateY(-6px) rotate(-18deg) scale(1.02); }
 }
+
 /* Transição suave entre telas */
 .page {
   animation: pageIn 0.24s ease-out;
@@ -304,6 +306,7 @@ p {
     transform: translateY(0);
   }
 }
+
 /* toque suave nos cards/botões */
 button, .card {
   transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
@@ -317,3 +320,73 @@ button:active, .card:active {
   50%  { transform: translateX(-50%) translateY(-6px) scale(1.01); }
   100% { transform: translateX(-50%) translateY(0) scale(1); }
 }
+
+/* ---------- regras adicionais para esconder bottom menu durante AuthCallback / onboarding ---------- */
+
+/*
+  Como funciona:
+  - o AuthCallback adiciona `document.body.classList.add('onboarding-mode')` ao montar
+  - quando essa classe existe, as regras abaixo escondem a barra inferior (vários seletores comuns)
+  - também removem padding-bottom para evitar espaço em branco
+*/
+
+/* Seletor principal: ajuste se a sua bottom menu usa outro nome */
+.onboarding-mode .bottom-nav,
+.onboarding-mode .app-bottom-bar,
+.onboarding-mode .bottom-tabs,
+.onboarding-mode .bottomBar,
+.onboarding-mode #bottom-nav,
+.onboarding-mode .footer-nav,
+.onboarding-mode .tab-bar,
+.onboarding-mode .home-bottom-nav,
+.onboarding-mode .app-footer,
+.onboarding-mode nav.bottom {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+}
+
+/* Remove safe-area / padding adicional na container enquanto no onboarding-mode */
+.onboarding-mode .container,
+.onboarding-mode .page,
+.onboarding-mode main,
+.onboarding-mode .app-root,
+.onboarding-mode .content {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Caso sua bottom nav seja posicionada fixed, empurre-a pra baixo (opcional) */
+/* descomente se preferir animação ao invés de display:none */
+/*
+.onboarding-mode .bottom-nav,
+.onboarding-mode .app-bottom-bar {
+  transform: translateY(120%);
+  transition: transform .28s cubic-bezier(.2,.9,.2,1);
+}
+*/
+
+/* Se você usa um backdrop ou safe-area element, esconda também */
+.onboarding-mode .safe-area-bottom,
+.onboarding-mode .ios-bottom-padding,
+.onboarding-mode .mobile-bottom-space {
+  display: none !important;
+}
+
+/* Se sua app usa z-index para o bottom nav e ele estiver "por cima" do AuthCallback,
+   force o AuthCallback a ter maior z-index (adicione essa classe ao container do callback se necessário) */
+.onboarding-mode .auth-callback-top {
+  z-index: 99999 !important;
+  position: relative !important;
+}
+
+/* fallback: se a sua barra é gerada por uma lib com classe dinâmica,
+   você pode usar um seletor genérico (menos recomendado) — ativar com cuidado */
+/*
+.onboarding-mode [class*="bottom"] {
+  display:none !important;
+}
+*/
