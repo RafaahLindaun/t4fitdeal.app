@@ -166,7 +166,7 @@ export default function Login() {
     } else {
       const res = await loginWithEmail(email, form.senha);
       if (!res.ok) return setErro(res.msg);
-      return nav("/dashboard");
+      return nav("/auth/callback");
     }
   }
 
@@ -494,3 +494,4 @@ const styles = {
   footerLink: { border: "none", background: "transparent", color: MUTED, fontWeight: 900, padding: "8px 10px", borderRadius: 999 },
   footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
+
