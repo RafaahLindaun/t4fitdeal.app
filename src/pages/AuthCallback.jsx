@@ -3,89 +3,83 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 const ORANGE = "#FF6A00";
-const TEXT = "#0f172a";
-const MUTED = "#64748b";
-const BG = "#f8fafc";
 
 export default function AuthCallback() {
 
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
   const [step, setStep] = useState("Conectando");
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(20);
 
   useEffect(() => {
 
-    async function handleAuth() {
+    const runAuth = async () => {
 
       try {
 
         setStep("Conectando");
-        setProgress(33);
+        setProgress(30);
 
-        await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) throw error;
 
         setStep("Verificando conta");
-        setProgress(66);
-
-        await new Promise(r => setTimeout(r, 500));
-
-        setStep("Carregando menu");
-        setProgress(100);
+        setProgress(65);
 
         await new Promise(r => setTimeout(r, 400));
 
-        nav("/dashboard", { replace: true });
+        if (data?.session) {
+
+          setStep("Carregando menu");
+          setProgress(100);
+
+          await new Promise(r => setTimeout(r, 300));
+
+          navigate("/dashboard", { replace: true });
+
+        } else {
+
+          navigate("/login", { replace: true });
+
+        }
 
       } catch (err) {
 
         console.error("Auth error:", err);
-        nav("/login");
+        navigate("/login");
 
       }
 
-    }
+    };
 
-    handleAuth();
+    runAuth();
 
   }, []);
 
   useEffect(() => {
 
-    if (typeof document === "undefined") return;
-
-    const id = "fitdeal-auth-ui";
-
-    if (document.getElementById(id)) return;
-
     const style = document.createElement("style");
 
-    style.id = id;
-
     style.innerHTML = `
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
 
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
+    @keyframes fadeIn {
+      from {opacity:0; transform:translateY(6px);}
+      to {opacity:1; transform:translateY(0);}
+    }
 
-      @keyframes fadeIn {
-        from { opacity:0; transform:translateY(4px); }
-        to { opacity:1; transform:translateY(0); }
-      }
+    .spin {
+      animation: spin 1s linear infinite;
+    }
 
-      .authSpin {
-        animation: spin .9s linear infinite;
-      }
-
-      .authFade {
-        animation: fadeIn .25s ease;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .authSpin { animation:none }
-        .authFade { animation:none }
-      }
+    .fade {
+      animation: fadeIn .35s ease;
+    }
 
     `;
 
@@ -99,28 +93,26 @@ export default function AuthCallback() {
 
       <div style={S.card}>
 
-        <div style={S.loaderWrap}>
+        <div style={S.spinnerWrap}>
 
-          <div style={S.loaderTrack}>
-            <div style={S.loader} className="authSpin"/>
+          <div style={S.spinnerTrack}>
+            <div style={S.spinner} className="spin"/>
           </div>
 
         </div>
 
-        <div style={S.step} className="authFade">
+        <div style={S.step} className="fade">
           {step}...
         </div>
 
-        <div style={S.progressWrap}>
+        <div style={S.progressBar}>
 
-          <div style={S.progressBar}>
-            <div
-              style={{
-                ...S.progressFill,
-                width: progress + "%"
-              }}
-            />
-          </div>
+          <div
+            style={{
+              ...S.progressFill,
+              width: progress + "%"
+            }}
+          />
 
         </div>
 
@@ -139,55 +131,49 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: BG,
-    padding: 24
+    background: "#f8fafc"
   },
 
   card: {
     width: "100%",
-    maxWidth: 320,
+    maxWidth: 340,
     padding: 32,
     borderRadius: 28,
-    background: "rgba(255,255,255,.92)",
+    background: "white",
     border: "1px solid rgba(15,23,42,.06)",
     boxShadow: "0 20px 60px rgba(15,23,42,.08)",
-    textAlign: "center",
-    backdropFilter: "blur(12px)"
+    textAlign: "center"
   },
 
-  loaderWrap: {
+  spinnerWrap: {
     display: "flex",
     justifyContent: "center",
     marginBottom: 18
   },
 
-  loaderTrack: {
-    width: 42,
-    height: 42,
+  spinnerTrack: {
+    width: 44,
+    height: 44,
     borderRadius: "50%",
-    border: "3px solid rgba(255,106,0,.14)",
+    border: "3px solid rgba(255,106,0,.15)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center"
   },
 
-  loader: {
-    width: 32,
-    height: 32,
+  spinner: {
+    width: 34,
+    height: 34,
     borderRadius: "50%",
     border: "3px solid transparent",
     borderTop: `3px solid ${ORANGE}`
   },
 
   step: {
-    fontSize: 15,
-    fontWeight: 900,
-    color: TEXT,
-    letterSpacing: -0.2
-  },
-
-  progressWrap: {
-    marginTop: 18
+    fontSize: 16,
+    fontWeight: 700,
+    marginBottom: 16,
+    color: "#0f172a"
   },
 
   progressBar: {
@@ -199,8 +185,8 @@ const S = {
 
   progressFill: {
     height: "100%",
-    borderRadius: 999,
     background: ORANGE,
+    borderRadius: 999,
     transition: "width .4s ease"
   }
 
