@@ -19,34 +19,24 @@ export default function AuthCallback() {
 
       try {
         await supabase.auth.getSessionFromUrl({ storeSession: true });
-      } catch(e){}
+      } catch (e) {}
 
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
 
+        // fadeout
+        setVisible(false);
+
         setTimeout(() => {
           nav("/dashboard", { replace: true });
-        }, 600);
+        }, 450);
 
-        return;
+      } else {
+
+        nav("/login", { replace: true });
+
       }
-
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-
-          if (session) {
-
-            setTimeout(() => {
-              nav("/dashboard", { replace: true });
-            }, 600);
-
-          }
-
-        }
-      );
-
-      return () => listener.subscription.unsubscribe();
 
     };
 
@@ -54,7 +44,7 @@ export default function AuthCallback() {
 
   }, [nav]);
 
-  // trava scroll da página
+  // trava scroll
   useEffect(() => {
 
     const originalOverflow = document.body.style.overflow;
@@ -81,7 +71,6 @@ export default function AuthCallback() {
         to {opacity:1; transform:scale(1);}
       }
 
-      /* animação do ponto */
       @keyframes dotBounce {
         0% { transform: translateY(0px); }
         30% { transform: translateY(-8px); }
@@ -112,7 +101,8 @@ export default function AuthCallback() {
         className="fitdealFade"
         style={{
           ...S.center,
-          opacity: visible ? 1 : 0
+          opacity: visible ? 1 : 0,
+          transition: "opacity .45s ease"
         }}
       >
 
