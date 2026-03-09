@@ -19,24 +19,36 @@ export default function AuthCallback() {
 
       try {
         await supabase.auth.getSessionFromUrl({ storeSession: true });
-      } catch (e) {}
+      } catch(e){}
 
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
+        finish();
+        return;
+      }
 
-        // fadeout
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+
+          if (event === "SIGNED_IN" && session) {
+            finish();
+          }
+
+        }
+      );
+
+      function finish() {
+
         setVisible(false);
 
         setTimeout(() => {
           nav("/dashboard", { replace: true });
         }, 450);
 
-      } else {
-
-        nav("/login", { replace: true });
-
       }
+
+      return () => listener.subscription.unsubscribe();
 
     };
 
@@ -44,7 +56,6 @@ export default function AuthCallback() {
 
   }, [nav]);
 
-  // trava scroll
   useEffect(() => {
 
     const originalOverflow = document.body.style.overflow;
@@ -102,7 +113,7 @@ export default function AuthCallback() {
         style={{
           ...S.center,
           opacity: visible ? 1 : 0,
-          transition: "opacity .45s ease"
+          transition:"opacity .45s ease"
         }}
       >
 
