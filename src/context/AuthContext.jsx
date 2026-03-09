@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 const AuthContext = createContext(null);
 
 function normalizeProfile(profile, authUser) {
+
   if (!authUser) return null;
 
   return {
@@ -28,9 +29,10 @@ function normalizeProfile(profile, authUser) {
       authUser.user_metadata?.avatar_url ||
       authUser.user_metadata?.picture ||
       "",
-    provider: authUser.app_metadata?.provider || profile?.provider || "email",
+    provider: authUser.app_metadata?.provider || "email",
     createdAt: profile?.created_at || authUser.created_at || "",
   };
+
 }
 
 export function AuthProvider({ children }) {
@@ -41,30 +43,22 @@ export function AuthProvider({ children }) {
 
   async function fetchProfile(authUser) {
 
-    if (!authUser?.id) {
-      setUser(null);
-      return null;
-    }
+    if (!authUser?.id) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", authUser.id)
       .maybeSingle();
 
-    if (error) {
-      console.error("Erro ao buscar profile:", error);
-    }
-
     const merged = normalizeProfile(data, authUser);
     setUser(merged);
 
-    return merged;
   }
 
   async function ensureProfile(authUser) {
 
-    if (!authUser?.id) return null;
+    if (!authUser?.id) return;
 
     const payload = {
       id: authUser.id,
@@ -80,15 +74,12 @@ export function AuthProvider({ children }) {
       provider: authUser.app_metadata?.provider || "email",
     };
 
-    const { error } = await supabase
+    await supabase
       .from("profiles")
       .upsert(payload, { onConflict: "id" });
 
-    if (error) {
-      console.error("Erro ao garantir profile:", error);
-    }
+    fetchProfile(authUser);
 
-    return fetchProfile(authUser);
   }
 
   useEffect(() => {
@@ -97,38 +88,26 @@ export function AuthProvider({ children }) {
 
     async function bootstrap() {
 
-      try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        const {
-          data: { session: currentSession },
-        } = await supabase.auth.getSession();
+      if (!mounted) return;
 
-        if (!mounted) return;
+      setSession(session || null);
 
-        setSession(currentSession || null);
-
-        if (currentSession?.user) {
-          await ensureProfile(currentSession.user);
-        } else {
-          setUser(null);
-        }
-
-      } catch (err) {
-
-        console.error("Erro no bootstrap auth:", err);
-
-      } finally {
-
-        if (mounted) setLoading(false);
-
+      if (session?.user) {
+        fetchProfile(session.user);
       }
+
+      setLoading(false);
 
     }
 
     bootstrap();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
 
         setSession(newSession || null);
 
@@ -138,7 +117,7 @@ export function AuthProvider({ children }) {
         }
 
         if (event === "SIGNED_IN" && newSession?.user) {
-          await ensureProfile(newSession.user);
+          ensureProfile(newSession.user);
         }
 
       }
@@ -153,101 +132,69 @@ export function AuthProvider({ children }) {
 
   async function signup(payload) {
 
-    try {
+    const email = String(payload?.email || "").trim().toLowerCase();
+    const password = String(payload?.senha || "");
 
-      const email = String(payload?.email || "").trim().toLowerCase();
-      const password = String(payload?.senha || "");
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { nome: payload?.nome || "" } },
+    });
 
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { nome: payload?.nome || "" } },
-      });
-
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
-
-      return { ok: true, user: data?.user || null };
-
-    } catch (err) {
-
-      return { ok: false, msg: err?.message || "Erro ao criar conta." };
-
+    if (error) {
+      return { ok: false, msg: error.message };
     }
+
+    return { ok: true, user: data?.user || null };
 
   }
 
   async function loginWithEmail(email, senha) {
 
-    try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: String(email || "").trim().toLowerCase(),
+      password: String(senha || ""),
+    });
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: String(email || "").trim().toLowerCase(),
-        password: String(senha || ""),
-      });
-
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
-
-      return { ok: true, user: data?.user || null };
-
-    } catch (err) {
-
-      return { ok: false, msg: err?.message || "Erro ao entrar." };
-
+    if (error) {
+      return { ok: false, msg: error.message };
     }
+
+    return { ok: true, user: data?.user || null };
 
   }
 
   async function loginWithGoogle() {
 
-    try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
-
-      return { ok: true };
-
-    } catch (err) {
-
-      return { ok: false, msg: err?.message || "Erro ao entrar com Google." };
-
+    if (error) {
+      return { ok: false, msg: error.message };
     }
+
+    return { ok: true };
 
   }
 
   async function loginWithApple() {
 
-    try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "apple",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
-
-      return { ok: true };
-
-    } catch (err) {
-
-      return { ok: false, msg: err?.message || "Erro ao entrar com Apple." };
-
+    if (error) {
+      return { ok: false, msg: error.message };
     }
+
+    return { ok: true };
 
   }
 
