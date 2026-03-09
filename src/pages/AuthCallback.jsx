@@ -19,22 +19,30 @@ export default function AuthCallback() {
 
       try {
 
-        // pega sessão que veio do Google
+        // 1️⃣ troca o code do Google por sessão
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+
+        if (error) {
+          console.error("OAuth error:", error);
+          nav("/login", { replace: true });
+          return;
+        }
+
+        // 2️⃣ pega sessão já salva
         const { data } = await supabase.auth.getSession();
 
         if (data?.session) {
 
+          // pequena pausa só para o efeito visual
           setTimeout(() => {
             nav("/dashboard", { replace: true });
           }, 700);
 
-          return;
-        }
+        } else {
 
-        // se não tiver sessão, volta pro login
-        setTimeout(() => {
           nav("/login", { replace: true });
-        }, 700);
+
+        }
 
       } catch (err) {
 
