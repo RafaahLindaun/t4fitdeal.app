@@ -1,4 +1,3 @@
-//novo//
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -35,13 +34,13 @@ function normalizeProfile(profile, authUser) {
 }
 
 export function AuthProvider({ children }) {
+
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
-
-  // ✅ loading APENAS pro boot inicial (não travar o app a cada USER_UPDATED)
   const [loading, setLoading] = useState(true);
 
   async function fetchProfile(authUser) {
+
     if (!authUser?.id) {
       setUser(null);
       return null;
@@ -53,14 +52,18 @@ export function AuthProvider({ children }) {
       .eq("id", authUser.id)
       .maybeSingle();
 
-    if (error) console.error("Erro ao buscar profile:", error);
+    if (error) {
+      console.error("Erro ao buscar profile:", error);
+    }
 
     const merged = normalizeProfile(data, authUser);
     setUser(merged);
+
     return merged;
   }
 
   async function ensureProfile(authUser) {
+
     if (!authUser?.id) return null;
 
     const payload = {
@@ -81,16 +84,21 @@ export function AuthProvider({ children }) {
       .from("profiles")
       .upsert(payload, { onConflict: "id" });
 
-    if (error) console.error("Erro ao garantir profile:", error);
+    if (error) {
+      console.error("Erro ao garantir profile:", error);
+    }
 
     return fetchProfile(authUser);
   }
 
   useEffect(() => {
+
     let mounted = true;
 
     async function bootstrap() {
+
       try {
+
         const {
           data: { session: currentSession },
         } = await supabase.auth.getSession();
@@ -104,47 +112,49 @@ export function AuthProvider({ children }) {
         } else {
           setUser(null);
         }
+
       } catch (err) {
+
         console.error("Erro no bootstrap auth:", err);
+
       } finally {
+
         if (mounted) setLoading(false);
+
       }
+
     }
 
     bootstrap();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      // ✅ NÃO ficar alternando loading aqui (evita travar no Safari)
-      setSession(newSession || null);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
 
-      try {
+        setSession(newSession || null);
+
         if (event === "SIGNED_OUT") {
           setUser(null);
           return;
         }
 
-        if (newSession?.user) {
-          // ✅ atualiza profile em background sem travar a rota
+        if (event === "SIGNED_IN" && newSession?.user) {
           await ensureProfile(newSession.user);
-        } else {
-          setUser(null);
         }
-      } catch (err) {
-        console.error("Erro no onAuthStateChange:", err);
-        // se der erro, não deixa user “sumir” à toa
+
       }
-    });
+    );
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
+
   }, []);
 
   async function signup(payload) {
+
     try {
+
       const email = String(payload?.email || "").trim().toLowerCase();
       const password = String(payload?.senha || "");
 
@@ -154,156 +164,99 @@ export function AuthProvider({ children }) {
         options: { data: { nome: payload?.nome || "" } },
       });
 
-      if (error) return { ok: false, msg: error.message };
-
-      if (data?.user) {
-        const { error: profileError } = await supabase.from("profiles").upsert(
-          {
-            id: data.user.id,
-            email,
-            nome: payload?.nome || "",
-            altura: payload?.altura ? Number(payload.altura) : null,
-            peso: payload?.peso ? Number(payload.peso) : null,
-            provider: "email",
-            onboarded: false,
-          },
-          { onConflict: "id" }
-        );
-
-        if (profileError) {
-          console.error("Erro ao criar profile no signup:", profileError);
-        }
+      if (error) {
+        return { ok: false, msg: error.message };
       }
 
       return { ok: true, user: data?.user || null };
+
     } catch (err) {
+
       return { ok: false, msg: err?.message || "Erro ao criar conta." };
+
     }
+
   }
 
   async function loginWithEmail(email, senha) {
+
     try {
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: String(email || "").trim().toLowerCase(),
         password: String(senha || ""),
       });
 
-      if (error) return { ok: false, msg: error.message };
-
-      if (data?.user) await ensureProfile(data.user);
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
 
       return { ok: true, user: data?.user || null };
+
     } catch (err) {
+
       return { ok: false, msg: err?.message || "Erro ao entrar." };
+
     }
+
   }
 
   async function loginWithGoogle() {
-  try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`
-      }
-    });
 
-    if (error) {
-      return { ok: false, msg: error.message };
+    try {
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      return { ok: true };
+
+    } catch (err) {
+
+      return { ok: false, msg: err?.message || "Erro ao entrar com Google." };
+
     }
 
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, msg: err?.message || "Erro ao entrar com Google." };
   }
-}
 
   async function loginWithApple() {
+
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
-        options: { redirectTo },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
-      if (error) return { ok: false, msg: error.message };
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
       return { ok: true };
+
     } catch (err) {
+
       return { ok: false, msg: err?.message || "Erro ao entrar com Apple." };
+
     }
-  }
 
-  async function updateUser(patch) {
-    try {
-      // ✅ pega o usuário REAL (não depende do state)
-      const {
-        data: { session: liveSession },
-        error: sessionErr,
-      } = await supabase.auth.getSession();
-
-      if (sessionErr) {
-        return { ok: false, msg: sessionErr.message };
-      }
-
-      const authUser = liveSession?.user;
-      if (!authUser?.id) {
-        return { ok: false, msg: "Usuário não autenticado." };
-      }
-
-      const payload = {};
-
-      if ("nome" in patch) payload.nome = patch.nome || "";
-      if ("email" in patch) payload.email = String(patch.email || "").toLowerCase();
-      if ("idade" in patch) payload.idade = patch.idade ? Number(patch.idade) : null;
-      if ("altura" in patch) payload.altura = patch.altura ? Number(patch.altura) : null;
-      if ("peso" in patch) payload.peso = patch.peso ? Number(patch.peso) : null;
-      if ("objetivo" in patch) payload.objetivo = patch.objetivo || "";
-      if ("frequencia" in patch) payload.frequencia = patch.frequencia ? Number(patch.frequencia) : null;
-      if ("nivel" in patch) payload.nivel = patch.nivel || "";
-      if ("split" in patch) payload.split = patch.split || "";
-      if ("intensidade" in patch) payload.intensidade = patch.intensidade || "";
-      if ("onboarded" in patch) payload.onboarded = !!patch.onboarded;
-      if ("photoUrl" in patch) payload.photo_url = patch.photoUrl || "";
-      if ("provider" in patch) payload.provider = patch.provider || "";
-
-      // ✅ IMPORTANTÍSSIMO:
-      // NÃO atualize email no auth aqui (Google/Apple podem travar/precisar reauth).
-      // Se quiser mudar email de verdade, faça numa tela própria só para provider=email.
-      // (mantemos "email" no profiles para exibir/organizar no app)
-
-      // ✅ metadata só quando precisa (isso pode disparar USER_UPDATED, mas não travamos loading)
-      if ("nome" in patch || "photoUrl" in patch) {
-        const metadataPatch = {};
-        if ("nome" in patch) metadataPatch.nome = patch.nome || "";
-        if ("photoUrl" in patch) metadataPatch.avatar_url = patch.photoUrl || "";
-
-        const { error: metaError } = await supabase.auth.updateUser({
-          data: metadataPatch,
-        });
-
-        if (metaError) {
-          console.error("Erro ao atualizar metadata:", metaError);
-          // não bloqueia salvar perfil
-        }
-      }
-
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({ id: authUser.id, ...payload }, { onConflict: "id" });
-
-      if (error) return { ok: false, msg: error.message };
-
-      await fetchProfile(authUser);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, msg: err?.message || "Erro ao atualizar perfil." };
-    }
   }
 
   async function logout() {
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+
   }
 
   const value = useMemo(
@@ -315,18 +268,19 @@ export function AuthProvider({ children }) {
       loginWithEmail,
       loginWithGoogle,
       loginWithApple,
-      updateUser,
       logout,
     }),
     [user, session, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+
 }
 
 export function useAuth() {
   return useContext(AuthContext);
 }
-
-
-
