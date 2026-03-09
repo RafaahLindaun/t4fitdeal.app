@@ -707,6 +707,12 @@ export default function Conta() {
         <div style={styles.sectionTitle}>Sessão</div>
         <div style={styles.card}>
           <Row
+  icon="code"
+  title="fitdeal.teaching"
+  subtitle="Guia rápido para aprender a usar o app"
+  onClick={() => nav("/fitdeal-teaching")}
+/>
+          <Row
             icon="logout"
             title="Sair"
             subtitle="Encerrar sessão nesta conta"
@@ -1330,3 +1336,4 @@ const styles = {
     border: "1px solid rgba(255,255,255,.10)",
   },
 };
+
