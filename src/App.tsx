@@ -5,6 +5,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Treino from "./pages/Treino.jsx";
 import TreinoDetalhe from "./pages/TreinoDetalhe.jsx";
+import FitdealTeaching from "./pages/fitdeal.teaching";
 import Cardio, { CardioMiniDock } from "./pages/Cardio.jsx";
 import Nutricao from "./pages/Nutricao";
 import NutricaoOpcao from "./pages/NutricaoOpcao";
@@ -55,7 +56,9 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-
+        
+<Route path="/fitdeal-teaching" element={<FitdealTeaching />} />
+        
         <Route
           path="/onboarding"
           element={
@@ -220,4 +223,5 @@ export default function App() {
     </AuthProvider>
   );
 }
+
 
