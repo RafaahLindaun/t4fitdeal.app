@@ -1,74 +1,207 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { supabase } from "../supabaseClient"
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
+
+const ORANGE = "#FF6A00";
+const TEXT = "#0f172a";
+const MUTED = "#64748b";
+const BG = "#f8fafc";
 
 export default function AuthCallback() {
-  const [step, setStep] = useState("Conectando")
-  const navigate = useNavigate()
+
+  const nav = useNavigate();
+
+  const [step, setStep] = useState("Conectando");
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+
     async function handleAuth() {
 
-      setStep("Conectando")
+      try {
 
-      await supabase.auth.getSession()
+        setStep("Conectando");
+        setProgress(33);
 
-      setStep("Verificando conta")
+        await supabase.auth.getSession();
 
-      await new Promise((r) => setTimeout(r, 600))
+        setStep("Verificando conta");
+        setProgress(66);
 
-      setStep("Carregando menu")
+        await new Promise(r => setTimeout(r, 500));
 
-      await new Promise((r) => setTimeout(r, 600))
+        setStep("Carregando menu");
+        setProgress(100);
 
-      navigate("/dashboard")
+        await new Promise(r => setTimeout(r, 400));
+
+        nav("/dashboard", { replace: true });
+
+      } catch (err) {
+
+        console.error("Auth error:", err);
+        nav("/login");
+
+      }
+
     }
 
-    handleAuth()
-  }, [])
+    handleAuth();
+
+  }, []);
+
+  useEffect(() => {
+
+    if (typeof document === "undefined") return;
+
+    const id = "fitdeal-auth-ui";
+
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+
+    style.id = id;
+
+    style.innerHTML = `
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes fadeIn {
+        from { opacity:0; transform:translateY(4px); }
+        to { opacity:1; transform:translateY(0); }
+      }
+
+      .authSpin {
+        animation: spin .9s linear infinite;
+      }
+
+      .authFade {
+        animation: fadeIn .25s ease;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .authSpin { animation:none }
+        .authFade { animation:none }
+      }
+
+    `;
+
+    document.head.appendChild(style);
+
+  }, []);
 
   return (
-    <div className="auth-wrapper">
 
-      <div className="loader"></div>
+    <div style={S.page}>
 
-      <p className="auth-text">{step}...</p>
+      <div style={S.card}>
 
-      <style jsx>{`
+        <div style={S.loaderWrap}>
 
-        .auth-wrapper {
-          height:100vh;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          flex-direction:column;
-          background:#ffffff;
-          font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
-        }
+          <div style={S.loaderTrack}>
+            <div style={S.loader} className="authSpin"/>
+          </div>
 
-        .loader {
-          width:38px;
-          height:38px;
-          border-radius:50%;
-          border:3px solid rgba(255,120,0,0.15);
-          border-top:3px solid #ff7a00;
-          animation:spin 0.8s linear infinite;
-        }
+        </div>
 
-        .auth-text {
-          margin-top:18px;
-          font-size:15px;
-          color:#555;
-          letter-spacing:0.2px;
-        }
+        <div style={S.step} className="authFade">
+          {step}...
+        </div>
 
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
+        <div style={S.progressWrap}>
 
-      `}</style>
+          <div style={S.progressBar}>
+            <div
+              style={{
+                ...S.progressFill,
+                width: progress + "%"
+              }}
+            />
+          </div>
+
+        </div>
+
+      </div>
 
     </div>
-  )
+
+  );
+
 }
+
+const S = {
+
+  page: {
+    height: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: BG,
+    padding: 24
+  },
+
+  card: {
+    width: "100%",
+    maxWidth: 320,
+    padding: 32,
+    borderRadius: 28,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 20px 60px rgba(15,23,42,.08)",
+    textAlign: "center",
+    backdropFilter: "blur(12px)"
+  },
+
+  loaderWrap: {
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: 18
+  },
+
+  loaderTrack: {
+    width: 42,
+    height: 42,
+    borderRadius: "50%",
+    border: "3px solid rgba(255,106,0,.14)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+
+  loader: {
+    width: 32,
+    height: 32,
+    borderRadius: "50%",
+    border: "3px solid transparent",
+    borderTop: `3px solid ${ORANGE}`
+  },
+
+  step: {
+    fontSize: 15,
+    fontWeight: 900,
+    color: TEXT,
+    letterSpacing: -0.2
+  },
+
+  progressWrap: {
+    marginTop: 18
+  },
+
+  progressBar: {
+    height: 6,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.06)",
+    overflow: "hidden"
+  },
+
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    background: ORANGE,
+    transition: "width .4s ease"
+  }
+
+};
