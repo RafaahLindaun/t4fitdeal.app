@@ -17,17 +17,7 @@ export default function AuthCallback() {
 
       setVisible(true);
 
-      try {
-
-        // troca código OAuth por sessão
-        await supabase.auth.exchangeCodeForSession(
-          window.location.href
-        );
-
-      } catch (e) {
-        console.log("exchange fallback");
-      }
-
+      // pega sessão atual
       const { data } = await supabase.auth.getSession();
 
       if (data?.session) {
@@ -39,6 +29,7 @@ export default function AuthCallback() {
         return;
       }
 
+      // escuta login OAuth terminar
       const { data: listener } = supabase.auth.onAuthStateChange(
         (event, session) => {
 
