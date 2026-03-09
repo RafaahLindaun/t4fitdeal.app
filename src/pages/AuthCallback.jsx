@@ -9,91 +9,64 @@ const BG = "#f8fafc";
 export default function AuthCallback() {
 
   const nav = useNavigate();
-
   const [step, setStep] = useState("Conectando");
-  const [progress, setProgress] = useState(10);
+  const [progress, setProgress] = useState(20);
 
   useEffect(() => {
 
-    async function handleAuth() {
+    const run = async () => {
 
-      try {
+      setStep("Conectando");
+      setProgress(40);
 
-        setStep("Conectando");
-        setProgress(30);
+      const { data } = await supabase.auth.getSession();
 
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error) throw error;
-
-        setStep("Verificando conta");
-        setProgress(60);
-
-        await new Promise(r => setTimeout(r, 300));
-
-        if (data?.session) {
-
-          setStep("Carregando menu");
-          setProgress(100);
-
-          await new Promise(r => setTimeout(r, 300));
-
-          nav("/dashboard", { replace: true });
-
-        } else {
-
-          nav("/login", { replace: true });
-
-        }
-
-      } catch (err) {
-
-        console.error("Auth error:", err);
-        nav("/login", { replace: true });
-
+      if (data.session) {
+        nav("/dashboard", { replace: true });
+        return;
       }
 
-    }
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
 
-    handleAuth();
+          if (event === "SIGNED_IN" && session) {
+
+            setStep("Verificando conta");
+            setProgress(70);
+
+            await new Promise(r => setTimeout(r, 300));
+
+            setStep("Carregando menu");
+            setProgress(100);
+
+            await new Promise(r => setTimeout(r, 300));
+
+            nav("/dashboard", { replace: true });
+
+          }
+
+        }
+      );
+
+      setTimeout(() => {
+        nav("/login", { replace: true });
+      }, 4000);
+
+      return () => listener.subscription.unsubscribe();
+
+    };
+
+    run();
 
   }, [nav]);
 
   useEffect(() => {
 
-    if (typeof document === "undefined") return;
-
-    const id = "fitdeal-auth-ui";
-
-    if (document.getElementById(id)) return;
-
     const style = document.createElement("style");
 
-    style.id = id;
-
     style.innerHTML = `
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-
-      @keyframes fadeIn {
-        from { opacity:0; transform:translateY(4px); }
-        to { opacity:1; transform:translateY(0); }
-      }
-
-      .authSpin {
-        animation: spin .9s linear infinite;
-      }
-
-      .authFade {
-        animation: fadeIn .25s ease;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .authSpin { animation:none }
-        .authFade { animation:none }
-      }
+      @keyframes spin {from{transform:rotate(0)}to{transform:rotate(360deg)}}
+      .authSpin{animation:spin .9s linear infinite}
     `;
 
     document.head.appendChild(style);
@@ -106,25 +79,16 @@ export default function AuthCallback() {
 
       <div style={S.card}>
 
-        <div style={S.loaderWrap}>
-          <div style={S.loaderTrack}>
-            <div style={S.loader} className="authSpin"/>
-          </div>
+        <div style={S.loaderTrack}>
+          <div style={S.loader} className="authSpin"/>
         </div>
 
-        <div style={S.step} className="authFade">
+        <div style={S.step}>
           {step}...
         </div>
 
-        <div style={S.progressWrap}>
-          <div style={S.progressBar}>
-            <div
-              style={{
-                ...S.progressFill,
-                width: progress + "%"
-              }}
-            />
-          </div>
+        <div style={S.bar}>
+          <div style={{...S.fill,width:progress+"%"}}/>
         </div>
 
       </div>
@@ -137,74 +101,61 @@ export default function AuthCallback() {
 
 const S = {
 
-  page: {
-    height: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: BG,
-    padding: 24
+  page:{
+    height:"100vh",
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+    background:BG
   },
 
-  card: {
-    width: "100%",
-    maxWidth: 320,
-    padding: 32,
-    borderRadius: 28,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 20px 60px rgba(15,23,42,.08)",
-    textAlign: "center",
-    backdropFilter: "blur(12px)"
+  card:{
+    width:320,
+    padding:32,
+    borderRadius:28,
+    background:"white",
+    border:"1px solid rgba(15,23,42,.06)",
+    boxShadow:"0 20px 60px rgba(15,23,42,.08)",
+    textAlign:"center"
   },
 
-  loaderWrap: {
-    display: "flex",
-    justifyContent: "center",
-    marginBottom: 18
+  loaderTrack:{
+    width:44,
+    height:44,
+    borderRadius:"50%",
+    border:"3px solid rgba(255,106,0,.15)",
+    margin:"0 auto 16px auto",
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center"
   },
 
-  loaderTrack: {
-    width: 42,
-    height: 42,
-    borderRadius: "50%",
-    border: "3px solid rgba(255,106,0,.14)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
+  loader:{
+    width:34,
+    height:34,
+    borderRadius:"50%",
+    border:"3px solid transparent",
+    borderTop:`3px solid ${ORANGE}`
   },
 
-  loader: {
-    width: 32,
-    height: 32,
-    borderRadius: "50%",
-    border: "3px solid transparent",
-    borderTop: `3px solid ${ORANGE}`
+  step:{
+    fontSize:16,
+    fontWeight:700,
+    color:TEXT,
+    marginBottom:16
   },
 
-  step: {
-    fontSize: 15,
-    fontWeight: 900,
-    color: TEXT,
-    letterSpacing: -0.2
+  bar:{
+    height:6,
+    background:"rgba(15,23,42,.06)",
+    borderRadius:999,
+    overflow:"hidden"
   },
 
-  progressWrap: {
-    marginTop: 18
-  },
-
-  progressBar: {
-    height: 6,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    overflow: "hidden"
-  },
-
-  progressFill: {
-    height: "100%",
-    borderRadius: 999,
-    background: ORANGE,
-    transition: "width .4s ease"
+  fill:{
+    height:"100%",
+    background:ORANGE,
+    transition:"width .4s"
   }
 
 };
