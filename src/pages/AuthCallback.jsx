@@ -4,7 +4,6 @@ import { supabase } from "../supabaseClient";
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
-const MUTED = "#64748b";
 const BG = "#f8fafc";
 
 export default function AuthCallback() {
@@ -12,7 +11,7 @@ export default function AuthCallback() {
   const nav = useNavigate();
 
   const [step, setStep] = useState("Conectando");
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(10);
 
   useEffect(() => {
 
@@ -21,26 +20,36 @@ export default function AuthCallback() {
       try {
 
         setStep("Conectando");
-        setProgress(33);
+        setProgress(30);
 
-        await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) throw error;
 
         setStep("Verificando conta");
-        setProgress(66);
+        setProgress(60);
 
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 300));
 
-        setStep("Carregando menu");
-        setProgress(100);
+        if (data?.session) {
 
-        await new Promise(r => setTimeout(r, 400));
+          setStep("Carregando menu");
+          setProgress(100);
 
-        nav("/dashboard", { replace: true });
+          await new Promise(r => setTimeout(r, 300));
+
+          nav("/dashboard", { replace: true });
+
+        } else {
+
+          nav("/login", { replace: true });
+
+        }
 
       } catch (err) {
 
         console.error("Auth error:", err);
-        nav("/login");
+        nav("/login", { replace: true });
 
       }
 
@@ -48,7 +57,7 @@ export default function AuthCallback() {
 
     handleAuth();
 
-  }, []);
+  }, [nav]);
 
   useEffect(() => {
 
@@ -63,7 +72,6 @@ export default function AuthCallback() {
     style.id = id;
 
     style.innerHTML = `
-
       @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
@@ -86,7 +94,6 @@ export default function AuthCallback() {
         .authSpin { animation:none }
         .authFade { animation:none }
       }
-
     `;
 
     document.head.appendChild(style);
@@ -100,11 +107,9 @@ export default function AuthCallback() {
       <div style={S.card}>
 
         <div style={S.loaderWrap}>
-
           <div style={S.loaderTrack}>
             <div style={S.loader} className="authSpin"/>
           </div>
-
         </div>
 
         <div style={S.step} className="authFade">
@@ -112,7 +117,6 @@ export default function AuthCallback() {
         </div>
 
         <div style={S.progressWrap}>
-
           <div style={S.progressBar}>
             <div
               style={{
@@ -121,7 +125,6 @@ export default function AuthCallback() {
               }}
             />
           </div>
-
         </div>
 
       </div>
