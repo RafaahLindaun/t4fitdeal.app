@@ -8,9 +8,6 @@ const ORANGE_SOFT = "rgba(255,106,0,.12)";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
-const GOOGLE_LOGO =
-  "https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg";
-
 function timeAgo(ts) {
   const d = ts ? new Date(ts) : null;
   if (!d || Number.isNaN(d.getTime())) return null;
@@ -26,6 +23,64 @@ function timeAgo(ts) {
   const years = Math.floor(months / 12);
   if (years === 1) return "há 1 ano";
   return `há ${years} anos`;
+}
+
+function Icon({ name }) {
+  const stroke = "rgba(15,23,42,.78)";
+  const stroke2 = "rgba(15,23,42,.56)";
+
+  if (name === "eye") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M2.2 12s3.4-7 9.8-7 9.8 7 9.8 7-3.4 7-9.8 7S2.2 12 2.2 12Z"
+          stroke={stroke2}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke={stroke} strokeWidth="1.8" />
+      </svg>
+    );
+  }
+
+  if (name === "eyeOff") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 4l16 16" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M2.2 12s3.4-7 9.8-7c2 0 3.7.6 5.1 1.4M21.8 12s-3.4 7-9.8 7c-2.2 0-4.1-.7-5.6-1.7"
+          stroke={stroke2}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+        <path d="M10.2 10.2a3.2 3.2 0 0 0 3.6 3.6" stroke={stroke2} strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "check") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M20 7L10.5 16.5 4 10"
+          stroke="rgba(17,24,39,.92)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "chev") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 6l6 6-6 6" stroke={stroke2} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return null;
 }
 
 export default function Login() {
@@ -167,6 +222,9 @@ export default function Login() {
         <button onClick={continueAsLast} style={styles.lastUser} className="tap" type="button">
           <span style={styles.lastDot} />
           Continuar como <b style={{ color: TEXT }}>{quickEmail}</b>
+          <span style={styles.lastChev} aria-hidden="true">
+            <Icon name="chev" />
+          </span>
         </button>
       )}
 
@@ -189,7 +247,17 @@ export default function Login() {
         </button>
       </div>
 
-      <input name="email" value={form.email} onChange={onChange} placeholder="Email" style={styles.input} />
+      {isSignup && (
+        <>
+          <input name="nome" value={form.nome} onChange={onChange} placeholder="Nome" style={styles.input} autoComplete="name" />
+          <div style={styles.row}>
+            <input name="altura" value={form.altura} onChange={onChange} placeholder="Altura (cm)" style={styles.input} inputMode="numeric" />
+            <input name="peso" value={form.peso} onChange={onChange} placeholder="Peso (kg)" style={styles.input} inputMode="numeric" />
+          </div>
+        </>
+      )}
+
+      <input name="email" value={form.email} onChange={onChange} placeholder="Email" style={styles.input} autoComplete="email" />
 
       <div style={styles.passWrap}>
         <input
@@ -199,7 +267,38 @@ export default function Login() {
           placeholder="Senha"
           type={showPass ? "text" : "password"}
           style={{ ...styles.input, marginTop: 0, paddingRight: 48 }}
+          autoComplete={isSignup ? "new-password" : "current-password"}
         />
+
+        <button
+          type="button"
+          style={styles.eyeBtn}
+          className="tapSoft"
+          onClick={() => setShowPass((p) => !p)}
+          aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}
+          title={showPass ? "Ocultar senha" : "Mostrar senha"}
+        >
+          <Icon name={showPass ? "eyeOff" : "eye"} />
+        </button>
+      </div>
+
+      <div style={styles.auxRow}>
+        <button
+          type="button"
+          className="tapSoft"
+          onClick={() => setRemember((p) => !p)}
+          style={{ ...styles.auxBtn, ...(remember ? styles.auxOn : null) }}
+          aria-pressed={remember}
+        >
+          <span style={{ ...styles.checkbox, ...(remember ? styles.checkboxOn : null) }} aria-hidden="true">
+            {remember ? <Icon name="check" /> : null}
+          </span>
+          Lembrar
+        </button>
+
+        <button type="button" className="tapSoft" style={styles.linkBtn} onClick={() => toastSoon("Em breve.")}>
+          {isSignup ? "Como funciona?" : "Esqueci a senha"}
+        </button>
       </div>
 
       {erro && <div style={styles.error}>{erro}</div>}
@@ -214,7 +313,7 @@ export default function Login() {
         <div style={styles.dividerLine} />
       </div>
 
-      <div style={styles.socialWrap}>
+      <div style={{ marginTop: 12 }}>
         <button
           type="button"
           className="tap"
@@ -227,9 +326,27 @@ export default function Login() {
           aria-label="Continuar com Google"
         >
           <span style={styles.socialIcon}>
-            <img src={GOOGLE_LOGO} alt="Google" style={{ width: 18, height: 18 }} />
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/0/09/IOS_Google_icon.png"
+              alt="Google"
+              style={{ width: 18, height: 18 }}
+            />
           </span>
           Continuar com Google
+        </button>
+      </div>
+
+      <div style={styles.footerRow}>
+        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => nav("/planos")}>
+          Ver planos
+        </button>
+        <span style={styles.footerDot} />
+        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => toastSoon("Suporte — em breve.")}>
+          Suporte
+        </button>
+        <span style={styles.footerDot} />
+        <button type="button" className="tapSoft" style={styles.footerLink} onClick={() => toastSoon("Políticas — em breve.")}>
+          Políticas
         </button>
       </div>
 
@@ -271,11 +388,60 @@ const styles = {
   metaBold: { fontWeight: 950 },
   title: { fontSize: 26, fontWeight: 950, color: TEXT, textAlign: "center" },
   subtitle: { marginTop: 6, fontSize: 14, color: MUTED, textAlign: "center" },
+  lastUser: {
+    width: "100%",
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "#fff",
+    fontWeight: 850,
+    color: MUTED,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+  },
+  lastDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)", flexShrink: 0 },
+  lastChev: { marginLeft: "auto", display: "grid", placeItems: "center", opacity: 0.55 },
   switchRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18, marginBottom: 12 },
   switchBtn: { padding: 12, borderRadius: 14, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, color: MUTED },
   switchActive: { border: `1px solid ${ORANGE}`, background: ORANGE_SOFT, color: ORANGE },
   input: { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #e5e7eb", marginTop: 12, fontSize: 14, outline: "none" },
+  row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   passWrap: { position: "relative", marginTop: 12 },
+  eyeBtn: {
+    position: "absolute",
+    right: 12,
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: 40,
+    height: 40,
+    display: "grid",
+    placeItems: "center",
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    cursor: "pointer",
+    color: TEXT,
+    opacity: 0.9,
+  },
+  auxRow: { marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  auxBtn: {
+    border: "1px solid rgba(15,23,42,.10)",
+    background: "#fff",
+    padding: "10px 12px",
+    borderRadius: 999,
+    fontWeight: 900,
+    color: MUTED,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  auxOn: { borderColor: "rgba(255,106,0,.35)", background: "rgba(255,106,0,.08)", color: TEXT },
+  checkbox: { width: 22, height: 22, borderRadius: 9, border: "1px solid rgba(15,23,42,.14)", display: "grid", placeItems: "center", background: "#fff" },
+  checkboxOn: { borderColor: "rgba(255,106,0,.45)", background: "rgba(255,106,0,.18)" },
+  linkBtn: { border: "none", background: "transparent", color: TEXT, fontWeight: 950, padding: "10px 10px", borderRadius: 999 },
   cta: {
     width: "100%",
     padding: 16,
@@ -291,7 +457,6 @@ const styles = {
   dividerRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 10, color: MUTED },
   dividerLine: { height: 1, background: "rgba(15,23,42,.10)" },
   dividerText: { fontSize: 12, fontWeight: 900, color: MUTED },
-  socialWrap: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr" },
   socialBtn: {
     padding: 12,
     borderRadius: 14,
@@ -325,4 +490,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
   },
+  footerRow: { marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: MUTED, flexWrap: "wrap" },
+  footerLink: { border: "none", background: "transparent", color: MUTED, fontWeight: 900, padding: "8px 10px", borderRadius: 999 },
+  footerDot: { width: 6, height: 6, borderRadius: 999, background: "rgba(255,106,0,.65)" },
 };
