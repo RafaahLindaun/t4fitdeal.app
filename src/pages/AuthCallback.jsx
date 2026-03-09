@@ -17,12 +17,32 @@ export default function AuthCallback() {
 
       setVisible(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // pega sessão atual
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (session) {
+      if (!session?.user) {
+        finish("/login");
+        return;
+      }
+
+      // busca profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarded")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!profile) {
+        finish("/onboarding");
+        return;
+      }
+
+      if (profile.onboarded) {
         finish("/dashboard");
       } else {
-        finish("/login");
+        finish("/onboarding");
       }
 
     };
@@ -33,7 +53,7 @@ export default function AuthCallback() {
 
       setTimeout(() => {
         nav(path, { replace: true });
-      }, 200);
+      }, 350);
 
     }
 
