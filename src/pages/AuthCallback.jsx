@@ -13,63 +13,56 @@ export default function AuthCallback() {
 
   useEffect(() => {
 
-    const start = async () => {
+    const finishLogin = async () => {
 
       setVisible(true);
 
       try {
-        await supabase.auth.getSessionFromUrl({ storeSession: true });
-      } catch(e){}
 
-      const { data } = await supabase.auth.getSession();
+        // pega sessão que veio do Google
+        const { data } = await supabase.auth.getSession();
 
-      if (data?.session) {
+        if (data?.session) {
 
-        setTimeout(() => {
-          nav("/dashboard", { replace: true });
-        }, 600);
+          setTimeout(() => {
+            nav("/dashboard", { replace: true });
+          }, 700);
 
-        return;
-      }
-
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-
-          if (session) {
-
-            setTimeout(() => {
-              nav("/dashboard", { replace: true });
-            }, 600);
-
-          }
-
+          return;
         }
-      );
 
-      return () => listener.subscription.unsubscribe();
+        // se não tiver sessão, volta pro login
+        setTimeout(() => {
+          nav("/login", { replace: true });
+        }, 700);
+
+      } catch (err) {
+
+        console.error("AuthCallback error:", err);
+        nav("/login", { replace: true });
+
+      }
 
     };
 
-    start();
+    finishLogin();
 
   }, [nav]);
 
-  // trava scroll da página
+  // trava scroll
   useEffect(() => {
-
-    const originalOverflow = document.body.style.overflow;
-    const originalHeight = document.body.style.height;
 
     document.body.style.overflow = "hidden";
     document.body.style.height = "100vh";
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.height = originalHeight;
+      document.body.style.overflow = "";
+      document.body.style.height = "";
     };
 
   }, []);
 
+  // animações
   useEffect(() => {
 
     const style = document.createElement("style");
@@ -81,15 +74,14 @@ export default function AuthCallback() {
         to {opacity:1; transform:scale(1);}
       }
 
-      /* animação do ponto */
       @keyframes dotBounce {
         0% { transform: translateY(0px); }
-        30% { transform: translateY(-8px); }
-        60% { transform: translateY(2px); }
+        40% { transform: translateY(-8px); }
+        70% { transform: translateY(2px); }
         100% { transform: translateY(0px); }
       }
 
-      .fitdealFade {
+      .fadeApp {
         animation: fadeApp .45s ease forwards;
       }
 
@@ -109,7 +101,7 @@ export default function AuthCallback() {
     <div style={S.page}>
 
       <div
-        className="fitdealFade"
+        className="fadeApp"
         style={{
           ...S.center,
           opacity: visible ? 1 : 0
