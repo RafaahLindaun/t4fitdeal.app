@@ -2,9 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/css";
-
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
@@ -1334,6 +1331,7 @@ const styles = {
     border: "1px solid rgba(255,255,255,.10)",
   },
 };
+
 
 
 
