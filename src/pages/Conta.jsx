@@ -625,12 +625,6 @@ export default function Conta() {
             subtitle={paid ? "Compartilhe seu treino completo" : "Disponível só para pagantes"}
             onClick={() => (paid ? openSheet("treino") : setToast("Função disponível só para pagantes"))}
           />
-          <Row
-            icon="code"
-            title="Código de criador"
-            subtitle={creatorCode ? `Código salvo: ${creatorCode}` : "Adicionar código"}
-            onClick={() => openSheet("creator")}
-          />
         </div>
       </div>
 
@@ -1331,6 +1325,7 @@ const styles = {
     border: "1px solid rgba(255,255,255,.10)",
   },
 };
+
 
 
 
