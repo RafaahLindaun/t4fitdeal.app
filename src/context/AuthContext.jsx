@@ -277,7 +277,7 @@ export function AuthProvider({ children }) {
     setSession(null);
   }
 
-  const value = useMemo(
+    const value = useMemo(
     () => ({
       user,
       session,
@@ -297,7 +297,11 @@ export function AuthProvider({ children }) {
     [user, session, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
