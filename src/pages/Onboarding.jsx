@@ -4,11 +4,11 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
 const ORANGE = "#FF6A00";
-const TEXT = "#0f172a";
-const MUTED = "#667085";
-const BG = "#f8fafc";
-const CARD = "#ffffff";
-const BORDER = "#e7edf3";
+const BLACK = "#111111";
+const GRAY = "#6B6B6B";
+const LIGHT_GRAY = "#EAEAEA";
+const BG = "#F7F7F5";
+const WHITE = "#FFFFFF";
 
 const TOTAL_STEPS = 3;
 const SWIPE_THRESHOLD = 72;
@@ -62,39 +62,39 @@ export default function Onboarding() {
     {
       key: "hipertrofia",
       title: "Hipertrofia",
-      subtitle: "Mais volume, mais construção muscular",
+      subtitle: "Mais construção muscular",
       details:
-        "Seu treino vai priorizar estímulo para ganho de massa, progressão de carga, execução forte e constância. A ênfase aqui é crescer com estrutura.",
+        "Seu treino vai priorizar ganho de massa, progressão de carga e estímulo mais forte para evolução estética consistente.",
       metrics: [
-        "Mais foco em massa muscular",
+        "Mais volume muscular",
         "Progressão de carga",
-        "Maior ênfase estética",
+        "Ênfase estética",
       ],
       objetivo: "Hipertrofia",
     },
     {
       key: "emagrecimento",
       title: "Emagrecimento",
-      subtitle: "Mais gasto, mais constância, mais controle",
+      subtitle: "Mais gasto e constância",
       details:
-        "Seu treino tende a usar uma estrutura mais dinâmica, boa densidade de trabalho e constância semanal para acelerar gasto calórico sem perder qualidade muscular.",
+        "A estrutura foca em gasto calórico, ritmo semanal forte e sessões eficientes para melhorar composição corporal sem perder qualidade.",
       metrics: [
         "Mais gasto calórico",
-        "Rotina mais dinâmica",
-        "Melhor aderência semanal",
+        "Rotina dinâmica",
+        "Melhor constância",
       ],
       objetivo: "Emagrecimento",
     },
     {
       key: "performance",
       title: "Performance",
-      subtitle: "Força, condicionamento e evolução atlética",
+      subtitle: "Mais força e rendimento",
       details:
-        "A estrutura privilegia desempenho, eficiência e evolução física geral. O treino passa a mirar força, resistência e resposta atlética com mais precisão.",
+        "O treino fica voltado para desempenho, força, resistência e melhora atlética geral, com estímulos mais funcionais e estratégicos.",
       metrics: [
-        "Mais força e rendimento",
-        "Melhora de condicionamento",
-        "Estrutura mais atlética",
+        "Mais força",
+        "Melhor rendimento",
+        "Base atlética",
       ],
       objetivo: "Performance",
     },
@@ -106,11 +106,11 @@ export default function Onboarding() {
       title: "Iniciante",
       subtitle: "Estrutura sugerida: Full Body",
       details:
-        "Nesse nível, a melhor estratégia é consolidar base técnica, frequência por músculo e consistência. Full Body costuma entregar mais resultado com menos complexidade.",
+        "A melhor base para aprender execução, ganhar consistência e evoluir sem excessos. O treino fica eficiente e simples de seguir.",
       metrics: [
-        "Base técnica mais sólida",
-        "Mais eficiência por sessão",
-        "Melhor adaptação inicial",
+        "Base técnica",
+        "Mais adaptação",
+        "Evolução segura",
       ],
       nivel: "Iniciante",
       split: "Full Body",
@@ -121,11 +121,11 @@ export default function Onboarding() {
       title: "Intermediário",
       subtitle: "Estrutura sugerida: ABC",
       details:
-        "Aqui já vale usar uma divisão mais inteligente para aumentar volume, distribuir melhor os estímulos e acelerar evolução visual sem perder recuperação.",
+        "Aqui já vale aumentar volume e distribuir melhor os grupos musculares, com uma divisão mais forte para crescer e evoluir.",
       metrics: [
-        "Mais volume por grupo",
+        "Mais volume",
         "Divisão equilibrada",
-        "Ótimo para evolução muscular",
+        "Boa hipertrofia",
       ],
       nivel: "Intermediário",
       split: "ABC",
@@ -136,11 +136,11 @@ export default function Onboarding() {
       title: "Avançado",
       subtitle: "Estrutura sugerida: ABCD",
       details:
-        "Seu treino pode trabalhar com mais profundidade e especialização. A divisão ABCD favorece refinamento muscular, foco por sessão e maior detalhamento do estímulo.",
+        "Permite uma organização mais profunda do treino, com foco mais detalhado por músculo e estímulos mais refinados.",
       metrics: [
         "Mais especificidade",
-        "Maior volume por músculo",
-        "Estrutura mais avançada",
+        "Maior refinamento",
+        "Intensidade alta",
       ],
       nivel: "Avançado",
       split: "ABCD",
@@ -152,53 +152,37 @@ export default function Onboarding() {
     {
       key: 2,
       title: "2x por semana",
-      subtitle: "Treino mais enxuto e estratégico",
+      subtitle: "Mais objetivo",
       details:
-        "Boa opção para rotina apertada. O app organiza sessões mais objetivas para preservar resultado e encaixar melhor no seu dia a dia.",
-      metrics: [
-        "Boa aderência",
-        "Mais recuperação",
-        "Treino objetivo",
-      ],
+        "Boa opção para rotina apertada, com sessões diretas e estratégicas para manter evolução.",
+      metrics: ["Boa aderência", "Mais recuperação", "Treino enxuto"],
       frequencia: 2,
     },
     {
       key: 3,
       title: "3x por semana",
-      subtitle: "Equilíbrio forte entre resultado e rotina",
+      subtitle: "Equilíbrio forte",
       details:
-        "Uma das frequências mais eficientes para evoluir com consistência. Permite treino bem distribuído, recuperação sólida e progresso contínuo.",
-      metrics: [
-        "Equilíbrio ideal",
-        "Boa recuperação",
-        "Ótimo custo-benefício semanal",
-      ],
+        "Uma das frequências mais eficientes para manter progresso, boa recuperação e constância.",
+      metrics: ["Ótimo equilíbrio", "Boa recuperação", "Boa evolução"],
       frequencia: 3,
     },
     {
       key: 4,
       title: "4x por semana",
-      subtitle: "Mais estímulo e mais volume",
+      subtitle: "Mais estímulo",
       details:
-        "Excelente para quem quer acelerar evolução e suportar uma rotina de treino mais presente. Dá mais espaço para dividir melhor os grupos musculares.",
-      metrics: [
-        "Mais volume semanal",
-        "Mais estímulo muscular",
-        "Maior potencial visual",
-      ],
+        "Permite aumentar o volume semanal e distribuir melhor os estímulos para acelerar a evolução.",
+      metrics: ["Mais volume", "Mais estímulo", "Maior evolução visual"],
       frequencia: 4,
     },
     {
       key: 5,
       title: "5x por semana",
-      subtitle: "Foco total e estrutura mais forte",
+      subtitle: "Foco total",
       details:
-        "Ideal para uma rotina mais dedicada. O treino consegue ficar mais refinado e mais profundo, com foco alto em evolução e organização muscular.",
-      metrics: [
-        "Treino mais completo",
-        "Mais espaço para especialização",
-        "Estrutura mais agressiva",
-      ],
+        "Ideal para quem quer uma rotina mais forte e estruturada, com mais profundidade no treino.",
+      metrics: ["Maior foco", "Treino completo", "Mais especialização"],
       frequencia: 5,
     },
   ];
@@ -549,7 +533,7 @@ const S = {
   page: {
     minHeight: "100vh",
     background: BG,
-    color: TEXT,
+    color: BLACK,
   },
 
   wrap: {
@@ -567,6 +551,7 @@ const S = {
     fontWeight: 800,
     letterSpacing: -1.3,
     marginBottom: 18,
+    color: BLACK,
   },
 
   progressBlock: {
@@ -577,14 +562,14 @@ const S = {
     width: "100%",
     height: 10,
     borderRadius: 999,
-    background: "#e9eff5",
+    background: "#E8E8E8",
     overflow: "hidden",
   },
 
   progressFill: {
     height: "100%",
     borderRadius: 999,
-    background: `linear-gradient(90deg, ${ORANGE} 0%, #ff8f41 100%)`,
+    background: `linear-gradient(90deg, ${ORANGE} 0%, #FF8A33 100%)`,
     transition: "width 260ms cubic-bezier(.22,1,.36,1)",
   },
 
@@ -609,11 +594,11 @@ const S = {
   },
 
   questionBalloon: {
-    background: "linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)",
-    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    border: `1px solid ${LIGHT_GRAY}`,
     borderRadius: 30,
     padding: "22px 18px",
-    boxShadow: "0 14px 32px rgba(15,23,42,0.06)",
+    boxShadow: "0 14px 32px rgba(0,0,0,0.05)",
     marginBottom: 16,
   },
 
@@ -631,12 +616,13 @@ const S = {
     fontWeight: 800,
     letterSpacing: -0.8,
     marginBottom: 10,
+    color: BLACK,
   },
 
   questionSubtitle: {
     fontSize: 14,
     lineHeight: 1.5,
-    color: MUTED,
+    color: GRAY,
   },
 
   cardsCol: {
@@ -649,17 +635,17 @@ const S = {
   optionCard: {
     width: "100%",
     textAlign: "left",
-    border: `1px solid ${BORDER}`,
-    background: CARD,
+    border: `1px solid ${LIGHT_GRAY}`,
+    background: WHITE,
     borderRadius: 24,
     padding: "18px 16px",
-    boxShadow: "0 8px 24px rgba(15,23,42,0.04)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.03)",
     transition:
       "border-color 170ms ease, background 170ms ease, box-shadow 170ms ease, transform 170ms ease",
   },
 
   optionCardActive: {
-    background: "#fff7f1",
+    background: "#FFF7F1",
     borderColor: "rgba(255,106,0,0.35)",
     boxShadow: "0 10px 28px rgba(255,106,0,0.10)",
     transform: "scale(1)",
@@ -678,11 +664,12 @@ const S = {
     fontWeight: 760,
     letterSpacing: -0.45,
     marginBottom: 4,
+    color: BLACK,
   },
 
   optionSubtitle: {
     fontSize: 13.5,
-    color: MUTED,
+    color: GRAY,
     lineHeight: 1.45,
   },
 
@@ -690,8 +677,8 @@ const S = {
     width: 24,
     height: 24,
     borderRadius: 999,
-    border: "1.5px solid #cfd8e3",
-    background: "#fff",
+    border: "1.5px solid #D6D6D6",
+    background: WHITE,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -702,7 +689,7 @@ const S = {
 
   indicatorActive: {
     borderColor: ORANGE,
-    background: "#fff1e8",
+    background: "#FFF1E8",
   },
 
   indicatorInner: {
@@ -721,7 +708,7 @@ const S = {
   detailsText: {
     fontSize: 14,
     lineHeight: 1.55,
-    color: "#425466",
+    color: "#3F3F3F",
   },
 
   pillsRow: {
@@ -734,11 +721,11 @@ const S = {
   pill: {
     padding: "9px 12px",
     borderRadius: 999,
-    background: "#fff",
-    border: "1px solid #e8edf3",
+    background: WHITE,
+    border: "1px solid #E7E7E7",
     fontSize: 12.5,
     lineHeight: 1.2,
-    color: TEXT,
+    color: BLACK,
   },
 
   bottomBar: {
@@ -753,9 +740,9 @@ const S = {
   secondaryBtn: {
     height: 56,
     borderRadius: 18,
-    border: "1px solid #dde6ee",
-    background: "#fff",
-    color: TEXT,
+    border: "1px solid #DEDEDE",
+    background: WHITE,
+    color: BLACK,
     fontSize: 16,
     fontWeight: 700,
   },
@@ -764,11 +751,11 @@ const S = {
     height: 56,
     borderRadius: 18,
     border: "none",
-    background: TEXT,
-    color: "#fff",
+    background: BLACK,
+    color: WHITE,
     fontSize: 16,
     fontWeight: 800,
     letterSpacing: -0.2,
-    boxShadow: "0 10px 24px rgba(15,23,42,0.12)",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.10)",
   },
 };
