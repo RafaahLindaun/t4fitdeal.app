@@ -8,18 +8,11 @@ if (!supabaseAnonKey) throw new Error("VITE_SUPABASE_ANON_KEY não encontrada.")
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // ✅ essencial para SPA (Vite/React) com OAuth no mobile
     flowType: "pkce",
-
-    // ✅ mantém sessão no dispositivo
     persistSession: true,
     autoRefreshToken: true,
-
-    // ✅ permite o Supabase capturar o retorno do OAuth na URL
     detectSessionInUrl: true,
-
-    // ✅ (recomendado) deixa explícito onde salvar
-    storage: window?.localStorage,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
     storageKey: "fitdeal-auth",
   },
 });
