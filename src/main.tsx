@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+/** ✅ Bloqueia double-tap zoom (iOS/Safari) */
 let lastTouchEnd = 0;
 document.addEventListener(
   "touchend",
