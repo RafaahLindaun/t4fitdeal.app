@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-/** ✅ Bloqueia double-tap zoom (iOS/Safari) */
 let lastTouchEnd = 0;
 document.addEventListener(
   "touchend",
@@ -18,8 +17,5 @@ document.addEventListener(
 );
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-      <App />
-  </React.StrictMode>
+  <App />
 );
-
