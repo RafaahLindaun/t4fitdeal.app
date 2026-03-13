@@ -11,22 +11,26 @@ const CARD = "#ffffff";
 const BORDER = "#e7edf3";
 
 const TOTAL_STEPS = 3;
-const SWIPE_THRESHOLD = 70;
+const SWIPE_THRESHOLD = 72;
 
 export default function Onboarding() {
   const nav = useNavigate();
   const { user } = useAuth();
 
-  const [step, setStep] = useState(0);
+  const sliderRef = useRef(null);
+  const startXRef = useRef(0);
+  const currentXRef = useRef(0);
+  const draggingRef = useRef(false);
+
   const [nome, setNome] = useState("");
-  const [nivel, setNivel] = useState(null);
-  const [freq, setFreq] = useState(null);
-  const [split, setSplit] = useState(null);
+  const [step, setStep] = useState(0);
+  const [dragPx, setDragPx] = useState(0);
+  const [animating, setAnimating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [dragX, setDragX] = useState(0);
-  const touchStartX = useRef(null);
-  const touchCurrentX = useRef(null);
+  const [foco, setFoco] = useState(null);
+  const [nivelKey, setNivelKey] = useState(null);
+  const [dias, setDias] = useState(null);
 
   useEffect(() => {
     const nomeDoUsuario =
@@ -39,6 +43,14 @@ export default function Onboarding() {
     setNome(nomeDoUsuario);
   }, [user]);
 
+  function haptic() {
+    try {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+    } catch {}
+  }
+
   function saudacao() {
     const h = new Date().getHours();
     if (h < 12) return "Bom dia";
@@ -46,221 +58,233 @@ export default function Onboarding() {
     return "Boa noite";
   }
 
-  const greeting = useMemo(() => {
-    return `${saudacao()}${nome ? ` ${nome}` : ""}, Bem-vindo ao fitdeal.`;
-  }, [nome]);
-
-  function haptic() {
-    try {
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate(10);
-      }
-    } catch {}
-  }
-
-  const niveis = [
+  const step1Options = [
     {
-      key: "Iniciante",
-      title: "Iniciante",
-      subtitle: "0–3 meses de treino",
+      key: "hipertrofia",
+      title: "Hipertrofia",
+      subtitle: "Mais volume, mais construção muscular",
       details:
-        "Ideal para construir base técnica, ganhar consistência e criar evolução segura. O foco aqui é aprender execução, melhorar coordenação, aumentar força inicial e preparar seu corpo para crescer com qualidade.",
+        "Seu treino vai priorizar estímulo para ganho de massa, progressão de carga, execução forte e constância. A ênfase aqui é crescer com estrutura.",
       metrics: [
-        "Mais consistência nas primeiras semanas",
-        "Melhora rápida de técnica e postura",
-        "Ganhos iniciais de força e massa",
+        "Mais foco em massa muscular",
+        "Progressão de carga",
+        "Maior ênfase estética",
       ],
+      objetivo: "Hipertrofia",
     },
     {
-      key: "Intermediário",
-      title: "Intermediário",
-      subtitle: "3–18 meses de treino",
+      key: "emagrecimento",
+      title: "Emagrecimento",
+      subtitle: "Mais gasto, mais constância, mais controle",
       details:
-        "Seu corpo já responde melhor ao estímulo. Aqui o treino pode ter mais volume, progressão de carga e divisão mais estratégica para acelerar hipertrofia, definição e performance.",
+        "Seu treino tende a usar uma estrutura mais dinâmica, boa densidade de trabalho e constância semanal para acelerar gasto calórico sem perder qualidade muscular.",
       metrics: [
-        "Melhor resposta à progressão de carga",
-        "Mais volume por grupo muscular",
-        "Evolução mais visível em composição corporal",
+        "Mais gasto calórico",
+        "Rotina mais dinâmica",
+        "Melhor aderência semanal",
       ],
+      objetivo: "Emagrecimento",
     },
     {
-      key: "Avançado",
-      title: "Avançado",
-      subtitle: "18+ meses de treino",
+      key: "performance",
+      title: "Performance",
+      subtitle: "Força, condicionamento e evolução atlética",
       details:
-        "Nesse nível, a diferença está nos detalhes. A estrutura do treino pode explorar intensidade, técnicas avançadas, variações de estímulo e organização mais precisa para continuar evoluindo.",
+        "A estrutura privilegia desempenho, eficiência e evolução física geral. O treino passa a mirar força, resistência e resposta atlética com mais precisão.",
       metrics: [
-        "Ajustes finos de volume e intensidade",
-        "Estratégia mais específica por músculo",
-        "Maior foco em performance e refinamento físico",
+        "Mais força e rendimento",
+        "Melhora de condicionamento",
+        "Estrutura mais atlética",
       ],
+      objetivo: "Performance",
     },
   ];
 
-  const frequencias = [
+  const step2Options = [
+    {
+      key: "iniciante",
+      title: "Iniciante",
+      subtitle: "Estrutura sugerida: Full Body",
+      details:
+        "Nesse nível, a melhor estratégia é consolidar base técnica, frequência por músculo e consistência. Full Body costuma entregar mais resultado com menos complexidade.",
+      metrics: [
+        "Base técnica mais sólida",
+        "Mais eficiência por sessão",
+        "Melhor adaptação inicial",
+      ],
+      nivel: "Iniciante",
+      split: "Full Body",
+      intensidade: "moderada",
+    },
+    {
+      key: "intermediario",
+      title: "Intermediário",
+      subtitle: "Estrutura sugerida: ABC",
+      details:
+        "Aqui já vale usar uma divisão mais inteligente para aumentar volume, distribuir melhor os estímulos e acelerar evolução visual sem perder recuperação.",
+      metrics: [
+        "Mais volume por grupo",
+        "Divisão equilibrada",
+        "Ótimo para evolução muscular",
+      ],
+      nivel: "Intermediário",
+      split: "ABC",
+      intensidade: "moderada",
+    },
+    {
+      key: "avancado",
+      title: "Avançado",
+      subtitle: "Estrutura sugerida: ABCD",
+      details:
+        "Seu treino pode trabalhar com mais profundidade e especialização. A divisão ABCD favorece refinamento muscular, foco por sessão e maior detalhamento do estímulo.",
+      metrics: [
+        "Mais especificidade",
+        "Maior volume por músculo",
+        "Estrutura mais avançada",
+      ],
+      nivel: "Avançado",
+      split: "ABCD",
+      intensidade: "alta",
+    },
+  ];
+
+  const step3Options = [
     {
       key: 2,
       title: "2x por semana",
-      subtitle: "Mais foco por sessão",
+      subtitle: "Treino mais enxuto e estratégico",
       details:
-        "Boa opção para rotina apertada. O treino tende a ser mais objetivo, com sessões bem planejadas para preservar evolução mesmo com menos dias disponíveis.",
+        "Boa opção para rotina apertada. O app organiza sessões mais objetivas para preservar resultado e encaixar melhor no seu dia a dia.",
       metrics: [
-        "Mais recuperação entre treinos",
-        "Sessões mais completas",
-        "Boa aderência para rotina corrida",
+        "Boa aderência",
+        "Mais recuperação",
+        "Treino objetivo",
       ],
+      frequencia: 2,
     },
     {
       key: 3,
       title: "3x por semana",
-      subtitle: "Equilíbrio excelente",
+      subtitle: "Equilíbrio forte entre resultado e rotina",
       details:
-        "Uma frequência muito eficiente para evolução constante. Dá para organizar treino forte, boa recuperação e progresso sólido sem sobrecarregar sua agenda.",
+        "Uma das frequências mais eficientes para evoluir com consistência. Permite treino bem distribuído, recuperação sólida e progresso contínuo.",
       metrics: [
-        "Ótimo equilíbrio entre estímulo e descanso",
-        "Boa base para hipertrofia e emagrecimento",
-        "Rotina sustentável no longo prazo",
+        "Equilíbrio ideal",
+        "Boa recuperação",
+        "Ótimo custo-benefício semanal",
       ],
+      frequencia: 3,
     },
     {
       key: 4,
       title: "4x por semana",
-      subtitle: "Mais volume e consistência",
+      subtitle: "Mais estímulo e mais volume",
       details:
-        "Permite distribuir melhor os grupos musculares e aumentar o volume total de treino, favorecendo evolução mais agressiva com recuperação ainda controlada.",
+        "Excelente para quem quer acelerar evolução e suportar uma rotina de treino mais presente. Dá mais espaço para dividir melhor os grupos musculares.",
       metrics: [
-        "Mais estímulo muscular semanal",
-        "Divisão mais estratégica",
-        "Maior potencial de evolução visual",
+        "Mais volume semanal",
+        "Mais estímulo muscular",
+        "Maior potencial visual",
       ],
+      frequencia: 4,
     },
     {
       key: 5,
       title: "5x por semana",
-      subtitle: "Estrutura mais avançada",
+      subtitle: "Foco total e estrutura mais forte",
       details:
-        "Excelente para quem quer refinar o treino por grupos musculares e trabalhar com mais profundidade em cada sessão. Exige mais constância e recuperação bem organizada.",
+        "Ideal para uma rotina mais dedicada. O treino consegue ficar mais refinado e mais profundo, com foco alto em evolução e organização muscular.",
       metrics: [
-        "Maior especialização muscular",
-        "Mais espaço para ajustes finos",
-        "Excelente para fases de foco total",
+        "Treino mais completo",
+        "Mais espaço para especialização",
+        "Estrutura mais agressiva",
       ],
+      frequencia: 5,
     },
   ];
 
-  const splits = [
-    {
-      key: "Full Body",
-      title: "Full Body",
-      subtitle: "Corpo inteiro por sessão",
-      details:
-        "Ideal para iniciantes e para quem treina menos dias. Você estimula os principais grupos musculares em cada treino, com alta eficiência e aprendizado rápido do movimento.",
-      metrics: [
-        "Ótimo para 2x e 3x por semana",
-        "Mais frequência por músculo",
-        "Excelente base para evolução geral",
-      ],
-    },
-    {
-      key: "ABC",
-      title: "ABC",
-      subtitle: "Divisão equilibrada",
-      details:
-        "Uma das estruturas mais versáteis para hipertrofia. Organiza bem o volume, permite foco maior em cada região do corpo e costuma encaixar muito bem em 3x ou 4x na semana.",
-      metrics: [
-        "Boa distribuição do esforço",
-        "Foco maior por treino",
-        "Muito eficiente para construção muscular",
-      ],
-    },
-    {
-      key: "ABCD",
-      title: "ABCD",
-      subtitle: "Mais detalhe e profundidade",
-      details:
-        "Divisão mais refinada para quem treina mais vezes na semana. Dá para trabalhar melhor cada grupo muscular, com mais exercícios, mais intenção e mais especificidade.",
-      metrics: [
-        "Mais volume por músculo",
-        "Melhor detalhamento do treino",
-        "Ótima opção para quem já tem base",
-      ],
-    },
-  ];
+  const selectedFoco = useMemo(
+    () => step1Options.find((item) => item.key === foco) || null,
+    [foco]
+  );
+
+  const selectedNivel = useMemo(
+    () => step2Options.find((item) => item.key === nivelKey) || null,
+    [nivelKey]
+  );
+
+  const selectedDias = useMemo(
+    () => step3Options.find((item) => item.key === dias) || null,
+    [dias]
+  );
 
   const progressWidth = `${((step + 1) / TOTAL_STEPS) * 100}%`;
 
-  function canContinueCurrentStep() {
-    if (step === 0) return !!nivel;
-    if (step === 1) return !!freq;
-    if (step === 2) return !!split;
+  function canContinue() {
+    if (step === 0) return !!selectedFoco;
+    if (step === 1) return !!selectedNivel;
+    if (step === 2) return !!selectedDias;
     return false;
   }
 
-  function next() {
-    if (!canContinueCurrentStep()) return;
+  function goNext() {
+    if (!canContinue() || animating) return;
     if (step < TOTAL_STEPS - 1) {
       haptic();
-      setStep((s) => s + 1);
-      setDragX(0);
+      setAnimating(true);
+      setStep((prev) => prev + 1);
+      setDragPx(0);
+      setTimeout(() => setAnimating(false), 260);
     }
   }
 
-  function prev() {
+  function goPrev() {
+    if (animating) return;
     if (step > 0) {
       haptic();
-      setStep((s) => s - 1);
-      setDragX(0);
+      setAnimating(true);
+      setStep((prev) => prev - 1);
+      setDragPx(0);
+      setTimeout(() => setAnimating(false), 260);
     }
-  }
-
-  function selectNivel(value) {
-    haptic();
-    setNivel(value);
-  }
-
-  function selectFreq(value) {
-    haptic();
-    setFreq(value);
-  }
-
-  function selectSplit(value) {
-    haptic();
-    setSplit(value);
   }
 
   function handleTouchStart(e) {
-    touchStartX.current = e.touches[0].clientX;
-    touchCurrentX.current = e.touches[0].clientX;
+    if (!sliderRef.current || animating) return;
+    draggingRef.current = true;
+    startXRef.current = e.touches[0].clientX;
+    currentXRef.current = e.touches[0].clientX;
   }
 
   function handleTouchMove(e) {
-    if (touchStartX.current == null) return;
-    touchCurrentX.current = e.touches[0].clientX;
-    const delta = touchCurrentX.current - touchStartX.current;
-    setDragX(delta);
+    if (!draggingRef.current || !sliderRef.current) return;
+    currentXRef.current = e.touches[0].clientX;
+
+    let delta = currentXRef.current - startXRef.current;
+
+    if (step === 0 && delta > 0) delta *= 0.35;
+    if (step === TOTAL_STEPS - 1 && delta < 0) delta *= 0.35;
+
+    setDragPx(delta);
   }
 
   function handleTouchEnd() {
-    if (touchStartX.current == null || touchCurrentX.current == null) {
-      setDragX(0);
-      return;
+    if (!draggingRef.current) return;
+
+    draggingRef.current = false;
+    const delta = currentXRef.current - startXRef.current;
+
+    if (delta < -SWIPE_THRESHOLD && canContinue() && step < TOTAL_STEPS - 1) {
+      goNext();
+    } else if (delta > SWIPE_THRESHOLD && step > 0) {
+      goPrev();
+    } else {
+      setDragPx(0);
     }
-
-    const delta = touchCurrentX.current - touchStartX.current;
-
-    if (delta > SWIPE_THRESHOLD) {
-      prev();
-    } else if (delta < -SWIPE_THRESHOLD) {
-      next();
-    }
-
-    touchStartX.current = null;
-    touchCurrentX.current = null;
-    setDragX(0);
   }
 
   async function concluir() {
-    if (!split || saving) return;
+    if (!selectedFoco || !selectedNivel || !selectedDias || saving) return;
 
     try {
       setSaving(true);
@@ -275,32 +299,27 @@ export default function Onboarding() {
         return;
       }
 
-      await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: authUser.id,
-            email: authUser.email || "",
-            nome:
-              authUser.user_metadata?.nome ||
-              authUser.user_metadata?.full_name ||
-              authUser.user_metadata?.name ||
-              nome ||
-              "",
-            provider: authUser.app_metadata?.provider || "email",
-          },
-          { onConflict: "id" }
-        );
+      const payload = {
+        id: authUser.id,
+        email: authUser.email || "",
+        nome:
+          authUser.user_metadata?.nome ||
+          authUser.user_metadata?.full_name ||
+          authUser.user_metadata?.name ||
+          nome ||
+          "",
+        objetivo: selectedFoco.objetivo,
+        nivel: selectedNivel.nivel,
+        split: selectedNivel.split,
+        intensidade: selectedNivel.intensidade,
+        frequencia: selectedDias.frequencia,
+        onboarded: true,
+        provider: authUser.app_metadata?.provider || "email",
+      };
 
       const { error } = await supabase
         .from("profiles")
-        .update({
-          nivel,
-          frequencia: freq,
-          split,
-          onboarded: true,
-        })
-        .eq("id", authUser.id);
+        .upsert(payload, { onConflict: "id" });
 
       if (error) {
         console.error("Erro ao concluir onboarding:", error);
@@ -315,34 +334,31 @@ export default function Onboarding() {
     }
   }
 
-  function OptionCard({ item, selected, onSelect }) {
+  function OptionCard({ item, selected, onPress }) {
     return (
       <button
         type="button"
-        onClick={onSelect}
+        onClick={() => {
+          haptic();
+          onPress();
+        }}
         style={{
           ...S.optionCard,
           ...(selected ? S.optionCardActive : null),
-          transform: selected ? "scale(1)" : "scale(0.995)",
         }}
       >
-        <div style={S.optionTopRow}>
+        <div style={S.optionHeader}>
           <div>
             <div style={S.optionTitle}>{item.title}</div>
             {item.subtitle ? <div style={S.optionSubtitle}>{item.subtitle}</div> : null}
           </div>
 
-          <div
-            style={{
-              ...S.radio,
-              ...(selected ? S.radioActive : null),
-            }}
-          >
+          <div style={{ ...S.indicator, ...(selected ? S.indicatorActive : null) }}>
             <div
               style={{
-                ...S.radioInner,
+                ...S.indicatorInner,
                 opacity: selected ? 1 : 0,
-                transform: selected ? "scale(1)" : "scale(0.7)",
+                transform: selected ? "scale(1)" : "scale(0.72)",
               }}
             />
           </div>
@@ -350,17 +366,17 @@ export default function Onboarding() {
 
         <div
           style={{
-            ...S.expandWrap,
-            maxHeight: selected ? 260 : 0,
+            ...S.detailsWrap,
+            maxHeight: selected ? 220 : 0,
             opacity: selected ? 1 : 0,
             marginTop: selected ? 14 : 0,
           }}
         >
-          <div style={S.expandText}>{item.details}</div>
+          <div style={S.detailsText}>{item.details}</div>
 
-          <div style={S.metricsWrap}>
+          <div style={S.pillsRow}>
             {item.metrics.map((metric) => (
-              <div key={metric} style={S.metricPill}>
+              <div key={metric} style={S.pill}>
                 {metric}
               </div>
             ))}
@@ -370,25 +386,27 @@ export default function Onboarding() {
     );
   }
 
-  function renderStep() {
+  function renderQuestionBlock() {
     if (step === 0) {
       return (
         <>
           <div style={S.questionBalloon}>
-            <div style={S.stepLabel}>Etapa 1 de 3</div>
-            <div style={S.questionTitle}>Qual seu nível atual de treino {nome || "?"}</div>
-            <div style={S.questionText}>
-              Isso define o volume, a intensidade e a complexidade ideal para sua evolução.
+            <div style={S.stepText}>Etapa 1 de 3</div>
+            <div style={S.questionTitle}>
+              {saudacao()} {nome || ""}, qual o seu foco principal?
+            </div>
+            <div style={S.questionSubtitle}>
+              A resposta aqui muda a ênfase do treino dentro do app.
             </div>
           </div>
 
-          <div style={S.optionsStack}>
-            {niveis.map((item) => (
+          <div style={S.cardsCol}>
+            {step1Options.map((item) => (
               <OptionCard
                 key={item.key}
                 item={item}
-                selected={nivel === item.key}
-                onSelect={() => selectNivel(item.key)}
+                selected={foco === item.key}
+                onPress={() => setFoco(item.key)}
               />
             ))}
           </div>
@@ -400,20 +418,22 @@ export default function Onboarding() {
       return (
         <>
           <div style={S.questionBalloon}>
-            <div style={S.stepLabel}>Etapa 2 de 3</div>
-            <div style={S.questionTitle}>Quantas vezes por semana você consegue treinar?</div>
-            <div style={S.questionText}>
-              A frequência muda totalmente a melhor estratégia para seu treino funcionar de verdade.
+            <div style={S.stepText}>Etapa 2 de 3</div>
+            <div style={S.questionTitle}>
+              Qual seu nível e a melhor estrutura para você {nome || ""}?
+            </div>
+            <div style={S.questionSubtitle}>
+              Aqui o app define o tipo de divisão e a intensidade base do seu treino.
             </div>
           </div>
 
-          <div style={S.optionsStack}>
-            {frequencias.map((item) => (
+          <div style={S.cardsCol}>
+            {step2Options.map((item) => (
               <OptionCard
                 key={item.key}
                 item={item}
-                selected={freq === item.key}
-                onSelect={() => selectFreq(item.key)}
+                selected={nivelKey === item.key}
+                onPress={() => setNivelKey(item.key)}
               />
             ))}
           </div>
@@ -424,20 +444,22 @@ export default function Onboarding() {
     return (
       <>
         <div style={S.questionBalloon}>
-          <div style={S.stepLabel}>Etapa 3 de 3</div>
-          <div style={S.questionTitle}>Como você quer estruturar seu treino {nome || ""}?</div>
-          <div style={S.questionText}>
-            A divisão certa melhora recuperação, constância e acelera seus ganhos.
+          <div style={S.stepText}>Etapa 3 de 3</div>
+          <div style={S.questionTitle}>
+            Quantos dias por semana você consegue treinar?
+          </div>
+          <div style={S.questionSubtitle}>
+            Isso ajusta a frequência real do seu treino dentro do FitDeal.
           </div>
         </div>
 
-        <div style={S.optionsStack}>
-          {splits.map((item) => (
+        <div style={S.cardsCol}>
+          {step3Options.map((item) => (
             <OptionCard
               key={item.key}
               item={item}
-              selected={split === item.key}
-              onSelect={() => selectSplit(item.key)}
+              selected={dias === item.key}
+              onPress={() => setDias(item.key)}
             />
           ))}
         </div>
@@ -447,59 +469,47 @@ export default function Onboarding() {
 
   return (
     <div style={S.page}>
-      <div style={S.safeWrap}>
-        <div style={S.brandRow}>
-          <div style={S.brand}>
-            fitdeal<span style={{ color: ORANGE }}>.</span>
-          </div>
+      <div style={S.wrap}>
+        <div style={S.brand}>
+          fitdeal<span style={{ color: ORANGE }}>.</span>
         </div>
 
-        <div style={S.hero}>
-          <div style={S.greeting}>{greeting}</div>
-          <div style={S.heroSub}>
-            Vamos definir uma base inteligente para o seu treino render mais, evoluir melhor e
-            encaixar de verdade na sua rotina.
-          </div>
-        </div>
-
-        <div style={S.progressOuter}>
+        <div style={S.progressBlock}>
           <div style={S.progressTrack}>
             <div style={{ ...S.progressFill, width: progressWidth }} />
           </div>
         </div>
 
         <div
-          style={{
-            ...S.sliderViewport,
-            cursor: dragX !== 0 ? "grabbing" : "grab",
-          }}
+          ref={sliderRef}
+          style={S.viewport}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           <div
             style={{
-              ...S.sliderTrack,
+              ...S.track,
               width: `${TOTAL_STEPS * 100}%`,
-              transform: `translateX(calc(-${step * (100 / TOTAL_STEPS)}% + ${dragX}px))`,
-              transition: dragX === 0 ? "transform 260ms cubic-bezier(.22,1,.36,1)" : "none",
+              transform: `translateX(calc(-${step * (100 / TOTAL_STEPS)}% + ${dragPx}px))`,
+              transition: draggingRef.current ? "none" : "transform 260ms cubic-bezier(.22,1,.36,1)",
             }}
           >
-            <div style={S.slide}>{step === 0 ? renderStep() : null}</div>
-            <div style={S.slide}>{step === 1 ? renderStep() : null}</div>
-            <div style={S.slide}>{step === 2 ? renderStep() : null}</div>
+            <div style={S.slide}>{step === 0 ? renderQuestionBlock() : null}</div>
+            <div style={S.slide}>{step === 1 ? renderQuestionBlock() : null}</div>
+            <div style={S.slide}>{step === 2 ? renderQuestionBlock() : null}</div>
           </div>
         </div>
 
         <div style={S.bottomBar}>
           <button
             type="button"
-            onClick={prev}
+            onClick={goPrev}
+            disabled={step === 0}
             style={{
-              ...S.secondaryButton,
+              ...S.secondaryBtn,
               opacity: step === 0 ? 0.45 : 1,
             }}
-            disabled={step === 0}
           >
             Voltar
           </button>
@@ -507,12 +517,12 @@ export default function Onboarding() {
           {step < TOTAL_STEPS - 1 ? (
             <button
               type="button"
-              onClick={next}
+              onClick={goNext}
+              disabled={!canContinue()}
               style={{
-                ...S.primaryButton,
-                opacity: canContinueCurrentStep() ? 1 : 0.55,
+                ...S.primaryBtn,
+                opacity: canContinue() ? 1 : 0.55,
               }}
-              disabled={!canContinueCurrentStep()}
             >
               Continuar
             </button>
@@ -520,11 +530,11 @@ export default function Onboarding() {
             <button
               type="button"
               onClick={concluir}
+              disabled={!canContinue() || saving}
               style={{
-                ...S.primaryButton,
-                opacity: split && !saving ? 1 : 0.55,
+                ...S.primaryBtn,
+                opacity: canContinue() && !saving ? 1 : 0.55,
               }}
-              disabled={!split || saving}
             >
               {saving ? "Finalizando..." : "Concluir"}
             </button>
@@ -542,51 +552,24 @@ const S = {
     color: TEXT,
   },
 
-  safeWrap: {
+  wrap: {
     minHeight: "100vh",
     maxWidth: 560,
     margin: "0 auto",
-    padding: "20px 18px 28px",
+    padding: "24px 18px 28px",
     display: "flex",
     flexDirection: "column",
   },
 
-  brandRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "flex-start",
+  brand: {
+    fontSize: 32,
+    lineHeight: 1,
+    fontWeight: 800,
+    letterSpacing: -1.3,
     marginBottom: 18,
   },
 
-  brand: {
-    fontSize: 30,
-    lineHeight: 1,
-    fontWeight: 800,
-    letterSpacing: -1.2,
-    color: TEXT,
-  },
-
-  hero: {
-    marginBottom: 22,
-  },
-
-  greeting: {
-    fontSize: 34,
-    lineHeight: 1.08,
-    fontWeight: 800,
-    letterSpacing: -1.3,
-    color: TEXT,
-    marginBottom: 12,
-  },
-
-  heroSub: {
-    fontSize: 15,
-    lineHeight: 1.5,
-    color: MUTED,
-    maxWidth: 520,
-  },
-
-  progressOuter: {
+  progressBlock: {
     marginBottom: 18,
   },
 
@@ -596,25 +579,25 @@ const S = {
     borderRadius: 999,
     background: "#e9eff5",
     overflow: "hidden",
-    boxShadow: "inset 0 1px 1px rgba(15,23,42,0.05)",
   },
 
   progressFill: {
     height: "100%",
     borderRadius: 999,
-    background: `linear-gradient(90deg, ${ORANGE} 0%, #ff8c3a 100%)`,
+    background: `linear-gradient(90deg, ${ORANGE} 0%, #ff8f41 100%)`,
     transition: "width 260ms cubic-bezier(.22,1,.36,1)",
   },
 
-  sliderViewport: {
+  viewport: {
     position: "relative",
     overflow: "hidden",
     flex: 1,
     WebkitUserSelect: "none",
     userSelect: "none",
+    touchAction: "pan-y",
   },
 
-  sliderTrack: {
+  track: {
     display: "flex",
     height: "100%",
     willChange: "transform",
@@ -623,42 +606,40 @@ const S = {
   slide: {
     width: `${100 / TOTAL_STEPS}%`,
     flexShrink: 0,
-    paddingRight: 2,
   },
 
   questionBalloon: {
     background: "linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)",
     border: `1px solid ${BORDER}`,
-    borderRadius: 28,
+    borderRadius: 30,
     padding: "22px 18px",
-    boxShadow: "0 12px 30px rgba(15,23,42,0.06)",
+    boxShadow: "0 14px 32px rgba(15,23,42,0.06)",
     marginBottom: 16,
   },
 
-  stepLabel: {
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: 0.3,
+  stepText: {
+    fontSize: 12.5,
+    fontWeight: 800,
+    letterSpacing: 0.2,
     color: ORANGE,
-    marginBottom: 10,
+    marginBottom: 12,
   },
 
   questionTitle: {
-    fontSize: 28,
+    fontSize: 25,
     lineHeight: 1.1,
     fontWeight: 800,
-    letterSpacing: -0.9,
-    color: TEXT,
+    letterSpacing: -0.8,
     marginBottom: 10,
   },
 
-  questionText: {
+  questionSubtitle: {
     fontSize: 14,
     lineHeight: 1.5,
     color: MUTED,
   },
 
-  optionsStack: {
+  cardsCol: {
     display: "flex",
     flexDirection: "column",
     gap: 12,
@@ -674,58 +655,57 @@ const S = {
     padding: "18px 16px",
     boxShadow: "0 8px 24px rgba(15,23,42,0.04)",
     transition:
-      "border-color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease",
-    cursor: "pointer",
+      "border-color 170ms ease, background 170ms ease, box-shadow 170ms ease, transform 170ms ease",
   },
 
   optionCardActive: {
-    borderColor: "rgba(255,106,0,0.35)",
     background: "#fff7f1",
+    borderColor: "rgba(255,106,0,0.35)",
     boxShadow: "0 10px 28px rgba(255,106,0,0.10)",
+    transform: "scale(1)",
   },
 
-  optionTopRow: {
+  optionHeader: {
     display: "flex",
-    alignItems: "flex-start",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: 12,
   },
 
   optionTitle: {
     fontSize: 20,
-    lineHeight: 1.15,
-    fontWeight: 750,
-    letterSpacing: -0.5,
-    color: TEXT,
+    lineHeight: 1.12,
+    fontWeight: 760,
+    letterSpacing: -0.45,
     marginBottom: 4,
   },
 
   optionSubtitle: {
     fontSize: 13.5,
-    lineHeight: 1.4,
     color: MUTED,
+    lineHeight: 1.45,
   },
 
-  radio: {
+  indicator: {
     width: 24,
     height: 24,
     borderRadius: 999,
-    border: "1.5px solid #d1dae4",
+    border: "1.5px solid #cfd8e3",
+    background: "#fff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    marginTop: 2,
     transition: "all 160ms ease",
-    marginTop: 1,
-    background: "#fff",
   },
 
-  radioActive: {
+  indicatorActive: {
     borderColor: ORANGE,
-    background: "#fff2e8",
+    background: "#fff1e8",
   },
 
-  radioInner: {
+  indicatorInner: {
     width: 11,
     height: 11,
     borderRadius: 999,
@@ -733,25 +713,25 @@ const S = {
     transition: "all 160ms ease",
   },
 
-  expandWrap: {
+  detailsWrap: {
     overflow: "hidden",
     transition: "all 220ms cubic-bezier(.22,1,.36,1)",
   },
 
-  expandText: {
+  detailsText: {
     fontSize: 14,
     lineHeight: 1.55,
     color: "#425466",
   },
 
-  metricsWrap: {
+  pillsRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: 8,
     marginTop: 14,
   },
 
-  metricPill: {
+  pill: {
     padding: "9px 12px",
     borderRadius: 999,
     background: "#fff",
@@ -770,7 +750,7 @@ const S = {
     background: BG,
   },
 
-  secondaryButton: {
+  secondaryBtn: {
     height: 56,
     borderRadius: 18,
     border: "1px solid #dde6ee",
@@ -780,7 +760,7 @@ const S = {
     fontWeight: 700,
   },
 
-  primaryButton: {
+  primaryBtn: {
     height: 56,
     borderRadius: 18,
     border: "none",
