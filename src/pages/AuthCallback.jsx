@@ -6,7 +6,7 @@ const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 
-const MIN_LOAD_MS = 5000;
+const MIN_LOAD_MS = 1800;
 const FADE_MS = 450;
 
 const BOTTOM_SELECTORS = [
@@ -64,14 +64,9 @@ export default function AuthCallback() {
     try {
       hiddenMapRef.current.forEach((prevStyle, el) => {
         if (!el) return;
-
-        if (prevStyle) {
-          el.setAttribute("style", prevStyle);
-        } else {
-          el.removeAttribute("style");
-        }
+        if (prevStyle) el.setAttribute("style", prevStyle);
+        else el.removeAttribute("style");
       });
-
       hiddenMapRef.current.clear();
     } catch (error) {
       console.warn("restoreHidden error:", error);
@@ -84,9 +79,7 @@ export default function AuthCallback() {
     return () => {
       mountedRef.current = false;
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       if (observerRef.current) {
         try {
@@ -183,16 +176,29 @@ export default function AuthCallback() {
     const startedAt = Date.now();
     setVisible(true);
 
-    async function getStableSession() {
-      try {
+    async function exchangeIfNeeded() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+
+      if (!code) return null;
+
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+
+      return data?.session || null;
+    }
+
+    async function getSessionWithRetry() {
+      for (let i = 0; i < 10; i += 1) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        return session || null;
-      } catch {
-        return null;
+        if (session) return session;
+        await sleep(250);
       }
+
+      return null;
     }
 
     async function ensureProfile(user) {
@@ -213,28 +219,36 @@ export default function AuthCallback() {
         provider: user.app_metadata?.provider || "google",
       };
 
-      await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(payload, { onConflict: "id" });
+
+      if (error) throw error;
     }
 
     async function run() {
       try {
-        const session = await getStableSession();
+        let session = await exchangeIfNeeded();
+
+        if (!session) {
+          session = await getSessionWithRetry();
+        }
 
         let target = "/login";
 
         if (session?.user) {
-          try {
-            await ensureProfile(session.user);
+          await ensureProfile(session.user);
 
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("onboarded")
-              .eq("id", session.user.id)
-              .maybeSingle();
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("onboarded")
+            .eq("id", session.user.id)
+            .maybeSingle();
 
-            target = profile?.onboarded ? "/dashboard" : "/onboarding";
-          } catch {
+          if (error) {
             target = "/dashboard";
+          } else {
+            target = profile?.onboarded ? "/dashboard" : "/onboarding";
           }
         }
 
