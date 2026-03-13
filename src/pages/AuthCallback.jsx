@@ -176,25 +176,13 @@ export default function AuthCallback() {
     const startedAt = Date.now();
     setVisible(true);
 
-    async function exchangeIfNeeded() {
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-
-      if (!code) return null;
-
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
-
-      return data?.session || null;
-    }
-
-    async function getSessionWithRetry() {
-      for (let i = 0; i < 10; i += 1) {
+    async function waitForSession() {
+      for (let i = 0; i < 20; i++) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        if (session) return session;
+        if (session?.user) return session;
         await sleep(250);
       }
 
@@ -202,8 +190,6 @@ export default function AuthCallback() {
     }
 
     async function ensureProfile(user) {
-      if (!user?.id) return;
-
       const payload = {
         id: user.id,
         email: user.email || "",
@@ -228,28 +214,20 @@ export default function AuthCallback() {
 
     async function run() {
       try {
-        let session = await exchangeIfNeeded();
-
-        if (!session) {
-          session = await getSessionWithRetry();
-        }
+        const session = await waitForSession();
 
         let target = "/login";
 
         if (session?.user) {
           await ensureProfile(session.user);
 
-          const { data: profile, error } = await supabase
+          const { data: profile } = await supabase
             .from("profiles")
             .select("onboarded")
             .eq("id", session.user.id)
             .maybeSingle();
 
-          if (error) {
-            target = "/dashboard";
-          } else {
-            target = profile?.onboarded ? "/dashboard" : "/onboarding";
-          }
+          target = profile?.onboarded ? "/dashboard" : "/onboarding";
         }
 
         const elapsed = Date.now() - startedAt;
