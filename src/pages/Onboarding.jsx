@@ -1,278 +1,283 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
-const ORANGE = "#FF6A00";
-
 export default function Onboarding() {
-  const nav = useNavigate();
+
   const { user } = useAuth();
+  const nav = useNavigate();
 
-  const [step, setStep] = useState(1);
-  const [nome, setNome] = useState("");
-  const [goal, setGoal] = useState("Hipertrofia");
-  const [freq, setFreq] = useState(3);
-  const [level, setLevel] = useState("Iniciante");
+  const [step,setStep] = useState(1);
+  const [expanded,setExpanded] = useState(null);
+  const [nome,setNome] = useState("");
 
-  useEffect(() => {
-    if (user?.user_metadata?.nome) {
-      setNome(user.user_metadata.nome);
-    } else if (user?.email) {
-      setNome(user.email.split("@")[0]);
+  const [goal,setGoal] = useState(null);
+  const [freq,setFreq] = useState(null);
+  const [level,setLevel] = useState(null);
+
+  useEffect(()=>{
+
+    if(user?.user_metadata?.nome){
+      setNome(user.user_metadata.nome)
+    }else if(user?.email){
+      setNome(user.email.split("@")[0])
     }
-  }, [user]);
 
-  function saudacao() {
-    const h = new Date().getHours();
-    if (h < 12) return "Bom dia";
-    if (h < 18) return "Boa tarde";
-    return "Boa noite";
+  },[user])
+
+  function saudacao(){
+
+    const h = new Date().getHours()
+
+    if(h<12) return "Bom dia"
+    if(h<18) return "Boa tarde"
+    return "Boa noite"
+
   }
 
-  async function concluir() {
-    const { data: { user } } = await supabase.auth.getUser();
+  async function concluir(){
+
+    const { data:{ user } } = await supabase.auth.getUser()
+
+    await supabase.from("profiles").upsert({
+      id:user.id,
+      email:user.email
+    },{onConflict:"id"})
 
     await supabase
       .from("profiles")
-      .upsert(
-        {
-          id: user.id,
-          email: user.email
-        },
-        { onConflict: "id" }
-      );
-
-    const { error } = await supabase
-      .from("profiles")
       .update({
-        objetivo: goal,
-        frequencia: freq,
-        nivel: level,
-        onboarded: true
+        objetivo:goal,
+        frequencia:freq,
+        nivel:level,
+        onboarded:true
       })
-      .eq("id", user.id);
+      .eq("id",user.id)
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+    nav("/dashboard",{replace:true})
 
-    nav("/dashboard", { replace: true });
   }
 
-  const goals = [
-    { name: "Hipertrofia", desc: "Ganhar massa muscular e força" },
-    { name: "Emagrecimento", desc: "Reduzir gordura e melhorar condicionamento" },
-    { name: "Performance", desc: "Melhorar desempenho e resistência" }
-  ];
+  const objetivos = [
 
-  const levels = [
-    { name: "Iniciante", desc: "0–3 meses de treino" },
-    { name: "Intermediário", desc: "3–18 meses" },
-    { name: "Avançado", desc: "18+ meses" }
-  ];
+    {
+      name:"Hipertrofia",
+      desc:"Foco em aumento de massa muscular.",
+      gains:"Maior volume muscular, força progressiva."
+    },
 
-  return (
-    <div style={S.page}>
-      
+    {
+      name:"Emagrecimento",
+      desc:"Redução de gordura corporal.",
+      gains:"Maior gasto calórico e condicionamento."
+    },
+
+    {
+      name:"Performance",
+      desc:"Treino para desempenho físico.",
+      gains:"Explosão, resistência e força."
+    }
+
+  ]
+
+  const niveis = [
+
+    {
+      name:"Iniciante",
+      desc:"0–3 meses de treino",
+      metrics:"Adaptação neural e coordenação"
+    },
+
+    {
+      name:"Intermediário",
+      desc:"3–18 meses",
+      metrics:"Volume progressivo e hipertrofia"
+    },
+
+    {
+      name:"Avançado",
+      desc:"18+ meses",
+      metrics:"Alta intensidade e periodização"
+    }
+
+  ]
+
+  function toggle(i){
+
+    if(expanded===i){
+      setExpanded(null)
+    }else{
+      setExpanded(i)
+    }
+
+  }
+
+  return(
+
+    <div className="onboarding">
+
       {/* HEADER */}
-      <div style={S.header}>
-        <h2 style={S.sauda}>
+
+      <div className="onb-header">
+
+        <div className="logo">
+          fitdeal<span className="dot">.</span>
+        </div>
+
+        <div className="hello">
           {saudacao()}, {nome}
+        </div>
+
+      </div>
+
+
+      {/* PERGUNTA */}
+
+      {step===1 && (
+
+        <>
+        <h2>
+          Qual seu objetivo de treino {nome}?
         </h2>
 
-        <h1 style={S.title}>
-          Bem-vindo ao <span style={{color:ORANGE}}>FitDeal</span>
-        </h1>
+        {objetivos.map((o,i)=>(
 
-        <p style={S.subtitle}>
-          Vamos montar um plano que realmente evolua seu treino.
-        </p>
-      </div>
+          <div
+          key={o.name}
+          className={`card ${goal===o.name ? "active":""}`}
+          onClick={()=>{
 
-      {/* PROGRESS */}
-      <div style={S.progress}>
-        <div style={{...S.bar, width:`${step*33}%`}} />
-      </div>
+            setGoal(o.name)
+            toggle(i)
 
-      {/* STEP 1 */}
-      {step === 1 && (
-        <div>
-          <h3 style={S.q}>Qual seu principal objetivo?</h3>
+          }}
+          >
 
-          {goals.map(g=>(
-            <div
-              key={g.name}
-              style={{
-                ...S.card,
-                borderColor: goal===g.name ? ORANGE : "#ddd",
-                background: goal===g.name ? "#fff4ec" : "white"
-              }}
-              onClick={()=>setGoal(g.name)}
-            >
-              <b>{g.name}</b>
-              <p>{g.desc}</p>
+            <div className="card-title">
+
+              {o.name}
+
             </div>
-          ))}
 
-          <button style={S.btn} onClick={()=>setStep(2)}>
+            {expanded===i && (
+
+              <div className="card-expand">
+
+                <p>{o.desc}</p>
+                <p className="metric">{o.gains}</p>
+
+              </div>
+
+            )}
+
+          </div>
+
+        ))}
+
+        {goal && (
+          <button onClick={()=>setStep(2)} className="btn">
             Continuar
           </button>
-        </div>
+        )}
+
+        </>
+
       )}
 
-      {/* STEP 2 */}
-      {step === 2 && (
-        <div>
-          <h3 style={S.q}>Quantas vezes por semana você treina?</h3>
 
-          <div style={S.freq}>
-            {[2,3,4,5,6].map(n=>(
-              <div
-                key={n}
-                style={{
-                  ...S.freqCard,
-                  background: freq===n ? ORANGE : "#f1f5f9",
-                  color: freq===n ? "white" : "#0f172a"
-                }}
-                onClick={()=>setFreq(n)}
-              >
-                {n}x
-              </div>
-            ))}
-          </div>
+      {step===2 && (
 
-          <div style={S.nav}>
-            <button style={S.back} onClick={()=>setStep(1)}>Voltar</button>
-            <button style={S.btn} onClick={()=>setStep(3)}>Continuar</button>
-          </div>
-        </div>
-      )}
+        <>
+        <h2>
+          Quantas vezes por semana você treina {nome}?
+        </h2>
 
-      {/* STEP 3 */}
-      {step === 3 && (
-        <div>
-          <h3 style={S.q}>Seu nível atual?</h3>
+        <div className="freq">
 
-          {levels.map(l=>(
+          {[2,3,4,5,6].map(n=>(
+
             <div
-              key={l.name}
-              style={{
-                ...S.card,
-                borderColor: level===l.name ? ORANGE : "#ddd",
-                background: level===l.name ? "#fff4ec" : "white"
-              }}
-              onClick={()=>setLevel(l.name)}
+            key={n}
+            className={`freq-card ${freq===n?"active":""}`}
+            onClick={()=>setFreq(n)}
             >
-              <b>{l.name}</b>
-              <p>{l.desc}</p>
+              {n}x
             </div>
+
           ))}
 
-          <div style={S.nav}>
-            <button style={S.back} onClick={()=>setStep(2)}>Voltar</button>
-            <button style={S.btn} onClick={concluir}>
-              Concluir
-            </button>
-          </div>
         </div>
+
+        {freq && (
+          <button onClick={()=>setStep(3)} className="btn">
+            Continuar
+          </button>
+        )}
+
+        </>
+
+      )}
+
+
+      {step===3 && (
+
+        <>
+        <h2>
+          Qual seu nível atual de treino {nome}?
+        </h2>
+
+        {niveis.map((n,i)=>(
+
+          <div
+          key={n.name}
+          className={`card ${level===n.name?"active":""}`}
+          onClick={()=>{
+
+            setLevel(n.name)
+            toggle(i)
+
+          }}
+          >
+
+            <div className="card-title">
+
+              {n.name}
+
+            </div>
+
+            {expanded===i && (
+
+              <div className="card-expand">
+
+                <p>{n.desc}</p>
+                <p className="metric">{n.metrics}</p>
+
+              </div>
+
+            )}
+
+          </div>
+
+        ))}
+
+        {level && (
+
+          <button
+          className="btn"
+          onClick={concluir}
+          >
+            Concluir
+          </button>
+
+        )}
+
+        </>
+
       )}
 
     </div>
-  );
-}
 
-const S = {
-  page:{
-    minHeight:"100vh",
-    background:"#f8fafc",
-    padding:"28px",
-    fontFamily:"system-ui"
-  },
+  )
 
-  header:{
-    marginBottom:30
-  },
-
-  sauda:{
-    fontSize:18,
-    color:"#64748b",
-    marginBottom:8
-  },
-
-  title:{
-    fontSize:32,
-    fontWeight:800,
-    marginBottom:10
-  },
-
-  subtitle:{
-    color:"#475569",
-    fontSize:15
-  },
-
-  progress:{
-    height:6,
-    background:"#e2e8f0",
-    borderRadius:20,
-    marginBottom:30
-  },
-
-  bar:{
-    height:"100%",
-    background:ORANGE,
-    borderRadius:20
-  },
-
-  q:{
-    fontSize:22,
-    marginBottom:16
-  },
-
-  card:{
-    padding:18,
-    borderRadius:18,
-    border:"2px solid #ddd",
-    marginBottom:12,
-    cursor:"pointer"
-  },
-
-  freq:{
-    display:"flex",
-    gap:10,
-    flexWrap:"wrap",
-    marginBottom:30
-  },
-
-  freqCard:{
-    padding:"14px 20px",
-    borderRadius:12,
-    fontWeight:700,
-    cursor:"pointer"
-  },
-
-  btn:{
-    width:"100%",
-    padding:16,
-    borderRadius:14,
-    border:"none",
-    background:ORANGE,
-    color:"white",
-    fontWeight:700,
-    fontSize:16
-  },
-
-  back:{
-    padding:16,
-    borderRadius:14,
-    border:"none",
-    background:"#e2e8f0",
-    fontWeight:700
-  },
-
-  nav:{
-    display:"flex",
-    gap:10
-  }
 }
