@@ -52,152 +52,97 @@ export default function NutriPlus() {
   return (
     <div style={styles.page}>
       <section style={styles.hero}>
-        <div style={styles.heroKicker}>premium nutrition</div>
-        <h1 style={styles.heroTitle}>
+        <div style={styles.kicker}>plano premium</div>
+        <h1 style={styles.title}>
           Nutri<span style={{ color: ORANGE }}>+</span>
         </h1>
-        <p style={styles.heroSub}>
-          O plano para quem quer ir além do treino e ter uma rotina alimentar mais guiada,
-          prática e consistente dentro do FitDeal.
+        <p style={styles.sub}>
+          Para quem quer subir de nível no FitDeal e transformar alimentação em resultado de
+          verdade.
         </p>
 
-        <div style={styles.heroGlow} />
-
-        <div style={styles.heroCtas}>
-          {!paidNutriPlus ? (
-            <button style={styles.ctaPrimary} onClick={payMock} disabled={loading}>
-              {loading ? "Processando..." : `Assinar Nutri+ por ${fmtBRL(nutriPlus)}/mês`}
-            </button>
-          ) : (
-            <button style={styles.ctaPrimaryDark} onClick={() => nav("/nutricao")}>
-              Abrir minha nutrição
-            </button>
-          )}
-
-          <button style={styles.ctaGhost} onClick={() => nav("/planos")}>
-            Ver planos
-          </button>
-        </div>
-
-        <div style={styles.heroFoot}>
-          {paidNutriPlus
-            ? "Seu acesso Nutri+ já está ativo."
-            : "Libere o módulo de nutrição premium e deixe seu resultado mais completo."}
-        </div>
-      </section>
-
-      <section style={styles.proofCard}>
-        <div style={styles.sectionTag}>por que o nutri+ chama mais</div>
-        <h2 style={styles.sectionTitle}>Mais clareza. Mais consistência. Mais resultado.</h2>
-        <p style={styles.sectionText}>
-          O Nutri+ não é só uma aba extra. É a parte do app que aproxima treino e alimentação
-          em um fluxo mais completo, mais fácil de seguir e muito mais valioso no dia a dia.
-        </p>
-      </section>
-
-      <section style={styles.grid}>
-        <FeatureCard
-          title="Refeições guiadas"
-          desc="Combinações de refeições prontas para facilitar sua rotina e reduzir a dúvida na hora de comer."
-        />
-        <FeatureCard
-          title="Receitas completas"
-          desc="Passo a passo, ingredientes e preparo organizados para você executar sem perder tempo."
-        />
-        <FeatureCard
-          title="Hidratação no app"
-          desc="Acompanhe sua água do dia com uma meta sugerida e visão mais prática da sua rotina."
-        />
-        <FeatureCard
-          title="Suplementação"
-          desc="Plano de suplementos recomendado por objetivo e ajustado ao seu peso."
-        />
-        <FeatureCard
-          title="Favoritos"
-          desc="Salve refeições e receitas para repetir o que funciona melhor para você."
-        />
-        <FeatureCard
-          title="Fluxo premium"
-          desc="Uma experiência mais completa para quem quer mais direção, mais praticidade e mais constância."
-        />
-      </section>
-
-      <section style={styles.darkCard}>
-        <div style={styles.darkLabel}>o que você leva no nutri+</div>
-        <div style={styles.darkTitle}>Uma área premium feita para aumentar a adesão ao seu plano.</div>
-
-        <div style={styles.bullets}>
-          <Bullet text="Mais facilidade para decidir o que comer" />
-          <Bullet text="Mais organização na rotina alimentar" />
-          <Bullet text="Mais conexão entre treino e nutrição" />
-          <Bullet text="Mais valor percebido dentro do app" />
+        <div style={styles.highlightBox}>
+          <div style={styles.highlightTitle}>Treinar melhor começa em comer melhor.</div>
+          <div style={styles.highlightText}>
+            O Nutri+ organiza sua rotina alimentar dentro do app para você ganhar mais constância,
+            mais clareza e mais evolução no dia a dia.
+          </div>
         </div>
 
         {!paidNutriPlus ? (
-          <button style={styles.darkCta} onClick={payMock} disabled={loading}>
-            {loading ? "Processando..." : "Quero liberar o Nutri+"}
+          <button style={styles.ctaTop} onClick={payMock} disabled={loading}>
+            {loading ? "Processando..." : `Assinar Nutri+ por ${fmtBRL(nutriPlus)}/mês`}
           </button>
         ) : (
-          <button style={styles.darkCtaLight} onClick={() => nav("/nutricao")}>
-            Entrar na área Nutri+
+          <button style={styles.ctaTopActive} onClick={() => nav("/nutricao")}>
+            Abrir minha nutrição
           </button>
         )}
+      </section>
 
-        <div style={styles.smallPrint}>
-          Assinatura recorrente mensal. Cancelamento simples quando quiser.
+      <section style={styles.section}>
+        <h2 style={styles.sectionTitle}>O que muda com o Nutri+</h2>
+        <p style={styles.sectionText}>
+          Você abre o plano, entende rápido o valor, vê como isso encaixa no seu objetivo e sente
+          que faz sentido evoluir sua alimentação junto com o treino.
+        </p>
+
+        <div style={styles.list}>
+          <Benefit
+            title="Mais direção para sua alimentação"
+            desc="Menos dúvida no dia a dia e mais facilidade para seguir uma rotina melhor."
+          />
+          <Benefit
+            title="Refeições e receitas dentro do app"
+            desc="Tudo mais organizado para facilitar sua execução e manter constância."
+          />
+          <Benefit
+            title="Mais conexão entre treino e resultado"
+            desc="O plano premium deixa sua jornada mais completa e mais séria."
+          />
+          <Benefit
+            title="Evolução mais consistente"
+            desc="Quando alimentação e treino andam juntos, o resultado fica mais forte."
+          />
         </div>
       </section>
 
       <section style={styles.priceCard}>
-        <div style={styles.priceTop}>
-          <div>
-            <div style={styles.priceLabel}>assinatura nutri+</div>
-            <div style={styles.priceBig}>{fmtBRL(nutriPlus)}</div>
-            <div style={styles.priceSub}>por mês</div>
-          </div>
+        <div style={styles.priceLabel}>nutri+ mensal</div>
+        <div style={styles.priceBig}>{fmtBRL(nutriPlus)}</div>
+        <div style={styles.priceSub}>para melhorar sua alimentação dentro do FitDeal</div>
 
-          <div style={styles.pricePill}>premium</div>
-        </div>
-
-        <div style={styles.priceBox}>
-          <div style={styles.priceBoxTitle}>Para quem quer uma entrega mais completa</div>
-          <div style={styles.priceBoxText}>
-            Ideal para usuários que querem mais do que treino: querem apoio alimentar, praticidade
-            na rotina e uma experiência mais forte dentro do FitDeal.
-          </div>
+        <div style={styles.priceCopy}>
+          Ideal para quem quer uma experiência mais completa, mais premium e mais alinhada com
+          evolução real.
         </div>
 
         {!paidNutriPlus ? (
-          <button style={styles.bottomCta} onClick={payMock} disabled={loading}>
-            {loading ? "Processando..." : "Assinar Nutri+ agora"}
+          <button style={styles.ctaBottom} onClick={payMock} disabled={loading}>
+            {loading ? "Processando..." : "Quero subir de nível"}
           </button>
         ) : (
-          <button style={styles.bottomCtaDark} onClick={() => nav("/nutricao")}>
+          <button style={styles.ctaBottomActive} onClick={() => nav("/nutricao")}>
             Ir para Nutrição
           </button>
         )}
+
+        <div style={styles.small}>
+          Assinatura mensal com renovação automática. Cancelamento quando quiser.
+        </div>
       </section>
     </div>
   );
 }
 
-function FeatureCard({ title, desc }) {
+function Benefit({ title, desc }) {
   return (
-    <div style={styles.featureCard}>
-      <div style={styles.featureIcon}>+</div>
+    <div style={styles.benefit}>
+      <div style={styles.benefitIcon}>+</div>
       <div>
-        <div style={styles.featureTitle}>{title}</div>
-        <div style={styles.featureDesc}>{desc}</div>
+        <div style={styles.benefitTitle}>{title}</div>
+        <div style={styles.benefitDesc}>{desc}</div>
       </div>
-    </div>
-  );
-}
-
-function Bullet({ text }) {
-  return (
-    <div style={styles.bulletRow}>
-      <div style={styles.bulletDot} />
-      <div style={styles.bulletText}>{text}</div>
     </div>
   );
 }
@@ -210,8 +155,6 @@ const styles = {
   },
 
   hero: {
-    position: "relative",
-    overflow: "hidden",
     borderRadius: 28,
     padding: 20,
     background: BLACK,
@@ -219,26 +162,15 @@ const styles = {
     boxShadow: "0 22px 60px rgba(0,0,0,.18)",
   },
 
-  heroGlow: {
-    position: "absolute",
-    right: -40,
-    top: -50,
-    width: 180,
-    height: 180,
-    borderRadius: 999,
-    background: "radial-gradient(circle, rgba(255,106,0,.30) 0%, rgba(255,106,0,0) 72%)",
-    pointerEvents: "none",
-  },
-
-  heroKicker: {
+  kicker: {
     fontSize: 11,
     fontWeight: 900,
     textTransform: "uppercase",
-    letterSpacing: 1.1,
-    color: "rgba(255,255,255,.68)",
+    letterSpacing: 1,
+    color: "rgba(255,255,255,.65)",
   },
 
-  heroTitle: {
+  title: {
     margin: "8px 0 0 0",
     fontSize: 34,
     lineHeight: 1,
@@ -246,22 +178,39 @@ const styles = {
     letterSpacing: -1,
   },
 
-  heroSub: {
+  sub: {
     marginTop: 10,
-    maxWidth: 420,
     fontSize: 14,
     lineHeight: 1.5,
     fontWeight: 700,
-    color: "rgba(255,255,255,.82)",
+    color: "rgba(255,255,255,.84)",
   },
 
-  heroCtas: {
-    display: "grid",
-    gap: 10,
+  highlightBox: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 20,
+    background: "rgba(255,255,255,.06)",
+    border: "1px solid rgba(255,255,255,.08)",
+  },
+
+  highlightTitle: {
+    fontSize: 16,
+    lineHeight: 1.2,
+    fontWeight: 900,
+    color: WHITE,
+  },
+
+  highlightText: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 1.5,
+    fontWeight: 700,
+    color: "rgba(255,255,255,.72)",
+  },
+
+  ctaTop: {
     marginTop: 18,
-  },
-
-  ctaPrimary: {
     width: "100%",
     padding: 15,
     borderRadius: 18,
@@ -273,7 +222,8 @@ const styles = {
     boxShadow: "0 18px 45px rgba(255,106,0,.24)",
   },
 
-  ctaPrimaryDark: {
+  ctaTopActive: {
+    marginTop: 18,
     width: "100%",
     padding: 15,
     borderRadius: 18,
@@ -284,26 +234,7 @@ const styles = {
     fontSize: 15,
   },
 
-  ctaGhost: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,.16)",
-    background: "rgba(255,255,255,.06)",
-    color: WHITE,
-    fontWeight: 850,
-    fontSize: 14,
-  },
-
-  heroFoot: {
-    marginTop: 12,
-    fontSize: 12,
-    lineHeight: 1.4,
-    fontWeight: 700,
-    color: "rgba(255,255,255,.68)",
-  },
-
-  proofCard: {
+  section: {
     marginTop: 14,
     borderRadius: 24,
     padding: 18,
@@ -312,20 +243,7 @@ const styles = {
     boxShadow: "0 14px 40px rgba(0,0,0,.05)",
   },
 
-  sectionTag: {
-    display: "inline-block",
-    padding: "8px 12px",
-    borderRadius: 999,
-    background: "rgba(255,106,0,.10)",
-    color: BLACK,
-    fontSize: 11,
-    fontWeight: 950,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-
   sectionTitle: {
-    marginTop: 12,
     fontSize: 22,
     lineHeight: 1.08,
     letterSpacing: -0.5,
@@ -341,26 +259,25 @@ const styles = {
     color: GRAY,
   },
 
-  grid: {
+  list: {
     display: "grid",
     gap: 12,
-    marginTop: 14,
+    marginTop: 16,
   },
 
-  featureCard: {
+  benefit: {
     display: "flex",
     gap: 12,
     alignItems: "flex-start",
-    padding: 16,
-    borderRadius: 22,
-    background: WHITE,
-    border: "1px solid rgba(0,0,0,.06)",
-    boxShadow: "0 10px 28px rgba(0,0,0,.04)",
+    padding: 14,
+    borderRadius: 20,
+    background: "#FAFAF8",
+    border: "1px solid rgba(0,0,0,.05)",
   },
 
-  featureIcon: {
-    width: 34,
-    height: 34,
+  benefitIcon: {
+    width: 32,
+    height: 32,
     borderRadius: 12,
     background: "rgba(255,106,0,.12)",
     color: ORANGE,
@@ -371,105 +288,19 @@ const styles = {
     flexShrink: 0,
   },
 
-  featureTitle: {
-    fontSize: 15,
+  benefitTitle: {
+    fontSize: 14.5,
     lineHeight: 1.2,
     fontWeight: 950,
     color: BLACK,
   },
 
-  featureDesc: {
+  benefitDesc: {
     marginTop: 5,
     fontSize: 12.5,
     lineHeight: 1.45,
     fontWeight: 700,
     color: GRAY,
-  },
-
-  darkCard: {
-    marginTop: 14,
-    borderRadius: 26,
-    padding: 18,
-    background: "linear-gradient(180deg, #121212 0%, #0B0B0C 100%)",
-    color: WHITE,
-    boxShadow: "0 18px 52px rgba(0,0,0,.18)",
-  },
-
-  darkLabel: {
-    fontSize: 11,
-    fontWeight: 900,
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
-    color: "rgba(255,255,255,.64)",
-  },
-
-  darkTitle: {
-    marginTop: 10,
-    fontSize: 24,
-    lineHeight: 1.08,
-    fontWeight: 950,
-    letterSpacing: -0.6,
-  },
-
-  bullets: {
-    display: "grid",
-    gap: 10,
-    marginTop: 16,
-  },
-
-  bulletRow: {
-    display: "flex",
-    gap: 10,
-    alignItems: "flex-start",
-  },
-
-  bulletDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 999,
-    background: ORANGE,
-    marginTop: 6,
-    flexShrink: 0,
-  },
-
-  bulletText: {
-    fontSize: 13,
-    lineHeight: 1.45,
-    fontWeight: 800,
-    color: "rgba(255,255,255,.88)",
-  },
-
-  darkCta: {
-    marginTop: 18,
-    width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: BLACK,
-    fontWeight: 950,
-    fontSize: 15,
-    boxShadow: "0 18px 45px rgba(255,106,0,.24)",
-  },
-
-  darkCtaLight: {
-    marginTop: 18,
-    width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "none",
-    background: WHITE,
-    color: BLACK,
-    fontWeight: 950,
-    fontSize: 15,
-  },
-
-  smallPrint: {
-    marginTop: 10,
-    fontSize: 11,
-    lineHeight: 1.4,
-    fontWeight: 700,
-    color: "rgba(255,255,255,.62)",
   },
 
   priceCard: {
@@ -479,13 +310,6 @@ const styles = {
     background: WHITE,
     border: "1px solid rgba(0,0,0,.06)",
     boxShadow: "0 14px 40px rgba(0,0,0,.05)",
-  },
-
-  priceTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "flex-end",
   },
 
   priceLabel: {
@@ -507,44 +331,24 @@ const styles = {
 
   priceSub: {
     marginTop: 5,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 800,
     color: GRAY,
   },
 
-  pricePill: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.22)",
-    color: BLACK,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-  },
-
-  priceBox: {
+  priceCopy: {
     marginTop: 14,
     padding: 14,
     borderRadius: 18,
     background: "#FAFAF8",
     border: "1px solid rgba(0,0,0,.05)",
-  },
-
-  priceBoxTitle: {
-    fontSize: 14,
-    fontWeight: 950,
-    color: BLACK,
-  },
-
-  priceBoxText: {
-    marginTop: 5,
     fontSize: 12.5,
     lineHeight: 1.45,
     fontWeight: 700,
     color: GRAY,
   },
 
-  bottomCta: {
+  ctaBottom: {
     marginTop: 14,
     width: "100%",
     padding: 15,
@@ -557,7 +361,7 @@ const styles = {
     boxShadow: "0 18px 45px rgba(255,106,0,.22)",
   },
 
-  bottomCtaDark: {
+  ctaBottomActive: {
     marginTop: 14,
     width: "100%",
     padding: 15,
@@ -567,5 +371,13 @@ const styles = {
     color: WHITE,
     fontWeight: 950,
     fontSize: 15,
+  },
+
+  small: {
+    marginTop: 10,
+    fontSize: 11,
+    lineHeight: 1.4,
+    fontWeight: 700,
+    color: GRAY,
   },
 };
