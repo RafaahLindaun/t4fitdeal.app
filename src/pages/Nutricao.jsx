@@ -13,6 +13,8 @@ const WHITE = "#FFFFFF";
 const BORDER = "#E9E9E7";
 
 const WATER_STEP = 250;
+const INITIAL_KEYWORDS_VISIBLE = 5;
+const KEYWORDS_STEP = 2;
 
 const MEAL_LABELS = {
   cafe: "Café da manhã",
@@ -29,11 +31,54 @@ function normalizeText(v) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+function toDateKey(date) {
+  return date.toISOString().slice(0, 10);
 }
 
-function buildWeekStrip(daysCount) {
+function todayKey() {
+  return toDateKey(new Date());
+}
+
+function getWaterStorageKey(email, dateKey) {
+  return `nutri_water_${email}_${dateKey}`;
+}
+
+function getWaterHistoryKey(email) {
+  return `nutri_water_history_${email}`;
+}
+
+function readWaterHistory(email) {
+  try {
+    const raw = localStorage.getItem(getWaterHistoryKey(email));
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeWaterHistory(email, history) {
+  localStorage.setItem(getWaterHistoryKey(email), JSON.stringify(history));
+}
+
+function persistWaterForDate(email, dateKey, ml) {
+  const safeMl = Math.max(0, Number(ml) || 0);
+  localStorage.setItem(getWaterStorageKey(email, dateKey), String(safeMl));
+
+  const history = readWaterHistory(email);
+  history[dateKey] = safeMl;
+  writeWaterHistory(email, history);
+}
+
+function getWaterForDate(email, dateKey) {
+  const direct = localStorage.getItem(getWaterStorageKey(email, dateKey));
+  if (direct !== null) return Math.max(0, Number(direct) || 0);
+
+  const history = readWaterHistory(email);
+  return Math.max(0, Number(history?.[dateKey]) || 0);
+}
+
+function buildWeekStrip(daysCount, email, waterGoal) {
   const labels = ["D", "S", "T", "Q", "Q", "S", "S"];
   const result = [];
   const count = Math.max(3, Math.min(Number(daysCount) || 3, 7));
@@ -42,12 +87,17 @@ function buildWeekStrip(daysCount) {
   for (let i = 0; i < count; i += 1) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
+    const key = toDateKey(d);
+    const total = getWaterForDate(email, key);
+    const done = waterGoal > 0 ? total >= waterGoal : false;
 
     result.push({
-      key: d.toISOString().slice(0, 10),
+      key,
       day: d.getDate(),
       label: labels[d.getDay()],
       isToday: i === 0,
+      total,
+      done,
     });
   }
 
@@ -89,6 +139,30 @@ function getSupplements(profile) {
   ];
 }
 
+function prettifyRecipeTitle(title) {
+  const safe = String(title || "").trim();
+  if (!safe) return "";
+
+  return safe
+    .split(" ")
+    .map((part) => {
+      if (!part) return part;
+      const lower = part.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
+function getRecipeKeywords(recipe) {
+  const tags = Array.isArray(recipe?.tags) ? recipe.tags : [];
+  const ingredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
+  const keywords = [...tags, ...ingredients]
+    .map((v) => String(v || "").trim())
+    .filter(Boolean);
+
+  return [...new Set(keywords)];
+}
+
 function generateMealOptions({ mealKey, profile, search, activeChip }) {
   const base = BASE_RECIPES?.[mealKey] || [];
   const objetivo = profile?.objetivo || "Hipertrofia";
@@ -110,10 +184,12 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
 
     return {
       ...recipe,
+      title: prettifyRecipeTitle(recipe.title),
       stableId: recipe.id,
       mealKey,
       emphasis,
       favoriteHint: `Salvar ${recipe.title}`,
+      keywords: getRecipeKeywords(recipe),
     };
   });
 
@@ -121,6 +197,9 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
     items = items.filter((item) =>
       item.tags?.some((tag) =>
         normalizeText(tag).includes(normalizeText(activeChip))
+      ) ||
+      item.keywords?.some((keyword) =>
+        normalizeText(keyword).includes(normalizeText(activeChip))
       )
     );
   }
@@ -132,11 +211,38 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
       (item) =>
         normalizeText(item.title).includes(q) ||
         normalizeText(item.subtitle).includes(q) ||
-        item.tags?.some((tag) => normalizeText(tag).includes(q))
+        item.keywords?.some((keyword) => normalizeText(keyword).includes(q))
     );
   }
 
   return items;
+}
+
+function RecipeKeywordList({ item, expandedCount, onMore }) {
+  const keywords = item.keywords || [];
+  const visibleCount = Math.min(expandedCount, keywords.length);
+  const visible = keywords.slice(0, visibleCount);
+  const hidden = keywords.length - visibleCount;
+
+  return (
+    <div style={styles.keywordRow}>
+      {visible.map((keyword) => (
+        <span key={`${item.stableId}-${keyword}`} style={styles.keywordPill}>
+          {keyword}
+        </span>
+      ))}
+
+      {hidden > 0 ? (
+        <button
+          type="button"
+          style={styles.moreKeywordBtn}
+          onClick={onMore}
+        >
+          ver mais +{Math.min(KEYWORDS_STEP, hidden)}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export default function Nutricao() {
@@ -153,21 +259,18 @@ export default function Nutricao() {
   });
 
   const [loadingProfile, setLoadingProfile] = useState(true);
-
   const [mealTab, setMealTab] = useState("cafe");
   const [search, setSearch] = useState("");
   const [activeChip, setActiveChip] = useState("todos");
   const [expandedId, setExpandedId] = useState(null);
+  const [keywordVisibleById, setKeywordVisibleById] = useState({});
 
   const [favorites, setFavorites] = useState(() => {
     const raw = localStorage.getItem(`nutri_fav_${email}`);
     return raw ? JSON.parse(raw) : [];
   });
 
-  const [waterMl, setWaterMl] = useState(() => {
-    const raw = localStorage.getItem(`nutri_water_${email}_${todayKey()}`);
-    return raw ? Number(raw) : 0;
-  });
+  const [waterMl, setWaterMl] = useState(() => getWaterForDate(email, todayKey()));
 
   const paidNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
@@ -207,19 +310,16 @@ export default function Nutricao() {
   }, [favorites, email]);
 
   useEffect(() => {
-    localStorage.setItem(`nutri_water_${email}_${todayKey()}`, String(waterMl));
+    persistWaterForDate(email, todayKey(), waterMl);
   }, [waterMl, email]);
 
   const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
   const waterLeft = Math.max(0, waterGoal - waterMl);
-  const waterPct = Math.max(
-    0,
-    Math.min(100, Math.round((waterMl / waterGoal) * 100))
-  );
+  const waterPct = waterGoal > 0 ? Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100))) : 0;
 
   const weekStrip = useMemo(
-    () => buildWeekStrip(profile?.frequencia || 3),
-    [profile?.frequencia]
+    () => buildWeekStrip(profile?.frequencia || 3, email, waterGoal),
+    [profile?.frequencia, email, waterGoal, waterMl]
   );
 
   const chips = useMemo(
@@ -237,25 +337,22 @@ export default function Nutricao() {
   }, [mealTab, profile, search, activeChip]);
 
   const visibleOptions = useMemo(() => {
-    if (!favorites?.length) return options;
     return options.map((item) => ({
       ...item,
       isFavorite: favorites.includes(item.stableId),
     }));
   }, [options, favorites]);
 
-  const suggestion = useMemo(() => {
-    return visibleOptions[0] || null;
-  }, [visibleOptions]);
+  const suggestion = useMemo(() => visibleOptions[0] || null, [visibleOptions]);
 
   const supplements = useMemo(() => getSupplements(profile), [profile]);
 
-  function addWater() {
-    setWaterMl((prev) => Math.min(waterGoal, prev + WATER_STEP));
+  function addWater(amount = WATER_STEP) {
+    setWaterMl((prev) => Math.min(waterGoal, prev + amount));
   }
 
-  function removeWater() {
-    setWaterMl((prev) => Math.max(0, prev - WATER_STEP));
+  function removeWater(amount = WATER_STEP) {
+    setWaterMl((prev) => Math.max(0, prev - amount));
   }
 
   function toggleFavorite(id) {
@@ -264,6 +361,16 @@ export default function Nutricao() {
         return prev.filter((v) => v !== id);
       }
       return [id, ...prev];
+    });
+  }
+
+  function handleMoreKeywords(id, total) {
+    setKeywordVisibleById((prev) => {
+      const current = prev[id] || INITIAL_KEYWORDS_VISIBLE;
+      return {
+        ...prev,
+        [id]: Math.min(current + KEYWORDS_STEP, total),
+      };
     });
   }
 
@@ -308,25 +415,6 @@ export default function Nutricao() {
           </div>
         </div>
 
-        <button
-          type="button"
-          style={styles.suppHeroBtn}
-          onClick={() => nav("/suplementacao")}
-        >
-          <div style={styles.suppHeroTop}>
-            <div style={styles.suppHeroKicker}>SUPLEMENTAÇÃO</div>
-            <div style={styles.suppHeroArrow}>›</div>
-          </div>
-
-          <div style={styles.suppHeroTitle}>
-            Plano premium de suplementos<span style={{ color: ORANGE }}>.</span>
-          </div>
-
-          <div style={styles.suppHeroSub}>
-            Recomendado pelo seu objetivo e pronto para abrir no app.
-          </div>
-        </button>
-
         <section style={styles.heroCard}>
           <div>
             <div style={styles.heroTitle}>
@@ -344,6 +432,25 @@ export default function Nutricao() {
           </div>
         </section>
 
+        <button
+          type="button"
+          style={styles.suppHeroBtn}
+          onClick={() => nav("/suplementacao")}
+        >
+          <div style={styles.suppHeroTop}>
+            <div style={styles.suppHeroKicker}>SUPLEMENTAÇÃO</div>
+            <div style={styles.suppHeroArrow}>›</div>
+          </div>
+
+          <div style={styles.suppHeroTitle}>
+            Plano premium de suplementos<span style={{ color: ORANGE }}>.</span>
+          </div>
+
+          <div style={styles.suppHeroSub}>
+            Ajustado ao seu objetivo, com orientação rápida e acesso direto.
+          </div>
+        </button>
+
         <section style={styles.section}>
           <div style={styles.hydrationHeader}>
             <div>
@@ -355,7 +462,13 @@ export default function Nutricao() {
               </div>
             </div>
 
-            <div style={styles.waterPctBadge}>{waterPct}%</div>
+            <button
+              type="button"
+              style={styles.calendarNavBtn}
+              onClick={() => nav("/calendario")}
+            >
+              Calendário
+            </button>
           </div>
 
           <div style={styles.waterCard}>
@@ -368,6 +481,11 @@ export default function Nutricao() {
               />
             </div>
 
+            <div style={styles.waterPercentRow}>
+              <div style={styles.waterBigPercent}>{waterPct}%</div>
+              <div style={styles.waterPercentHint}>marcado pelo total do dia</div>
+            </div>
+
             <div style={styles.weekStrip}>
               {weekStrip.map((item) => (
                 <div
@@ -375,10 +493,12 @@ export default function Nutricao() {
                   style={{
                     ...styles.weekPill,
                     ...(item.isToday ? styles.weekPillActive : null),
+                    ...(item.done ? styles.weekPillDone : null),
                   }}
                 >
                   <div style={styles.weekLabel}>{item.label}</div>
                   <div style={styles.weekDay}>{item.day}</div>
+                  <div style={styles.weekMl}>{item.total} ml</div>
                 </div>
               ))}
             </div>
@@ -391,11 +511,11 @@ export default function Nutricao() {
             </div>
 
             <div style={styles.waterActions}>
-              <button style={styles.waterBtnSoft} onClick={removeWater}>
+              <button style={styles.waterBtnSoft} onClick={() => removeWater(250)}>
                 −250 ml
               </button>
 
-              <button style={styles.waterBtn} onClick={addWater}>
+              <button style={styles.waterBtn} onClick={() => addWater(250)}>
                 +250 ml
               </button>
             </div>
@@ -404,7 +524,7 @@ export default function Nutricao() {
 
         {suggestion ? (
           <section style={styles.suggestionCard}>
-            <div style={styles.suggestionLabel}>SUGESTÃO DO DIA</div>
+            <div style={styles.suggestionLabel}>O que fazer agora?</div>
             <div style={styles.suggestionTitle}>{suggestion.title}</div>
             <div style={styles.suggestionSub}>{suggestion.subtitle}</div>
 
@@ -415,6 +535,18 @@ export default function Nutricao() {
                 </span>
               ))}
             </div>
+
+            <button
+              type="button"
+              style={styles.suggestionAction}
+              onClick={() =>
+                setExpandedId((prev) =>
+                  prev === suggestion.stableId ? null : suggestion.stableId
+                )
+              }
+            >
+              Ver receita
+            </button>
           </section>
         ) : null}
 
@@ -469,6 +601,9 @@ export default function Nutricao() {
             {visibleOptions.map((item) => {
               const open = expandedId === item.stableId;
               const favorite = favorites.includes(item.stableId);
+              const totalKeywords = item.keywords?.length || 0;
+              const visibleKeywordCount =
+                keywordVisibleById[item.stableId] || INITIAL_KEYWORDS_VISIBLE;
 
               return (
                 <div key={item.stableId} style={styles.recipeCard}>
@@ -499,10 +634,17 @@ export default function Nutricao() {
                         ...(favorite ? styles.favoriteBtnActive : null),
                       }}
                       onClick={() => toggleFavorite(item.stableId)}
+                      aria-label={favorite ? "Remover favorito" : "Salvar favorito"}
                     >
                       {favorite ? "★" : "☆"}
                     </button>
                   </div>
+
+                  <RecipeKeywordList
+                    item={item}
+                    expandedCount={visibleKeywordCount}
+                    onMore={() => handleMoreKeywords(item.stableId, totalKeywords)}
+                  />
 
                   {open && (
                     <div style={styles.expandArea}>
@@ -590,53 +732,6 @@ const styles = {
     letterSpacing: -1,
   },
 
-  suppHeroBtn: {
-    width: "100%",
-    padding: 18,
-    borderRadius: 24,
-    border: "none",
-    background: BLACK,
-    color: WHITE,
-    textAlign: "left",
-    marginBottom: 14,
-    boxShadow: "0 14px 34px rgba(0,0,0,.14)",
-  },
-
-  suppHeroTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  suppHeroKicker: {
-    fontSize: 11,
-    fontWeight: 900,
-    letterSpacing: 0.8,
-    color: "rgba(255,255,255,.68)",
-  },
-
-  suppHeroArrow: {
-    fontSize: 24,
-    fontWeight: 800,
-    color: "rgba(255,255,255,.68)",
-  },
-
-  suppHeroTitle: {
-    marginTop: 12,
-    fontSize: 22,
-    fontWeight: 900,
-    letterSpacing: -0.5,
-    color: WHITE,
-  },
-
-  suppHeroSub: {
-    marginTop: 8,
-    fontSize: 13,
-    lineHeight: 1.45,
-    color: "rgba(255,255,255,.74)",
-    fontWeight: 600,
-  },
-
   heroCard: {
     display: "flex",
     justifyContent: "space-between",
@@ -646,6 +741,7 @@ const styles = {
     background: WHITE,
     border: `1px solid ${BORDER}`,
     boxShadow: "0 10px 26px rgba(0,0,0,.04)",
+    marginBottom: 14,
   },
 
   heroTitle: {
@@ -688,6 +784,54 @@ const styles = {
     color: BLACK,
   },
 
+  suppHeroBtn: {
+    width: "100%",
+    padding: 18,
+    borderRadius: 24,
+    border: "none",
+    background: BLACK,
+    color: WHITE,
+    textAlign: "left",
+    marginBottom: 18,
+    boxShadow: "0 14px 34px rgba(0,0,0,.14)",
+  },
+
+  suppHeroTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  suppHeroKicker: {
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 0.8,
+    color: "rgba(255,255,255,.68)",
+  },
+
+  suppHeroArrow: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "rgba(255,255,255,.68)",
+  },
+
+  suppHeroTitle: {
+    marginTop: 12,
+    fontSize: 22,
+    fontWeight: 900,
+    letterSpacing: -0.5,
+    color: WHITE,
+    lineHeight: 1.08,
+  },
+
+  suppHeroSub: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 1.45,
+    color: "rgba(255,255,255,.74)",
+    fontWeight: 600,
+  },
+
   section: {
     marginTop: 18,
   },
@@ -724,11 +868,16 @@ const styles = {
     fontWeight: 600,
   },
 
-  waterPctBadge: {
-    fontSize: 24,
+  calendarNavBtn: {
+    height: 40,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    color: BLACK,
     fontWeight: 800,
-    color: ORANGE,
-    letterSpacing: -0.6,
+    fontSize: 13,
+    whiteSpace: "nowrap",
   },
 
   waterCard: {
@@ -754,6 +903,26 @@ const styles = {
     transition: "width .3s ease",
   },
 
+  waterPercentRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 14,
+  },
+
+  waterBigPercent: {
+    fontSize: 30,
+    fontWeight: 800,
+    color: ORANGE,
+    letterSpacing: -1,
+  },
+
+  waterPercentHint: {
+    fontSize: 12.5,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
   weekStrip: {
     display: "flex",
     gap: 8,
@@ -762,7 +931,7 @@ const styles = {
   },
 
   weekPill: {
-    minWidth: 56,
+    minWidth: 62,
     padding: "10px 8px",
     borderRadius: 16,
     border: `1px solid ${BORDER}`,
@@ -773,6 +942,10 @@ const styles = {
   weekPillActive: {
     background: "#FFF7F1",
     borderColor: "rgba(255,106,0,.24)",
+  },
+
+  weekPillDone: {
+    boxShadow: "inset 0 0 0 1px rgba(255,106,0,.18)",
   },
 
   weekLabel: {
@@ -786,6 +959,13 @@ const styles = {
     fontSize: 17,
     color: BLACK,
     fontWeight: 800,
+  },
+
+  weekMl: {
+    marginTop: 4,
+    fontSize: 10.5,
+    color: GRAY,
+    fontWeight: 700,
   },
 
   waterNumbers: {
@@ -843,10 +1023,10 @@ const styles = {
   },
 
   suggestionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 900,
-    letterSpacing: 0.8,
-    color: "rgba(255,255,255,.68)",
+    letterSpacing: 0.5,
+    color: "rgba(255,255,255,.72)",
   },
 
   suggestionTitle: {
@@ -869,6 +1049,18 @@ const styles = {
     gap: 8,
     flexWrap: "wrap",
     marginTop: 12,
+  },
+
+  suggestionAction: {
+    marginTop: 16,
+    height: 44,
+    padding: "0 16px",
+    borderRadius: 14,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 14,
   },
 
   tag: {
@@ -981,6 +1173,7 @@ const styles = {
     fontWeight: 800,
     color: BLACK,
     lineHeight: 1.15,
+    letterSpacing: -0.2,
   },
 
   recipeSub: {
@@ -1022,6 +1215,34 @@ const styles = {
     background: "#FFF7F1",
     borderColor: "rgba(255,106,0,.24)",
     color: ORANGE,
+  },
+
+  keywordRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+
+  keywordPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 11.5,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  moreKeywordBtn: {
+    height: 34,
+    padding: "0 12px",
+    borderRadius: 999,
+    border: `1px solid rgba(255,106,0,.24)`,
+    background: "#FFF7F1",
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 12,
   },
 
   expandArea: {
