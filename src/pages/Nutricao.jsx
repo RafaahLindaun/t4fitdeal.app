@@ -202,11 +202,7 @@ function RecipeKeywordList({ item, expandedCount, onMore }) {
       ))}
 
       {hidden > 0 ? (
-        <button
-          type="button"
-          style={styles.moreKeywordBtn}
-          onClick={onMore}
-        >
+        <button type="button" style={styles.moreKeywordBtn} onClick={onMore}>
           ver mais +{Math.min(KEYWORDS_STEP, hidden)}
         </button>
       ) : null}
@@ -233,13 +229,12 @@ export default function Nutricao() {
   const [activeChip, setActiveChip] = useState("todos");
   const [expandedId, setExpandedId] = useState(null);
   const [keywordVisibleById, setKeywordVisibleById] = useState({});
-
   const [favorites, setFavorites] = useState(() => {
     const raw = localStorage.getItem(`nutri_fav_${email}`);
     return raw ? JSON.parse(raw) : [];
   });
-
   const [waterMl, setWaterMl] = useState(() => getWaterForDate(email, todayKey()));
+  const [isResettingWater, setIsResettingWater] = useState(false);
 
   const paidNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
@@ -315,7 +310,12 @@ export default function Nutricao() {
     }));
   }, [options, favorites]);
 
-  const suggestion = useMemo(() => visibleOptions[0] || null, [visibleOptions]);
+  const suggestion = useMemo(() => {
+    if (!visibleOptions.length) return null;
+    const hour = new Date().getHours();
+    const currentMeal = hour < 11 ? "cafe" : hour < 17 ? "almoco" : "janta";
+    return visibleOptions.find((item) => item.mealKey === currentMeal) || visibleOptions[0];
+  }, [visibleOptions]);
 
   function addWater(amount = WATER_STEP) {
     setWaterMl((prev) => Math.min(waterGoal, prev + amount));
@@ -323,6 +323,12 @@ export default function Nutricao() {
 
   function removeWater(amount = WATER_STEP) {
     setWaterMl((prev) => Math.max(0, prev - amount));
+  }
+
+  function resetWater() {
+    setIsResettingWater(true);
+    setWaterMl(0);
+    setTimeout(() => setIsResettingWater(false), 520);
   }
 
   function toggleFavorite(id) {
@@ -341,6 +347,17 @@ export default function Nutricao() {
         ...prev,
         [id]: Math.min(current + KEYWORDS_STEP, total),
       };
+    });
+  }
+
+  function openSuggestionRecipe() {
+    if (!suggestion) return;
+    setMealTab(suggestion.mealKey);
+    setExpandedId(suggestion.stableId);
+
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(`recipe-${suggestion.stableId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
 
@@ -422,7 +439,12 @@ export default function Nutricao() {
         </button>
 
         <section style={styles.section}>
-          <div style={styles.waterShell}>
+          <div
+            style={{
+              ...styles.waterShell,
+              ...(isResettingWater ? styles.waterShellResetting : null),
+            }}
+          >
             <div style={styles.hydrationHeader}>
               <div style={styles.hydrationHeaderLeft}>
                 <div style={styles.sectionTitleLarge}>
@@ -433,13 +455,26 @@ export default function Nutricao() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                style={styles.calendarNavBtn}
-                onClick={() => nav("/calendario")}
-              >
-                Calendário
-              </button>
+              <div style={styles.waterHeaderActions}>
+                <button
+                  type="button"
+                  style={styles.calendarNavBtn}
+                  onClick={() => nav("/calendario")}
+                >
+                  Calendário
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    ...styles.resetBtn,
+                    ...(isResettingWater ? styles.resetBtnActive : null),
+                  }}
+                  onClick={resetWater}
+                >
+                  Reset
+                </button>
+              </div>
             </div>
 
             <div style={styles.waterCard}>
@@ -523,11 +558,7 @@ export default function Nutricao() {
             <button
               type="button"
               style={styles.suggestionAction}
-              onClick={() =>
-                setExpandedId((prev) =>
-                  prev === suggestion.stableId ? null : suggestion.stableId
-                )
-              }
+              onClick={openSuggestionRecipe}
             >
               Ver receita
             </button>
@@ -590,7 +621,11 @@ export default function Nutricao() {
                 keywordVisibleById[item.stableId] || INITIAL_KEYWORDS_VISIBLE;
 
               return (
-                <div key={item.stableId} style={styles.recipeCard}>
+                <div
+                  key={item.stableId}
+                  id={`recipe-${item.stableId}`}
+                  style={styles.recipeCard}
+                >
                   <div style={styles.recipeCardTop}>
                     <button
                       style={styles.recipeMainButton}
@@ -714,8 +749,8 @@ const styles = {
 
   heroCard: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 180px",
-    gap: 16,
+    gridTemplateColumns: "minmax(0, 1fr) 128px",
+    gap: 12,
     padding: 18,
     borderRadius: 24,
     background: WHITE,
@@ -747,35 +782,33 @@ const styles = {
   },
 
   heroMini: {
-    minWidth: 0,
     width: "100%",
-    minHeight: 132,
-    padding: 18,
-    borderRadius: 24,
-    background: "#FAFAF8",
+    minHeight: 94,
+    padding: 12,
+    borderRadius: 20,
+    background: "#FBFBFA",
     border: `1px solid ${BORDER}`,
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
-    textAlign: "left",
     boxSizing: "border-box",
   },
 
   heroMiniLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: SOFT,
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     fontWeight: 800,
     lineHeight: 1.2,
   },
 
   heroMiniValue: {
-    marginTop: 12,
-    fontSize: 17,
-    fontWeight: 800,
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: 700,
     color: BLACK,
-    lineHeight: 1.15,
+    lineHeight: 1.1,
     wordBreak: "break-word",
   },
 
@@ -853,6 +886,13 @@ const styles = {
     background: WHITE,
     border: `1px solid ${BORDER}`,
     boxShadow: "0 10px 26px rgba(0,0,0,.04)",
+    transition: "transform .28s ease, box-shadow .28s ease, opacity .28s ease",
+  },
+
+  waterShellResetting: {
+    transform: "scale(0.992)",
+    boxShadow: "0 16px 36px rgba(255,106,0,.12)",
+    opacity: 0.97,
   },
 
   hydrationHeader: {
@@ -867,13 +907,19 @@ const styles = {
     minWidth: 0,
   },
 
+  waterHeaderActions: {
+    display: "grid",
+    gap: 8,
+    justifyItems: "end",
+  },
+
   waterSubTop: {
     marginTop: 8,
     fontSize: 13,
     color: GRAY,
-    lineHeight: 1.45,
+    lineHeight: 1.38,
     fontWeight: 600,
-    maxWidth: 320,
+    maxWidth: 290,
     wordBreak: "break-word",
   },
 
@@ -890,13 +936,29 @@ const styles = {
     boxShadow: "0 6px 16px rgba(0,0,0,.03)",
   },
 
+  resetBtn: {
+    height: 36,
+    padding: "0 14px",
+    borderRadius: 999,
+    border: `1px solid rgba(255,106,0,.22)`,
+    background: "#FFF7F1",
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 12.5,
+    transition: "transform .22s ease, background .22s ease, box-shadow .22s ease",
+  },
+
+  resetBtnActive: {
+    transform: "scale(0.95)",
+    background: "rgba(255,106,0,.15)",
+    boxShadow: "0 10px 18px rgba(255,106,0,.16)",
+  },
+
   waterCard: {
     padding: 0,
-    borderRadius: 0,
     background: "transparent",
     border: "none",
     boxShadow: "none",
-    overflow: "visible",
   },
 
   waterProgressBar: {
@@ -935,8 +997,8 @@ const styles = {
     color: GRAY,
     fontWeight: 600,
     textAlign: "right",
-    maxWidth: 150,
-    lineHeight: 1.3,
+    maxWidth: 120,
+    lineHeight: 1.2,
   },
 
   weekStrip: {
