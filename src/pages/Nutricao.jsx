@@ -186,7 +186,7 @@ function todayKey() {
 function buildWeekStrip(daysCount) {
   const labels = ["D", "S", "T", "Q", "Q", "S", "S"];
   const result = [];
-  const count = Math.max(5, Math.min(Number(daysCount) || 5, 7));
+  const count = Math.max(3, Math.min(Number(daysCount) || 3, 7));
   const now = new Date();
 
   for (let i = 0; i < count; i += 1) {
@@ -496,45 +496,18 @@ export default function Nutricao() {
           </div>
         </section>
 
-        <section style={styles.hydrationSection}>
-          <div style={styles.hydrationHeader}>
-            <div>
-              <div style={styles.hydrationTitle}>Hidratação</div>
-              <div style={styles.hydrationSub}>
-                {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
-              </div>
-            </div>
-            <div style={styles.hydrationPct}>{waterPct}%</div>
+        <section style={styles.summaryStrip}>
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Água hoje</div>
+            <div style={styles.summaryValue}>{waterMl} ml</div>
           </div>
-
-          <div style={styles.calendarRow}>
-            {weekStrip.map((item) => (
-              <div
-                key={item.key}
-                style={{
-                  ...styles.calendarPill,
-                  ...(item.isToday ? styles.calendarPillActive : null),
-                }}
-              >
-                <div style={styles.calendarLabel}>{item.label}</div>
-                <div style={styles.calendarDay}>{item.day}</div>
-              </div>
-            ))}
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Favoritas</div>
+            <div style={styles.summaryValue}>{favorites.length}</div>
           </div>
-
-          <div style={styles.waterCardOld}>
-            <button type="button" style={styles.waterBtnSoft} onClick={removeWater}>
-              −250 ml
-            </button>
-
-            <div style={styles.waterCenter}>
-              <div style={styles.waterBig}>{waterMl} ml</div>
-              <div style={styles.waterSubOld}>Meta diária sugerida</div>
-            </div>
-
-            <button type="button" style={styles.waterBtn} onClick={addWater}>
-              +250 ml
-            </button>
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Meta diária</div>
+            <div style={styles.summaryValue}>{waterGoal} ml</div>
           </div>
         </section>
 
@@ -589,6 +562,45 @@ export default function Nutricao() {
             </div>
           </section>
         ) : null}
+
+        <section style={styles.section}>
+          <div style={styles.sectionTitle}>Próximos dias</div>
+          <div style={styles.calendarRow}>
+            {weekStrip.map((item) => (
+              <div
+                key={item.key}
+                style={{
+                  ...styles.calendarPill,
+                  ...(item.isToday ? styles.calendarPillActive : null),
+                }}
+              >
+                <div style={styles.calendarLabel}>{item.label}</div>
+                <div style={styles.calendarDay}>{item.day}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={styles.section}>
+          <div style={styles.sectionTitle}>Hidratação</div>
+          <div style={styles.waterCard}>
+            <div>
+              <div style={styles.waterBig}>{waterPct}%</div>
+              <div style={styles.waterSub}>
+                Meta sugerida: {waterGoal} ml • faltam {waterLeft} ml
+              </div>
+            </div>
+
+            <div style={styles.waterActions}>
+              <button type="button" style={styles.waterBtnSoft} onClick={removeWater}>
+                −250 ml
+              </button>
+              <button type="button" style={styles.waterBtn} onClick={addWater}>
+                +250 ml
+              </button>
+            </div>
+          </div>
+        </section>
 
         <section style={styles.section}>
           <div style={styles.segmentWrap}>
@@ -751,28 +763,14 @@ export default function Nutricao() {
         </section>
 
         <section style={styles.section}>
-          <div style={styles.supplementBalloon}>
-            <div style={styles.supplementHeader}>
-              <div>
-                <div style={styles.sectionTitle}>Suplementação</div>
-                <div style={styles.supplementSub}>
-                  Sugestões alinhadas ao seu objetivo atual.
-                </div>
+          <div style={styles.sectionTitle}>Suplementação</div>
+          <div style={styles.supplementCard}>
+            {supplements.map((item) => (
+              <div key={item} style={styles.simpleBulletRow}>
+                <div style={styles.simpleDot} />
+                <div style={styles.simpleBulletText}>{item}</div>
               </div>
-
-              <button type="button" style={styles.supplementBtn}>
-                Ver plano
-              </button>
-            </div>
-
-            <div style={styles.supplementCard}>
-              {supplements.map((item) => (
-                <div key={item} style={styles.simpleBulletRow}>
-                  <div style={styles.simpleDot} />
-                  <div style={styles.simpleBulletText}>{item}</div>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </section>
       </div>
@@ -909,127 +907,33 @@ const styles = {
     color: BLACK,
   },
 
-  hydrationSection: {
+  summaryStrip: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
     marginTop: 14,
-    padding: 18,
-    borderRadius: 24,
+  },
+
+  summaryCard: {
+    padding: 14,
+    borderRadius: 18,
     background: WHITE,
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 10px 28px rgba(0,0,0,.04)",
   },
 
-  hydrationHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "flex-start",
-    marginBottom: 14,
-  },
-
-  hydrationTitle: {
-    fontSize: 24,
-    lineHeight: 1.05,
-    fontWeight: 800,
-    letterSpacing: -0.7,
-    color: BLACK,
-  },
-
-  hydrationSub: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 1.45,
-    color: GRAY,
-    fontWeight: 600,
-  },
-
-  hydrationPct: {
-    fontSize: 26,
-    lineHeight: 1,
-    fontWeight: 800,
-    color: ORANGE,
-    letterSpacing: -0.8,
-  },
-
-  calendarRow: {
-    display: "flex",
-    gap: 10,
-    overflowX: "auto",
-    marginBottom: 14,
-  },
-
-  calendarPill: {
-    minWidth: 60,
-    padding: "12px 10px",
-    borderRadius: 18,
-    border: `1px solid ${BORDER}`,
-    background: "#FAFAF8",
-    textAlign: "center",
-  },
-
-  calendarPillActive: {
-    background: "#FFF7F1",
-    borderColor: "rgba(255,106,0,.28)",
-  },
-
-  calendarLabel: {
+  summaryLabel: {
     fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
     fontWeight: 800,
     color: SOFT,
   },
 
-  calendarDay: {
-    marginTop: 5,
+  summaryValue: {
+    marginTop: 6,
     fontSize: 18,
     fontWeight: 800,
     color: BLACK,
-  },
-
-  waterCardOld: {
-    display: "grid",
-    gridTemplateColumns: "110px 1fr 110px",
-    gap: 10,
-    alignItems: "center",
-  },
-
-  waterCenter: {
-    textAlign: "center",
-  },
-
-  waterBig: {
-    fontSize: 28,
-    fontWeight: 800,
-    color: BLACK,
-    letterSpacing: -0.8,
-  },
-
-  waterSubOld: {
-    marginTop: 4,
-    fontSize: 12.5,
-    lineHeight: 1.4,
-    color: GRAY,
-    fontWeight: 600,
-  },
-
-  waterBtn: {
-    height: 44,
-    padding: "0 14px",
-    borderRadius: 14,
-    border: "none",
-    background: ORANGE,
-    color: BLACK,
-    fontSize: 13,
-    fontWeight: 800,
-  },
-
-  waterBtnSoft: {
-    height: 44,
-    padding: "0 14px",
-    borderRadius: 14,
-    border: `1px solid ${BORDER}`,
-    background: "#FAFAF8",
-    color: BLACK,
-    fontSize: 13,
-    fontWeight: 800,
   },
 
   suggestionCard: {
@@ -1136,6 +1040,92 @@ const styles = {
     lineHeight: 1.45,
     color: GRAY,
     fontWeight: 600,
+  },
+
+  calendarRow: {
+    display: "flex",
+    gap: 10,
+    overflowX: "auto",
+  },
+
+  calendarPill: {
+    minWidth: 60,
+    padding: "12px 10px",
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    textAlign: "center",
+  },
+
+  calendarPillActive: {
+    background: "#FFF7F1",
+    borderColor: "rgba(255,106,0,.28)",
+  },
+
+  calendarLabel: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: SOFT,
+  },
+
+  calendarDay: {
+    marginTop: 5,
+    fontSize: 18,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  waterCard: {
+    padding: 16,
+    borderRadius: 22,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+  },
+
+  waterBig: {
+    fontSize: 28,
+    fontWeight: 800,
+    color: BLACK,
+    letterSpacing: -0.8,
+  },
+
+  waterSub: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 1.4,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
+  waterActions: {
+    display: "grid",
+    gap: 8,
+  },
+
+  waterBtn: {
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  waterBtnSoft: {
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "#FAFAF8",
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 800,
   },
 
   segmentWrap: {
@@ -1407,42 +1397,11 @@ const styles = {
     fontWeight: 600,
   },
 
-  supplementBalloon: {
+  supplementCard: {
     padding: 16,
     borderRadius: 22,
     background: WHITE,
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 8px 22px rgba(0,0,0,.03)",
-  },
-
-  supplementHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  supplementSub: {
-    marginTop: -6,
-    fontSize: 12.5,
-    color: GRAY,
-    fontWeight: 600,
-  },
-
-  supplementBtn: {
-    height: 40,
-    padding: "0 14px",
-    borderRadius: 14,
-    border: "none",
-    background: ORANGE,
-    color: BLACK,
-    fontSize: 13,
-    fontWeight: 800,
-    whiteSpace: "nowrap",
-  },
-
-  supplementCard: {
     display: "grid",
     gap: 12,
   },
