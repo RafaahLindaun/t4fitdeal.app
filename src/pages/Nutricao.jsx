@@ -1,369 +1,514 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
+import { useMemo, useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
 
-const ORANGE = "#FF6A00";
-const BLACK = "#111111";
-const GRAY = "#6B6B6B";
-const SOFT = "#8A8A8A";
-const LIGHT = "#F7F7F5";
-const WHITE = "#FFFFFF";
-const BORDER = "#E9E9E7";
+const ORANGE = "#FF6A00"
+const TEXT = "#0f172a"
+const MUTED = "#64748b"
 
-const WATER_STEP = 250;
+/* =========================
+HELPERS
+========================= */
 
-const MEAL_LABELS = {
-  cafe: "Café da manhã",
-  almoco: "Almoço",
-  janta: "Janta",
-};
-
-/* ========================================
-   RECIPE BANK (mantido igual ao seu)
-======================================== */
-
-const BASE_RECIPES = {
-  cafe: [
-    {
-      id: "cafe-omelete-aveia",
-      title: "Omelete com aveia",
-      subtitle: "Proteína + energia logo cedo",
-      minutes: 10,
-      tags: ["proteína", "rápido", "manhã"],
-      goals: ["Hipertrofia", "Performance"],
-      calories: 420,
-      ingredients: ["2 ovos", "3 colheres de aveia", "1 banana", "canela"],
-      steps: [
-        "Misture os ovos com a aveia.",
-        "Faça a omelete em fogo baixo.",
-        "Sirva com banana e canela ao lado.",
-      ],
-      hydration: "Combine com 500 ml de água ao acordar.",
-    },
-  ],
-
-  almoco: [
-    {
-      id: "almoco-frango-arroz",
-      title: "Frango, arroz e legumes",
-      subtitle: "Base forte para uma rotina consistente",
-      minutes: 18,
-      tags: ["base", "equilíbrio", "consistência"],
-      goals: ["Hipertrofia", "Performance", "Emagrecimento"],
-      calories: 560,
-      ingredients: ["frango grelhado", "arroz", "legumes", "azeite"],
-      steps: [
-        "Monte o prato com frango, arroz e legumes.",
-        "Adicione azeite por cima dos legumes.",
-        "Ajuste a porção ao seu objetivo.",
-      ],
-      hydration: "Almoço fácil de repetir ao longo da semana.",
-    },
-  ],
-
-  janta: [
-    {
-      id: "janta-crepioca-frango",
-      title: "Crepioca com frango",
-      subtitle: "Janta prática e com boa proteína",
-      minutes: 12,
-      tags: ["noite", "prático", "proteína"],
-      goals: ["Hipertrofia", "Emagrecimento"],
-      calories: 410,
-      ingredients: ["1 ovo", "goma de tapioca", "frango desfiado"],
-      steps: [
-        "Misture o ovo com a goma.",
-        "Prepare a base da crepioca.",
-        "Recheie com frango.",
-      ],
-      hydration: "Boa escolha para uma noite mais prática.",
-    },
-  ],
-};
-
-/* ========================================
-   HELPERS
-======================================== */
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+function clamp(n,a,b){
+ return Math.max(a,Math.min(b,n))
 }
 
-function getGoalWater(profile) {
-  const peso = Number(profile?.peso || 0);
-  if (!peso) return 2500;
-  const suggested = Math.round(peso * 35);
-  return Math.max(2000, Math.min(suggested, 4500));
+function waterGoalMl(pesoKg=80){
+ const kg = Number(pesoKg||0)||80
+ return clamp(Math.round(kg*35),1800,5000)
 }
 
-/* ========================================
-   COMPONENT
-======================================== */
+/* =========================
+COMPONENT
+========================= */
 
-export default function Nutricao() {
-  const nav = useNavigate();
-  const { user } = useAuth();
+export default function Nutricao(){
 
-  const email = (user?.email || "anon").toLowerCase();
+ const nav = useNavigate()
+ const {user} = useAuth()
 
-  const [profile, setProfile] = useState({
-    nome: "",
-    objetivo: "Hipertrofia",
-    peso: "",
-    frequencia: 3,
-  });
+ const email = (user?.email||"anon").toLowerCase()
 
-  /* ========================================
-     HIDRATAÇÃO
-  ======================================== */
+ const peso = Number(user?.peso||80)
 
-  const [waterMl, setWaterMl] = useState(() => {
-    const raw = localStorage.getItem(`nutri_water_${email}_${todayKey()}`);
-    return raw ? Number(raw) : 0;
-  });
+ const goalMl = useMemo(()=>waterGoalMl(peso),[peso])
 
-  const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
+ const today = new Date().toISOString().slice(0,10)
 
-  const waterLeft = Math.max(0, waterGoal - waterMl);
+ const waterKey = `water_${email}_${today}`
 
-  const waterPct = Math.max(
-    0,
-    Math.min(100, Math.round((waterMl / waterGoal) * 100))
-  );
+ const [water,setWater] = useState(()=>{
+   const v = Number(localStorage.getItem(waterKey)||0)
+   return v||0
+ })
 
-  function addWater(v) {
-    setWaterMl((prev) => Math.min(waterGoal, prev + v));
+ function addWater(v){
+   const next = clamp(water+v,0,goalMl*2)
+   setWater(next)
+   localStorage.setItem(waterKey,next)
+ }
+
+ function resetWater(){
+   setWater(0)
+   localStorage.setItem(waterKey,0)
+ }
+
+ const waterPct = Math.round((water/goalMl)*100)
+
+ /* =========================
+ FAVORITOS
+ ========================= */
+
+ const favKey=`nutri_fav_${email}`
+
+ const [fav,setFav]=useState(()=>{
+  try{
+   const raw=localStorage.getItem(favKey)
+   return raw?JSON.parse(raw):{}
+  }catch{
+   return{}
+  }
+ })
+
+ function getBaseId(id){
+  const p=id.split("_")
+  p.pop()
+  return p.join("_")
+ }
+
+ function toggleFav(recipe){
+
+  const baseId=getBaseId(recipe.id)
+
+  const next={
+   ...fav,
+   [baseId]:!fav[baseId]
   }
 
-  function removeWater(v) {
-    setWaterMl((prev) => Math.max(0, prev - v));
+  setFav(next)
+
+  localStorage.setItem(favKey,JSON.stringify(next))
+ }
+
+ /* =========================
+ RECIPES
+ ========================= */
+
+ const {RECIPE_BANK}=window
+
+ const [mealTab,setMealTab]=useState("cafe")
+ const [query,setQuery]=useState("")
+ const [showFav,setShowFav]=useState(false)
+
+ const recipes = RECIPE_BANK?.[mealTab] || []
+
+ const filtered = useMemo(()=>{
+
+  let list=[...recipes]
+
+  if(query){
+
+   const q=query.toLowerCase()
+
+   list=list.filter(r=>
+    r.title.toLowerCase().includes(q)
+   )
+
   }
 
-  function completeGoal() {
-    setWaterMl(waterGoal);
+  if(showFav){
+
+   list=list.filter(r=>{
+    const id=getBaseId(r.id)
+    return fav[id]
+   })
+
   }
 
-  useEffect(() => {
-    localStorage.setItem(`nutri_water_${email}_${todayKey()}`, String(waterMl));
-  }, [waterMl, email]);
+  return list
 
-  /* ========================================
-     RENDER
-  ======================================== */
+ },[recipes,query,showFav,fav])
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.wrap}>
-        <div style={styles.brand}>
-          fitdeal<span style={{ color: ORANGE }}>.</span>
-        </div>
+ /* =========================
+ UI
+ ========================= */
 
-        {/* =============================
-            HIDRATAÇÃO
-        ============================== */}
+ return(
 
-        <section style={styles.hydrationSection}>
-          <div style={styles.hydrationHeader}>
-            <div>
-              <div style={styles.hydrationTitle}>
-                Hidratação<span style={{ color: ORANGE }}>.</span>
-              </div>
+ <div style={S.page}>
 
-              <div style={styles.hydrationSub}>
-                {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
-              </div>
-            </div>
+ {/* HEADER */}
 
-            <div style={styles.hydrationPct}>{waterPct}%</div>
-          </div>
+ <div style={S.header}>
 
-          {/* barra */}
+  <div>
 
-          <div style={styles.waterBarWrap}>
-            <div
-              style={{
-                ...styles.waterBarFill,
-                width: `${waterPct}%`,
-              }}
-            />
-          </div>
+   <div style={S.logo}>
+    fitdeal<span style={{color:ORANGE}}>.</span>
+   </div>
 
-          {/* botões */}
+   <div style={S.subtitle}>
+    Nutrição inteligente
+   </div>
 
-          <div style={styles.waterButtonsRow}>
-            <button
-              style={styles.waterBtnSoft}
-              onClick={() => removeWater(100)}
-            >
-              −100 ml
-            </button>
+  </div>
 
-            <button style={styles.waterBtnSoft} onClick={() => addWater(100)}>
-              +100 ml
-            </button>
+  <button
+  style={S.back}
+  onClick={()=>nav("/dashboard")}
+  >
+  Voltar
+  </button>
 
-            <button style={styles.waterBtnSoft} onClick={() => addWater(200)}>
-              +200 ml
-            </button>
+ </div>
 
-            <button style={styles.waterBtnSoft} onClick={() => addWater(300)}>
-              +300 ml
-            </button>
 
-            <button style={styles.waterBtnSoft} onClick={() => addWater(450)}>
-              +450 ml
-            </button>
-          </div>
+ {/* HIDRATAÇÃO */}
 
-          {/* centro */}
+ <div style={S.card}>
 
-          <div style={styles.waterCenter}>
-            <div style={styles.waterBig}>{waterMl} ml</div>
+  <div style={S.cardTitle}>
+   Hidratação<span style={{color:ORANGE}}>.</span>
+  </div>
 
-            <div style={styles.waterSub}>
-              cerca de {Math.round(waterMl / WATER_STEP)} copos
-            </div>
-          </div>
+  <div style={S.progress}>
 
-          {/* ações */}
+   <div
+   style={{
+    ...S.progressBar,
+    width:`${waterPct}%`
+   }}
+   />
 
-          <div style={styles.waterActions}>
-            <button style={styles.waterBtn} onClick={completeGoal}>
-              Completar meta
-            </button>
+  </div>
 
-            <button
-              style={styles.waterBtnSoft}
-              onClick={() => nav("/nutricao-calendario")}
-            >
-              Ver calendário
-            </button>
-          </div>
-        </section>
-      </div>
+  <div style={S.waterRow}>
+
+   <button style={S.waterBtn} onClick={()=>addWater(200)}>+200</button>
+   <button style={S.waterBtn} onClick={()=>addWater(300)}>+300</button>
+   <button style={S.waterBtn} onClick={()=>addWater(500)}>+500</button>
+
+   <button style={S.waterReset} onClick={resetWater}>
+    Reset
+   </button>
+
+  </div>
+
+  <div style={S.waterText}>
+   {water} ml hoje
+  </div>
+
+ </div>
+
+
+ {/* SUPLEMENTAÇÃO */}
+
+ <button
+ style={S.supp}
+ onClick={()=>nav("/suplementacao")}
+ >
+ Plano de suplementos<span style={{color:ORANGE}}>.</span>
+ </button>
+
+
+ {/* TABS */}
+
+ <div style={S.tabs}>
+
+ {[
+  {k:"cafe",t:"Café"},
+  {k:"almoco",t:"Almoço"},
+  {k:"janta",t:"Janta"}
+ ].map(x=>{
+
+  const on=mealTab===x.k
+
+  return(
+
+   <button
+   key={x.k}
+   style={{
+    ...S.tab,
+    ...(on?S.tabOn:S.tabOff)
+   }}
+   onClick={()=>setMealTab(x.k)}
+   >
+
+   {x.t}
+
+   </button>
+
+  )
+
+ })}
+
+ </div>
+
+
+ {/* SEARCH */}
+
+ <div style={S.searchRow}>
+
+ <input
+ value={query}
+ onChange={e=>setQuery(e.target.value)}
+ placeholder="Buscar receita..."
+ style={S.search}
+ />
+
+ <button
+ style={{
+  ...S.favBtn,
+  ...(showFav?S.favOn:S.favOff)
+ }}
+ onClick={()=>setShowFav(v=>!v)}
+ >
+ ★
+ </button>
+
+ </div>
+
+
+ {/* LISTA */}
+
+ <div style={S.list}>
+
+ {filtered.map(r=>{
+
+ const baseId=getBaseId(r.id)
+ const isFav=fav[baseId]
+
+ return(
+
+ <div
+ key={r.id}
+ style={S.recipe}
+ >
+
+  <div style={S.recipeTop}>
+
+   <div>
+
+    <div style={S.recipeTitle}>
+     {r.title}
     </div>
-  );
+
+   </div>
+
+   <button
+   style={{
+    ...S.star,
+    ...(isFav?S.starOn:S.starOff)
+   }}
+   onClick={()=>toggleFav(r)}
+   >
+   ★
+   </button>
+
+  </div>
+
+ </div>
+
+ )
+
+ })}
+
+ </div>
+
+ </div>
+
+ )
+
 }
 
-/* ========================================
-   STYLES
-======================================== */
+/* =========================
+STYLES
+========================= */
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: LIGHT,
-    padding: 18,
-    paddingBottom: 120,
-  },
+const S={
 
-  wrap: {
-    maxWidth: 620,
-    margin: "0 auto",
-  },
+page:{
+ padding:20,
+ paddingBottom:120,
+ background:"#f8fafc"
+},
 
-  brand: {
-    fontSize: 32,
-    fontWeight: 800,
-    letterSpacing: -1,
-    marginBottom: 18,
-    color: BLACK,
-  },
+header:{
+ display:"flex",
+ justifyContent:"space-between",
+ alignItems:"center",
+ marginBottom:18
+},
 
-  hydrationSection: {
-    padding: 20,
-    borderRadius: 24,
-    background: WHITE,
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 10px 28px rgba(0,0,0,.04)",
-  },
+logo:{
+ fontSize:22,
+ fontWeight:900,
+ color:TEXT
+},
 
-  hydrationHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
+subtitle:{
+ fontSize:12,
+ color:MUTED,
+ marginTop:4
+},
 
-  hydrationTitle: {
-    fontSize: 24,
-    fontWeight: 800,
-    color: BLACK,
-  },
+back:{
+ padding:"10px 14px",
+ borderRadius:12,
+ border:"1px solid #e2e8f0",
+ background:"#fff",
+ fontWeight:700
+},
 
-  hydrationSub: {
-    fontSize: 13,
-    color: GRAY,
-    marginTop: 4,
-  },
+card:{
+ background:"#fff",
+ borderRadius:20,
+ padding:16,
+ marginBottom:14,
+ border:"1px solid #e5e7eb"
+},
 
-  hydrationPct: {
-    fontSize: 26,
-    fontWeight: 800,
-    color: ORANGE,
-  },
+cardTitle:{
+ fontWeight:900,
+ marginBottom:10
+},
 
-  waterBarWrap: {
-    height: 10,
-    width: "100%",
-    borderRadius: 999,
-    background: "#EFEFEF",
-    overflow: "hidden",
-    marginTop: 12,
-    marginBottom: 18,
-  },
+progress:{
+ height:10,
+ borderRadius:999,
+ background:"#e5e7eb",
+ overflow:"hidden"
+},
 
-  waterBarFill: {
-    height: "100%",
-    background: "linear-gradient(90deg,#FF6A00,#FF8A3C)",
-    borderRadius: 999,
-  },
+progressBar:{
+ height:"100%",
+ background:`linear-gradient(90deg,${ORANGE},#ff8a3d)`
+},
 
-  waterButtonsRow: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-    marginBottom: 16,
-  },
+waterRow:{
+ marginTop:12,
+ display:"flex",
+ gap:8
+},
 
-  waterCenter: {
-    textAlign: "center",
-    marginBottom: 16,
-  },
+waterBtn:{
+ flex:1,
+ padding:10,
+ borderRadius:12,
+ border:"1px solid #e5e7eb",
+ background:"#fff",
+ fontWeight:800
+},
 
-  waterBig: {
-    fontSize: 30,
-    fontWeight: 800,
-    color: BLACK,
-  },
+waterReset:{
+ padding:10,
+ borderRadius:12,
+ border:"1px solid #e5e7eb",
+ background:"#fff"
+},
 
-  waterSub: {
-    fontSize: 12,
-    color: GRAY,
-  },
+waterText:{
+ marginTop:10,
+ fontWeight:700,
+ color:MUTED
+},
 
-  waterActions: {
-    display: "flex",
-    gap: 10,
-  },
+supp:{
+ width:"100%",
+ padding:16,
+ borderRadius:20,
+ background:"#0B0C0F",
+ color:"#fff",
+ border:"none",
+ fontWeight:800,
+ marginBottom:14
+},
 
-  waterBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 14,
-    border: "none",
-    background: ORANGE,
-    color: BLACK,
-    fontWeight: 800,
-  },
+tabs:{
+ display:"grid",
+ gridTemplateColumns:"1fr 1fr 1fr",
+ gap:8,
+ marginBottom:12
+},
 
-  waterBtnSoft: {
-    height: 42,
-    borderRadius: 12,
-    border: `1px solid ${BORDER}`,
-    background: "#FAFAF8",
-    padding: "0 12px",
-    fontWeight: 700,
-    color: BLACK,
-  },
-};
+tab:{
+ padding:12,
+ borderRadius:999,
+ border:"1px solid #e5e7eb",
+ fontWeight:800
+},
+
+tabOn:{
+ background:"#FFE7D7"
+},
+
+tabOff:{
+ background:"#fff"
+},
+
+searchRow:{
+ display:"flex",
+ gap:10,
+ marginBottom:12
+},
+
+search:{
+ flex:1,
+ padding:12,
+ borderRadius:14,
+ border:"1px solid #e5e7eb"
+},
+
+favBtn:{
+ width:46,
+ borderRadius:14,
+ border:"1px solid #e5e7eb",
+ fontSize:18
+},
+
+favOn:{
+ background:ORANGE
+},
+
+favOff:{
+ background:"#fff"
+},
+
+list:{
+ display:"grid",
+ gap:10
+},
+
+recipe:{
+ background:"#fff",
+ borderRadius:16,
+ padding:14,
+ border:"1px solid #e5e7eb"
+},
+
+recipeTop:{
+ display:"flex",
+ justifyContent:"space-between",
+ alignItems:"center"
+},
+
+recipeTitle:{
+ fontWeight:900
+},
+
+star:{
+ width:38,
+ height:38,
+ borderRadius:12
+},
+
+starOn:{
+ background:ORANGE
+},
+
+starOff:{
+ background:"#fff"
+}
+
+}
