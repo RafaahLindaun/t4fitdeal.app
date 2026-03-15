@@ -1,477 +1,514 @@
-import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useMemo, useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
 
-const ORANGE = "#FF6A00";
-const TEXT = "#0f172a";
-const MUTED = "#64748b";
+const ORANGE = "#FF6A00"
+const TEXT = "#0f172a"
+const MUTED = "#64748b"
 
-/* banco de receitas será importado depois */
-import { RECIPE_BANK } from "../data/recipeBank";
+/* =========================
+HELPERS
+========================= */
 
-/* ---------------- helpers ---------------- */
-
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
+function clamp(n,a,b){
+ return Math.max(a,Math.min(b,n))
 }
 
-function waterGoalMl(pesoKg = 80) {
-  const kg = Number(pesoKg || 0) || 80;
-  return clamp(Math.round(kg * 35), 1800, 5000);
+function waterGoalMl(pesoKg=80){
+ const kg = Number(pesoKg||0)||80
+ return clamp(Math.round(kg*35),1800,5000)
 }
 
-function getBaseRecipeId(id) {
-  const parts = id.split("_");
-  parts.pop();
-  return parts.join("_");
-}
+/* =========================
+COMPONENT
+========================= */
 
-/* ---------------- component ---------------- */
+export default function Nutricao(){
 
-export default function Nutricao() {
-  const nav = useNavigate();
-  const { user } = useAuth();
+ const nav = useNavigate()
+ const {user} = useAuth()
 
-  const email = (user?.email || "anon").toLowerCase();
+ const email = (user?.email||"anon").toLowerCase()
 
-  const objetivo = String(user?.objetivo || "hipertrofia");
-  const peso = Number(user?.peso || 80);
+ const peso = Number(user?.peso||80)
 
-  const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
+ const goalMl = useMemo(()=>waterGoalMl(peso),[peso])
 
-  /* ---------------- hidratação ---------------- */
+ const today = new Date().toISOString().slice(0,10)
 
-  const today = new Date().toISOString().slice(0, 10);
+ const waterKey = `water_${email}_${today}`
 
-  const waterKey = `water_${email}_${today}`;
+ const [water,setWater] = useState(()=>{
+   const v = Number(localStorage.getItem(waterKey)||0)
+   return v||0
+ })
 
-  const [waterMl, setWaterMl] = useState(
-    Number(localStorage.getItem(waterKey) || 0)
-  );
+ function addWater(v){
+   const next = clamp(water+v,0,goalMl*2)
+   setWater(next)
+   localStorage.setItem(waterKey,next)
+ }
 
-  function persistWater(v) {
-    localStorage.setItem(waterKey, String(v));
+ function resetWater(){
+   setWater(0)
+   localStorage.setItem(waterKey,0)
+ }
+
+ const waterPct = Math.round((water/goalMl)*100)
+
+ /* =========================
+ FAVORITOS
+ ========================= */
+
+ const favKey=`nutri_fav_${email}`
+
+ const [fav,setFav]=useState(()=>{
+  try{
+   const raw=localStorage.getItem(favKey)
+   return raw?JSON.parse(raw):{}
+  }catch{
+   return{}
+  }
+ })
+
+ function getBaseId(id){
+  const p=id.split("_")
+  p.pop()
+  return p.join("_")
+ }
+
+ function toggleFav(recipe){
+
+  const baseId=getBaseId(recipe.id)
+
+  const next={
+   ...fav,
+   [baseId]:!fav[baseId]
   }
 
-  function addWater(ml) {
-    setWaterMl((prev) => {
-      const next = clamp(prev + ml, 0, goalMl * 2);
-      persistWater(next);
-      return next;
-    });
+  setFav(next)
+
+  localStorage.setItem(favKey,JSON.stringify(next))
+ }
+
+ /* =========================
+ RECIPES
+ ========================= */
+
+ const {RECIPE_BANK}=window
+
+ const [mealTab,setMealTab]=useState("cafe")
+ const [query,setQuery]=useState("")
+ const [showFav,setShowFav]=useState(false)
+
+ const recipes = RECIPE_BANK?.[mealTab] || []
+
+ const filtered = useMemo(()=>{
+
+  let list=[...recipes]
+
+  if(query){
+
+   const q=query.toLowerCase()
+
+   list=list.filter(r=>
+    r.title.toLowerCase().includes(q)
+   )
+
   }
 
-  function resetWater() {
-    setWaterMl(0);
-    persistWater(0);
+  if(showFav){
+
+   list=list.filter(r=>{
+    const id=getBaseId(r.id)
+    return fav[id]
+   })
+
   }
 
-  const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
+  return list
 
-  /* ---------------- favoritos ---------------- */
+ },[recipes,query,showFav,fav])
 
-  const favKey = `nutri_fav_${email}`;
+ /* =========================
+ UI
+ ========================= */
 
-  const [fav, setFav] = useState(() => {
-    try {
-      const raw = localStorage.getItem(favKey);
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  });
+ return(
 
-  function toggleFav(recipe) {
-    const baseId = getBaseRecipeId(recipe.id);
+ <div style={S.page}>
 
-    const next = {
-      ...fav,
-      [baseId]: !fav[baseId],
-    };
+ {/* HEADER */}
 
-    setFav(next);
+ <div style={S.header}>
 
-    localStorage.setItem(favKey, JSON.stringify(next));
-  }
+  <div>
 
-  /* ---------------- receitas ---------------- */
+   <div style={S.logo}>
+    fitdeal<span style={{color:ORANGE}}>.</span>
+   </div>
 
-  const [mealTab, setMealTab] = useState("cafe");
-  const [query, setQuery] = useState("");
-  const [showFavOnly, setShowFavOnly] = useState(false);
+   <div style={S.subtitle}>
+    Nutrição inteligente
+   </div>
 
-  const options = RECIPE_BANK[mealTab] || [];
+  </div>
 
-  const filtered = useMemo(() => {
-    let list = options;
+  <button
+  style={S.back}
+  onClick={()=>nav("/dashboard")}
+  >
+  Voltar
+  </button>
 
-    if (showFavOnly) {
-      list = list.filter((x) => {
-        const baseId = getBaseRecipeId(x.id);
-        return fav[baseId];
-      });
-    }
+ </div>
 
-    if (query) {
-      const q = query.toLowerCase();
-      list = list.filter((r) =>
-        `${r.title} ${(r.tags || []).join(" ")}`.toLowerCase().includes(q)
-      );
-    }
 
-    return list;
-  }, [options, query, showFavOnly, fav]);
+ {/* HIDRATAÇÃO */}
 
-  const [openRecipe, setOpenRecipe] = useState(null);
+ <div style={S.card}>
 
-  /* ---------------- UI ---------------- */
+  <div style={S.cardTitle}>
+   Hidratação<span style={{color:ORANGE}}>.</span>
+  </div>
 
-  return (
-    <div style={S.page}>
-      {/* header */}
+  <div style={S.progress}>
 
-      <div style={S.header}>
-        <div style={S.brand}>
-          fitdeal<span style={{ color: ORANGE }}>.</span>
-        </div>
+   <div
+   style={{
+    ...S.progressBar,
+    width:`${waterPct}%`
+   }}
+   />
 
-        <button style={S.back} onClick={() => nav("/dashboard")}>
-          Voltar
-        </button>
-      </div>
+  </div>
 
-      {/* hidratação */}
+  <div style={S.waterRow}>
 
-      <div style={S.card}>
-        <div style={S.cardTop}>
-          <div>
-            <div style={S.cardTitle}>Hidratação</div>
-            <div style={S.cardSub}>
-              Meta diária <b>{goalMl}ml</b>
-            </div>
-          </div>
+   <button style={S.waterBtn} onClick={()=>addWater(200)}>+200</button>
+   <button style={S.waterBtn} onClick={()=>addWater(300)}>+300</button>
+   <button style={S.waterBtn} onClick={()=>addWater(500)}>+500</button>
 
-          <div style={S.percent}>{Math.round(waterPct * 100)}%</div>
-        </div>
+   <button style={S.waterReset} onClick={resetWater}>
+    Reset
+   </button>
 
-        <div style={S.progress}>
-          <div
-            style={{
-              ...S.progressFill,
-              width: `${Math.round(waterPct * 100)}%`,
-            }}
-          />
-        </div>
+  </div>
 
-        <div style={S.waterBtns}>
-          <button onClick={() => addWater(200)}>+200</button>
-          <button onClick={() => addWater(300)}>+300</button>
-          <button onClick={() => addWater(500)}>+500</button>
-          <button onClick={resetWater}>Reset</button>
-        </div>
+  <div style={S.waterText}>
+   {water} ml hoje
+  </div>
 
-        <div style={S.waterNum}>{waterMl} ml hoje</div>
-      </div>
+ </div>
 
-      {/* tabs */}
 
-      <div style={S.tabs}>
-        <button
-          onClick={() => setMealTab("cafe")}
-          style={mealTab === "cafe" ? S.tabOn : S.tab}
-        >
-          Café
-        </button>
+ {/* SUPLEMENTAÇÃO */}
 
-        <button
-          onClick={() => setMealTab("almoco")}
-          style={mealTab === "almoco" ? S.tabOn : S.tab}
-        >
-          Almoço
-        </button>
+ <button
+ style={S.supp}
+ onClick={()=>nav("/suplementacao")}
+ >
+ Plano de suplementos<span style={{color:ORANGE}}>.</span>
+ </button>
 
-        <button
-          onClick={() => setMealTab("janta")}
-          style={mealTab === "janta" ? S.tabOn : S.tab}
-        >
-          Janta
-        </button>
-      </div>
 
-      {/* busca */}
+ {/* TABS */}
 
-      <div style={S.searchRow}>
-        <input
-          placeholder="Buscar receita..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={S.search}
-        />
+ <div style={S.tabs}>
 
-        <button
-          style={showFavOnly ? S.favOn : S.fav}
-          onClick={() => setShowFavOnly(!showFavOnly)}
-        >
-          ★
-        </button>
-      </div>
+ {[
+  {k:"cafe",t:"Café"},
+  {k:"almoco",t:"Almoço"},
+  {k:"janta",t:"Janta"}
+ ].map(x=>{
 
-      {/* receitas */}
+  const on=mealTab===x.k
 
-      <div style={S.list}>
-        {filtered.map((r) => {
-          const baseId = getBaseRecipeId(r.id);
-          const isFav = !!fav[baseId];
+  return(
 
-          return (
-            <button
-              key={r.id}
-              style={S.recipe}
-              onClick={() => setOpenRecipe(r)}
-            >
-              <div style={S.recipeTop}>
-                <div>
-                  <div style={S.recipeTitle}>{r.title}</div>
+   <button
+   key={x.k}
+   style={{
+    ...S.tab,
+    ...(on?S.tabOn:S.tabOff)
+   }}
+   onClick={()=>setMealTab(x.k)}
+   >
 
-                  <div style={S.recipeTags}>
-                    {(r.tags || []).slice(0, 2).map((t) => (
-                      <span key={t}>{t}</span>
-                    ))}
-                  </div>
-                </div>
+   {x.t}
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFav(r);
-                  }}
-                  style={isFav ? S.starOn : S.star}
-                >
-                  ★
-                </button>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+   </button>
 
-      {/* modal */}
+  )
 
-      {openRecipe && (
-        <div style={S.modalOverlay} onClick={() => setOpenRecipe(null)}>
-          <div style={S.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={S.modalTitle}>{openRecipe.title}</div>
+ })}
 
-            <div style={S.steps}>
-              {(openRecipe.steps || []).map((s, i) => (
-                <div key={i}>
-                  {i + 1}. {s}
-                </div>
-              ))}
-            </div>
+ </div>
 
-            <button style={S.close} onClick={() => setOpenRecipe(null)}>
-              Entendi
-            </button>
-          </div>
-        </div>
-      )}
+
+ {/* SEARCH */}
+
+ <div style={S.searchRow}>
+
+ <input
+ value={query}
+ onChange={e=>setQuery(e.target.value)}
+ placeholder="Buscar receita..."
+ style={S.search}
+ />
+
+ <button
+ style={{
+  ...S.favBtn,
+  ...(showFav?S.favOn:S.favOff)
+ }}
+ onClick={()=>setShowFav(v=>!v)}
+ >
+ ★
+ </button>
+
+ </div>
+
+
+ {/* LISTA */}
+
+ <div style={S.list}>
+
+ {filtered.map(r=>{
+
+ const baseId=getBaseId(r.id)
+ const isFav=fav[baseId]
+
+ return(
+
+ <div
+ key={r.id}
+ style={S.recipe}
+ >
+
+  <div style={S.recipeTop}>
+
+   <div>
+
+    <div style={S.recipeTitle}>
+     {r.title}
     </div>
-  );
+
+   </div>
+
+   <button
+   style={{
+    ...S.star,
+    ...(isFav?S.starOn:S.starOff)
+   }}
+   onClick={()=>toggleFav(r)}
+   >
+   ★
+   </button>
+
+  </div>
+
+ </div>
+
+ )
+
+ })}
+
+ </div>
+
+ </div>
+
+ )
+
 }
 
-/* ---------------- styles ---------------- */
+/* =========================
+STYLES
+========================= */
 
-const S = {
-  page: {
-    padding: 18,
-    background: "#f8fafc",
-  },
+const S={
 
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
+page:{
+ padding:20,
+ paddingBottom:120,
+ background:"#f8fafc"
+},
 
-  brand: {
-    fontSize: 22,
-    fontWeight: 900,
-    color: TEXT,
-  },
+header:{
+ display:"flex",
+ justifyContent:"space-between",
+ alignItems:"center",
+ marginBottom:18
+},
 
-  back: {
-    border: "1px solid #ddd",
-    padding: "10px 14px",
-    borderRadius: 12,
-    background: "#fff",
-    fontWeight: 700,
-  },
+logo:{
+ fontSize:22,
+ fontWeight:900,
+ color:TEXT
+},
 
-  card: {
-    background: "#fff",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-  },
+subtitle:{
+ fontSize:12,
+ color:MUTED,
+ marginTop:4
+},
 
-  cardTop: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
+back:{
+ padding:"10px 14px",
+ borderRadius:12,
+ border:"1px solid #e2e8f0",
+ background:"#fff",
+ fontWeight:700
+},
 
-  cardTitle: {
-    fontWeight: 900,
-    fontSize: 16,
-  },
+card:{
+ background:"#fff",
+ borderRadius:20,
+ padding:16,
+ marginBottom:14,
+ border:"1px solid #e5e7eb"
+},
 
-  cardSub: {
-    fontSize: 12,
-    color: MUTED,
-  },
+cardTitle:{
+ fontWeight:900,
+ marginBottom:10
+},
 
-  percent: {
-    fontWeight: 900,
-  },
+progress:{
+ height:10,
+ borderRadius:999,
+ background:"#e5e7eb",
+ overflow:"hidden"
+},
 
-  progress: {
-    height: 10,
-    background: "#eee",
-    borderRadius: 999,
-    marginTop: 12,
-  },
+progressBar:{
+ height:"100%",
+ background:`linear-gradient(90deg,${ORANGE},#ff8a3d)`
+},
 
-  progressFill: {
-    height: "100%",
-    background: ORANGE,
-  },
+waterRow:{
+ marginTop:12,
+ display:"flex",
+ gap:8
+},
 
-  waterBtns: {
-    display: "flex",
-    gap: 8,
-    marginTop: 12,
-  },
+waterBtn:{
+ flex:1,
+ padding:10,
+ borderRadius:12,
+ border:"1px solid #e5e7eb",
+ background:"#fff",
+ fontWeight:800
+},
 
-  waterNum: {
-    marginTop: 10,
-    fontWeight: 700,
-  },
+waterReset:{
+ padding:10,
+ borderRadius:12,
+ border:"1px solid #e5e7eb",
+ background:"#fff"
+},
 
-  tabs: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 8,
-    marginBottom: 12,
-  },
+waterText:{
+ marginTop:10,
+ fontWeight:700,
+ color:MUTED
+},
 
-  tab: {
-    padding: 10,
-    borderRadius: 12,
-    border: "1px solid #ddd",
-    background: "#fff",
-  },
+supp:{
+ width:"100%",
+ padding:16,
+ borderRadius:20,
+ background:"#0B0C0F",
+ color:"#fff",
+ border:"none",
+ fontWeight:800,
+ marginBottom:14
+},
 
-  tabOn: {
-    padding: 10,
-    borderRadius: 12,
-    border: `1px solid ${ORANGE}`,
-    background: "rgba(255,106,0,0.1)",
-  },
+tabs:{
+ display:"grid",
+ gridTemplateColumns:"1fr 1fr 1fr",
+ gap:8,
+ marginBottom:12
+},
 
-  searchRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 50px",
-    gap: 10,
-    marginBottom: 16,
-  },
+tab:{
+ padding:12,
+ borderRadius:999,
+ border:"1px solid #e5e7eb",
+ fontWeight:800
+},
 
-  search: {
-    padding: 12,
-    borderRadius: 12,
-    border: "1px solid #ddd",
-  },
+tabOn:{
+ background:"#FFE7D7"
+},
 
-  fav: {
-    borderRadius: 12,
-    border: "1px solid #ddd",
-    background: "#fff",
-  },
+tabOff:{
+ background:"#fff"
+},
 
-  favOn: {
-    borderRadius: 12,
-    border: "none",
-    background: ORANGE,
-  },
+searchRow:{
+ display:"flex",
+ gap:10,
+ marginBottom:12
+},
 
-  list: {
-    display: "grid",
-    gap: 10,
-  },
+search:{
+ flex:1,
+ padding:12,
+ borderRadius:14,
+ border:"1px solid #e5e7eb"
+},
 
-  recipe: {
-    background: "#fff",
-    padding: 14,
-    borderRadius: 16,
-    border: "1px solid #eee",
-    textAlign: "left",
-  },
+favBtn:{
+ width:46,
+ borderRadius:14,
+ border:"1px solid #e5e7eb",
+ fontSize:18
+},
 
-  recipeTop: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
+favOn:{
+ background:ORANGE
+},
 
-  recipeTitle: {
-    fontWeight: 900,
-  },
+favOff:{
+ background:"#fff"
+},
 
-  recipeTags: {
-    fontSize: 12,
-    color: MUTED,
-  },
+list:{
+ display:"grid",
+ gap:10
+},
 
-  star: {
-    border: "1px solid #ddd",
-    borderRadius: 10,
-  },
+recipe:{
+ background:"#fff",
+ borderRadius:16,
+ padding:14,
+ border:"1px solid #e5e7eb"
+},
 
-  starOn: {
-    border: "none",
-    background: ORANGE,
-  },
+recipeTop:{
+ display:"flex",
+ justifyContent:"space-between",
+ alignItems:"center"
+},
 
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.4)",
-    display: "grid",
-    placeItems: "center",
-  },
+recipeTitle:{
+ fontWeight:900
+},
 
-  modal: {
-    background: "#fff",
-    padding: 20,
-    borderRadius: 18,
-    maxWidth: 400,
-  },
+star:{
+ width:38,
+ height:38,
+ borderRadius:12
+},
 
-  modalTitle: {
-    fontWeight: 900,
-    marginBottom: 12,
-  },
+starOn:{
+ background:ORANGE
+},
 
-  steps: {
-    fontSize: 14,
-    color: TEXT,
-  },
+starOff:{
+ background:"#fff"
+}
 
-  close: {
-    marginTop: 14,
-    background: ORANGE,
-    border: "none",
-    padding: 12,
-    borderRadius: 12,
-    fontWeight: 800,
-  },
-};
+}
