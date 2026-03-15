@@ -1,2004 +1,1430 @@
-// ✅ COLE EM: src/pages/Nutricao.jsx
-// Nutri+ — SEM o botão preto do topo (header)
-// e SEM a “barra laranja” (track) no botão de baixo (Suplementação)
-
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
-const TEXT = "#0f172a";
-const MUTED = "#64748b";
+const BLACK = "#111111";
+const GRAY = "#6B6B6B";
+const SOFT = "#8A8A8A";
+const LIGHT = "#F7F7F5";
+const WHITE = "#FFFFFF";
+const BORDER = "#E9E9E7";
 
-/* ---------------- helpers ---------------- */
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
+const WATER_STEP = 250;
 
-/** hash simples (determinístico) */
-function hashStr(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return Math.abs(h >>> 0);
-}
-
-/** shuffle determinístico pra gerar variedade sem servidor */
-function seededShuffle(arr, seedKey) {
-  const a = [...arr];
-  let seed = hashStr(seedKey) || 1;
-  for (let i = a.length - 1; i > 0; i--) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    const j = seed % (i + 1);
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-/* ---------------- banco de receitas base ---------------- */
-const RECIPE_BANK = {
-  cafe: [
-    {
-      id: "cafe_pao_queijo_tomate",
-      title: "Pão + queijo + tomate",
-      tags: ["rápido", "barato", "br"],
-      steps: [
-        "Toste 1–2 fatias de pão.",
-        "Coloque queijo e tomate em rodelas.",
-        "Finalize com orégano e um fio de azeite (opcional).",
-      ],
-      base: { protein: ["queijo"], carb: ["pão"], extra: ["tomate"] },
-      tips: ["Se quiser mais proteína: adicione 1 ovo mexido junto."],
-    },
-    {
-      id: "cafe_cuscuz_ovo",
-      title: "Cuscuz + ovos + manteiga",
-      tags: ["tradicional", "energia", "br"],
-      steps: [
-        "Prepare o cuscuz (flocão + água + sal) na cuscuzeira.",
-        "Faça 2–3 ovos mexidos.",
-        "Finalize o cuscuz com manteiga e sirva com os ovos.",
-      ],
-      base: { protein: ["ovos"], carb: ["cuscuz"], extra: ["manteiga"] },
-      tips: ["Para secar: reduza manteiga e adicione salada/legumes no café."],
-    },
-    {
-      id: "cafe_mingau_aveia",
-      title: "Mingau de aveia (leite + canela)",
-      tags: ["fácil", "digestão", "pré-treino"],
-      steps: [
-        "Aqueça leite em uma panela.",
-        "Adicione aveia e mexa até engrossar.",
-        "Finalize com canela e banana (opcional).",
-      ],
-      base: { protein: ["leite"], carb: ["aveia"], extra: ["canela"] },
-      tips: ["Se quiser mais calorias: adicione pasta de amendoim."],
-    },
-    {
-      id: "cafe_crepioca_frango",
-      title: "Crepioca recheada com frango",
-      tags: ["proteico", "br", "saciedade"],
-      steps: [
-        "Misture 1 ovo + 2 colheres de tapioca + sal.",
-        "Faça a massa na frigideira.",
-        "Recheie com frango desfiado e dobre.",
-      ],
-      base: { protein: ["frango", "ovos"], carb: ["tapioca"], extra: ["tempero"] },
-      tips: ["Para mais sabor: requeijão light ou tomate picado."],
-    },
-    {
-      id: "cafe_pao_ovo_abacate",
-      title: "Pão + ovos + abacate",
-      tags: ["energia", "saciedade", "fitness"],
-      steps: [
-        "Toste o pão.",
-        "Faça 2 ovos (mexidos ou pochê).",
-        "Amasse abacate com sal e limão e coloque por cima.",
-      ],
-      base: { protein: ["ovos"], carb: ["pão"], extra: ["abacate"] },
-      tips: ["Se quiser aumentar calorias: adicione azeite ou castanhas."],
-    },
-    {
-      id: "cafe_iogurte_granola_fruta",
-      title: "Iogurte + granola + fruta",
-      tags: ["rápido", "digestão", "doce"],
-      steps: [
-        "Coloque iogurte natural na tigela.",
-        "Adicione granola.",
-        "Finalize com fruta picada (banana/maçã/morango).",
-      ],
-      base: { protein: ["iogurte"], carb: ["granola"], extra: ["fruta"] },
-      tips: ["Para reduzir açúcar: use granola sem açúcar."],
-    },
-    {
-      id: "cafe_sanduiche_atum",
-      title: "Sanduíche de atum (rápido)",
-      tags: ["proteico", "rápido", "prático"],
-      steps: [
-        "Misture atum com um pouco de iogurte ou maionese light.",
-        "Monte no pão com alface/tomate.",
-        "Finalize com sal e limão.",
-      ],
-      base: { protein: ["atum"], carb: ["pão"], extra: ["salada"] },
-      tips: ["Se quiser mais carbo: use pão integral + 1 fruta."],
-    },
-    {
-      id: "cafe_pao_frango_requeijao",
-      title: "Pão com frango + requeijão",
-      tags: ["br", "proteico", "barato"],
-      steps: [
-        "Desfie frango cozido (ou use sobras).",
-        "Misture com requeijão e temperos.",
-        "Monte no pão e toste (opcional).",
-      ],
-      base: { protein: ["frango"], carb: ["pão"], extra: ["requeijão"] },
-      tips: ["Para secar: reduza requeijão e aumente salada."],
-    },
-    {
-      id: "cafe_banana_canela_amendoim",
-      title: "Banana + canela + pasta de amendoim",
-      tags: ["pré-treino", "energia", "rápido"],
-      steps: [
-        "Amasse 1 banana.",
-        "Polvilhe canela.",
-        "Adicione 1 colher de pasta de amendoim por cima.",
-      ],
-      base: { protein: ["pasta de amendoim"], carb: ["banana"], extra: ["canela"] },
-      tips: ["Se quiser mais proteína: adicione iogurte ao lado."],
-    },
-    {
-      id: "cafe_omelete_queijo",
-      title: "Omelete simples com queijo",
-      tags: ["proteico", "rápido"],
-      steps: ["Bata 2–4 ovos com sal.", "Adicione queijo picado.", "Cozinhe na frigideira até firmar."],
-      base: { protein: ["ovos", "queijo"], carb: ["nenhum"], extra: ["tempero"] },
-      tips: ["Se precisar de carbo: inclua 1 pão ou 1 fruta."],
-    },
-    {
-      id: "cafe_pao_mortadela_tomate",
-      title: "Pão + mortadela + tomate (caseiro)",
-      tags: ["barato", "rápido", "tradicional"],
-      steps: ["Toste o pão (opcional).", "Adicione mortadela e tomate.", "Finalize com mostarda (opcional)."],
-      base: { protein: ["mortadela"], carb: ["pão"], extra: ["tomate"] },
-      tips: ["Melhor versão: use peito de peru ou frango quando possível."],
-    },
-    {
-      id: "cafe_queijo_minas_fruta",
-      title: "Queijo minas + fruta + café",
-      tags: ["leve", "tradicional", "rápido"],
-      steps: ["Corte queijo minas em cubos/fatias.", "Sirva com 1 fruta.", "Beba café sem açúcar ou com pouco açúcar."],
-      base: { protein: ["queijo minas"], carb: ["fruta"], extra: ["café"] },
-      tips: ["Se quiser mais carbo: inclua 1 pão."],
-    },
-    {
-      id: "cafe_panq_aveia_ovo",
-      title: "Panqueca de aveia (ovo + banana)",
-      tags: ["pré-treino", "fácil", "energia"],
-      steps: ["Bata 1 banana + 1 ovo + 2 colheres de aveia.", "Cozinhe em frigideira antiaderente.", "Finalize com canela."],
-      base: { protein: ["ovos"], carb: ["aveia", "banana"], extra: ["canela"] },
-      tips: ["Para ganhar: adicione mel ou pasta de amendoim."],
-    },
-    {
-      id: "cafe_tapioca_ovo",
-      title: "Tapioca + ovo mexido",
-      tags: ["br", "proteico", "rápido"],
-      steps: ["Faça a tapioca na frigideira.", "Prepare 2 ovos mexidos.", "Recheie e dobre."],
-      base: { protein: ["ovos"], carb: ["tapioca"], extra: ["tempero"] },
-      tips: ["Se quiser mais: adicione queijo e tomate."],
-    },
-    {
-      id: "cafe_iogurte_whey",
-      title: "Iogurte + whey + fruta",
-      tags: ["proteico", "rápido", "pós-treino"],
-      steps: ["Misture iogurte com 1 scoop de whey.", "Adicione fruta picada.", "Finalize com canela (opcional)."],
-      base: { protein: ["iogurte", "whey"], carb: ["fruta"], extra: ["canela"] },
-      tips: ["Se quiser mais carbo: adicione granola."],
-    },
-    {
-      id: "cafe_pao_pasta_amendoim",
-      title: "Pão + pasta de amendoim + banana",
-      tags: ["energia", "pré-treino", "rápido"],
-      steps: ["Passe pasta de amendoim no pão.", "Adicione banana em rodelas.", "Finalize com canela (opcional)."],
-      base: { protein: ["pasta de amendoim"], carb: ["pão", "banana"], extra: ["canela"] },
-      tips: ["Para secar: diminua a pasta e use pão integral."],
-    },
-    {
-      id: "cafe_leite_cafe_pao",
-      title: "Café com leite + pão + ovo",
-      tags: ["tradicional", "br", "rápido"],
-      steps: ["Faça café com leite.", "Toste 1 pão.", "Faça 1–2 ovos mexidos e sirva junto."],
-      base: { protein: ["ovos", "leite"], carb: ["pão"], extra: ["café"] },
-      tips: ["Se quiser mais saciedade: adicione uma fruta."],
-    },
-    {
-      id: "cafe_biscoito_agua_iogurte",
-      title: "Iogurte + biscoito água e sal",
-      tags: ["simples", "barato", "rápido"],
-      steps: ["Sirva iogurte natural em um pote.", "Coma junto com biscoito água e sal.", "Adicione 1 fruta se quiser."],
-      base: { protein: ["iogurte"], carb: ["biscoito"], extra: ["fruta"] },
-      tips: ["Para reduzir calorias: use iogurte light."],
-    },
-    {
-      id: "cafe_ovos_arroz",
-      title: "Ovos + arroz (resto do dia anterior)",
-      tags: ["barato", "br", "proteico"],
-      steps: ["Aqueça o arroz pronto.", "Faça 2–3 ovos mexidos.", "Misture e finalize com temperos."],
-      base: { protein: ["ovos"], carb: ["arroz"], extra: ["tempero"] },
-      tips: ["Fica top com tomate e cebola picados."],
-    },
-    {
-      id: "cafe_smoothie_iogurte_fruta",
-      title: "Smoothie (iogurte + fruta + aveia)",
-      tags: ["rápido", "pré-treino", "digestão"],
-      steps: ["Bata iogurte + fruta + aveia.", "Adicione gelo se quiser.", "Sirva na hora."],
-      base: { protein: ["iogurte"], carb: ["fruta", "aveia"], extra: ["gelo"] },
-      tips: ["Para ganhar: adicione pasta de amendoim."],
-    },
-    {
-      id: "cafe_ovos_pao",
-      title: "Ovos + pão + fruta",
-      tags: ["rápido", "proteico"],
-      steps: ["Faça 2–4 ovos mexidos/omelete (sal e pimenta).", "Toste 1–2 fatias de pão.", "Finalize com 1 fruta (banana/maçã)."],
-      base: { protein: ["ovos"], carb: ["pão"], extra: ["fruta"] },
-      tips: ["Se quiser aumentar calorias: adicione queijo ou pasta de amendoim."],
-    },
-    {
-      id: "cafe_iogurte_aveia",
-      title: "Iogurte + aveia + banana",
-      tags: ["fácil", "digestão"],
-      steps: ["Em uma tigela: iogurte natural.", "Misture aveia e canela.", "Finalize com banana e (opcional) mel."],
-      base: { protein: ["iogurte"], carb: ["aveia"], extra: ["banana"] },
-      tips: ["Se quiser mais proteína: use iogurte grego ou adicione whey."],
-    },
-    {
-      id: "cafe_tapioca",
-      title: "Tapioca + queijo + fruta",
-      tags: ["br", "energia"],
-      steps: ["Aqueça a frigideira e espalhe a tapioca.", "Recheie com queijo e dobre.", "Finalize com 1 fruta."],
-      base: { protein: ["queijo"], carb: ["tapioca"], extra: ["fruta"] },
-      tips: ["Se quiser mais proteína: coloque frango desfiado junto."],
-    },
-    {
-      id: "cafe_vitamina",
-      title: "Vitamina rápida (banana + leite + aveia)",
-      tags: ["rápido", "pré-treino"],
-      steps: ["Bata leite + banana + aveia.", "Opcional: 1 colher de pasta de amendoim.", "Sirva gelado."],
-      base: { protein: ["leite"], carb: ["banana", "aveia"], extra: ["pasta de amendoim"] },
-      tips: ["Para reduzir açúcar: use leite sem açúcar e aveia."],
-    },
-  ],
-// ✅ COLE DENTRO DO SEU RECIPE_BANK (substituir almoco: [] e janta: [])
-almoco: [
-  {
-    id: "alm_arroz_feijao_frango_salada",
-    title: "Arroz + feijão + frango grelhado + salada",
-    tags: ["tradicional", "br", "proteico", "equilibrado"],
-    steps: [
-      "Grelhe 150–200g de frango com sal, alho e limão.",
-      "Sirva com 3–5 colheres de arroz e 1 concha de feijão.",
-      "Complete com salada (alface, tomate, cenoura) e 1 fio de azeite.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz", "feijão"], extra: ["salada"] },
-    tips: ["Para secar: aumente salada e reduza arroz.", "Para ganhar: aumente arroz/batata e inclua 1 fruta."],
-  },
-  {
-    id: "alm_patinho_moido_arroz_feijao",
-    title: "Patinho moído + arroz + feijão + legumes",
-    tags: ["proteico", "barato", "br"],
-    steps: [
-      "Refogue patinho moído com cebola, alho e páprica.",
-      "Monte com arroz e feijão.",
-      "Adicione legumes (abobrinha, brócolis, cenoura) no vapor.",
-    ],
-    base: { protein: ["patinho moído"], carb: ["arroz", "feijão"], extra: ["legumes"] },
-    tips: ["Se faltar tempo: use legumes congelados no micro-ondas."],
-  },
-  {
-    id: "alm_omelete_3ovos_arroz_salada",
-    title: "Omelete (3 ovos) + arroz + salada crocante",
-    tags: ["rápido", "proteico", "br"],
-    steps: [
-      "Bata 3 ovos com sal e pimenta e faça omelete.",
-      "Sirva com arroz (se tiver pronto) ou 1 batata cozida.",
-      "Finalize com salada e limão.",
-    ],
-    base: { protein: ["ovos"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Para mais proteína: inclua queijo ou frango desfiado no omelete."],
-  },
-  {
-    id: "alm_frango_desfiado_pure_batata_salada",
-    title: "Frango desfiado + purê de batata + salada",
-    tags: ["conforto", "br", "proteico"],
-    steps: [
-      "Cozinhe batatas e amasse com um pouco de leite/sal.",
-      "Misture frango desfiado com tempero e um pouco de molho de tomate.",
-      "Sirva com salada verde.",
-    ],
-    base: { protein: ["frango"], carb: ["batata"], extra: ["salada"] },
-    tips: ["Para secar: faça purê com menos gordura e aumente a salada."],
-  },
-  {
-    id: "alm_tilapia_grelhada_arroz_legumes",
-    title: "Tilápia grelhada + arroz + legumes",
-    tags: ["leve", "proteico", "fácil"],
-    steps: [
-      "Tempere a tilápia com limão, sal e alho e grelhe.",
-      "Sirva com arroz e legumes no vapor.",
-      "Azeite e limão por cima (opcional).",
-    ],
-    base: { protein: ["tilápia"], carb: ["arroz"], extra: ["legumes"] },
-    tips: ["Se quiser mais carbo: inclua feijão ou batata."],
-  },
-  {
-    id: "alm_frango_strogonoff_light_arroz",
-    title: "Strogonoff de frango (leve) + arroz + salada",
-    tags: ["br", "prático", "proteico"],
-    steps: [
-      "Refogue frango em cubos com cebola e alho.",
-      "Adicione molho de tomate e 1–2 colheres de iogurte natural no final.",
-      "Sirva com arroz e salada.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Troque creme de leite por iogurte para ficar mais leve."],
-  },
-  {
-    id: "alm_lentilha_arroz_ovo",
-    title: "Arroz + lentilha + ovos + salada",
-    tags: ["barato", "vegetariano", "proteico"],
-    steps: [
-      "Cozinhe lentilha com alho e louro.",
-      "Sirva com arroz e 2 ovos mexidos/cozidos.",
-      "Complete com salada.",
-    ],
-    base: { protein: ["ovos", "lentilha"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Se quiser: adicione cenoura ralada na lentilha."],
-  },
-  {
-    id: "alm_macarrao_alho_oleo_frango_salada",
-    title: "Macarrão alho e óleo + frango + salada",
-    tags: ["energia", "pré-treino", "rápido"],
-    steps: [
-      "Cozinhe o macarrão e finalize com alho dourado e azeite.",
-      "Grelhe frango e fatie.",
-      "Sirva com salada simples para equilibrar.",
-    ],
-    base: { protein: ["frango"], carb: ["macarrão"], extra: ["salada"] },
-    tips: ["Para secar: reduza azeite e aumente salada."],
-  },
-  {
-    id: "alm_bife_grelhado_batata_doce_salada",
-    title: "Bife grelhado + batata-doce + salada",
-    tags: ["hipertrofia", "proteico", "fitness"],
-    steps: [
-      "Grelhe bife magro (patinho/alcatra) com sal e pimenta.",
-      "Cozinhe batata-doce em rodelas.",
-      "Sirva com salada e limão.",
-    ],
-    base: { protein: ["bife magro"], carb: ["batata-doce"], extra: ["salada"] },
-    tips: ["Ótimo pós-treino com 1 fruta."],
-  },
-  {
-    id: "alm_frango_curry_arroz_legumes",
-    title: "Frango ao curry + arroz + legumes",
-    tags: ["sabor", "proteico", "fácil"],
-    steps: [
-      "Refogue frango em cubos com curry e cebola.",
-      "Adicione um pouco de água e cozinhe até reduzir.",
-      "Sirva com arroz e legumes.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["legumes"] },
-    tips: ["Se quiser mais cremoso: 1 colher de iogurte no final."],
-  },
-  {
-    id: "alm_arroz_feijao_ovo_couve",
-    title: "Arroz + feijão + ovo + couve refogada",
-    tags: ["br", "barato", "tradicional"],
-    steps: [
-      "Refogue couve com alho e sal.",
-      "Faça 2 ovos fritos na frigideira antiaderente (pouco óleo).",
-      "Sirva com arroz e feijão.",
-    ],
-    base: { protein: ["ovos"], carb: ["arroz", "feijão"], extra: ["couve"] },
-    tips: ["Se quiser mais proteína: adicione frango desfiado."],
-  },
-  {
-    id: "alm_quinoa_frango_legumes",
-    title: "Quinoa + frango + legumes (prato completo)",
-    tags: ["equilibrado", "fitness", "leve"],
-    steps: [
-      "Cozinhe quinoa com sal.",
-      "Grelhe frango e corte em tiras.",
-      "Misture com legumes (brócolis, cenoura, abobrinha).",
-    ],
-    base: { protein: ["frango"], carb: ["quinoa"], extra: ["legumes"] },
-    tips: ["Se quiser mais calorias: azeite ou castanhas por cima."],
-  },
-  {
-    id: "alm_bowl_atum_arroz_salada",
-    title: "Bowl de atum + arroz + salada",
-    tags: ["rápido", "proteico", "prático"],
-    steps: [
-      "Amasse atum com limão, sal e um pouco de iogurte (opcional).",
-      "Monte com arroz e salada.",
-      "Finalize com azeite e pimenta-do-reino.",
-    ],
-    base: { protein: ["atum"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Para ganhar: adicione feijão ou batata."],
-  },
-  {
-    id: "alm_frango_parmegiana_fit",
-    title: "Frango à parmegiana (fit) + arroz + salada",
-    tags: ["br", "proteico", "sabor"],
-    steps: [
-      "Grelhe filé de frango e cubra com molho de tomate.",
-      "Adicione queijo por cima e derreta (forno/airfryer).",
-      "Sirva com arroz e salada.",
-    ],
-    base: { protein: ["frango", "queijo"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Use queijo em pouca quantidade para manter leve."],
-  },
-  {
-    id: "alm_carne_panela_mandioca_salada",
-    title: "Carne de panela + mandioca + salada",
-    tags: ["tradicional", "energia", "conforto"],
-    steps: [
-      "Cozinhe carne em cubos com alho, cebola e temperos.",
-      "Cozinhe mandioca até ficar macia.",
-      "Sirva com salada ácida (limão/vinagre).",
-    ],
-    base: { protein: ["carne"], carb: ["mandioca"], extra: ["salada"] },
-    tips: ["Para secar: diminua mandioca e aumente legumes."],
-  },
-  {
-    id: "alm_frango_grelhado_macarrao_salada",
-    title: "Frango grelhado + macarrão simples + salada",
-    tags: ["prático", "energia", "proteico"],
-    steps: [
-      "Cozinhe macarrão e misture com azeite e sal.",
-      "Grelhe frango.",
-      "Sirva com salada para equilibrar.",
-    ],
-    base: { protein: ["frango"], carb: ["macarrão"], extra: ["salada"] },
-    tips: ["Se quiser mais fibra: use macarrão integral."],
-  },
-  {
-    id: "alm_arroz_feijao_frango_legumes",
-    title: "Arroz + feijão + frango + legumes refogados",
-    tags: ["br", "equilibrado", "barato"],
-    steps: [
-      "Refogue legumes (cenoura, abobrinha, cebola) com alho.",
-      "Grelhe frango em tiras.",
-      "Sirva com arroz e feijão.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz", "feijão"], extra: ["legumes"] },
-    tips: ["Excelente “marmita base” da semana."],
-  },
-  {
-    id: "alm_poke_caseiro_frango_arroz",
-    title: "Poke caseiro de frango + arroz + salada",
-    tags: ["moderno", "rápido", "proteico"],
-    steps: [
-      "Use arroz pronto (ou japonês se tiver).",
-      "Frango em cubos grelhado + pepino + cenoura + folhas.",
-      "Molho simples: shoyu + limão + 1 fio de azeite.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["salada/legumes"] },
-    tips: ["Para secar: aumente pepino/folhas e reduza arroz."],
-  },
-  {
-    id: "alm_panelao_feijao_com_frango_arroz",
-    title: "Feijão reforçado com frango + arroz",
-    tags: ["barato", "marmita", "br"],
-    steps: [
-      "Cozinhe feijão com tempero e adicione frango desfiado.",
-      "Deixe engrossar e ajustar sal.",
-      "Sirva com arroz e salada simples.",
-    ],
-    base: { protein: ["frango", "feijão"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Rende muito e congela bem."],
-  },
-  {
-    id: "alm_tortilha_omelete_recheada_arroz",
-    title: "Omelete recheada + arroz + salada",
-    tags: ["proteico", "rápido", "saciedade"],
-    steps: [
-      "Faça omelete de 3 ovos.",
-      "Recheie com frango/queijo/tomate.",
-      "Sirva com arroz e salada.",
-    ],
-    base: { protein: ["ovos", "frango/queijo"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Uma das melhores pra quando não tem carne pronta."],
-  },
-  {
-    id: "alm_arroz_integral_frango_brocolis",
-    title: "Arroz integral + frango + brócolis",
-    tags: ["fitness", "fibra", "proteico"],
-    steps: [
-      "Cozinhe arroz integral (ou use pronto).",
-      "Grelhe frango e cozinhe brócolis no vapor.",
-      "Finalize com limão e azeite.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz integral"], extra: ["brócolis"] },
-    tips: ["Se quiser mais energia: adicione feijão."],
-  },
-  {
-    id: "alm_frango_shoyu_legumes_arroz",
-    title: "Frango com shoyu + legumes + arroz",
-    tags: ["sabor", "rápido", "proteico"],
-    steps: [
-      "Salteie frango em tiras.",
-      "Adicione legumes e um pouco de shoyu (sem exagero).",
-      "Sirva com arroz.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["legumes"] },
-    tips: ["Controle o sal: shoyu já tem bastante."],
-  },
-  {
-    id: "alm_bowl_grao_bico_arroz_salada",
-    title: "Grão-de-bico + arroz + salada + ovo",
-    tags: ["vegetariano", "fibra", "barato"],
-    steps: [
-      "Cozinhe grão-de-bico (ou use pronto).",
-      "Sirva com arroz e salada.",
-      "Adicione 1–2 ovos cozidos.",
-    ],
-    base: { protein: ["grão-de-bico", "ovos"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Ótimo pra intestino e saciedade."],
-  },
-  {
-    id: "alm_sardinha_arroz_feijao",
-    title: "Sardinha + arroz + feijão + salada",
-    tags: ["barato", "proteico", "br"],
-    steps: [
-      "Use sardinha assada/grelhada (ou enlatada escorrida).",
-      "Sirva com arroz e feijão.",
-      "Complete com salada e limão.",
-    ],
-    base: { protein: ["sardinha"], carb: ["arroz", "feijão"], extra: ["salada"] },
-    tips: ["Sardinha é ótima opção custo-benefício."],
-  },
-  {
-    id: "alm_frango_airfryer_batata_salada",
-    title: "Frango na airfryer + batata + salada",
-    tags: ["prático", "proteico", "seco"],
-    steps: [
-      "Tempere frango e faça na airfryer.",
-      "Cozinhe/asse batatas.",
-      "Sirva com salada.",
-    ],
-    base: { protein: ["frango"], carb: ["batata"], extra: ["salada"] },
-    tips: ["Para ganhar: aumente batata e inclua feijão."],
-  },
-  {
-    id: "alm_carne_desfiada_arroz_legumes",
-    title: "Carne desfiada + arroz + legumes",
-    tags: ["marmita", "proteico", "prático"],
-    steps: [
-      "Cozinhe carne na pressão e desfie.",
-      "Refogue com cebola e temperos.",
-      "Sirva com arroz e legumes.",
-    ],
-    base: { protein: ["carne"], carb: ["arroz"], extra: ["legumes"] },
-    tips: ["Rende muito e salva a semana."],
-  },
-  {
-    id: "alm_frango_grelhado_feijao_tropeiro_leve",
-    title: "Feijão tropeiro (leve) + frango + salada",
-    tags: ["br", "sabor", "proteico"],
-    steps: [
-      "Faça tropeiro leve: feijão + farinha (pouco) + temperos.",
-      "Grelhe frango.",
-      "Sirva com salada para balancear.",
-    ],
-    base: { protein: ["frango", "feijão"], carb: ["farinha (pouco)"], extra: ["salada"] },
-    tips: ["Controle farinha/óleo para não pesar."],
-  },
-  {
-    id: "alm_arroz_feijao_frango_ovo",
-    title: "Arroz + feijão + frango + ovo (refeição “forte”)",
-    tags: ["hipertrofia", "proteico", "br"],
-    steps: [
-      "Monte arroz e feijão.",
-      "Adicione frango grelhado e 1 ovo por cima.",
-      "Complete com salada/legumes.",
-    ],
-    base: { protein: ["frango", "ovos"], carb: ["arroz", "feijão"], extra: ["salada"] },
-    tips: ["Excelente pra aumentar proteína sem complicar."],
-  },
-],
-
-janta: [
-  {
-    id: "jan_sopa_frango_legumes",
-    title: "Sopa de frango com legumes (leve)",
-    tags: ["leve", "noite", "digestão"],
-    steps: [
-      "Cozinhe frango desfiado com cenoura, abobrinha e cebola.",
-      "Ajuste sal e temperos.",
-      "Sirva quente e finalize com cheiro-verde.",
-    ],
-    base: { protein: ["frango"], carb: ["legumes"], extra: ["cheiro-verde"] },
-    tips: ["Se precisar de carbo: coloque 1 batata pequena na sopa."],
-  },
-  {
-    id: "jan_omelete_legumes_salada",
-    title: "Omelete com legumes + salada",
-    tags: ["rápido", "leve", "proteico"],
-    steps: [
-      "Bata 2–3 ovos.",
-      "Adicione tomate, cebola e espinafre/couve.",
-      "Sirva com salada e limão.",
-    ],
-    base: { protein: ["ovos"], carb: ["legumes"], extra: ["salada"] },
-    tips: ["Para ganhar: inclua 1 porção pequena de arroz."],
-  },
-  {
-    id: "jan_frango_grelhado_saladinha_reforcada",
-    title: "Frango grelhado + salada reforçada",
-    tags: ["secar", "leve", "proteico"],
-    steps: [
-      "Grelhe frango em tiras.",
-      "Monte salada grande (folhas + tomate + pepino + cenoura).",
-      "Finalize com azeite e limão.",
-    ],
-    base: { protein: ["frango"], carb: ["nenhum/baixo"], extra: ["salada"] },
-    tips: ["Se der fome tarde: inclua 1 batata ou 1 fruta."],
-  },
-  {
-    id: "jan_tilapia_legumes_forno",
-    title: "Peixe assado + legumes no forno",
-    tags: ["leve", "fácil", "proteico"],
-    steps: [
-      "Tempere peixe com limão, alho e sal.",
-      "Asse junto com legumes (abobrinha, cenoura, cebola).",
-      "Finalize com ervas.",
-    ],
-    base: { protein: ["peixe"], carb: ["legumes"], extra: ["ervas"] },
-    tips: ["Fica pronto em 20–30 min no forno/airfryer."],
-  },
-  {
-    id: "jan_arroz_feijao_ovo_salada",
-    title: "Arroz + feijão + ovo + salada (janta simples)",
-    tags: ["br", "barato", "tradicional"],
-    steps: [
-      "Aqueça arroz e feijão.",
-      "Faça 2 ovos mexidos/cozidos.",
-      "Complete com salada.",
-    ],
-    base: { protein: ["ovos"], carb: ["arroz", "feijão"], extra: ["salada"] },
-    tips: ["Se quiser reduzir calorias: menos arroz, mais salada."],
-  },
-  {
-    id: "jan_bowl_iogurte_salgado_frango",
-    title: "Bowl salgado de iogurte + frango + pepino",
-    tags: ["rápido", "leve", "proteico"],
-    steps: [
-      "Misture iogurte natural com sal, limão e alho (opcional).",
-      "Adicione frango desfiado.",
-      "Complete com pepino e tomate.",
-    ],
-    base: { protein: ["iogurte", "frango"], carb: ["baixo"], extra: ["pepino/tomate"] },
-    tips: ["Se precisar carbo: 1 fatia de pão ou 1 porção de arroz."],
-  },
-  {
-    id: "jan_sanduiche_frango_salada",
-    title: "Sanduíche de frango + salada (janta rápida)",
-    tags: ["rápido", "prático", "proteico"],
-    steps: [
-      "Monte pão com frango desfiado e tomate.",
-      "Adicione alface e 1 fio de azeite (opcional).",
-      "Sirva com salada extra se quiser.",
-    ],
-    base: { protein: ["frango"], carb: ["pão"], extra: ["salada"] },
-    tips: ["Para secar: use pão menor e bastante salada."],
-  },
-  {
-    id: "jan_tapioca_frango_queijo",
-    title: "Tapioca de frango com queijo + salada",
-    tags: ["br", "leve", "proteico"],
-    steps: [
-      "Faça a tapioca na frigideira.",
-      "Recheie com frango desfiado + um pouco de queijo.",
-      "Sirva com salada.",
-    ],
-    base: { protein: ["frango", "queijo"], carb: ["tapioca"], extra: ["salada"] },
-    tips: ["Se for pós-treino: aumente a tapioca."],
-  },
-  {
-    id: "jan_panelao_legumes_ovo_pochê",
-    title: "Legumes salteados + ovo pochê/mexido",
-    tags: ["leve", "jantar", "fibra"],
-    steps: [
-      "Salteie legumes (brócolis, cenoura, abobrinha).",
-      "Faça 1–2 ovos por cima (pochê/mexido).",
-      "Finalize com sal e pimenta.",
-    ],
-    base: { protein: ["ovos"], carb: ["legumes"], extra: ["temperos"] },
-    tips: ["Se precisar carbo: 1 porção pequena de arroz."],
-  },
-  {
-    id: "jan_frango_desfiado_molho_tomate_salada",
-    title: "Frango desfiado ao molho de tomate + salada",
-    tags: ["leve", "proteico", "fácil"],
-    steps: [
-      "Refogue frango desfiado com molho de tomate e temperos.",
-      "Sirva com salada grande.",
-      "Opcional: 1 colher de parmesão.",
-    ],
-    base: { protein: ["frango"], carb: ["baixo"], extra: ["salada"] },
-    tips: ["Para ganhar: adicione arroz ou macarrão."],
-  },
-  {
-    id: "jan_macarrao_integral_atum",
-    title: "Macarrão integral + atum + tomate",
-    tags: ["prático", "proteico", "energia"],
-    steps: [
-      "Cozinhe macarrão integral.",
-      "Misture atum escorrido + tomate + azeite.",
-      "Ajuste sal e orégano.",
-    ],
-    base: { protein: ["atum"], carb: ["macarrão integral"], extra: ["tomate"] },
-    tips: ["Para secar: porção menor + salada do lado."],
-  },
-  {
-    id: "jan_arroz_legumes_frango_rapido",
-    title: "Arroz com legumes + frango (one-pan)",
-    tags: ["marmita", "rápido", "proteico"],
-    steps: [
-      "Refogue legumes picados.",
-      "Misture arroz pronto e frango em cubos já grelhado.",
-      "Finalize com limão e cheiro-verde.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["legumes"] },
-    tips: ["Perfeito quando você tem arroz pronto na geladeira."],
-  },
-  {
-    id: "jan_batata_doce_frango_salada",
-    title: "Batata-doce + frango + salada (janta pós-treino)",
-    tags: ["hipertrofia", "proteico", "pós-treino"],
-    steps: [
-      "Cozinhe batata-doce.",
-      "Grelhe frango e fatie.",
-      "Sirva com salada e limão.",
-    ],
-    base: { protein: ["frango"], carb: ["batata-doce"], extra: ["salada"] },
-    tips: ["Se quiser: 1 concha de feijão junto."],
-  },
-  {
-    id: "jan_sardinha_salada_arroz_pequeno",
-    title: "Sardinha + salada + arroz pequeno",
-    tags: ["barato", "leve", "proteico"],
-    steps: [
-      "Prepare sardinha (assada ou enlatada escorrida).",
-      "Monte salada grande.",
-      "Inclua 2–3 colheres de arroz.",
-    ],
-    base: { protein: ["sardinha"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Ótimo pra bater proteína sem gastar muito."],
-  },
-  {
-    id: "jan_frango_airfryer_legumes",
-    title: "Frango na airfryer + legumes",
-    tags: ["prático", "leve", "proteico"],
-    steps: [
-      "Tempere frango e faça na airfryer.",
-      "Cozinhe legumes no vapor.",
-      "Finalize com azeite e limão.",
-    ],
-    base: { protein: ["frango"], carb: ["legumes"], extra: ["azeite/limão"] },
-    tips: ["Se bater fome: 1 fruta depois."],
-  },
-  {
-    id: "jan_grao_bico_salada_frango",
-    title: "Salada de grão-de-bico + frango",
-    tags: ["fibra", "proteico", "saciedade"],
-    steps: [
-      "Misture grão-de-bico cozido com tomate, cebola e limão.",
-      "Adicione frango desfiado.",
-      "Ajuste sal e azeite.",
-    ],
-    base: { protein: ["frango", "grão-de-bico"], carb: ["grão-de-bico"], extra: ["salada"] },
-    tips: ["Muito boa pra dormir leve e sem fome."],
-  },
-  {
-    id: "jan_caldo_feijao_ovo",
-    title: "Caldo de feijão + ovo (forte e simples)",
-    tags: ["br", "conforto", "barato"],
-    steps: [
-      "Bata feijão cozido com um pouco de água (vira caldo).",
-      "Aqueça e ajuste temperos.",
-      "Sirva com 1–2 ovos cozidos/mexidos.",
-    ],
-    base: { protein: ["ovos", "feijão"], carb: ["feijão"], extra: ["temperos"] },
-    tips: ["Se quiser carbo extra: 1 porção pequena de arroz."],
-  },
-  {
-    id: "jan_carne_magra_legumes",
-    title: "Carne magra em tiras + legumes salteados",
-    tags: ["proteico", "lowcarb", "leve"],
-    steps: [
-      "Salteie carne magra em tiras com cebola.",
-      "Adicione legumes e refogue rápido.",
-      "Finalize com pimenta e limão.",
-    ],
-    base: { protein: ["carne magra"], carb: ["baixo"], extra: ["legumes"] },
-    tips: ["Se estiver em bulking: coma com arroz."],
-  },
-  {
-    id: "jan_arroz_feijao_tilapia_salada",
-    title: "Arroz + feijão + peixe + salada",
-    tags: ["br", "equilibrado", "proteico"],
-    steps: [
-      "Grelhe peixe com limão e sal.",
-      "Sirva com arroz e feijão.",
-      "Complete com salada.",
-    ],
-    base: { protein: ["peixe"], carb: ["arroz", "feijão"], extra: ["salada"] },
-    tips: ["Se quiser mais leve: menos arroz, mais salada."],
-  },
-  {
-    id: "jan_crepioca_frango_salada",
-    title: "Crepioca de frango + salada",
-    tags: ["rápido", "proteico", "br"],
-    steps: [
-      "Misture 1 ovo + 2 colheres de tapioca e faça a massa.",
-      "Recheie com frango desfiado.",
-      "Sirva com salada.",
-    ],
-    base: { protein: ["ovos", "frango"], carb: ["tapioca"], extra: ["salada"] },
-    tips: ["Se pós-treino: aumente a tapioca."],
-  },
-  {
-    id: "jan_legumes_assados_frango",
-    title: "Legumes assados + frango (tudo no forno)",
-    tags: ["fácil", "marmita", "proteico"],
-    steps: [
-      "Corte legumes (cenoura, abobrinha, cebola) e tempere.",
-      "Asse com frango temperado ao lado.",
-      "Finalize com limão.",
-    ],
-    base: { protein: ["frango"], carb: ["legumes"], extra: ["temperos"] },
-    tips: ["Dá pra fazer 2–3 porções e guardar."],
-  },
-  {
-    id: "jan_arroz_ovo_tomate_cebola",
-    title: "Arroz + ovos mexidos + tomate e cebola",
-    tags: ["barato", "rápido", "br"],
-    steps: [
-      "Refogue tomate e cebola rapidamente.",
-      "Faça 2–3 ovos mexidos.",
-      "Misture no arroz pronto e ajuste sal.",
-    ],
-    base: { protein: ["ovos"], carb: ["arroz"], extra: ["tomate/cebola"] },
-    tips: ["Se quiser: coloque feijão junto."],
-  },
-  {
-    id: "jan_sopa_abobora_frango",
-    title: "Creme de abóbora + frango",
-    tags: ["leve", "noite", "digestão"],
-    steps: [
-      "Cozinhe abóbora e bata até virar creme.",
-      "Adicione frango desfiado e aqueça.",
-      "Ajuste sal e pimenta.",
-    ],
-    base: { protein: ["frango"], carb: ["abóbora"], extra: ["temperos"] },
-    tips: ["Fica top com gengibre (opcional)."],
-  },
-  {
-    id: "jan_macarrao_simples_frango_tomate",
-    title: "Macarrão simples + frango + tomate",
-    tags: ["energia", "pós-treino", "rápido"],
-    steps: [
-      "Cozinhe macarrão e misture com tomate e azeite.",
-      "Adicione frango em cubos.",
-      "Finalize com orégano.",
-    ],
-    base: { protein: ["frango"], carb: ["macarrão"], extra: ["tomate"] },
-    tips: ["Para secar: porção menor e salada do lado."],
-  },
-  {
-    id: "jan_bowl_arroz_frango_cenoura",
-    title: "Bowl de arroz + frango + cenoura/pepino",
-    tags: ["prático", "equilibrado", "proteico"],
-    steps: [
-      "Use arroz pronto.",
-      "Adicione frango grelhado em tiras.",
-      "Complete com cenoura ralada e pepino.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["cenoura/pepino"] },
-    tips: ["Molho rápido: limão + sal + azeite."],
-  },
-  {
-    id: "jan_tilapia_airfryer_salada",
-    title: "Peixe na airfryer + salada",
-    tags: ["leve", "proteico", "rápido"],
-    steps: [
-      "Tempere peixe e faça na airfryer.",
-      "Monte salada grande.",
-      "Finalize com limão.",
-    ],
-    base: { protein: ["peixe"], carb: ["baixo"], extra: ["salada"] },
-    tips: ["Se bater fome: 1 porção pequena de arroz."],
-  },
-  {
-    id: "jan_frango_desfiado_arroz_pequeno_salada",
-    title: "Frango desfiado + arroz pequeno + salada",
-    tags: ["equilibrado", "noite", "proteico"],
-    steps: [
-      "Aqueça frango desfiado temperado.",
-      "Sirva com 2–3 colheres de arroz.",
-      "Complete com salada.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Boa pra dormir bem sem estufar."],
-  },
-  {
-    id: "jan_carne_panela_legumes_sem_arroz",
-    title: "Carne de panela + legumes (sem arroz)",
-    tags: ["lowcarb", "saciedade", "proteico"],
-    steps: [
-      "Cozinhe carne na pressão com temperos.",
-      "Adicione legumes no final.",
-      "Sirva só a carne e os legumes.",
-    ],
-    base: { protein: ["carne"], carb: ["baixo"], extra: ["legumes"] },
-    tips: ["Se estiver em bulking, coma com arroz/mandioca."],
-  },
-  {
-    id: "jan_arroz_feijao_frango_salada_noite",
-    title: "Arroz + feijão + frango + salada (porção controlada)",
-    tags: ["equilibrado", "br", "noite"],
-    steps: [
-      "Use porção menor de arroz (2–4 colheres).",
-      "Mantenha feijão e frango para proteína/saciedade.",
-      "Complete com salada.",
-    ],
-    base: { protein: ["frango"], carb: ["arroz", "feijão"], extra: ["salada"] },
-    tips: ["Janta clássica que funciona pra quase todo mundo."],
-  },
-  {
-    id: "jan_ovos_cozidos_salada_arroz_pequeno",
-    title: "Ovos cozidos + salada + arroz pequeno",
-    tags: ["rápido", "barato", "proteico"],
-    steps: [
-      "Cozinhe 2–3 ovos.",
-      "Monte salada grande e tempere.",
-      "Inclua arroz pequeno se precisar.",
-    ],
-    base: { protein: ["ovos"], carb: ["arroz"], extra: ["salada"] },
-    tips: ["Se quiser mais proteína: +1 ovo ou iogurte."],
-  },
-],
+const MEAL_LABELS = {
+  cafe: "Café da manhã",
+  almoco: "Almoço",
+  janta: "Janta",
 };
 
-const PROTEIN_SWAPS = ["frango", "carne magra", "ovos", "atum", "queijo", "iogurte"];
-const CARB_SWAPS = ["arroz", "feijão", "batata", "macarrão", "pão", "tapioca", "aveia"];
-const EXTRA_SWAPS = ["salada", "legumes", "fruta", "azeite", "castanhas"];
+const BASE_RECIPES = {
+  cafe: [
+    {
+      id: "cafe-omelete-aveia",
+      title: "Omelete com aveia",
+      subtitle: "Proteína + energia logo cedo",
+      minutes: 10,
+      tags: ["proteína", "rápido", "manhã"],
+      goals: ["Hipertrofia", "Performance"],
+      calories: 420,
+      ingredients: ["2 ovos", "3 colheres de aveia", "1 banana", "canela"],
+      steps: [
+        "Misture os ovos com a aveia.",
+        "Faça a omelete em fogo baixo.",
+        "Sirva com banana e canela ao lado.",
+      ],
+      hydration: "Combine com 500 ml de água ao acordar.",
+    },
+    {
+      id: "cafe-iogurte-frutas",
+      title: "Iogurte com frutas e granola",
+      subtitle: "Leve, prático e fácil de repetir",
+      minutes: 5,
+      tags: ["leve", "rápido", "rotina"],
+      goals: ["Emagrecimento", "Performance"],
+      calories: 320,
+      ingredients: ["1 iogurte natural", "frutas picadas", "granola", "chia"],
+      steps: [
+        "Coloque o iogurte em uma tigela.",
+        "Adicione frutas, granola e chia.",
+        "Mexa levemente e consuma na hora.",
+      ],
+      hydration: "Boa opção para manhãs corridas sem perder qualidade.",
+    },
+    {
+      id: "cafe-tapioca-frango",
+      title: "Tapioca com frango",
+      subtitle: "Mais saciedade e boa densidade nutricional",
+      minutes: 12,
+      tags: ["saciedade", "proteína", "forte"],
+      goals: ["Hipertrofia", "Emagrecimento"],
+      calories: 390,
+      ingredients: ["2 colheres de goma", "frango desfiado", "queijo branco", "orégano"],
+      steps: [
+        "Prepare a tapioca na frigideira.",
+        "Recheie com frango e queijo branco.",
+        "Finalize com orégano.",
+      ],
+      hydration: "Boa para começar o dia com mais saciedade.",
+    },
+  ],
+  almoco: [
+    {
+      id: "almoco-frango-arroz",
+      title: "Frango, arroz e legumes",
+      subtitle: "Base forte para uma rotina consistente",
+      minutes: 18,
+      tags: ["base", "equilíbrio", "consistência"],
+      goals: ["Hipertrofia", "Performance", "Emagrecimento"],
+      calories: 560,
+      ingredients: ["frango grelhado", "arroz", "legumes", "azeite"],
+      steps: [
+        "Monte o prato com frango, arroz e legumes.",
+        "Adicione azeite por cima dos legumes.",
+        "Ajuste a porção ao seu objetivo.",
+      ],
+      hydration: "Almoço fácil de repetir ao longo da semana.",
+    },
+    {
+      id: "almoco-patinho-batata",
+      title: "Patinho com batata e salada",
+      subtitle: "Energia limpa para treinar e recuperar",
+      minutes: 20,
+      tags: ["força", "massa", "almoço"],
+      goals: ["Hipertrofia", "Performance"],
+      calories: 610,
+      ingredients: ["patinho moído", "batata inglesa", "salada", "azeite"],
+      steps: [
+        "Cozinhe a batata até ficar macia.",
+        "Prepare o patinho moído com temperos simples.",
+        "Sirva com salada e azeite.",
+      ],
+      hydration: "Boa combinação para dias de treino mais pesado.",
+    },
+    {
+      id: "almoco-peixe-vegetais",
+      title: "Peixe com vegetais e arroz",
+      subtitle: "Mais leve sem perder estrutura",
+      minutes: 18,
+      tags: ["leve", "qualidade", "rotina"],
+      goals: ["Emagrecimento", "Performance"],
+      calories: 470,
+      ingredients: ["filé de peixe", "arroz", "brócolis", "cenoura"],
+      steps: [
+        "Grelhe o peixe dos dois lados.",
+        "Sirva com arroz e vegetais cozidos.",
+        "Ajuste o tempero com limão e sal.",
+      ],
+      hydration: "Boa opção para manter o almoço mais leve.",
+    },
+  ],
+  janta: [
+    {
+      id: "janta-crepioca-frango",
+      title: "Crepioca com frango",
+      subtitle: "Janta prática e com boa proteína",
+      minutes: 12,
+      tags: ["noite", "prático", "proteína"],
+      goals: ["Hipertrofia", "Emagrecimento"],
+      calories: 410,
+      ingredients: ["1 ovo", "goma de tapioca", "frango desfiado", "temperos"],
+      steps: [
+        "Misture o ovo com a goma.",
+        "Prepare a base da crepioca na frigideira.",
+        "Recheie com frango desfiado.",
+      ],
+      hydration: "Boa escolha para uma noite mais prática.",
+    },
+    {
+      id: "janta-carne-salada",
+      title: "Carne magra com salada",
+      subtitle: "Mais controle sem perder qualidade",
+      minutes: 15,
+      tags: ["leve", "controle", "noite"],
+      goals: ["Emagrecimento", "Performance"],
+      calories: 360,
+      ingredients: ["carne magra", "folhas", "tomate", "azeite"],
+      steps: [
+        "Grelhe a carne magra.",
+        "Monte a salada com folhas e tomate.",
+        "Finalize com azeite.",
+      ],
+      hydration: "Boa para noites mais leves e objetivas.",
+    },
+    {
+      id: "janta-omelete-legumes",
+      title: "Omelete com legumes",
+      subtitle: "Simples, rápida e fácil de repetir",
+      minutes: 10,
+      tags: ["simples", "leve", "rotina"],
+      goals: ["Emagrecimento", "Hipertrofia"],
+      calories: 330,
+      ingredients: ["2 ovos", "legumes picados", "queijo branco", "temperos"],
+      steps: [
+        "Bata os ovos.",
+        "Adicione os legumes picados.",
+        "Prepare na frigideira e finalize com queijo branco.",
+      ],
+      hydration: "Ótima para manter consistência sem esforço.",
+    },
+  ],
+};
 
-function makeVariant(recipe, seedKey, objective = "hipertrofia") {
-  const seedArrP = seededShuffle(PROTEIN_SWAPS, seedKey + "_p");
-  const seedArrC = seededShuffle(CARB_SWAPS, seedKey + "_c");
-  const seedArrE = seededShuffle(EXTRA_SWAPS, seedKey + "_e");
-
-  const wantMoreCarb =
-    String(objective).toLowerCase().includes("hiper") ||
-    String(objective).toLowerCase().includes("cond");
-
-  const wantLean =
-    String(objective).toLowerCase().includes("bem") ||
-    String(objective).toLowerCase().includes("saud");
-
-  const pickP = seedArrP[0];
-  const pickC = seedArrC[wantMoreCarb ? 0 : 2];
-  const pickE = seedArrE[wantLean ? 0 : 1];
-
-  return {
-    ...recipe,
-    variantKey: seedKey,
-    title: `${recipe.title} • variação`,
-    subtitle: `Trocas: ${pickP} + ${pickC} + ${pickE}`,
-    swaps: { protein: pickP, carb: pickC, extra: pickE },
-  };
+function normalizeText(v) {
+  return String(v || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
-function buildLotsOfOptions({ email, day, objective, mealKey, count = 48 }) {
-  const baseList = RECIPE_BANK[mealKey] || [];
-  if (!baseList.length) return [];
-  const shuffled = seededShuffle(baseList, `${email}_${day}_${mealKey}_base`);
-  const out = [];
-  for (let i = 0; i < count; i++) {
-    const base = shuffled[i % shuffled.length];
-    const v = makeVariant(base, `${email}_${day}_${mealKey}_${i}`, objective);
-    out.push({ id: `${base.id}_${i}`, mealKey, ...v });
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function buildWeekStrip(daysCount) {
+  const labels = ["D", "S", "T", "Q", "Q", "S", "S"];
+  const result = [];
+  const count = Math.max(3, Math.min(Number(daysCount) || 3, 7));
+  const now = new Date();
+
+  for (let i = 0; i < count; i += 1) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    result.push({
+      key: d.toISOString().slice(0, 10),
+      day: d.getDate(),
+      label: labels[d.getDay()],
+      isToday: i === 0,
+    });
   }
-  return out;
+
+  return result;
 }
 
-function waterGoalMl(pesoKg = 80) {
-  const kg = Number(pesoKg || 0) || 80;
-  return clamp(Math.round(kg * 35), 1800, 5000);
+function getGoalWater(profile) {
+  const peso = Number(profile?.peso || 0);
+  if (!peso) return 2500;
+  const suggested = Math.round(peso * 35);
+  return Math.max(2000, Math.min(suggested, 4500));
 }
 
-/* ---------------- component ---------------- */
+function getSupplements(profile) {
+  const objetivo = profile?.objetivo || "Hipertrofia";
+  const peso = Number(profile?.peso || 70);
+
+  if (objetivo === "Emagrecimento") {
+    return [
+      `Whey protein conforme necessidade de proteína diária`,
+      `Creatina 3g a 5g por dia`,
+      `Cafeína em dias de treino, se fizer sentido para sua rotina`,
+    ];
+  }
+
+  if (objetivo === "Performance") {
+    return [
+      `Creatina 3g a 5g por dia`,
+      `Whey protein no pós-treino se necessário`,
+      `Cafeína em dias de treino mais forte`,
+    ];
+  }
+
+  return [
+    `Creatina 3g a 5g por dia`,
+    `Whey protein para complementar proteína diária`,
+    `Meta de proteína ajustada ao peso: cerca de ${Math.round(peso * 1.8)}g/dia`,
+  ];
+}
+
+function generateMealOptions({ mealKey, profile, search, activeChip }) {
+  const base = BASE_RECIPES[mealKey] || [];
+  const objetivo = profile?.objetivo || "Hipertrofia";
+
+  let items = base.map((recipe) => {
+    let emphasis = "";
+    if (objetivo === "Hipertrofia") emphasis = "Boa para apoiar ganho de massa com mais consistência.";
+    if (objetivo === "Emagrecimento") emphasis = "Boa para manter controle e praticidade no dia a dia.";
+    if (objetivo === "Performance") emphasis = "Boa para melhorar rendimento e rotina alimentar.";
+
+    return {
+      ...recipe,
+      stableId: recipe.id,
+      mealKey,
+      emphasis,
+      favoriteHint: `Salvar ${recipe.title} nos favoritos`,
+    };
+  });
+
+  if (activeChip === "favoritas") {
+    return items;
+  }
+
+  if (activeChip && activeChip !== "todos") {
+    items = items.filter((item) =>
+      item.tags.some((tag) => normalizeText(tag).includes(normalizeText(activeChip)))
+    );
+  }
+
+  if (search.trim()) {
+    const q = normalizeText(search);
+    items = items.filter((item) => {
+      return (
+        normalizeText(item.title).includes(q) ||
+        normalizeText(item.subtitle).includes(q) ||
+        item.tags.some((tag) => normalizeText(tag).includes(q))
+      );
+    });
+  }
+
+  return items;
+}
+
 export default function Nutricao() {
   const nav = useNavigate();
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
 
-  const hasNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
+  const [profile, setProfile] = useState({
+    nome: "",
+    objetivo: "Hipertrofia",
+    peso: "",
+    frequencia: 3,
+  });
 
-  function todayKeyLocal() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-
-  const [day, setDay] = useState(() => todayKeyLocal());
-
-  const objetivo = String(user?.objetivo || "hipertrofia");
-  const peso = Number(user?.peso || 0) || 80;
-
-  const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
-
-  const waterKey = useMemo(() => `water_${email}_${day}`, [email, day]);
-  const historyKey = useMemo(() => `water_history_${email}`, [email]);
-
-  function readHistory() {
-    try {
-      const raw = localStorage.getItem(historyKey);
-      const obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function writeHistory(obj) {
-    try {
-      localStorage.setItem(historyKey, JSON.stringify(obj));
-    } catch {}
-  }
-
-  function persistWater(forDay, ml) {
-    try {
-      localStorage.setItem(`water_${email}_${forDay}`, String(ml));
-    } catch {}
-
-    const h = readHistory();
-    h[forDay] = ml;
-    writeHistory(h);
-  }
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [mealTab, setMealTab] = useState("cafe");
+  const [search, setSearch] = useState("");
+  const [activeChip, setActiveChip] = useState("todos");
+  const [expandedId, setExpandedId] = useState(null);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
   const [waterMl, setWaterMl] = useState(() => {
-    const v = Number(localStorage.getItem(`water_${email}_${todayKeyLocal()}`) || 0) || 0;
-    persistWater(todayKeyLocal(), v);
-    return v;
+    const raw = localStorage.getItem(`nutri_water_${email}_${todayKey()}`);
+    return raw ? Number(raw) : 0;
   });
 
-  useEffect(() => {
-    const v = Number(localStorage.getItem(waterKey) || 0) || 0;
-    setWaterMl(v);
-    persistWater(day, v);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterKey]);
+  const [favorites, setFavorites] = useState(() => {
+    const raw = localStorage.getItem(`nutri_fav_${email}`);
+    return raw ? JSON.parse(raw) : [];
+  });
+
+  const [repeatPlan, setRepeatPlan] = useState(() => {
+    const raw = localStorage.getItem(`nutri_repeat_${email}`);
+    return raw ? JSON.parse(raw) : [];
+  });
+
+  const paidNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
   useEffect(() => {
-    function msUntilNextMidnight() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(24, 0, 0, 80);
-      return Math.max(250, next.getTime() - now.getTime());
+    let mounted = true;
+
+    async function loadProfile() {
+      try {
+        if (!user?.id) {
+          setLoadingProfile(false);
+          return;
+        }
+
+        const { data } = await supabase
+          .from("profiles")
+          .select("nome, objetivo, peso, frequencia")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        setProfile({
+          nome:
+            data?.nome ||
+            user?.user_metadata?.nome ||
+            user?.user_metadata?.full_name ||
+            user?.email?.split("@")[0] ||
+            "",
+          objetivo: data?.objetivo || "Hipertrofia",
+          peso: data?.peso || "",
+          frequencia: data?.frequencia || 3,
+        });
+      } catch {
+        if (!mounted) return;
+        setProfile((prev) => ({
+          ...prev,
+          nome:
+            user?.user_metadata?.nome ||
+            user?.user_metadata?.full_name ||
+            user?.email?.split("@")[0] ||
+            "",
+        }));
+      } finally {
+        if (mounted) setLoadingProfile(false);
+      }
     }
 
-    const t = setTimeout(() => {
-      setDay(todayKeyLocal());
-    }, msUntilNextMidnight());
+    loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
-    return () => clearTimeout(t);
-  }, [day]);
+  useEffect(() => {
+    localStorage.setItem(`nutri_fav_${email}`, JSON.stringify(favorites));
+  }, [favorites, email]);
 
-  function addWater(ml) {
-    setWaterMl((prev) => {
-      const next = clamp(prev + ml, 0, goalMl * 2);
-      persistWater(day, next);
-      return next;
-    });
-  }
+  useEffect(() => {
+    localStorage.setItem(`nutri_repeat_${email}`, JSON.stringify(repeatPlan));
+  }, [repeatPlan, email]);
 
-  function resetWater() {
-    setWaterMl(0);
-    persistWater(day, 0);
-  }
+  useEffect(() => {
+    localStorage.setItem(`nutri_water_${email}_${todayKey()}`, String(waterMl));
+  }, [waterMl, email]);
 
-  function goCalendar() {
-    nav("/calendario");
-  }
+  const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
+  const waterLeft = Math.max(0, waterGoal - waterMl);
+  const waterPct = Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100)));
 
-  const [openRecipe, setOpenRecipe] = useState(null);
+  const weekStrip = useMemo(() => buildWeekStrip(profile?.frequencia || 3), [profile?.frequencia]);
 
-  const [query, setQuery] = useState("");
-  const [mealTab, setMealTab] = useState("cafe");
-  const [showFavOnly, setShowFavOnly] = useState(false);
+  const chips = useMemo(
+    () => ["todos", "rápido", "leve", "proteína", "rotina"],
+    []
+  );
 
-  const favKey = `nutri_fav_${email}`;
-  const [fav, setFav] = useState(() => {
-    const raw = localStorage.getItem(favKey);
-    return raw ? JSON.parse(raw) : {};
-  });
-
-  function toggleFav(id) {
-    const next = { ...fav, [id]: !fav[id] };
-    setFav(next);
-    localStorage.setItem(favKey, JSON.stringify(next));
-  }
-
-  const [visibleCount, setVisibleCount] = useState(16);
-  useEffect(() => setVisibleCount(16), [mealTab, showFavOnly, query]);
-
-  const options = useMemo(() => {
-    const countPerMeal = 80;
-    return buildLotsOfOptions({
-      email,
-      day,
-      objective: objetivo,
+  const allOptions = useMemo(() => {
+    return generateMealOptions({
       mealKey: mealTab,
-      count: countPerMeal,
+      profile,
+      search,
+      activeChip,
     });
-  }, [email, day, objetivo, mealTab]);
+  }, [mealTab, profile, search, activeChip]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = options;
+  const visibleOptions = useMemo(() => {
+    if (!showOnlyFavorites) return allOptions;
+    return allOptions.filter((item) => favorites.includes(item.stableId));
+  }, [allOptions, favorites, showOnlyFavorites]);
 
-    if (showFavOnly) list = list.filter((x) => fav[x.id]);
-    if (q) {
-      list = list.filter((x) => {
-        const hay = `${x.title} ${x.subtitle || ""} ${(x.tags || []).join(" ")}`.toLowerCase();
-        return hay.includes(q);
-      });
-    }
-    return list;
-  }, [options, query, showFavOnly, fav]);
-
-  const shown = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const favoriteRecipes = useMemo(() => {
+    const all = [...BASE_RECIPES.cafe, ...BASE_RECIPES.almoco, ...BASE_RECIPES.janta];
+    return all.filter((item) => favorites.includes(item.id)).slice(0, 6);
+  }, [favorites]);
 
   const suggestion = useMemo(() => {
-    const base = buildLotsOfOptions({
-      email,
-      day,
-      objective: objetivo,
-      mealKey: mealTab,
-      count: 12,
-    });
-    if (!base.length) return null;
-    const pick = seededShuffle(base, `${email}_${day}_${mealTab}_suggest`)[0];
-    return pick || null;
-  }, [email, day, objetivo, mealTab]);
+    const list = visibleOptions.length ? visibleOptions : allOptions;
+    return list[0] || null;
+  }, [visibleOptions, allOptions]);
 
-  const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
-  const pctLabel = Math.round(waterPct * 100);
-  const leftMl = clamp(goalMl - waterMl, 0, goalMl);
+  const supplements = useMemo(() => getSupplements(profile), [profile]);
 
-  function goSupp() {
-    nav("/suplementacao");
+  function isFavorite(id) {
+    return favorites.includes(id);
   }
 
-  // ✅ NÃO PAGANTE / SEM NUTRI+
-  if (!hasNutriPlus) {
+  function toggleFavorite(id) {
+    setFavorites((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((v) => v !== id);
+      }
+      return [id, ...prev];
+    });
+  }
+
+  function addWater() {
+    setWaterMl((prev) => Math.min(waterGoal, prev + WATER_STEP));
+  }
+
+  function removeWater() {
+    setWaterMl((prev) => Math.max(0, prev - WATER_STEP));
+  }
+
+  function toggleRepeat(item) {
+    setRepeatPlan((prev) => {
+      if (prev.includes(item.stableId)) {
+        return prev.filter((v) => v !== item.stableId);
+      }
+      return [item.stableId, ...prev].slice(0, 10);
+    });
+  }
+
+  if (!paidNutriPlus) {
     return (
-      <div style={S.page}>
-        <div style={S.bgGlow} />
-
-        <div style={S.head}>
-          <div style={{ minWidth: 0 }}>
-            <div style={S.kicker}>Nutrição</div>
-            <div style={S.title}>
-              Nutri+<span style={{ color: ORANGE }}>.</span>
-            </div>
-            <div style={S.sub}>Refeições + receitas + hidratação em um fluxo simples e rápido.</div>
+      <div style={styles.page}>
+        <div style={styles.wrap}>
+          <div style={styles.headerCompact}>
+            <div style={styles.brand}>Nutri<span style={{ color: ORANGE }}>+</span></div>
           </div>
 
-          <div style={S.headRight}>
-            {/* ✅ removido: botão preto do header */}
-            <button style={S.backBtn} onClick={() => nav("/dashboard")} type="button">
-              Voltar
+          <section style={styles.lockedHero}>
+            <div style={styles.kicker}>premium nutrition</div>
+            <h1 style={styles.titleLocked}>Leve sua alimentação para outro nível.</h1>
+            <p style={styles.subLocked}>
+              Refeições, receitas, hidratação e uma rotina mais completa para quem quer evoluir de
+              verdade dentro do FitDeal.
+            </p>
+
+            <button style={styles.mainCta} onClick={() => nav("/planos#nutri")}>
+              Liberar Nutri+
             </button>
-          </div>
+          </section>
         </div>
-
-        {/* ✅ botão de baixo continua, mas SEM barra laranja */}
-        <button style={S.suppHero} onClick={goSupp} type="button">
-          <div style={S.suppHeroGlow} />
-          <div style={S.suppHeroTop}>
-            <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
-            <div style={S.suppHeroChev}>›</div>
-          </div>
-
-          <div style={S.suppHeroTitle}>
-            Plano de suplementos<span style={S.orangeDot}>.</span>
-          </div>
-
-          <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
-          {/* ✅ removido: track/fill (barra laranja) */}
-        </button>
-
-        <div style={S.lockCard}>
-          <div style={S.lockTitle}>Nutri+ é exclusivo para assinantes</div>
-          <div style={S.lockText}>
-            Libera: combinações de refeições, receitas detalhadas, favoritos e contador de água.
-          </div>
-
-          <button style={S.ctaBtn} onClick={() => nav("/planos#nutri")} type="button">
-            Liberar Nutri+ (R$ 65,99)
-          </button>
-
-          <div style={S.smallNote}>Você mantém o treino gratuito — Nutri+ é um módulo extra premium.</div>
-        </div>
-
-        <div style={S.previewCard}>
-          <div style={S.previewTitle}>Prévia</div>
-          <div style={S.previewRow}>
-            <PreviewPill label="Receitas" value="1000+" />
-            <PreviewPill label="Favoritos" value="★" />
-            <PreviewPill label="Água" value="ml" />
-          </div>
-          <div style={S.previewHint}>Um toque e você tem uma refeição pronta, com trocas e passos claros.</div>
-        </div>
-
-        <div style={{ height: 120 }} />
       </div>
     );
   }
 
-  // ✅ PAGANTE NUTRI+
   return (
-    <div style={S.page}>
-      <div style={S.bgGlow} />
-
-      <div style={S.head}>
-        <div style={{ minWidth: 0 }}>
-          <div style={S.kicker}>Nutri+</div>
-          <div style={S.title}>
-            Refeições & Hidratação<span style={{ color: ORANGE }}>.</span>
-          </div>
-          <div style={S.sub}>Escolha refeições, salve favoritas e acompanhe sua água do dia.</div>
+    <div style={styles.page}>
+      <div style={styles.wrap}>
+        <div style={styles.headerCompact}>
+          <div style={styles.brand}>Nutri<span style={{ color: ORANGE }}>+</span></div>
         </div>
 
-        <div style={S.headRight}>
-          {/* ✅ removido: botão preto do header */}
-          <button style={S.backBtn} onClick={() => nav("/dashboard")} type="button">
-            Voltar
-          </button>
-        </div>
-      </div>
-
-      {/* ✅ botão de baixo continua, mas SEM barra laranja */}
-      <button style={S.suppHero} onClick={goSupp} type="button">
-        <div style={S.suppHeroGlow} />
-        <div style={S.suppHeroTop}>
-          <div style={S.suppHeroLabel}>SUPLEMENTAÇÃO</div>
-          <div style={S.suppHeroChev}>›</div>
-        </div>
-
-        <div style={S.suppHeroTitle}>
-          Plano de suplementos<span style={S.orangeDot}>.</span>
-        </div>
-
-        <div style={S.suppHeroSub}>Recomendado por objetivo e ajustado ao seu peso. Toque para abrir.</div>
-        {/* ✅ removido: track/fill (barra laranja) */}
-      </button>
-
-      {suggestion ? (
-        <button style={S.suggestCard} onClick={() => setOpenRecipe(suggestion)} type="button">
-          <div style={S.suggestTop}>
-            <div style={S.suggestTag}>SUGESTÃO</div>
-            <div style={S.suggestChev}>›</div>
-          </div>
-
-          <div style={S.suggestTitle}>{suggestion.title}</div>
-          <div style={S.suggestSub}>{suggestion.subtitle}</div>
-
-          <div style={S.suggestChips}>
-            {(suggestion.tags || []).slice(0, 2).map((t) => (
-              <span key={t} style={S.chip}>
-                {t}
-              </span>
-            ))}
-            <span style={S.chipSoft}>{mealTab.toUpperCase()}</span>
-            <span style={S.chipSoft}>Toque para abrir</span>
-          </div>
-        </button>
-      ) : null}
-
-      <div style={S.card}>
-        <div style={S.cardTop}>
+        <section style={styles.heroCard}>
           <div>
-            <div style={S.cardTitle}>Hidratação</div>
-            <div style={S.cardSub}>
-              Meta sugerida: <b>{goalMl} ml</b> • faltam <b>{leftMl} ml</b>
+            <div style={styles.heroTitle}>
+              {loadingProfile
+                ? "Sua nutrição"
+                : `${profile.nome ? `${profile.nome}, ` : ""}sua nutrição`}
+            </div>
+            <div style={styles.heroSub}>
+              Mais organização, mais constância e uma rotina alimentar mais alinhada com o seu
+              objetivo.
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-            <div style={S.pill}>{pctLabel}%</div>
-
-            <button style={S.calendarBtn} onClick={goCalendar} type="button">
-              Ver no calendário <span style={S.calendarChev}>›</span>
-            </button>
+          <div style={styles.heroMini}>
+            <div style={styles.heroMiniLabel}>Objetivo</div>
+            <div style={styles.heroMiniValue}>{profile.objetivo || "Hipertrofia"}</div>
           </div>
-        </div>
+        </section>
 
-        <div style={S.progressWrap}>
-          <div style={{ ...S.progressBar, width: `${Math.round(waterPct * 100)}%` }} />
-        </div>
+        <section style={styles.summaryStrip}>
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Água hoje</div>
+            <div style={styles.summaryValue}>{waterMl} ml</div>
+          </div>
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Favoritas</div>
+            <div style={styles.summaryValue}>{favorites.length}</div>
+          </div>
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Meta diária</div>
+            <div style={styles.summaryValue}>{waterGoal} ml</div>
+          </div>
+        </section>
 
-        <div style={S.waterRow}>
-          <button style={S.waterBtnSoft} onClick={() => addWater(200)} type="button">
-            +200
-          </button>
-          <button style={S.waterBtnSoft} onClick={() => addWater(300)} type="button">
-            +300
-          </button>
-          <button style={S.waterBtnSoft} onClick={() => addWater(500)} type="button">
-            +500
-          </button>
-          <button style={S.waterGhost} onClick={resetWater} type="button">
-            Reset
-          </button>
-        </div>
+        {suggestion ? (
+          <section style={styles.suggestionCard}>
+            <div style={styles.sectionLabel}>Sugestão do dia</div>
+            <div style={styles.suggestionTitle}>{suggestion.title}</div>
+            <div style={styles.suggestionSub}>{suggestion.subtitle}</div>
 
-        <div style={S.waterNum}>
-          <b>{waterMl}</b> ml hoje
-        </div>
+            <div style={styles.inlineTags}>
+              {suggestion.tags.slice(0, 3).map((tag) => (
+                <span key={tag} style={styles.tag}>
+                  {tag}
+                </span>
+              ))}
+            </div>
 
-        <div style={S.waterMiniRow}>
-          <button style={S.waterMini} onClick={() => addWater(150)} type="button">
-            +150
-          </button>
-          <button style={S.waterMini} onClick={() => addWater(750)} type="button">
-            +750
-          </button>
-          <button style={S.waterMiniGhost} onClick={() => addWater(leftMl)} type="button" title="Completar meta">
-            Completar meta
-          </button>
-        </div>
-      </div>
+            <button
+              type="button"
+              style={styles.secondaryAction}
+              onClick={() =>
+                setExpandedId((prev) => (prev === suggestion.stableId ? null : suggestion.stableId))
+              }
+            >
+              Ver detalhes
+            </button>
+          </section>
+        ) : null}
 
-      <div style={S.card}>
-        <div style={S.tabs}>
-          {[
-            { k: "cafe", t: "Café" },
-            { k: "almoco", t: "Almoço" },
-            { k: "janta", t: "Janta" },
-          ].map((x) => {
-            const on = mealTab === x.k;
-            return (
-              <button
-                key={x.k}
-                onClick={() => setMealTab(x.k)}
-                style={{ ...S.tabBtn, ...(on ? S.tabOn : S.tabOff) }}
-                type="button"
+        {favoriteRecipes.length > 0 ? (
+          <section style={styles.section}>
+            <div style={styles.sectionTitle}>Salvos</div>
+            <div style={styles.horizontalScroll}>
+              {favoriteRecipes.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  style={styles.savedCard}
+                  onClick={() => {
+                    const mealKey = Object.keys(BASE_RECIPES).find((key) =>
+                      BASE_RECIPES[key].some((r) => r.id === item.id)
+                    );
+                    if (mealKey) setMealTab(mealKey);
+                    setExpandedId(item.id);
+                    setShowOnlyFavorites(false);
+                  }}
+                >
+                  <div style={styles.savedCardTitle}>{item.title}</div>
+                  <div style={styles.savedCardSub}>{item.subtitle}</div>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section style={styles.section}>
+          <div style={styles.sectionTitle}>Próximos dias</div>
+          <div style={styles.calendarRow}>
+            {weekStrip.map((item) => (
+              <div
+                key={item.key}
+                style={{
+                  ...styles.calendarPill,
+                  ...(item.isToday ? styles.calendarPillActive : null),
+                }}
               >
-                {x.t}
-              </button>
-            );
-          })}
-        </div>
+                <div style={styles.calendarLabel}>{item.label}</div>
+                <div style={styles.calendarDay}>{item.day}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <div style={S.searchRow}>
-          <div style={S.searchWrap}>
-            <span style={S.searchIcon}>
-              <SearchIcon />
-            </span>
+        <section style={styles.section}>
+          <div style={styles.sectionTitle}>Hidratação</div>
+          <div style={styles.waterCard}>
+            <div>
+              <div style={styles.waterBig}>{waterPct}%</div>
+              <div style={styles.waterSub}>
+                Meta sugerida: {waterGoal} ml • faltam {waterLeft} ml
+              </div>
+            </div>
+
+            <div style={styles.waterActions}>
+              <button type="button" style={styles.waterBtnSoft} onClick={removeWater}>
+                −250 ml
+              </button>
+              <button type="button" style={styles.waterBtn} onClick={addWater}>
+                +250 ml
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.section}>
+          <div style={styles.segmentWrap}>
+            {Object.keys(MEAL_LABELS).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setMealTab(key);
+                  setExpandedId(null);
+                }}
+                style={{
+                  ...styles.segmentBtn,
+                  ...(mealTab === key ? styles.segmentBtnActive : null),
+                }}
+              >
+                {MEAL_LABELS[key]}
+              </button>
+            ))}
+          </div>
+
+          <div style={styles.searchWrap}>
             <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar (ex: frango, rápido, tradicional...)"
-              style={S.search}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar refeição, receita ou tag"
+              style={styles.searchInput}
             />
           </div>
 
-          <button
-            style={{ ...S.favToggle, ...(showFavOnly ? S.favOn : S.favOff) }}
-            onClick={() => setShowFavOnly((v) => !v)}
-            title="Mostrar só favoritos"
-            type="button"
-          >
-            ★
-          </button>
-        </div>
-
-        <div style={S.meta}>
-          Mostrando <b>{filtered.length}</b> opções • exibindo <b>{shown.length}</b>
-        </div>
-      </div>
-
-      <div style={S.list}>
-        {shown.map((r) => {
-          const isFav = !!fav[r.id];
-
-          return (
-            <button key={r.id} style={S.recipeCard} onClick={() => setOpenRecipe(r)} type="button">
-              <div style={S.recipeTop}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={S.recipeTitle}>{r.title}</div>
-                  <div style={S.recipeSub}>{r.subtitle}</div>
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleFav(r.id);
-                  }}
-                  style={{ ...S.star, ...(isFav ? S.starOn : S.starOff) }}
-                  aria-label="Favoritar"
-                  type="button"
-                >
-                  ★
-                </button>
-              </div>
-
-              <div style={S.chipRow}>
-                {(r.tags || []).slice(0, 3).map((t) => (
-                  <div key={t} style={S.chip}>
-                    {t}
-                  </div>
-                ))}
-                <div style={S.chipSoft}>{mealTab.toUpperCase()}</div>
-              </div>
-
-              <div style={S.openHint}>Abrir receita →</div>
-            </button>
-          );
-        })}
-      </div>
-
-      {shown.length < filtered.length ? (
-        <button style={S.loadMore} onClick={() => setVisibleCount((v) => clamp(v + 16, 16, 9999))} type="button">
-          Ver mais opções
-        </button>
-      ) : null}
-
-      {openRecipe ? (
-        <div style={S.modalOverlay} onClick={() => setOpenRecipe(null)}>
-          <div style={S.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={S.modalHead}>
-              <div style={{ minWidth: 0 }}>
-                <div style={S.modalTitle}>{openRecipe.title}</div>
-                <div style={S.modalSub}>{openRecipe.subtitle}</div>
-              </div>
-              <button style={S.modalClose} onClick={() => setOpenRecipe(null)} type="button">
-                ✕
+          <div style={styles.chipsRow}>
+            {chips.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setActiveChip(chip)}
+                style={{
+                  ...styles.chip,
+                  ...(activeChip === chip ? styles.chipActive : null),
+                }}
+              >
+                {chip}
               </button>
-            </div>
+            ))}
 
-            <div style={S.modalScroll}>
-              <div style={S.modalBox}>
-                <div style={S.modalBoxTitle}>Trocas sugeridas</div>
-                <div style={S.modalBoxText}>
-                  Proteína: <b>{openRecipe.swaps?.protein}</b> • Carbo: <b>{openRecipe.swaps?.carb}</b> • Extra:{" "}
-                  <b>{openRecipe.swaps?.extra}</b>
-                </div>
-              </div>
-
-              <div style={S.modalBox2}>
-                <div style={S.modalBoxTitle}>Como fazer</div>
-                <div style={S.steps}>
-                  {(openRecipe.steps || []).map((s, i) => (
-                    <div key={i} style={S.step}>
-                      <div style={S.stepNum}>{i + 1}</div>
-                      <div style={S.stepText}>{s}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {!!(openRecipe.tips || []).length ? (
-                <div style={S.modalBox3}>
-                  <div style={S.modalBoxTitle}>Dicas</div>
-                  <div style={S.modalBoxText}>{(openRecipe.tips || []).join(" ")}</div>
-                </div>
-              ) : null}
-            </div>
-
-            <button style={S.modalPrimary} onClick={() => setOpenRecipe(null)} type="button">
-              Entendi
+            <button
+              type="button"
+              onClick={() => setShowOnlyFavorites((prev) => !prev)}
+              style={{
+                ...styles.chip,
+                ...(showOnlyFavorites ? styles.chipActive : null),
+              }}
+            >
+              favoritas
             </button>
           </div>
-        </div>
-      ) : null}
+        </section>
 
-      <div style={{ height: 140 }} />
+        <section style={styles.recipeList}>
+          {visibleOptions.map((item) => {
+            const open = expandedId === item.stableId;
+            const favorite = isFavorite(item.stableId);
+            const repeating = repeatPlan.includes(item.stableId);
+
+            return (
+              <div
+                key={item.stableId}
+                style={{
+                  ...styles.recipeCard,
+                  ...(open ? styles.recipeCardOpen : null),
+                }}
+              >
+                <div style={styles.recipeHead}>
+                  <button
+                    type="button"
+                    style={styles.recipeMainButton}
+                    onClick={() => setExpandedId((prev) => (prev === item.stableId ? null : item.stableId))}
+                  >
+                    <div style={styles.recipeTitle}>{item.title}</div>
+                    <div style={styles.recipeSub}>{item.subtitle}</div>
+
+                    <div style={styles.metaRow}>
+                      <span style={styles.metaPill}>{item.minutes} min</span>
+                      <span style={styles.metaPill}>{item.calories} kcal</span>
+                      <span style={styles.metaPill}>{item.mealKey}</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label={item.favoriteHint}
+                    onClick={() => toggleFavorite(item.stableId)}
+                    style={{
+                      ...styles.starButton,
+                      ...(favorite ? styles.starButtonActive : null),
+                    }}
+                  >
+                    {favorite ? "★" : "☆"}
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    ...styles.expandArea,
+                    maxHeight: open ? 420 : 0,
+                    opacity: open ? 1 : 0,
+                    marginTop: open ? 14 : 0,
+                  }}
+                >
+                  <div style={styles.expandText}>{item.emphasis}</div>
+
+                  <div style={styles.expandBlockTitle}>Ingredientes</div>
+                  <div style={styles.inlineList}>
+                    {item.ingredients.map((v) => (
+                      <span key={v} style={styles.tagSoft}>
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={styles.expandBlockTitle}>Como fazer</div>
+                  <div style={styles.stepsCol}>
+                    {item.steps.map((stepText, idx) => (
+                      <div key={stepText} style={styles.stepRow}>
+                        <div style={styles.stepIndex}>{idx + 1}</div>
+                        <div style={styles.stepText}>{stepText}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={styles.noteCard}>{item.hydration}</div>
+
+                  <div style={styles.actionRow}>
+                    <button
+                      type="button"
+                      style={styles.actionBtnSoft}
+                      onClick={() => toggleRepeat(item)}
+                    >
+                      {repeating ? "Remover de amanhã" : "Repetir amanhã"}
+                    </button>
+
+                    <button
+                      type="button"
+                      style={styles.actionBtn}
+                      onClick={() => toggleFavorite(item.stableId)}
+                    >
+                      {favorite ? "Remover favorito" : "Salvar favorito"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {!visibleOptions.length ? (
+            <div style={styles.emptyState}>
+              Nenhuma receita encontrada com esse filtro.
+            </div>
+          ) : null}
+        </section>
+
+        <section style={styles.section}>
+          <div style={styles.sectionTitle}>Suplementação</div>
+          <div style={styles.supplementCard}>
+            {supplements.map((item) => (
+              <div key={item} style={styles.simpleBulletRow}>
+                <div style={styles.simpleDot} />
+                <div style={styles.simpleBulletText}>{item}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
 
-/* ---------- micro components ---------- */
-function PreviewPill({ label, value }) {
-  return (
-    <div style={S.previewPill}>
-      <div style={S.previewPillTop}>{label}</div>
-      <div style={S.previewPillVal}>{value}</div>
-    </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="#64748b" strokeWidth="2.2" />
-      <path d="M21 21l-4.35-4.35" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/* ---------------- styles ---------------- */
-const S = {
+const styles = {
   page: {
+    minHeight: "100vh",
+    background: LIGHT,
     padding: 18,
-    paddingBottom: 140,
-    background:
-      "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.12), rgba(248,250,252,0) 60%), linear-gradient(180deg, #f8fafc, #f7f9fc)",
-    position: "relative",
-    overflow: "hidden",
-  },
-  bgGlow: {
-    position: "absolute",
-    inset: -120,
-    pointerEvents: "none",
-    background: "radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
+    paddingBottom: 120,
   },
 
-  head: {
-    position: "relative",
-    zIndex: 1,
+  wrap: {
+    maxWidth: 620,
+    margin: "0 auto",
+  },
+
+  headerCompact: {
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    background: "rgba(247,247,245,.75)",
+    paddingBottom: 12,
+    marginBottom: 8,
+  },
+
+  brand: {
+    fontSize: 32,
+    lineHeight: 1,
+    fontWeight: 800,
+    letterSpacing: -1,
+    color: BLACK,
+    paddingTop: 4,
+  },
+
+  kicker: {
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: SOFT,
+  },
+
+  titleLocked: {
+    margin: 0,
+    marginTop: 8,
+    fontSize: 34,
+    lineHeight: 1.05,
+    fontWeight: 800,
+    letterSpacing: -1.2,
+    color: BLACK,
+  },
+
+  subLocked: {
+    marginTop: 12,
+    fontSize: 15,
+    lineHeight: 1.55,
+    fontWeight: 600,
+    color: GRAY,
+    maxWidth: 480,
+  },
+
+  lockedHero: {
+    paddingTop: 12,
+  },
+
+  mainCta: {
+    marginTop: 22,
+    width: "100%",
+    height: 56,
+    borderRadius: 18,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontSize: 16,
+    fontWeight: 800,
+    letterSpacing: -0.2,
+  },
+
+  heroCard: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 14,
+    alignItems: "flex-end",
+    padding: 18,
     borderRadius: 24,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 10px 28px rgba(0,0,0,.04)",
+  },
+
+  heroTitle: {
+    fontSize: 30,
+    lineHeight: 1.02,
+    fontWeight: 800,
+    letterSpacing: -1.1,
+    color: BLACK,
+  },
+
+  heroSub: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 1.5,
+    fontWeight: 600,
+    color: GRAY,
+    maxWidth: 420,
+  },
+
+  heroMini: {
+    minWidth: 112,
+    padding: 12,
+    borderRadius: 18,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+  },
+
+  heroMiniLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    fontWeight: 800,
+    color: SOFT,
+  },
+
+  heroMiniValue: {
+    marginTop: 6,
+    fontSize: 15,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  summaryStrip: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
+    marginTop: 14,
+  },
+
+  summaryCard: {
+    padding: 14,
+    borderRadius: 18,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+  },
+
+  summaryLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+    fontWeight: 800,
+    color: SOFT,
+  },
+
+  summaryValue: {
+    marginTop: 6,
+    fontSize: 18,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  suggestionCard: {
+    marginTop: 14,
+    padding: 18,
+    borderRadius: 22,
+    background: BLACK,
+    color: WHITE,
+    boxShadow: "0 16px 36px rgba(0,0,0,.12)",
+  },
+
+  sectionLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
+    fontWeight: 800,
+    color: "rgba(255,255,255,.65)",
+  },
+
+  suggestionTitle: {
+    marginTop: 10,
+    fontSize: 24,
+    lineHeight: 1.06,
+    fontWeight: 800,
+    letterSpacing: -0.6,
+  },
+
+  suggestionSub: {
+    marginTop: 6,
+    fontSize: 13.5,
+    lineHeight: 1.45,
+    fontWeight: 600,
+    color: "rgba(255,255,255,.78)",
+  },
+
+  inlineTags: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+
+  tag: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,.08)",
+    border: "1px solid rgba(255,255,255,.08)",
+    fontSize: 11.5,
+    fontWeight: 700,
+    color: WHITE,
+  },
+
+  secondaryAction: {
+    marginTop: 16,
+    height: 44,
+    padding: "0 16px",
+    borderRadius: 14,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontSize: 14,
+    fontWeight: 800,
+  },
+
+  section: {
+    marginTop: 14,
+    paddingTop: 4,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    lineHeight: 1.2,
+    fontWeight: 800,
+    color: BLACK,
+    marginBottom: 12,
+  },
+
+  horizontalScroll: {
+    display: "flex",
+    gap: 10,
+    overflowX: "auto",
+    paddingBottom: 2,
+  },
+
+  savedCard: {
+    minWidth: 190,
+    padding: 14,
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    textAlign: "left",
+    boxShadow: "0 8px 20px rgba(0,0,0,.03)",
+  },
+
+  savedCardTitle: {
+    fontSize: 14,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  savedCardSub: {
+    marginTop: 4,
+    fontSize: 12.5,
+    lineHeight: 1.45,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
+  calendarRow: {
+    display: "flex",
+    gap: 10,
+    overflowX: "auto",
+  },
+
+  calendarPill: {
+    minWidth: 60,
+    padding: "12px 10px",
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    textAlign: "center",
+  },
+
+  calendarPillActive: {
+    background: "#FFF7F1",
+    borderColor: "rgba(255,106,0,.28)",
+  },
+
+  calendarLabel: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: SOFT,
+  },
+
+  calendarDay: {
+    marginTop: 5,
+    fontSize: 18,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  waterCard: {
     padding: 16,
-    background: "rgba(255,255,255,.72)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
+    borderRadius: 22,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     alignItems: "center",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-  },
-  headRight: { display: "flex", gap: 10, alignItems: "center", flexShrink: 0 },
-
-  kicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  title: { marginTop: 4, fontSize: 20, fontWeight: 950, color: TEXT, letterSpacing: -0.5 },
-  sub: { marginTop: 8, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  backBtn: {
-    padding: "12px 14px",
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
 
-  orangeDot: { color: ORANGE, marginLeft: 1, fontWeight: 950 },
-
-  // HERO suplementação (sem barra/track)
-  suppHero: {
-    position: "relative",
-    zIndex: 1,
-    marginTop: 14,
-    width: "100%",
-    border: "1px solid rgba(255,255,255,.10)",
-    borderRadius: 26,
-    padding: 16,
-    textAlign: "left",
-    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 55%, #0E0F13 100%)",
-    boxShadow: "0 20px 70px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06)",
-    overflow: "hidden",
-    WebkitTapHighlightColor: "transparent",
-  },
-  suppHeroGlow: {
-    position: "absolute",
-    inset: -2,
-    pointerEvents: "none",
-    background:
-      "radial-gradient(520px 220px at 18% 0%, rgba(255,106,0,.18), rgba(255,255,255,0) 60%), radial-gradient(520px 220px at 92% 12%, rgba(255,255,255,.10), rgba(255,255,255,0) 55%)",
-    opacity: 0.9,
-  },
-  suppHeroTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  suppHeroLabel: {
-    display: "inline-flex",
-    padding: "7px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,.06)",
-    border: "1px solid rgba(255,255,255,.10)",
-    color: "rgba(255,255,255,.92)",
-    fontWeight: 950,
-    fontSize: 11,
-    letterSpacing: 0.8,
-  },
-  suppHeroChev: { fontSize: 26, fontWeight: 900, opacity: 0.55, color: "rgba(255,255,255,.92)" },
-  suppHeroTitle: { marginTop: 12, fontSize: 16, fontWeight: 950, color: "#fff", letterSpacing: -0.2 },
-  suppHeroSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,.68)", lineHeight: 1.35 },
-
-  calendarBtn: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    fontSize: 12,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    boxShadow: "0 10px 24px rgba(15,23,42,.06)",
-    WebkitTapHighlightColor: "transparent",
-  },
-  calendarChev: { fontSize: 18, fontWeight: 950, opacity: 0.55, marginTop: -1 },
-
-  card: {
-    position: "relative",
-    zIndex: 1,
-    marginTop: 14,
-    borderRadius: 24,
-    padding: 16,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  cardTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-  cardSub: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  pill: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.22)",
-    fontWeight: 950,
-    fontSize: 12,
-    color: TEXT,
-    whiteSpace: "nowrap",
+  waterBig: {
+    fontSize: 28,
+    fontWeight: 800,
+    color: BLACK,
+    letterSpacing: -0.8,
   },
 
-  progressWrap: {
-    marginTop: 12,
-    height: 12,
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    overflow: "hidden",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  progressBar: {
-    height: "100%",
-    borderRadius: 999,
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    transition: "width .25s ease",
-  },
-
-  waterRow: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 },
-  waterBtnSoft: {
-    padding: 12,
-    borderRadius: 16,
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "rgba(255,106,0,.12)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  waterGhost: {
-    padding: 12,
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  waterNum: { marginTop: 10, fontSize: 13, fontWeight: 800, color: MUTED },
-
-  waterMiniRow: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" },
-  waterMini: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  waterMiniGhost: {
-    marginLeft: "auto",
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "rgba(255,106,0,.12)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-
-  suggestCard: {
-    position: "relative",
-    zIndex: 1,
-    marginTop: 14,
-    width: "100%",
-    borderRadius: 26,
-    padding: 16,
-    textAlign: "left",
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "linear-gradient(135deg, rgba(255,106,0,.14), rgba(255,255,255,.92))",
-    boxShadow: "0 18px 60px rgba(15,23,42,.10)",
-  },
-  suggestTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  suggestTag: {
-    display: "inline-flex",
-    padding: "7px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,.75)",
-    border: "1px solid rgba(255,106,0,.22)",
-    color: ORANGE,
-    fontWeight: 950,
-    fontSize: 11,
-    letterSpacing: 0.6,
-  },
-  suggestChev: { fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
-  suggestTitle: { marginTop: 12, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  suggestSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
-  suggestChips: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" },
-
-  tabs: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 },
-  tabBtn: {
-    padding: 12,
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.10)",
-    fontWeight: 950,
-    transition: "transform .12s ease",
-  },
-  tabOn: { background: "rgba(255,106,0,.12)", borderColor: "rgba(255,106,0,.28)", color: TEXT },
-  tabOff: { background: "#fff", color: MUTED },
-
-  searchRow: { marginTop: 10, display: "grid", gridTemplateColumns: "1fr 46px", gap: 10 },
-  searchWrap: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "0 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-  },
-  searchIcon: { display: "grid", placeItems: "center", opacity: 0.9 },
-  search: {
-    width: "100%",
-    padding: "12px 0",
-    border: "none",
-    outline: "none",
+  waterSub: {
+    marginTop: 4,
     fontSize: 13,
-    fontWeight: 850,
-    background: "transparent",
-    color: TEXT,
+    lineHeight: 1.4,
+    color: GRAY,
+    fontWeight: 600,
   },
 
-  favToggle: {
-    width: 46,
-    height: 46,
+  waterActions: {
+    display: "grid",
+    gap: 8,
+  },
+
+  waterBtn: {
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  waterBtnSoft: {
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "#FAFAF8",
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  segmentWrap: {
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    paddingBottom: 2,
+  },
+
+  segmentBtn: {
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
+  segmentBtnActive: {
+    background: BLACK,
+    color: WHITE,
+    borderColor: BLACK,
+  },
+
+  searchWrap: {
+    marginTop: 12,
+  },
+
+  searchInput: {
+    width: "100%",
+    height: 48,
     borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    fontWeight: 950,
-    fontSize: 16,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    padding: "0 14px",
+    fontSize: 14,
+    color: BLACK,
+    outline: "none",
   },
-  favOn: { background: ORANGE, color: "#111", border: "none" },
-  favOff: { background: "#fff", color: MUTED },
 
-  meta: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
+  chipsRow: {
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    marginTop: 12,
+    paddingBottom: 2,
+  },
 
-  list: { position: "relative", zIndex: 1, marginTop: 14, display: "grid", gap: 12 },
+  chip: {
+    height: 36,
+    padding: "0 12px",
+    borderRadius: 999,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    color: BLACK,
+    fontSize: 12.5,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
+  chipActive: {
+    background: "#FFF7F1",
+    borderColor: "rgba(255,106,0,.28)",
+    color: BLACK,
+  },
+
+  recipeList: {
+    display: "grid",
+    gap: 12,
+    marginTop: 14,
+  },
 
   recipeCard: {
-    textAlign: "left",
-    width: "100%",
     borderRadius: 22,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
     padding: 16,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
-  recipeTop: { display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" },
-  recipeTitle: { fontSize: 15, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  recipeSub: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  star: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
-    fontWeight: 950,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-  },
-  starOn: { background: ORANGE, border: "none", color: "#111" },
-  starOff: { background: "#fff", color: MUTED },
-
-  chipRow: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 },
-  chip: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.18)",
-    fontWeight: 900,
-    fontSize: 11,
-    color: TEXT,
-  },
-  chipSoft: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.05)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 900,
-    fontSize: 11,
-    color: MUTED,
-  },
-  openHint: { marginTop: 10, fontSize: 12, fontWeight: 900, color: ORANGE },
-
-  loadMore: {
-    position: "relative",
-    zIndex: 1,
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.92)",
-    color: TEXT,
-    fontWeight: 950,
-    boxShadow: "0 12px 34px rgba(15,23,42,.06)",
+    boxShadow: "0 8px 22px rgba(0,0,0,.03)",
+    transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
   },
 
-  lockCard: {
-    position: "relative",
-    zIndex: 1,
-    marginTop: 14,
-    borderRadius: 22,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.08))",
-    border: "1px solid rgba(255,106,0,.22)",
-    boxShadow: "0 18px 50px rgba(15,23,42,.10)",
-    textAlign: "center",
+  recipeCardOpen: {
+    borderColor: "rgba(255,106,0,.28)",
+    boxShadow: "0 12px 30px rgba(255,106,0,.08)",
   },
-  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
-  lockText: { marginTop: 8, fontSize: 13, color: MUTED, fontWeight: 850, lineHeight: 1.4 },
-  ctaBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(255,106,0,.22)",
-  },
-  smallNote: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
 
-  previewCard: {
-    position: "relative",
-    zIndex: 1,
-    marginTop: 14,
-    borderRadius: 22,
-    padding: 16,
-    background: "rgba(255,255,255,.82)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-  },
-  previewTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  previewRow: { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 },
-  previewPill: {
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(15,23,42,.03)",
-    border: "1px solid rgba(15,23,42,.06)",
-    textAlign: "center",
-  },
-  previewPillTop: { fontSize: 11, fontWeight: 900, color: MUTED },
-  previewPillVal: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT },
-  previewHint: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(15,23,42,.45)",
-    display: "grid",
-    placeItems: "center",
-    padding: 18,
-    zIndex: 9999,
-  },
-  modal: {
-    width: "100%",
-    maxWidth: 560,
-    borderRadius: 24,
-    background: "rgba(255,255,255,.96)",
-    border: "1px solid rgba(15,23,42,.10)",
-    boxShadow: "0 30px 120px rgba(15,23,42,.35)",
-    overflow: "hidden",
-  },
-  modalHead: {
-    padding: 16,
-    borderBottom: "1px solid rgba(15,23,42,.06)",
+  recipeHead: {
     display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    alignItems: "center",
-    background: "rgba(255,255,255,.88)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  },
-  modalTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  modalSub: { marginTop: 6, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  modalClose: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    fontWeight: 950,
+    gap: 12,
+    alignItems: "flex-start",
   },
 
-  modalScroll: { padding: 16, maxHeight: "64vh", overflow: "auto" },
-
-  modalBox: {
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.20)",
+  recipeMainButton: {
+    flex: 1,
+    textAlign: "left",
+    border: "none",
+    background: "transparent",
+    padding: 0,
   },
-  modalBox2: {
+
+  recipeTitle: {
+    fontSize: 18,
+    lineHeight: 1.15,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  recipeSub: {
+    marginTop: 5,
+    fontSize: 13,
+    lineHeight: 1.45,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
+  metaRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
     marginTop: 10,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(15,23,42,.03)",
-    border: "1px solid rgba(15,23,42,.06)",
   },
-  modalBox3: {
-    marginTop: 10,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(15,23,42,.02)",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
-  modalBoxTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.9 },
-  modalBoxText: { marginTop: 6, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
 
-  steps: { marginTop: 8, display: "grid", gap: 10 },
-  step: { display: "flex", gap: 10, alignItems: "flex-start" },
-  stepNum: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(255,106,0,.14)",
-    border: "1px solid rgba(255,106,0,.22)",
-    fontWeight: 950,
-    color: TEXT,
+  metaPill: {
+    padding: "7px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 11.5,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  starButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "#FAFAF8",
+    color: BLACK,
+    fontSize: 18,
     flexShrink: 0,
   },
-  stepText: { fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
 
-  modalPrimary: {
-    margin: 16,
-    marginTop: 0,
-    width: "calc(100% - 32px)",
-    padding: 14,
-    borderRadius: 18,
+  starButtonActive: {
+    borderColor: "rgba(255,106,0,.28)",
+    background: "#FFF7F1",
+    color: ORANGE,
+  },
+
+  expandArea: {
+    overflow: "hidden",
+    transition: "all 220ms cubic-bezier(.22,1,.36,1)",
+  },
+
+  expandText: {
+    fontSize: 14,
+    lineHeight: 1.55,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
+  expandBlockTitle: {
+    marginTop: 14,
+    marginBottom: 10,
+    fontSize: 13,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    color: SOFT,
+    fontWeight: 800,
+  },
+
+  inlineList: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  tagSoft: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  stepsCol: {
+    display: "grid",
+    gap: 10,
+  },
+
+  stepRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+
+  stepIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    background: "#FFF1E8",
+    color: ORANGE,
+    display: "grid",
+    placeItems: "center",
+    fontSize: 12,
+    fontWeight: 800,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+
+  stepText: {
+    fontSize: 13.5,
+    lineHeight: 1.5,
+    color: BLACK,
+    fontWeight: 600,
+  },
+
+  noteCard: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 12.5,
+    lineHeight: 1.5,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
+  actionRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginTop: 14,
+  },
+
+  actionBtn: {
+    height: 44,
+    borderRadius: 14,
     border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 16px 40px rgba(255,106,0,.22)",
+    background: ORANGE,
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  actionBtnSoft: {
+    height: 44,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    color: BLACK,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  emptyState: {
+    padding: 16,
+    borderRadius: 18,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    color: GRAY,
+    fontSize: 14,
+    fontWeight: 600,
+  },
+
+  supplementCard: {
+    padding: 16,
+    borderRadius: 22,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    display: "grid",
+    gap: 12,
+  },
+
+  simpleBulletRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+
+  simpleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: ORANGE,
+    marginTop: 7,
+    flexShrink: 0,
+  },
+
+  simpleBulletText: {
+    fontSize: 14,
+    lineHeight: 1.5,
+    fontWeight: 600,
+    color: BLACK,
   },
 };
-
