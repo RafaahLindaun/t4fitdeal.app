@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import recipeBank from "../data/recipeBank";
+import { recipeBank } from "../data/recipeBank";
 
 const ORANGE = "#FF6A00";
 const BLACK = "#111111";
