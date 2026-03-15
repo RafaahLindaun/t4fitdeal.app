@@ -7,11 +7,7 @@ const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
 /* banco de receitas será importado depois */
-const RECIPE_BANK = {
-  cafe: [],
-  almoco: [],
-  janta: [],
-};
+import { RECIPE_BANK } from "../data/recipeBank";
 
 /* ---------------- helpers ---------------- */
 
