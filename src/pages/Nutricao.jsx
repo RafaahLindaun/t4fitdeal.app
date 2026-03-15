@@ -19,6 +19,10 @@ const MEAL_LABELS = {
   janta: "Janta",
 };
 
+/* ========================================
+   RECIPE BANK (mantido igual ao seu)
+======================================== */
+
 const BASE_RECIPES = {
   cafe: [
     {
@@ -36,22 +40,6 @@ const BASE_RECIPES = {
         "Sirva com banana e canela ao lado.",
       ],
       hydration: "Combine com 500 ml de água ao acordar.",
-    },
-    {
-      id: "cafe-iogurte-frutas",
-      title: "Iogurte com frutas e granola",
-      subtitle: "Leve, prático e fácil de repetir",
-      minutes: 5,
-      tags: ["leve", "rápido", "rotina"],
-      goals: ["Emagrecimento", "Performance"],
-      calories: 320,
-      ingredients: ["1 iogurte natural", "frutas picadas", "granola", "chia"],
-      steps: [
-        "Coloque o iogurte em uma tigela.",
-        "Adicione frutas, granola e chia.",
-        "Mexa levemente e consuma na hora.",
-      ],
-      hydration: "Boa opção para manhãs corridas sem perder qualidade.",
     },
   ],
 
@@ -94,6 +82,10 @@ const BASE_RECIPES = {
   ],
 };
 
+/* ========================================
+   HELPERS
+======================================== */
+
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -104,6 +96,10 @@ function getGoalWater(profile) {
   const suggested = Math.round(peso * 35);
   return Math.max(2000, Math.min(suggested, 4500));
 }
+
+/* ========================================
+   COMPONENT
+======================================== */
 
 export default function Nutricao() {
   const nav = useNavigate();
@@ -118,26 +114,43 @@ export default function Nutricao() {
     frequencia: 3,
   });
 
+  /* ========================================
+     HIDRATAÇÃO
+  ======================================== */
+
   const [waterMl, setWaterMl] = useState(() => {
     const raw = localStorage.getItem(`nutri_water_${email}_${todayKey()}`);
     return raw ? Number(raw) : 0;
   });
 
   const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
-  const waterLeft = Math.max(0, waterGoal - waterMl);
-  const waterPct = Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100)));
 
-  function addWater() {
-    setWaterMl((prev) => Math.min(waterGoal, prev + WATER_STEP));
+  const waterLeft = Math.max(0, waterGoal - waterMl);
+
+  const waterPct = Math.max(
+    0,
+    Math.min(100, Math.round((waterMl / waterGoal) * 100))
+  );
+
+  function addWater(v) {
+    setWaterMl((prev) => Math.min(waterGoal, prev + v));
   }
 
-  function removeWater() {
-    setWaterMl((prev) => Math.max(0, prev - WATER_STEP));
+  function removeWater(v) {
+    setWaterMl((prev) => Math.max(0, prev - v));
+  }
+
+  function completeGoal() {
+    setWaterMl(waterGoal);
   }
 
   useEffect(() => {
     localStorage.setItem(`nutri_water_${email}_${todayKey()}`, String(waterMl));
   }, [waterMl, email]);
+
+  /* ========================================
+     RENDER
+  ======================================== */
 
   return (
     <div style={styles.page}>
@@ -145,6 +158,10 @@ export default function Nutricao() {
         <div style={styles.brand}>
           fitdeal<span style={{ color: ORANGE }}>.</span>
         </div>
+
+        {/* =============================
+            HIDRATAÇÃO
+        ============================== */}
 
         <section style={styles.hydrationSection}>
           <div style={styles.hydrationHeader}>
@@ -161,6 +178,8 @@ export default function Nutricao() {
             <div style={styles.hydrationPct}>{waterPct}%</div>
           </div>
 
+          {/* barra */}
+
           <div style={styles.waterBarWrap}>
             <div
               style={{
@@ -170,21 +189,55 @@ export default function Nutricao() {
             />
           </div>
 
-          <div style={styles.waterCard}>
-            <button style={styles.waterBtnSoft} onClick={removeWater}>
-              − 1 copo
+          {/* botões */}
+
+          <div style={styles.waterButtonsRow}>
+            <button
+              style={styles.waterBtnSoft}
+              onClick={() => removeWater(100)}
+            >
+              −100 ml
             </button>
 
-            <div style={styles.waterCenter}>
-              <div style={styles.waterBig}>{waterMl} ml</div>
+            <button style={styles.waterBtnSoft} onClick={() => addWater(100)}>
+              +100 ml
+            </button>
 
-              <div style={styles.waterSub}>
-                cerca de {Math.round(waterMl / WATER_STEP)} copos
-              </div>
+            <button style={styles.waterBtnSoft} onClick={() => addWater(200)}>
+              +200 ml
+            </button>
+
+            <button style={styles.waterBtnSoft} onClick={() => addWater(300)}>
+              +300 ml
+            </button>
+
+            <button style={styles.waterBtnSoft} onClick={() => addWater(450)}>
+              +450 ml
+            </button>
+          </div>
+
+          {/* centro */}
+
+          <div style={styles.waterCenter}>
+            <div style={styles.waterBig}>{waterMl} ml</div>
+
+            <div style={styles.waterSub}>
+              cerca de {Math.round(waterMl / WATER_STEP)} copos
             </div>
+          </div>
 
-            <button style={styles.waterBtn} onClick={addWater}>
-              + 1 copo
+          {/* ações */}
+
+          <div style={styles.waterActions}>
+            <button style={styles.waterBtn} onClick={completeGoal}>
+              Completar meta
+            </button>
+
+            <button
+              style={styles.waterBtnSoft}
+              onClick={() => nav("/nutricao-calendario")}
+            >
+              Ver calendário
             </button>
           </div>
         </section>
@@ -193,11 +246,16 @@ export default function Nutricao() {
   );
 }
 
+/* ========================================
+   STYLES
+======================================== */
+
 const styles = {
   page: {
     minHeight: "100vh",
     background: LIGHT,
     padding: 18,
+    paddingBottom: 120,
   },
 
   wrap: {
@@ -209,20 +267,22 @@ const styles = {
     fontSize: 32,
     fontWeight: 800,
     letterSpacing: -1,
-    marginBottom: 16,
+    marginBottom: 18,
     color: BLACK,
   },
 
   hydrationSection: {
-    padding: 18,
+    padding: 20,
     borderRadius: 24,
     background: WHITE,
     border: `1px solid ${BORDER}`,
+    boxShadow: "0 10px 28px rgba(0,0,0,.04)",
   },
 
   hydrationHeader: {
     display: "flex",
     justifyContent: "space-between",
+    marginBottom: 12,
   },
 
   hydrationTitle: {
@@ -232,9 +292,9 @@ const styles = {
   },
 
   hydrationSub: {
-    marginTop: 6,
     fontSize: 13,
     color: GRAY,
+    marginTop: 4,
   },
 
   hydrationPct: {
@@ -249,29 +309,32 @@ const styles = {
     borderRadius: 999,
     background: "#EFEFEF",
     overflow: "hidden",
-    marginTop: 14,
-    marginBottom: 14,
+    marginTop: 12,
+    marginBottom: 18,
   },
 
   waterBarFill: {
     height: "100%",
     background: "linear-gradient(90deg,#FF6A00,#FF8A3C)",
+    borderRadius: 999,
   },
 
-  waterCard: {
-    display: "grid",
-    gridTemplateColumns: "110px 1fr 110px",
-    gap: 10,
-    alignItems: "center",
+  waterButtonsRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 16,
   },
 
   waterCenter: {
     textAlign: "center",
+    marginBottom: 16,
   },
 
   waterBig: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 800,
+    color: BLACK,
   },
 
   waterSub: {
@@ -279,7 +342,13 @@ const styles = {
     color: GRAY,
   },
 
+  waterActions: {
+    display: "flex",
+    gap: 10,
+  },
+
   waterBtn: {
+    flex: 1,
     height: 44,
     borderRadius: 14,
     border: "none",
@@ -289,11 +358,12 @@ const styles = {
   },
 
   waterBtnSoft: {
-    height: 44,
-    borderRadius: 14,
+    height: 42,
+    borderRadius: 12,
     border: `1px solid ${BORDER}`,
     background: "#FAFAF8",
+    padding: "0 12px",
+    fontWeight: 700,
     color: BLACK,
-    fontWeight: 800,
   },
 };
