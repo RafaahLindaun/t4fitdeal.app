@@ -64,7 +64,6 @@ function writeWaterHistory(email, history) {
 function persistWaterForDate(email, dateKey, ml) {
   const safeMl = Math.max(0, Number(ml) || 0);
   localStorage.setItem(getWaterStorageKey(email, dateKey), String(safeMl));
-
   const history = readWaterHistory(email);
   history[dateKey] = safeMl;
   writeWaterHistory(email, history);
@@ -73,7 +72,6 @@ function persistWaterForDate(email, dateKey, ml) {
 function getWaterForDate(email, dateKey) {
   const direct = localStorage.getItem(getWaterStorageKey(email, dateKey));
   if (direct !== null) return Math.max(0, Number(direct) || 0);
-
   const history = readWaterHistory(email);
   return Math.max(0, Number(history?.[dateKey]) || 0);
 }
@@ -81,7 +79,7 @@ function getWaterForDate(email, dateKey) {
 function buildWeekStrip(daysCount, email, waterGoal) {
   const labels = ["D", "S", "T", "Q", "Q", "S", "S"];
   const result = [];
-  const count = Math.max(3, Math.min(Number(daysCount) || 3, 7));
+  const count = Math.max(4, Math.min(Number(daysCount) || 4, 7));
   const now = new Date();
 
   for (let i = 0; i < count; i += 1) {
@@ -107,46 +105,16 @@ function buildWeekStrip(daysCount, email, waterGoal) {
 function getGoalWater(profile) {
   const peso = Number(profile?.peso || 0);
   if (!peso) return 2500;
-
   const suggested = Math.round(peso * 35);
   return Math.max(2000, Math.min(suggested, 4500));
-}
-
-function getSupplements(profile) {
-  const objetivo = profile?.objetivo || "Hipertrofia";
-  const peso = Number(profile?.peso || 70);
-
-  if (objetivo === "Emagrecimento") {
-    return [
-      `Whey protein conforme necessidade de proteína diária`,
-      `Creatina 3g a 5g por dia`,
-      `Cafeína em dias de treino`,
-    ];
-  }
-
-  if (objetivo === "Performance") {
-    return [
-      `Creatina 3g a 5g por dia`,
-      `Whey protein no pós treino`,
-      `Cafeína em dias de treino forte`,
-    ];
-  }
-
-  return [
-    `Creatina 3g a 5g por dia`,
-    `Whey protein para complementar proteína`,
-    `Meta proteína diária cerca de ${Math.round(peso * 1.8)}g`,
-  ];
 }
 
 function prettifyRecipeTitle(title) {
   const safe = String(title || "").trim();
   if (!safe) return "";
-
   return safe
     .split(" ")
     .map((part) => {
-      if (!part) return part;
       const lower = part.toLowerCase();
       return lower.charAt(0).toUpperCase() + lower.slice(1);
     })
@@ -194,13 +162,14 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
   });
 
   if (activeChip && activeChip !== "todos") {
-    items = items.filter((item) =>
-      item.tags?.some((tag) =>
-        normalizeText(tag).includes(normalizeText(activeChip))
-      ) ||
-      item.keywords?.some((keyword) =>
-        normalizeText(keyword).includes(normalizeText(activeChip))
-      )
+    items = items.filter(
+      (item) =>
+        item.tags?.some((tag) =>
+          normalizeText(tag).includes(normalizeText(activeChip))
+        ) ||
+        item.keywords?.some((keyword) =>
+          normalizeText(keyword).includes(normalizeText(activeChip))
+        )
     );
   }
 
@@ -315,10 +284,13 @@ export default function Nutricao() {
 
   const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
   const waterLeft = Math.max(0, waterGoal - waterMl);
-  const waterPct = waterGoal > 0 ? Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100))) : 0;
+  const waterPct =
+    waterGoal > 0
+      ? Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100)))
+      : 0;
 
   const weekStrip = useMemo(
-    () => buildWeekStrip(profile?.frequencia || 3, email, waterGoal),
+    () => buildWeekStrip(profile?.frequencia || 4, email, waterGoal),
     [profile?.frequencia, email, waterGoal, waterMl]
   );
 
@@ -344,8 +316,6 @@ export default function Nutricao() {
   }, [options, favorites]);
 
   const suggestion = useMemo(() => visibleOptions[0] || null, [visibleOptions]);
-
-  const supplements = useMemo(() => getSupplements(profile), [profile]);
 
   function addWater(amount = WATER_STEP) {
     setWaterMl((prev) => Math.min(waterGoal, prev + amount));
@@ -443,11 +413,11 @@ export default function Nutricao() {
           </div>
 
           <div style={styles.suppHeroTitle}>
-            Plano premium de suplementos<span style={{ color: ORANGE }}>.</span>
+            Suplementação<span style={{ color: ORANGE }}>.</span>
           </div>
 
           <div style={styles.suppHeroSub}>
-            Ajustado ao seu objetivo, com orientação rápida e acesso direto.
+            Abra seu plano premium com indicação rápida e objetiva.
           </div>
         </button>
 
@@ -508,6 +478,18 @@ export default function Nutricao() {
               <div style={styles.waterSub}>
                 cerca de {Math.round(waterMl / WATER_STEP)} copos
               </div>
+            </div>
+
+            <div style={styles.waterQuickRow}>
+              <button style={styles.waterMiniBtn} onClick={() => addWater(100)}>
+                +100 ml
+              </button>
+              <button style={styles.waterMiniBtn} onClick={() => addWater(250)}>
+                +250 ml
+              </button>
+              <button style={styles.waterMiniBtn} onClick={() => addWater(300)}>
+                +300 ml
+              </button>
             </div>
 
             <div style={styles.waterActions}>
@@ -646,53 +628,49 @@ export default function Nutricao() {
                     onMore={() => handleMoreKeywords(item.stableId, totalKeywords)}
                   />
 
-                  {open && (
-                    <div style={styles.expandArea}>
-                      <div style={styles.expandText}>{item.emphasis}</div>
+                  <div
+                    style={{
+                      ...styles.expandAnimated,
+                      maxHeight: open ? 620 : 0,
+                      opacity: open ? 1 : 0,
+                      marginTop: open ? 14 : 0,
+                    }}
+                  >
+                    <div style={styles.expandText}>{item.emphasis}</div>
 
-                      <div style={styles.expandBlockTitle}>Ingredientes</div>
+                    <div style={styles.expandBlockTitle}>Receita</div>
 
-                      <div style={styles.ingredientsWrap}>
-                        {item.ingredients?.map((v) => (
-                          <span key={v} style={styles.ingredientPill}>
-                            {v}
-                          </span>
-                        ))}
-                      </div>
-
-                      {item.steps?.length ? (
-                        <>
-                          <div style={styles.expandBlockTitle}>Como fazer</div>
-                          <div style={styles.stepsWrap}>
-                            {item.steps.map((step, idx) => (
-                              <div key={`${item.stableId}-${idx}`} style={styles.stepRow}>
-                                <div style={styles.stepIndex}>{idx + 1}</div>
-                                <div style={styles.stepText}>{step}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      ) : null}
+                    <div style={styles.ingredientsWrap}>
+                      {item.ingredients?.map((v) => (
+                        <span key={v} style={styles.ingredientPill}>
+                          {v}
+                        </span>
+                      ))}
                     </div>
-                  )}
+
+                    {item.steps?.length ? (
+                      <>
+                        <div style={styles.expandBlockTitle}>Como fazer</div>
+                        <div style={styles.stepsWrap}>
+                          {item.steps.map((step, idx) => (
+                            <div key={`${item.stableId}-${idx}`} style={styles.stepRow}>
+                              <div style={styles.stepIndex}>{idx + 1}</div>
+                              <div style={styles.stepText}>{step}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
           </div>
         </section>
 
-        <section style={styles.section}>
-          <div style={styles.sectionTitle}>Suplementação</div>
-
-          <div style={styles.supplementCard}>
-            {supplements.map((item) => (
-              <div key={item} style={styles.simpleBulletRow}>
-                <div style={styles.simpleDot} />
-                <div style={styles.simpleBulletText}>{item}</div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <div style={styles.footerBrand}>
+          fitdeal<span style={{ color: ORANGE }}>.</span>
+        </div>
       </div>
     </div>
   );
@@ -869,15 +847,16 @@ const styles = {
   },
 
   calendarNavBtn: {
-    height: 40,
+    height: 42,
     padding: "0 14px",
-    borderRadius: 14,
+    borderRadius: 16,
     border: `1px solid ${BORDER}`,
     background: WHITE,
     color: BLACK,
     fontWeight: 800,
     fontSize: 13,
     whiteSpace: "nowrap",
+    boxShadow: "0 6px 16px rgba(0,0,0,.03)",
   },
 
   waterCard: {
@@ -886,10 +865,11 @@ const styles = {
     background: WHITE,
     border: `1px solid ${BORDER}`,
     boxShadow: "0 10px 26px rgba(0,0,0,.04)",
+    overflow: "hidden",
   },
 
   waterProgressBar: {
-    height: 10,
+    height: 12,
     borderRadius: 999,
     background: "#EDEDEB",
     overflow: "hidden",
@@ -908,6 +888,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-end",
     marginBottom: 14,
+    gap: 10,
   },
 
   waterBigPercent: {
@@ -915,25 +896,27 @@ const styles = {
     fontWeight: 800,
     color: ORANGE,
     letterSpacing: -1,
+    lineHeight: 1,
   },
 
   waterPercentHint: {
     fontSize: 12.5,
     color: GRAY,
     fontWeight: 600,
+    textAlign: "right",
   },
 
   weekStrip: {
-    display: "flex",
-    gap: 8,
-    overflowX: "auto",
-    marginBottom: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 10,
+    marginBottom: 16,
   },
 
   weekPill: {
-    minWidth: 62,
-    padding: "10px 8px",
-    borderRadius: 16,
+    minWidth: 0,
+    padding: "12px 8px",
+    borderRadius: 18,
     border: `1px solid ${BORDER}`,
     background: "#FAFAF8",
     textAlign: "center",
@@ -956,16 +939,18 @@ const styles = {
 
   weekDay: {
     marginTop: 4,
-    fontSize: 17,
+    fontSize: 18,
     color: BLACK,
     fontWeight: 800,
+    lineHeight: 1,
   },
 
   weekMl: {
-    marginTop: 4,
-    fontSize: 10.5,
+    marginTop: 6,
+    fontSize: 11,
     color: GRAY,
     fontWeight: 700,
+    lineHeight: 1.15,
   },
 
   waterNumbers: {
@@ -974,17 +959,36 @@ const styles = {
   },
 
   waterBig: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 800,
     color: BLACK,
-    letterSpacing: -0.8,
+    letterSpacing: -1,
+    lineHeight: 1,
   },
 
   waterSub: {
+    marginTop: 6,
     fontSize: 13,
     color: GRAY,
     lineHeight: 1.45,
     fontWeight: 600,
+  },
+
+  waterQuickRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
+    marginBottom: 10,
+  },
+
+  waterMiniBtn: {
+    height: 42,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "#FAFAF8",
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 13,
   },
 
   waterActions: {
@@ -994,23 +998,23 @@ const styles = {
   },
 
   waterBtn: {
-    height: 46,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 16,
     background: ORANGE,
     border: "none",
     color: BLACK,
     fontWeight: 800,
-    fontSize: 14,
+    fontSize: 15,
   },
 
   waterBtnSoft: {
-    height: 46,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 16,
     border: `1px solid ${BORDER}`,
     background: "#FAFAF8",
     color: BLACK,
     fontWeight: 800,
-    fontSize: 14,
+    fontSize: 15,
   },
 
   suggestionCard: {
@@ -1082,9 +1086,9 @@ const styles = {
   },
 
   segmentBtn: {
-    height: 40,
-    padding: "0 14px",
-    borderRadius: 14,
+    height: 42,
+    padding: "0 16px",
+    borderRadius: 16,
     border: `1px solid ${BORDER}`,
     background: WHITE,
     color: BLACK,
@@ -1105,11 +1109,11 @@ const styles = {
 
   searchInput: {
     width: "100%",
-    height: 48,
-    borderRadius: 16,
+    height: 52,
+    borderRadius: 18,
     border: `1px solid ${BORDER}`,
     background: WHITE,
-    padding: "0 14px",
+    padding: "0 16px",
     fontSize: 14,
     color: BLACK,
     outline: "none",
@@ -1124,8 +1128,8 @@ const styles = {
   },
 
   chip: {
-    height: 34,
-    padding: "0 12px",
+    height: 36,
+    padding: "0 14px",
     borderRadius: 999,
     border: `1px solid ${BORDER}`,
     background: WHITE,
@@ -1169,15 +1173,15 @@ const styles = {
   },
 
   recipeTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 800,
     color: BLACK,
     lineHeight: 1.15,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
 
   recipeSub: {
-    marginTop: 5,
+    marginTop: 6,
     fontSize: 13,
     color: GRAY,
     lineHeight: 1.45,
@@ -1198,16 +1202,17 @@ const styles = {
     fontSize: 11.5,
     fontWeight: 700,
     color: BLACK,
+    textTransform: "capitalize",
   },
 
   favoriteBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     border: `1px solid ${BORDER}`,
     background: "#FAFAF8",
     color: BLACK,
-    fontSize: 18,
+    fontSize: 20,
     flexShrink: 0,
   },
 
@@ -1245,8 +1250,10 @@ const styles = {
     fontSize: 12,
   },
 
-  expandArea: {
-    marginTop: 12,
+  expandAnimated: {
+    overflow: "hidden",
+    transition: "all 240ms cubic-bezier(.22,1,.36,1)",
+    willChange: "max-height, opacity, margin-top",
   },
 
   expandText: {
@@ -1315,33 +1322,13 @@ const styles = {
     fontWeight: 600,
   },
 
-  supplementCard: {
-    padding: 16,
-    borderRadius: 22,
-    background: WHITE,
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 8px 22px rgba(0,0,0,.03)",
-  },
-
-  simpleBulletRow: {
-    display: "flex",
-    gap: 10,
-    marginBottom: 10,
-    alignItems: "flex-start",
-  },
-
-  simpleDot: {
-    width: 8,
-    height: 8,
-    background: ORANGE,
-    borderRadius: 999,
-    marginTop: 6,
-    flexShrink: 0,
-  },
-
-  simpleBulletText: {
-    fontSize: 14,
-    lineHeight: 1.5,
+  footerBrand: {
+    textAlign: "center",
+    marginTop: 26,
+    paddingBottom: 10,
+    fontSize: 26,
+    fontWeight: 900,
+    letterSpacing: -1,
     color: BLACK,
   },
 
