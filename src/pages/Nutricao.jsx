@@ -59,7 +59,6 @@ function getGoalWater(profile) {
   if (!peso) return 2500;
 
   const suggested = Math.round(peso * 35);
-
   return Math.max(2000, Math.min(suggested, 4500));
 }
 
@@ -97,9 +96,17 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
   let items = base.map((recipe) => {
     let emphasis = "";
 
-    if (objetivo === "Hipertrofia") emphasis = "Boa para apoiar ganho de massa.";
-    if (objetivo === "Emagrecimento") emphasis = "Boa para controle calórico.";
-    if (objetivo === "Performance") emphasis = "Boa para melhorar rendimento.";
+    if (objetivo === "Hipertrofia") {
+      emphasis = "Boa para apoiar ganho de massa com mais consistência.";
+    }
+
+    if (objetivo === "Emagrecimento") {
+      emphasis = "Boa para ajudar no controle calórico com mais praticidade.";
+    }
+
+    if (objetivo === "Performance") {
+      emphasis = "Boa para melhorar rendimento e manter energia melhor distribuída.";
+    }
 
     return {
       ...recipe,
@@ -112,7 +119,7 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
 
   if (activeChip && activeChip !== "todos") {
     items = items.filter((item) =>
-      item.tags.some((tag) =>
+      item.tags?.some((tag) =>
         normalizeText(tag).includes(normalizeText(activeChip))
       )
     );
@@ -124,7 +131,8 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
     items = items.filter(
       (item) =>
         normalizeText(item.title).includes(q) ||
-        normalizeText(item.subtitle).includes(q)
+        normalizeText(item.subtitle).includes(q) ||
+        item.tags?.some((tag) => normalizeText(tag).includes(q))
     );
   }
 
@@ -149,7 +157,6 @@ export default function Nutricao() {
   const [mealTab, setMealTab] = useState("cafe");
   const [search, setSearch] = useState("");
   const [activeChip, setActiveChip] = useState("todos");
-
   const [expandedId, setExpandedId] = useState(null);
 
   const [favorites, setFavorites] = useState(() => {
@@ -178,7 +185,12 @@ export default function Nutricao() {
         .maybeSingle();
 
       setProfile({
-        nome: data?.nome || user.email.split("@")[0],
+        nome:
+          data?.nome ||
+          user?.user_metadata?.nome ||
+          user?.user_metadata?.full_name ||
+          user?.email?.split("@")[0] ||
+          "",
         objetivo: data?.objetivo || "Hipertrofia",
         peso: data?.peso || "",
         frequencia: data?.frequencia || 3,
@@ -199,9 +211,7 @@ export default function Nutricao() {
   }, [waterMl, email]);
 
   const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
-
   const waterLeft = Math.max(0, waterGoal - waterMl);
-
   const waterPct = Math.max(
     0,
     Math.min(100, Math.round((waterMl / waterGoal) * 100))
@@ -210,6 +220,11 @@ export default function Nutricao() {
   const weekStrip = useMemo(
     () => buildWeekStrip(profile?.frequencia || 3),
     [profile?.frequencia]
+  );
+
+  const chips = useMemo(
+    () => ["todos", "rápido", "leve", "proteína", "rotina"],
+    []
   );
 
   const options = useMemo(() => {
@@ -221,6 +236,18 @@ export default function Nutricao() {
     });
   }, [mealTab, profile, search, activeChip]);
 
+  const visibleOptions = useMemo(() => {
+    if (!favorites?.length) return options;
+    return options.map((item) => ({
+      ...item,
+      isFavorite: favorites.includes(item.stableId),
+    }));
+  }, [options, favorites]);
+
+  const suggestion = useMemo(() => {
+    return visibleOptions[0] || null;
+  }, [visibleOptions]);
+
   const supplements = useMemo(() => getSupplements(profile), [profile]);
 
   function addWater() {
@@ -229,6 +256,15 @@ export default function Nutricao() {
 
   function removeWater() {
     setWaterMl((prev) => Math.max(0, prev - WATER_STEP));
+  }
+
+  function toggleFavorite(id) {
+    setFavorites((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((v) => v !== id);
+      }
+      return [id, ...prev];
+    });
   }
 
   if (!paidNutriPlus) {
@@ -245,6 +281,7 @@ export default function Nutricao() {
           </div>
 
           <section style={styles.lockedHero}>
+            <div style={styles.lockedKicker}>premium nutrition</div>
             <h1 style={styles.titleLocked}>Leve sua alimentação para outro nível.</h1>
             <p style={styles.subLocked}>
               Receitas, hidratação e organização alimentar dentro do FitDeal.
@@ -273,10 +310,21 @@ export default function Nutricao() {
 
         <button
           type="button"
-          style={styles.suppTopBtn}
+          style={styles.suppHeroBtn}
           onClick={() => nav("/suplementacao")}
         >
-          Suplementação
+          <div style={styles.suppHeroTop}>
+            <div style={styles.suppHeroKicker}>SUPLEMENTAÇÃO</div>
+            <div style={styles.suppHeroArrow}>›</div>
+          </div>
+
+          <div style={styles.suppHeroTitle}>
+            Plano premium de suplementos<span style={{ color: ORANGE }}>.</span>
+          </div>
+
+          <div style={styles.suppHeroSub}>
+            Recomendado pelo seu objetivo e pronto para abrir no app.
+          </div>
         </button>
 
         <section style={styles.heroCard}>
@@ -286,7 +334,7 @@ export default function Nutricao() {
             </div>
 
             <div style={styles.heroSub}>
-              Rotina alimentar alinhada ao seu objetivo.
+              Rotina alimentar alinhada ao seu objetivo com mais clareza e constância.
             </div>
           </div>
 
@@ -297,7 +345,18 @@ export default function Nutricao() {
         </section>
 
         <section style={styles.section}>
-          <div style={styles.sectionTitle}>Hidratação</div>
+          <div style={styles.hydrationHeader}>
+            <div>
+              <div style={styles.sectionTitleLarge}>
+                Hidratação<span style={{ color: ORANGE }}>.</span>
+              </div>
+              <div style={styles.waterSubTop}>
+                {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
+              </div>
+            </div>
+
+            <div style={styles.waterPctBadge}>{waterPct}%</div>
+          </div>
 
           <div style={styles.waterCard}>
             <div style={styles.waterProgressBar}>
@@ -309,10 +368,25 @@ export default function Nutricao() {
               />
             </div>
 
+            <div style={styles.weekStrip}>
+              {weekStrip.map((item) => (
+                <div
+                  key={item.key}
+                  style={{
+                    ...styles.weekPill,
+                    ...(item.isToday ? styles.weekPillActive : null),
+                  }}
+                >
+                  <div style={styles.weekLabel}>{item.label}</div>
+                  <div style={styles.weekDay}>{item.day}</div>
+                </div>
+              ))}
+            </div>
+
             <div style={styles.waterNumbers}>
               <div style={styles.waterBig}>{waterMl} ml</div>
               <div style={styles.waterSub}>
-                Meta {waterGoal} ml • faltam {waterLeft} ml
+                cerca de {Math.round(waterMl / WATER_STEP)} copos
               </div>
             </div>
 
@@ -328,47 +402,154 @@ export default function Nutricao() {
           </div>
         </section>
 
+        {suggestion ? (
+          <section style={styles.suggestionCard}>
+            <div style={styles.suggestionLabel}>SUGESTÃO DO DIA</div>
+            <div style={styles.suggestionTitle}>{suggestion.title}</div>
+            <div style={styles.suggestionSub}>{suggestion.subtitle}</div>
+
+            <div style={styles.suggestionTags}>
+              {(suggestion.tags || []).slice(0, 3).map((tag) => (
+                <span key={tag} style={styles.tag}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section style={styles.section}>
-          <div style={styles.sectionTitle}>Receitas</div>
+          <div style={styles.sectionTitle}>Refeições</div>
 
-          {options.map((item) => {
-            const open = expandedId === item.stableId;
+          <div style={styles.segmentWrap}>
+            {Object.keys(MEAL_LABELS).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setMealTab(key);
+                  setExpandedId(null);
+                }}
+                style={{
+                  ...styles.segmentBtn,
+                  ...(mealTab === key ? styles.segmentBtnActive : null),
+                }}
+              >
+                {MEAL_LABELS[key]}
+              </button>
+            ))}
+          </div>
 
-            return (
-              <div key={item.stableId} style={styles.recipeCard}>
-                <button
-                  style={styles.recipeMainButton}
-                  onClick={() => setExpandedId(open ? null : item.stableId)}
-                >
-                  <div style={styles.recipeTitle}>{item.title}</div>
-                  <div style={styles.recipeSub}>{item.subtitle}</div>
-                </button>
+          <div style={styles.searchWrap}>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar receita ou palavra-chave"
+              style={styles.searchInput}
+            />
+          </div>
 
-                {open && (
-                  <div style={styles.expandArea}>
-                    <div style={styles.expandText}>{item.emphasis}</div>
+          <div style={styles.chipsRow}>
+            {chips.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setActiveChip(chip)}
+                style={{
+                  ...styles.chip,
+                  ...(activeChip === chip ? styles.chipActive : null),
+                }}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
 
-                    <div style={styles.expandBlockTitle}>Ingredientes</div>
+          <div style={styles.recipeList}>
+            {visibleOptions.map((item) => {
+              const open = expandedId === item.stableId;
+              const favorite = favorites.includes(item.stableId);
 
-                    {item.ingredients.map((v) => (
-                      <div key={v}>{v}</div>
-                    ))}
+              return (
+                <div key={item.stableId} style={styles.recipeCard}>
+                  <div style={styles.recipeCardTop}>
+                    <button
+                      style={styles.recipeMainButton}
+                      onClick={() => setExpandedId(open ? null : item.stableId)}
+                      type="button"
+                    >
+                      <div style={styles.recipeTitle}>{item.title}</div>
+                      <div style={styles.recipeSub}>{item.subtitle}</div>
+
+                      <div style={styles.metaRow}>
+                        {item.minutes ? (
+                          <span style={styles.metaPill}>{item.minutes} min</span>
+                        ) : null}
+                        {item.calories ? (
+                          <span style={styles.metaPill}>{item.calories} kcal</span>
+                        ) : null}
+                        <span style={styles.metaPill}>{item.mealKey}</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.favoriteBtn,
+                        ...(favorite ? styles.favoriteBtnActive : null),
+                      }}
+                      onClick={() => toggleFavorite(item.stableId)}
+                    >
+                      {favorite ? "★" : "☆"}
+                    </button>
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {open && (
+                    <div style={styles.expandArea}>
+                      <div style={styles.expandText}>{item.emphasis}</div>
+
+                      <div style={styles.expandBlockTitle}>Ingredientes</div>
+
+                      <div style={styles.ingredientsWrap}>
+                        {item.ingredients?.map((v) => (
+                          <span key={v} style={styles.ingredientPill}>
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+
+                      {item.steps?.length ? (
+                        <>
+                          <div style={styles.expandBlockTitle}>Como fazer</div>
+                          <div style={styles.stepsWrap}>
+                            {item.steps.map((step, idx) => (
+                              <div key={`${item.stableId}-${idx}`} style={styles.stepRow}>
+                                <div style={styles.stepIndex}>{idx + 1}</div>
+                                <div style={styles.stepText}>{step}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section style={styles.section}>
           <div style={styles.sectionTitle}>Suplementação</div>
 
-          {supplements.map((item) => (
-            <div key={item} style={styles.simpleBulletRow}>
-              <div style={styles.simpleDot} />
-              <div style={styles.simpleBulletText}>{item}</div>
-            </div>
-          ))}
+          <div style={styles.supplementCard}>
+            {supplements.map((item) => (
+              <div key={item} style={styles.simpleBulletRow}>
+                <div style={styles.simpleDot} />
+                <div style={styles.simpleBulletText}>{item}</div>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </div>
@@ -380,6 +561,7 @@ const styles = {
     minHeight: "100vh",
     background: LIGHT,
     padding: 18,
+    paddingBottom: 120,
   },
 
   wrap: {
@@ -391,130 +573,398 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   brandFit: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 900,
     color: BLACK,
+    letterSpacing: -1,
   },
 
   brand: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 800,
+    color: BLACK,
+    letterSpacing: -1,
   },
 
-  suppTopBtn: {
+  suppHeroBtn: {
     width: "100%",
-    height: 44,
-    borderRadius: 14,
+    padding: 18,
+    borderRadius: 24,
     border: "none",
-    background: ORANGE,
-    color: BLACK,
+    background: BLACK,
+    color: WHITE,
+    textAlign: "left",
+    marginBottom: 14,
+    boxShadow: "0 14px 34px rgba(0,0,0,.14)",
+  },
+
+  suppHeroTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  suppHeroKicker: {
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 0.8,
+    color: "rgba(255,255,255,.68)",
+  },
+
+  suppHeroArrow: {
+    fontSize: 24,
     fontWeight: 800,
-    marginBottom: 12,
+    color: "rgba(255,255,255,.68)",
+  },
+
+  suppHeroTitle: {
+    marginTop: 12,
+    fontSize: 22,
+    fontWeight: 900,
+    letterSpacing: -0.5,
+    color: WHITE,
+  },
+
+  suppHeroSub: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 1.45,
+    color: "rgba(255,255,255,.74)",
+    fontWeight: 600,
   },
 
   heroCard: {
     display: "flex",
     justifyContent: "space-between",
+    gap: 14,
     padding: 18,
     borderRadius: 24,
     background: WHITE,
     border: `1px solid ${BORDER}`,
+    boxShadow: "0 10px 26px rgba(0,0,0,.04)",
   },
 
   heroTitle: {
     fontSize: 28,
     fontWeight: 800,
+    color: BLACK,
+    letterSpacing: -0.8,
+    lineHeight: 1.05,
   },
 
   heroSub: {
+    marginTop: 8,
     fontSize: 14,
     color: GRAY,
+    lineHeight: 1.5,
+    maxWidth: 420,
+  },
+
+  heroMini: {
+    minWidth: 112,
+    padding: 12,
+    borderRadius: 18,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    alignSelf: "flex-end",
   },
 
   heroMiniLabel: {
     fontSize: 11,
     color: SOFT,
-  },
-
-  heroMiniValue: {
-    fontSize: 16,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
     fontWeight: 800,
   },
 
+  heroMiniValue: {
+    marginTop: 6,
+    fontSize: 16,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
   section: {
-    marginTop: 20,
+    marginTop: 18,
   },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: 800,
+    color: BLACK,
     marginBottom: 10,
+    letterSpacing: -0.3,
+  },
+
+  sectionTitleLarge: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: BLACK,
+    letterSpacing: -0.7,
+    lineHeight: 1.05,
+  },
+
+  hydrationHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+
+  waterSubTop: {
+    marginTop: 6,
+    fontSize: 13,
+    color: GRAY,
+    lineHeight: 1.45,
+    fontWeight: 600,
+  },
+
+  waterPctBadge: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: ORANGE,
+    letterSpacing: -0.6,
   },
 
   waterCard: {
     padding: 18,
-    borderRadius: 22,
+    borderRadius: 24,
     background: WHITE,
     border: `1px solid ${BORDER}`,
+    boxShadow: "0 10px 26px rgba(0,0,0,.04)",
   },
 
   waterProgressBar: {
     height: 10,
     borderRadius: 999,
-    background: "#EEE",
+    background: "#EDEDEB",
     overflow: "hidden",
-    marginBottom: 10,
+    marginBottom: 14,
   },
 
   waterProgressFill: {
     height: "100%",
-    background: ORANGE,
+    background: "linear-gradient(90deg, #FF6A00, #FF8A3D)",
+    borderRadius: 999,
+    transition: "width .3s ease",
+  },
+
+  weekStrip: {
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    marginBottom: 14,
+  },
+
+  weekPill: {
+    minWidth: 56,
+    padding: "10px 8px",
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    background: "#FAFAF8",
+    textAlign: "center",
+  },
+
+  weekPillActive: {
+    background: "#FFF7F1",
+    borderColor: "rgba(255,106,0,.24)",
+  },
+
+  weekLabel: {
+    fontSize: 11,
+    color: SOFT,
+    fontWeight: 800,
+  },
+
+  weekDay: {
+    marginTop: 4,
+    fontSize: 17,
+    color: BLACK,
+    fontWeight: 800,
   },
 
   waterNumbers: {
-    marginBottom: 10,
+    textAlign: "center",
+    marginBottom: 14,
   },
 
   waterBig: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 800,
+    color: BLACK,
+    letterSpacing: -0.8,
   },
 
   waterSub: {
     fontSize: 13,
     color: GRAY,
+    lineHeight: 1.45,
+    fontWeight: 600,
   },
 
   waterActions: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
     gap: 10,
   },
 
   waterBtn: {
-    height: 42,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: 14,
     background: ORANGE,
     border: "none",
+    color: BLACK,
     fontWeight: 800,
+    fontSize: 14,
   },
 
   waterBtnSoft: {
-    height: 42,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: 14,
     border: `1px solid ${BORDER}`,
     background: "#FAFAF8",
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 14,
+  },
+
+  suggestionCard: {
+    marginTop: 18,
+    padding: 18,
+    borderRadius: 24,
+    background: BLACK,
+    color: WHITE,
+    boxShadow: "0 14px 34px rgba(0,0,0,.14)",
+  },
+
+  suggestionLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 0.8,
+    color: "rgba(255,255,255,.68)",
+  },
+
+  suggestionTitle: {
+    marginTop: 10,
+    fontSize: 24,
+    fontWeight: 800,
+    lineHeight: 1.08,
+    letterSpacing: -0.6,
+  },
+
+  suggestionSub: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: "rgba(255,255,255,.74)",
+  },
+
+  suggestionTags: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+
+  tag: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    fontSize: 11.5,
+    fontWeight: 700,
+    color: WHITE,
+    background: "rgba(255,255,255,.08)",
+    border: "1px solid rgba(255,255,255,.08)",
+  },
+
+  segmentWrap: {
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    marginBottom: 12,
+    paddingBottom: 2,
+  },
+
+  segmentBtn: {
+    height: 40,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    color: BLACK,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+    fontSize: 13,
+  },
+
+  segmentBtnActive: {
+    background: BLACK,
+    color: WHITE,
+    borderColor: BLACK,
+  },
+
+  searchWrap: {
+    marginBottom: 12,
+  },
+
+  searchInput: {
+    width: "100%",
+    height: 48,
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    padding: "0 14px",
+    fontSize: 14,
+    color: BLACK,
+    outline: "none",
+  },
+
+  chipsRow: {
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    paddingBottom: 2,
+    marginBottom: 14,
+  },
+
+  chip: {
+    height: 34,
+    padding: "0 12px",
+    borderRadius: 999,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+    color: BLACK,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+    fontSize: 12.5,
+  },
+
+  chipActive: {
+    background: "#FFF7F1",
+    borderColor: "rgba(255,106,0,.24)",
+  },
+
+  recipeList: {
+    display: "grid",
+    gap: 12,
   },
 
   recipeCard: {
     padding: 16,
-    borderRadius: 20,
+    borderRadius: 22,
     border: `1px solid ${BORDER}`,
     background: WHITE,
-    marginBottom: 10,
+    boxShadow: "0 8px 22px rgba(0,0,0,.03)",
+  },
+
+  recipeCardTop: {
+    display: "flex",
+    gap: 12,
+    alignItems: "flex-start",
   },
 
   recipeMainButton: {
@@ -523,37 +973,140 @@ const styles = {
     border: "none",
     background: "transparent",
     padding: 0,
+    flex: 1,
   },
 
   recipeTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 800,
+    color: BLACK,
+    lineHeight: 1.15,
   },
 
   recipeSub: {
+    marginTop: 5,
     fontSize: 13,
     color: GRAY,
+    lineHeight: 1.45,
   },
 
-  expandArea: {
+  metaRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
     marginTop: 10,
   },
 
+  metaPill: {
+    padding: "7px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 11.5,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  favoriteBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "#FAFAF8",
+    color: BLACK,
+    fontSize: 18,
+    flexShrink: 0,
+  },
+
+  favoriteBtnActive: {
+    background: "#FFF7F1",
+    borderColor: "rgba(255,106,0,.24)",
+    color: ORANGE,
+  },
+
+  expandArea: {
+    marginTop: 12,
+  },
+
   expandText: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: GRAY,
+    lineHeight: 1.5,
+    marginBottom: 12,
   },
 
   expandBlockTitle: {
     fontSize: 12,
     fontWeight: 800,
-    marginTop: 10,
+    marginTop: 8,
+    marginBottom: 8,
+    color: SOFT,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+
+  ingredientsWrap: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  ingredientPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  stepsWrap: {
+    display: "grid",
+    gap: 10,
+    marginTop: 8,
+  },
+
+  stepRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+
+  stepIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    background: "#FFF1E8",
+    color: ORANGE,
+    display: "grid",
+    placeItems: "center",
+    fontSize: 12,
+    fontWeight: 800,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+
+  stepText: {
+    fontSize: 13.5,
+    lineHeight: 1.5,
+    color: BLACK,
+    fontWeight: 600,
+  },
+
+  supplementCard: {
+    padding: 16,
+    borderRadius: 22,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 8px 22px rgba(0,0,0,.03)",
   },
 
   simpleBulletRow: {
     display: "flex",
     gap: 10,
-    marginBottom: 6,
+    marginBottom: 10,
+    alignItems: "flex-start",
   },
 
   simpleDot: {
@@ -562,14 +1115,25 @@ const styles = {
     background: ORANGE,
     borderRadius: 999,
     marginTop: 6,
+    flexShrink: 0,
   },
 
   simpleBulletText: {
     fontSize: 14,
+    lineHeight: 1.5,
+    color: BLACK,
   },
 
   lockedHero: {
     paddingTop: 12,
+  },
+
+  lockedKicker: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: SOFT,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
 
   titleLocked: {
@@ -579,6 +1143,7 @@ const styles = {
     lineHeight: 1.05,
     fontWeight: 800,
     color: BLACK,
+    letterSpacing: -1,
   },
 
   subLocked: {
