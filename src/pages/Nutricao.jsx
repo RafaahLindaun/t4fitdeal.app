@@ -20,7 +20,7 @@ const MEAL_LABELS = {
   janta: "Janta",
 };
 
-const BASE_RECIPES = recipeBank;
+import { recipeBank } from "../data/recipeBank";
 
 function normalizeText(v) {
   return String(v || "")
