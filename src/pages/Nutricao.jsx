@@ -386,7 +386,7 @@ export default function Nutricao() {
         </div>
 
         <section style={styles.heroCard}>
-          <div>
+          <div style={styles.heroContent}>
             <div style={styles.heroTitle}>
               {loadingProfile ? "Sua nutrição" : `${profile.nome}, sua nutrição`}
             </div>
@@ -422,84 +422,86 @@ export default function Nutricao() {
         </button>
 
         <section style={styles.section}>
-          <div style={styles.hydrationHeader}>
-            <div>
-              <div style={styles.sectionTitleLarge}>
-                Hidratação<span style={{ color: ORANGE }}>.</span>
-              </div>
-              <div style={styles.waterSubTop}>
-                {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
-              </div>
-            </div>
-
-            <button
-              type="button"
-              style={styles.calendarNavBtn}
-              onClick={() => nav("/calendario")}
-            >
-              Calendário
-            </button>
-          </div>
-
-          <div style={styles.waterCard}>
-            <div style={styles.waterProgressBar}>
-              <div
-                style={{
-                  ...styles.waterProgressFill,
-                  width: `${waterPct}%`,
-                }}
-              />
-            </div>
-
-            <div style={styles.waterPercentRow}>
-              <div style={styles.waterBigPercent}>{waterPct}%</div>
-              <div style={styles.waterPercentHint}>marcado pelo total do dia</div>
-            </div>
-
-            <div style={styles.weekStrip}>
-              {weekStrip.map((item) => (
-                <div
-                  key={item.key}
-                  style={{
-                    ...styles.weekPill,
-                    ...(item.isToday ? styles.weekPillActive : null),
-                    ...(item.done ? styles.weekPillDone : null),
-                  }}
-                >
-                  <div style={styles.weekLabel}>{item.label}</div>
-                  <div style={styles.weekDay}>{item.day}</div>
-                  <div style={styles.weekMl}>{item.total} ml</div>
+          <div style={styles.waterShell}>
+            <div style={styles.hydrationHeader}>
+              <div style={styles.hydrationHeaderLeft}>
+                <div style={styles.sectionTitleLarge}>
+                  Hidratação<span style={{ color: ORANGE }}>.</span>
                 </div>
-              ))}
-            </div>
-
-            <div style={styles.waterNumbers}>
-              <div style={styles.waterBig}>{waterMl} ml</div>
-              <div style={styles.waterSub}>
-                cerca de {Math.round(waterMl / WATER_STEP)} copos
+                <div style={styles.waterSubTop}>
+                  {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
+                </div>
               </div>
-            </div>
 
-            <div style={styles.waterQuickRow}>
-              <button style={styles.waterMiniBtn} onClick={() => addWater(100)}>
-                +100 ml
-              </button>
-              <button style={styles.waterMiniBtn} onClick={() => addWater(250)}>
-                +250 ml
-              </button>
-              <button style={styles.waterMiniBtn} onClick={() => addWater(300)}>
-                +300 ml
+              <button
+                type="button"
+                style={styles.calendarNavBtn}
+                onClick={() => nav("/calendario")}
+              >
+                Calendário
               </button>
             </div>
 
-            <div style={styles.waterActions}>
-              <button style={styles.waterBtnSoft} onClick={() => removeWater(250)}>
-                −250 ml
-              </button>
+            <div style={styles.waterCard}>
+              <div style={styles.waterProgressBar}>
+                <div
+                  style={{
+                    ...styles.waterProgressFill,
+                    width: `${waterPct}%`,
+                  }}
+                />
+              </div>
 
-              <button style={styles.waterBtn} onClick={() => addWater(250)}>
-                +250 ml
-              </button>
+              <div style={styles.waterPercentRow}>
+                <div style={styles.waterBigPercent}>{waterPct}%</div>
+                <div style={styles.waterPercentHint}>marcado pelo total do dia</div>
+              </div>
+
+              <div style={styles.weekStrip}>
+                {weekStrip.map((item) => (
+                  <div
+                    key={item.key}
+                    style={{
+                      ...styles.weekPill,
+                      ...(item.isToday ? styles.weekPillActive : null),
+                      ...(item.done ? styles.weekPillDone : null),
+                    }}
+                  >
+                    <div style={styles.weekLabel}>{item.label}</div>
+                    <div style={styles.weekDay}>{item.day}</div>
+                    <div style={styles.weekMl}>{item.total} ml</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={styles.waterNumbers}>
+                <div style={styles.waterBig}>{waterMl} ml</div>
+                <div style={styles.waterSub}>
+                  cerca de {Math.round(waterMl / WATER_STEP)} copos
+                </div>
+              </div>
+
+              <div style={styles.waterQuickRow}>
+                <button style={styles.waterMiniBtn} onClick={() => addWater(100)}>
+                  +100 ml
+                </button>
+                <button style={styles.waterMiniBtn} onClick={() => addWater(250)}>
+                  +250 ml
+                </button>
+                <button style={styles.waterMiniBtn} onClick={() => addWater(300)}>
+                  +300 ml
+                </button>
+              </div>
+
+              <div style={styles.waterActions}>
+                <button style={styles.waterBtnSoft} onClick={() => removeWater(250)}>
+                  −250 ml
+                </button>
+
+                <button style={styles.waterBtn} onClick={() => addWater(250)}>
+                  +250 ml
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -711,15 +713,20 @@ const styles = {
   },
 
   heroCard: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 14,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 180px",
+    gap: 16,
     padding: 18,
     borderRadius: 24,
     background: WHITE,
     border: `1px solid ${BORDER}`,
     boxShadow: "0 10px 26px rgba(0,0,0,.04)",
     marginBottom: 14,
+    alignItems: "center",
+  },
+
+  heroContent: {
+    minWidth: 0,
   },
 
   heroTitle: {
@@ -728,6 +735,7 @@ const styles = {
     color: BLACK,
     letterSpacing: -0.8,
     lineHeight: 1.05,
+    maxWidth: 320,
   },
 
   heroSub: {
@@ -735,31 +743,40 @@ const styles = {
     fontSize: 14,
     color: GRAY,
     lineHeight: 1.5,
-    maxWidth: 420,
+    maxWidth: 360,
   },
 
   heroMini: {
-    minWidth: 112,
-    padding: 12,
-    borderRadius: 18,
+    minWidth: 0,
+    width: "100%",
+    minHeight: 132,
+    padding: 18,
+    borderRadius: 24,
     background: "#FAFAF8",
     border: `1px solid ${BORDER}`,
-    alignSelf: "flex-end",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    textAlign: "left",
+    boxSizing: "border-box",
   },
 
   heroMiniLabel: {
     fontSize: 11,
     color: SOFT,
     textTransform: "uppercase",
-    letterSpacing: 0.7,
+    letterSpacing: 1,
     fontWeight: 800,
+    lineHeight: 1.2,
   },
 
   heroMiniValue: {
-    marginTop: 6,
-    fontSize: 16,
+    marginTop: 12,
+    fontSize: 17,
     fontWeight: 800,
     color: BLACK,
+    lineHeight: 1.15,
+    wordBreak: "break-word",
   },
 
   suppHeroBtn: {
@@ -830,20 +847,34 @@ const styles = {
     lineHeight: 1.05,
   },
 
+  waterShell: {
+    padding: 18,
+    borderRadius: 24,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 10px 26px rgba(0,0,0,.04)",
+  },
+
   hydrationHeader: {
-    display: "flex",
-    justifyContent: "space-between",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
     gap: 12,
-    alignItems: "flex-start",
-    marginBottom: 10,
+    alignItems: "start",
+    marginBottom: 14,
+  },
+
+  hydrationHeaderLeft: {
+    minWidth: 0,
   },
 
   waterSubTop: {
-    marginTop: 6,
+    marginTop: 8,
     fontSize: 13,
     color: GRAY,
     lineHeight: 1.45,
     fontWeight: 600,
+    maxWidth: 320,
+    wordBreak: "break-word",
   },
 
   calendarNavBtn: {
@@ -860,12 +891,12 @@ const styles = {
   },
 
   waterCard: {
-    padding: 18,
-    borderRadius: 24,
-    background: WHITE,
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 10px 26px rgba(0,0,0,.04)",
-    overflow: "hidden",
+    padding: 0,
+    borderRadius: 0,
+    background: "transparent",
+    border: "none",
+    boxShadow: "none",
+    overflow: "visible",
   },
 
   waterProgressBar: {
@@ -904,6 +935,8 @@ const styles = {
     color: GRAY,
     fontWeight: 600,
     textAlign: "right",
+    maxWidth: 150,
+    lineHeight: 1.3,
   },
 
   weekStrip: {
