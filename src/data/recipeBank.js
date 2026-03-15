@@ -1,4 +1,4 @@
-export const RECIPE_BANK = {
+export const recipeBank = {
 
 cafe: [
 
