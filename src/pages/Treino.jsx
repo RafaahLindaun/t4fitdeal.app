@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
@@ -45,7 +46,7 @@ function bumpDayIndex(email, max) {
 function getWeekdaysStrip(splitLen, currentIdx) {
   const out = [];
   const len = Math.max(splitLen, 1);
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < len; k++) {
     const idx = (currentIdx + k) % len;
     out.push({ idx, label: `Treino ${dayLetter(idx)}`, isToday: k === 0 });
   }
@@ -237,6 +238,110 @@ function buildCustomPlan(email) {
   return { base, split, meta: { days } };
 }
 
+
+function buildProfileFallback(profile) {
+  const objetivo = String(profile?.objetivo || "Hipertrofia").trim() || "Hipertrofia";
+  const splitName = String(profile?.split || "").trim();
+  const intensidade = String(profile?.intensidade || "moderada").trim() || "moderada";
+  const freq = clamp(Number(profile?.frequencia || 3), 2, 5);
+
+  const method = `${objetivo} • ${intensidade}`;
+
+  const A = [
+    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method },
+    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method },
+    { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method },
+    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method },
+    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method },
+    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method },
+  ];
+
+  const B = [
+    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method },
+    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method },
+    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method },
+    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method },
+    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method },
+    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method },
+  ];
+
+  const C = [
+    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method },
+    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method },
+    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method },
+    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method },
+    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method },
+    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method },
+  ];
+
+  const D = [
+    { name: "Desenvolvimento", group: "Ombros", sets: 4, reps: "8–12", rest: "60–90s", method },
+    { name: "Elevação lateral", group: "Ombros", sets: 4, reps: "12–15", rest: "45–75s", method },
+    { name: "Posterior (reverse fly)", group: "Ombro posterior", sets: 3, reps: "12–15", rest: "45–75s", method },
+    { name: "Encolhimento", group: "Trapézio", sets: 3, reps: "10–15", rest: "45–75s", method },
+    { name: "Pallof press", group: "Core", sets: 3, reps: "10–12", rest: "45–60s", method },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–60s", method },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–60s", method },
+  ];
+
+  const FB1 = [
+    { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–120s", method },
+    { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method },
+    { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method },
+    { name: "Desenvolvimento", group: "Ombros", sets: 3, reps: "8–12", rest: "60–90s", method },
+    { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method },
+    { name: "Tríceps corda", group: "Tríceps", sets: 3, reps: "10–12", rest: "60–90s", method },
+    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–60s", method },
+  ];
+
+  const FB2 = [
+    { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method },
+    { name: "Supino inclinado", group: "Peito", sets: 4, reps: "8–12", rest: "75–120s", method },
+    { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method },
+    { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "12–15", rest: "45–75s", method },
+    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method },
+    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method },
+    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–60s", method },
+  ];
+
+  const FB3 = [
+    { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–120s", method },
+    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method },
+    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method },
+    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method },
+    { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method },
+    { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method },
+    { name: "Pallof press", group: "Core", sets: 3, reps: "10–12", rest: "45–60s", method },
+  ];
+
+  const splitKey = normalizeName(splitName);
+  let split = [];
+
+  if (splitKey.includes("full")) {
+    const seq = [FB1, FB2, FB3, FB1, FB2];
+    split = seq.slice(0, freq);
+  } else if (splitKey === "abcd") {
+    const seq = [A, B, C, D, A];
+    split = seq.slice(0, freq);
+  } else {
+    const seq = [A, B, C, A, B];
+    split = seq.slice(0, freq);
+  }
+
+  return {
+    base: {
+      style: `${objetivo} • ${splitName || `${freq}x/sem`}`,
+      sets: 4,
+      reps: "6–12",
+      rest: intensidade === "alta" ? "60–90s" : "75–120s",
+    },
+    split,
+  };
+}
+
 /* ---------------- carga/progressão (localStorage) ---------------- */
 function loadLoads(email) {
   return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
@@ -253,40 +358,36 @@ export default function Treino() {
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
 
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      if (!user?.id) {
+        return;
+      }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("objetivo, nivel, split, intensidade, frequencia")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!active) return;
+      setProfile(data || null);
+    }
+
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const paid = localStorage.getItem(`paid_${email}`) === "1";
 
   const plan = useMemo(() => buildCustomPlan(email), [email]);
-
-  const fallbackSplit = useMemo(() => {
-    const A = [
-      { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-      { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
-      { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
-      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-      { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-      { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-    ];
-    const B = [
-      { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-      { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-      { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
-      { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-      { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-      { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
-    ];
-    const C = [
-      { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
-      { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
-      { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
-      { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
-      { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
-      { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-      { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-    ];
-    return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
-  }, []);
+  const fallbackSplit = useMemo(() => buildProfileFallback(profile), [profile]);
 
   const base = plan?.base || fallbackSplit.base;
   const split = plan?.split || fallbackSplit.split;
@@ -302,6 +403,10 @@ export default function Treino() {
   const doneKey = `done_ex_${email}_${viewSafe}`;
   const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
   const [tapId, setTapId] = useState(null);
+
+  useEffect(() => {
+    setDone(safeJsonParse(localStorage.getItem(doneKey), {}));
+  }, [doneKey]);
 
   const [loads, setLoads] = useState(() => loadLoads(email));
 
