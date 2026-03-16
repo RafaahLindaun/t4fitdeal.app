@@ -378,7 +378,7 @@ calories:250,
 tags:["rápido"],
 ingredients:["pão integral","queijo"],
 steps:["monte"]
-}
+},
 {
 id:"cafe_ovos_pao",
 title:"Ovos mexidos + pão",
