@@ -20,6 +20,7 @@ const MEAL_LABELS = {
   cafe: "Café da manhã",
   almoco: "Almoço",
   janta: "Janta",
+  favoritos: "Favoritos",
 };
 
 const BASE_RECIPES = recipeBank;
@@ -131,35 +132,37 @@ function getRecipeKeywords(recipe) {
   return [...new Set(keywords)];
 }
 
+function decorateRecipe(recipe, mealKey, objetivo) {
+  let emphasis = "";
+
+  if (objetivo === "Hipertrofia") {
+    emphasis = "Boa para apoiar ganho de massa com mais consistência.";
+  }
+
+  if (objetivo === "Emagrecimento") {
+    emphasis = "Boa para ajudar no controle calórico com mais praticidade.";
+  }
+
+  if (objetivo === "Performance") {
+    emphasis = "Boa para melhorar rendimento e manter energia melhor distribuída.";
+  }
+
+  return {
+    ...recipe,
+    title: prettifyRecipeTitle(recipe.title),
+    stableId: recipe.id,
+    mealKey,
+    emphasis,
+    favoriteHint: `Salvar ${recipe.title}`,
+    keywords: getRecipeKeywords(recipe),
+  };
+}
+
 function generateMealOptions({ mealKey, profile, search, activeChip }) {
   const base = BASE_RECIPES?.[mealKey] || [];
   const objetivo = profile?.objetivo || "Hipertrofia";
 
-  let items = base.map((recipe) => {
-    let emphasis = "";
-
-    if (objetivo === "Hipertrofia") {
-      emphasis = "Boa para apoiar ganho de massa com mais consistência.";
-    }
-
-    if (objetivo === "Emagrecimento") {
-      emphasis = "Boa para ajudar no controle calórico com mais praticidade.";
-    }
-
-    if (objetivo === "Performance") {
-      emphasis = "Boa para melhorar rendimento e manter energia melhor distribuída.";
-    }
-
-    return {
-      ...recipe,
-      title: prettifyRecipeTitle(recipe.title),
-      stableId: recipe.id,
-      mealKey,
-      emphasis,
-      favoriteHint: `Salvar ${recipe.title}`,
-      keywords: getRecipeKeywords(recipe),
-    };
-  });
+  let items = base.map((recipe) => decorateRecipe(recipe, mealKey, objetivo));
 
   if (activeChip && activeChip !== "todos") {
     items = items.filter(
@@ -228,6 +231,7 @@ export default function Nutricao() {
   const [search, setSearch] = useState("");
   const [activeChip, setActiveChip] = useState("todos");
   const [expandedId, setExpandedId] = useState(null);
+  const [activeRecipe, setActiveRecipe] = useState(null);
   const [keywordVisibleById, setKeywordVisibleById] = useState({});
   const [favorites, setFavorites] = useState(() => {
     const raw = localStorage.getItem(`nutri_fav_${email}`);
@@ -235,6 +239,7 @@ export default function Nutricao() {
   });
   const [waterMl, setWaterMl] = useState(() => getWaterForDate(email, todayKey()));
   const [isResettingWater, setIsResettingWater] = useState(false);
+  const [suggestionSeed, setSuggestionSeed] = useState(() => Date.now());
 
   const paidNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
 
@@ -277,6 +282,14 @@ export default function Nutricao() {
     persistWaterForDate(email, todayKey(), waterMl);
   }, [waterMl, email]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSuggestionSeed(Date.now());
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
   const waterLeft = Math.max(0, waterGoal - waterMl);
   const waterPct =
@@ -295,13 +308,48 @@ export default function Nutricao() {
   );
 
   const options = useMemo(() => {
+    if (mealTab === "favoritos") {
+      const objetivo = profile?.objetivo || "Hipertrofia";
+
+      const allRecipes = Object.entries(BASE_RECIPES || {}).flatMap(([key, list]) =>
+        (list || []).map((recipe) => decorateRecipe(recipe, key, objetivo))
+      );
+
+      let items = allRecipes.filter((recipe) => favorites.includes(recipe.id));
+
+      if (activeChip && activeChip !== "todos") {
+        items = items.filter(
+          (item) =>
+            item.tags?.some((tag) =>
+              normalizeText(tag).includes(normalizeText(activeChip))
+            ) ||
+            item.keywords?.some((keyword) =>
+              normalizeText(keyword).includes(normalizeText(activeChip))
+            )
+        );
+      }
+
+      if (search.trim()) {
+        const q = normalizeText(search);
+
+        items = items.filter(
+          (item) =>
+            normalizeText(item.title).includes(q) ||
+            normalizeText(item.subtitle).includes(q) ||
+            item.keywords?.some((keyword) => normalizeText(keyword).includes(q))
+        );
+      }
+
+      return items;
+    }
+
     return generateMealOptions({
       mealKey: mealTab,
       profile,
       search,
       activeChip,
     });
-  }, [mealTab, profile, search, activeChip]);
+  }, [mealTab, profile, search, activeChip, favorites]);
 
   const visibleOptions = useMemo(() => {
     return options.map((item) => ({
@@ -311,11 +359,21 @@ export default function Nutricao() {
   }, [options, favorites]);
 
   const suggestion = useMemo(() => {
-    if (!visibleOptions.length) return null;
     const hour = new Date().getHours();
     const currentMeal = hour < 11 ? "cafe" : hour < 17 ? "almoco" : "janta";
-    return visibleOptions.find((item) => item.mealKey === currentMeal) || visibleOptions[0];
-  }, [visibleOptions]);
+    const objetivo = profile?.objetivo || "Hipertrofia";
+    const source = (BASE_RECIPES?.[currentMeal] || []).map((recipe) =>
+      decorateRecipe(recipe, currentMeal, objetivo)
+    );
+
+    if (!source.length) return null;
+
+    const day = new Date().getDate();
+    const minuteBucket = Math.floor((suggestionSeed / 60000) % source.length);
+    const index = (day + minuteBucket) % source.length;
+
+    return source[index];
+  }, [profile, suggestionSeed]);
 
   function addWater(amount = WATER_STEP) {
     setWaterMl((prev) => Math.min(waterGoal, prev + amount));
@@ -354,11 +412,12 @@ export default function Nutricao() {
     if (!suggestion) return;
     setMealTab(suggestion.mealKey);
     setExpandedId(suggestion.stableId);
+    setActiveRecipe(suggestion);
+  }
 
-    window.requestAnimationFrame(() => {
-      const el = document.getElementById(`recipe-${suggestion.stableId}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
+  function openRecipeModal(item) {
+    setExpandedId(item.stableId);
+    setActiveRecipe(item);
   }
 
   if (!paidNutriPlus) {
@@ -391,325 +450,410 @@ export default function Nutricao() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.wrap}>
-        <div style={styles.headerRow}>
-          <div style={styles.brandFit}>
-            fitdeal<span style={{ color: ORANGE }}>.</span>
-          </div>
-          <div style={styles.brand}>
-            Nutri<span style={{ color: ORANGE }}>+</span>
-          </div>
-        </div>
-
-        <section style={styles.heroCard}>
-          <div style={styles.heroContent}>
-            <div style={styles.heroTitle}>
-              {loadingProfile ? "Sua nutrição" : `${profile.nome}, sua nutrição`}
+    <>
+      <div style={styles.page}>
+        <div style={styles.wrap}>
+          <div style={styles.headerRow}>
+            <div style={styles.brandFit}>
+              fitdeal<span style={{ color: ORANGE }}>.</span>
             </div>
-
-            <div style={styles.heroSub}>
-              Rotina alimentar alinhada ao seu objetivo com mais clareza e constância.
+            <div style={styles.brand}>
+              Nutri<span style={{ color: ORANGE }}>+</span>
             </div>
           </div>
 
-          <div style={styles.heroMini}>
-            <div style={styles.heroMiniLabel}>Objetivo</div>
-            <div style={styles.heroMiniValue}>{profile.objetivo}</div>
-          </div>
-        </section>
+          <section style={styles.heroCard}>
+            <div style={styles.heroContent}>
+              <div style={styles.heroTitle}>
+                {loadingProfile ? "Sua nutrição" : `${profile.nome}, sua nutrição`}
+              </div>
 
-        <button
-          type="button"
-          style={styles.suppHeroBtn}
-          onClick={() => nav("/suplementacao")}
-        >
-          <div style={styles.suppHeroTop}>
-            <div style={styles.suppHeroKicker}>SUPLEMENTAÇÃO</div>
-            <div style={styles.suppHeroArrow}>›</div>
-          </div>
+              <div style={styles.heroSub}>
+                Rotina alimentar alinhada ao seu objetivo com mais clareza e constância.
+              </div>
+            </div>
 
-          <div style={styles.suppHeroTitle}>
-            Suplementação<span style={{ color: ORANGE }}>.</span>
-          </div>
+            <div style={styles.heroMini}>
+              <div style={styles.heroMiniLabel}>Objetivo</div>
+              <div style={styles.heroMiniValue}>{profile.objetivo}</div>
+            </div>
+          </section>
 
-          <div style={styles.suppHeroSub}>
-            Abra seu plano premium com indicação rápida e objetiva.
-          </div>
-        </button>
-
-        <section style={styles.section}>
-          <div
-            style={{
-              ...styles.waterShell,
-              ...(isResettingWater ? styles.waterShellResetting : null),
-            }}
+          <button
+            type="button"
+            style={styles.suppHeroBtn}
+            onClick={() => nav("/suplementacao")}
           >
-            <div style={styles.hydrationHeader}>
-              <div style={styles.hydrationHeaderLeft}>
-                <div style={styles.sectionTitleLarge}>
-                  Hidratação<span style={{ color: ORANGE }}>.</span>
-                </div>
-                <div style={styles.waterSubTop}>
-                  {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
-                </div>
-              </div>
-
-              <div style={styles.waterHeaderActions}>
-                <button
-                  type="button"
-                  style={styles.calendarNavBtn}
-                  onClick={() => nav("/calendario")}
-                >
-                  Calendário
-                </button>
-
-                <button
-                  type="button"
-                  style={{
-                    ...styles.resetBtn,
-                    ...(isResettingWater ? styles.resetBtnActive : null),
-                  }}
-                  onClick={resetWater}
-                >
-                  Reset
-                </button>
-              </div>
+            <div style={styles.suppHeroTop}>
+              <div style={styles.suppHeroKicker}>SUPLEMENTAÇÃO</div>
+              <div style={styles.suppHeroArrow}>›</div>
             </div>
 
-            <div style={styles.waterCard}>
-              <div style={styles.waterProgressBar}>
-                <div
-                  style={{
-                    ...styles.waterProgressFill,
-                    width: `${waterPct}%`,
-                  }}
-                />
-              </div>
+            <div style={styles.suppHeroTitle}>
+              Suplementação<span style={{ color: ORANGE }}>.</span>
+            </div>
 
-              <div style={styles.waterPercentRow}>
-                <div style={styles.waterBigPercent}>{waterPct}%</div>
-                <div style={styles.waterPercentHint}>marcado pelo total do dia</div>
-              </div>
+            <div style={styles.suppHeroSub}>
+              Abra seu plano premium com indicação rápida e objetiva.
+            </div>
+          </button>
 
-              <div style={styles.weekStrip}>
-                {weekStrip.map((item) => (
-                  <div
-                    key={item.key}
-                    style={{
-                      ...styles.weekPill,
-                      ...(item.isToday ? styles.weekPillActive : null),
-                      ...(item.done ? styles.weekPillDone : null),
-                    }}
-                  >
-                    <div style={styles.weekLabel}>{item.label}</div>
-                    <div style={styles.weekDay}>{item.day}</div>
-                    <div style={styles.weekMl}>{item.total} ml</div>
+          <section style={styles.section}>
+            <div
+              style={{
+                ...styles.waterShell,
+                ...(isResettingWater ? styles.waterShellResetting : null),
+              }}
+            >
+              <div style={styles.hydrationHeader}>
+                <div style={styles.hydrationHeaderLeft}>
+                  <div style={styles.sectionTitleLarge}>
+                    Hidratação<span style={{ color: ORANGE }}>.</span>
                   </div>
+                  <div style={styles.waterSubTop}>
+                    {waterMl} ml de {waterGoal} ml • faltam {waterLeft} ml
+                  </div>
+                </div>
+
+                <div style={styles.waterHeaderActions}>
+                  <button
+                    type="button"
+                    style={styles.calendarNavBtn}
+                    onClick={() => nav("/calendario")}
+                  >
+                    Calendário
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.resetBtn,
+                      ...(isResettingWater ? styles.resetBtnActive : null),
+                    }}
+                    onClick={resetWater}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div style={styles.waterCard}>
+                <div style={styles.waterProgressBar}>
+                  <div
+                    style={{
+                      ...styles.waterProgressFill,
+                      width: `${waterPct}%`,
+                    }}
+                  />
+                </div>
+
+                <div style={styles.waterPercentRow}>
+                  <div style={styles.waterBigPercent}>{waterPct}%</div>
+                  <div style={styles.waterPercentHint}>marcado pelo total do dia</div>
+                </div>
+
+                <div style={styles.weekStrip}>
+                  {weekStrip.map((item) => (
+                    <div
+                      key={item.key}
+                      style={{
+                        ...styles.weekPill,
+                        ...(item.isToday ? styles.weekPillActive : null),
+                        ...(item.done ? styles.weekPillDone : null),
+                      }}
+                    >
+                      <div style={styles.weekLabel}>{item.label}</div>
+                      <div style={styles.weekDay}>{item.day}</div>
+                      <div style={styles.weekMl}>{item.total} ml</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={styles.waterNumbers}>
+                  <div style={styles.waterBig}>{waterMl} ml</div>
+                  <div style={styles.waterSub}>
+                    cerca de {Math.round(waterMl / WATER_STEP)} copos
+                  </div>
+                </div>
+
+                <div style={styles.waterQuickRow}>
+                  <button style={styles.waterMiniBtn} onClick={() => addWater(100)}>
+                    +100 ml
+                  </button>
+                  <button style={styles.waterMiniBtn} onClick={() => addWater(250)}>
+                    +250 ml
+                  </button>
+                  <button style={styles.waterMiniBtn} onClick={() => addWater(300)}>
+                    +300 ml
+                  </button>
+                </div>
+
+                <div style={styles.waterActions}>
+                  <button style={styles.waterBtnSoft} onClick={() => removeWater(250)}>
+                    −250 ml
+                  </button>
+
+                  <button style={styles.waterBtn} onClick={() => addWater(250)}>
+                    +250 ml
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {suggestion ? (
+            <section style={styles.suggestionCard}>
+              <div style={styles.suggestionLabel}>O que fazer agora?</div>
+              <div style={styles.suggestionTitle}>{suggestion.title}</div>
+              <div style={styles.suggestionSub}>{suggestion.subtitle}</div>
+
+              <div style={styles.suggestionTags}>
+                {(suggestion.tags || []).slice(0, 3).map((tag) => (
+                  <span key={tag} style={styles.tag}>
+                    {tag}
+                  </span>
                 ))}
               </div>
 
-              <div style={styles.waterNumbers}>
-                <div style={styles.waterBig}>{waterMl} ml</div>
-                <div style={styles.waterSub}>
-                  cerca de {Math.round(waterMl / WATER_STEP)} copos
+              <button
+                type="button"
+                style={styles.suggestionAction}
+                onClick={openSuggestionRecipe}
+              >
+                Ver receita
+              </button>
+            </section>
+          ) : null}
+
+          <section style={styles.section}>
+            <div style={styles.sectionTitle}>
+              {mealTab === "favoritos" ? "Favoritos salvos" : "Refeições"}
+            </div>
+
+            <div style={styles.segmentWrap}>
+              {Object.keys(MEAL_LABELS).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setMealTab(key);
+                    setExpandedId(null);
+                  }}
+                  style={{
+                    ...styles.segmentBtn,
+                    ...(mealTab === key ? styles.segmentBtnActive : null),
+                  }}
+                >
+                  {MEAL_LABELS[key]}
+                </button>
+              ))}
+            </div>
+
+            <div style={styles.searchWrap}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={
+                  mealTab === "favoritos"
+                    ? "Buscar nos favoritos"
+                    : "Buscar receita ou palavra-chave"
+                }
+                style={styles.searchInput}
+              />
+            </div>
+
+            <div style={styles.chipsRow}>
+              {chips.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => setActiveChip(chip)}
+                  style={{
+                    ...styles.chip,
+                    ...(activeChip === chip ? styles.chipActive : null),
+                  }}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            {mealTab === "favoritos" && !visibleOptions.length ? (
+              <div style={styles.emptyFavorites}>
+                <div style={styles.emptyFavoritesTitle}>Nenhuma receita salva ainda.</div>
+                <div style={styles.emptyFavoritesText}>
+                  Toque na estrela das receitas para montar sua aba de favoritos.
                 </div>
               </div>
+            ) : null}
 
-              <div style={styles.waterQuickRow}>
-                <button style={styles.waterMiniBtn} onClick={() => addWater(100)}>
-                  +100 ml
-                </button>
-                <button style={styles.waterMiniBtn} onClick={() => addWater(250)}>
-                  +250 ml
-                </button>
-                <button style={styles.waterMiniBtn} onClick={() => addWater(300)}>
-                  +300 ml
-                </button>
-              </div>
+            <div style={styles.recipeList}>
+              {visibleOptions.map((item) => {
+                const open = expandedId === item.stableId;
+                const favorite = favorites.includes(item.stableId);
+                const totalKeywords = item.keywords?.length || 0;
+                const visibleKeywordCount =
+                  keywordVisibleById[item.stableId] || INITIAL_KEYWORDS_VISIBLE;
 
-              <div style={styles.waterActions}>
-                <button style={styles.waterBtnSoft} onClick={() => removeWater(250)}>
-                  −250 ml
-                </button>
+                return (
+                  <div
+                    key={item.stableId}
+                    id={`recipe-${item.stableId}`}
+                    style={styles.recipeCard}
+                  >
+                    <div style={styles.recipeCardTop}>
+                      <button
+                        style={styles.recipeMainButton}
+                        onClick={() => setExpandedId(open ? null : item.stableId)}
+                        type="button"
+                      >
+                        <div style={styles.recipeTitle}>{item.title}</div>
+                        <div style={styles.recipeSub}>{item.subtitle}</div>
 
-                <button style={styles.waterBtn} onClick={() => addWater(250)}>
-                  +250 ml
-                </button>
-              </div>
+                        <div style={styles.metaRow}>
+                          {item.minutes ? (
+                            <span style={styles.metaPill}>{item.minutes} min</span>
+                          ) : null}
+                          {item.calories ? (
+                            <span style={styles.metaPill}>{item.calories} kcal</span>
+                          ) : null}
+                          <span style={styles.metaPill}>
+                            {MEAL_LABELS[item.mealKey] || item.mealKey}
+                          </span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        style={{
+                          ...styles.favoriteBtn,
+                          ...(favorite ? styles.favoriteBtnActive : null),
+                        }}
+                        onClick={() => toggleFavorite(item.stableId)}
+                        aria-label={favorite ? "Remover favorito" : "Salvar favorito"}
+                      >
+                        {favorite ? "★" : "☆"}
+                      </button>
+                    </div>
+
+                    <RecipeKeywordList
+                      item={item}
+                      expandedCount={visibleKeywordCount}
+                      onMore={() => handleMoreKeywords(item.stableId, totalKeywords)}
+                    />
+
+                    <div
+                      style={{
+                        ...styles.expandAnimated,
+                        maxHeight: open ? 620 : 0,
+                        opacity: open ? 1 : 0,
+                        marginTop: open ? 14 : 0,
+                      }}
+                    >
+                      <div style={styles.expandText}>{item.emphasis}</div>
+
+                      <div style={styles.expandBlockTitle}>Receita</div>
+
+                      <div style={styles.ingredientsWrap}>
+                        {item.ingredients?.map((v) => (
+                          <span key={v} style={styles.ingredientPill}>
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+
+                      {item.steps?.length ? (
+                        <>
+                          <div style={styles.expandBlockTitle}>Como fazer</div>
+                          <div style={styles.stepsWrap}>
+                            {item.steps.map((step, idx) => (
+                              <div key={`${item.stableId}-${idx}`} style={styles.stepRow}>
+                                <div style={styles.stepIndex}>{idx + 1}</div>
+                                <div style={styles.stepText}>{step}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        style={styles.openRecipeBalloonBtn}
+                        onClick={() => openRecipeModal(item)}
+                      >
+                        Abrir receita
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </section>
+
+          <div style={styles.footerBrand}>
+            fitdeal<span style={{ color: ORANGE }}>.</span>
           </div>
-        </section>
+        </div>
+      </div>
 
-        {suggestion ? (
-          <section style={styles.suggestionCard}>
-            <div style={styles.suggestionLabel}>O que fazer agora?</div>
-            <div style={styles.suggestionTitle}>{suggestion.title}</div>
-            <div style={styles.suggestionSub}>{suggestion.subtitle}</div>
+      {activeRecipe ? (
+        <div style={styles.recipeOverlay} onClick={() => setActiveRecipe(null)}>
+          <div style={styles.recipeModal} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              style={styles.modalBack}
+              onClick={() => setActiveRecipe(null)}
+            >
+              ← voltar
+            </button>
 
-            <div style={styles.suggestionTags}>
-              {(suggestion.tags || []).slice(0, 3).map((tag) => (
-                <span key={tag} style={styles.tag}>
-                  {tag}
+            <div style={styles.modalTitle}>{activeRecipe.title}</div>
+            <div style={styles.modalSub}>{activeRecipe.subtitle}</div>
+
+            <div style={styles.modalMetaRow}>
+              {activeRecipe.minutes ? (
+                <span style={styles.modalMetaPill}>{activeRecipe.minutes} min</span>
+              ) : null}
+              {activeRecipe.calories ? (
+                <span style={styles.modalMetaPill}>{activeRecipe.calories} kcal</span>
+              ) : null}
+              <span style={styles.modalMetaPill}>
+                {MEAL_LABELS[activeRecipe.mealKey] || activeRecipe.mealKey}
+              </span>
+            </div>
+
+            <div style={styles.modalSection}>Ingredientes</div>
+            <div style={styles.modalIngredientsWrap}>
+              {(activeRecipe.ingredients || []).map((i) => (
+                <span key={i} style={styles.modalIngredientPill}>
+                  {i}
                 </span>
+              ))}
+            </div>
+
+            <div style={styles.modalSection}>Modo de preparo</div>
+            <div style={styles.modalSteps}>
+              {(activeRecipe.steps || []).map((s, i) => (
+                <div style={styles.modalStepRow} key={`${activeRecipe.stableId}-${i}`}>
+                  <div style={styles.modalStepIndex}>{i + 1}</div>
+                  <div style={styles.modalStepText}>{s}</div>
+                </div>
               ))}
             </div>
 
             <button
               type="button"
-              style={styles.suggestionAction}
-              onClick={openSuggestionRecipe}
+              style={styles.modalFavoriteBtn}
+              onClick={() => toggleFavorite(activeRecipe.stableId || activeRecipe.id)}
             >
-              Ver receita
+              {favorites.includes(activeRecipe.stableId || activeRecipe.id)
+                ? "Remover dos favoritos"
+                : "Salvar nos favoritos"}
             </button>
-          </section>
-        ) : null}
-
-        <section style={styles.section}>
-          <div style={styles.sectionTitle}>Refeições</div>
-
-          <div style={styles.segmentWrap}>
-            {Object.keys(MEAL_LABELS).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  setMealTab(key);
-                  setExpandedId(null);
-                }}
-                style={{
-                  ...styles.segmentBtn,
-                  ...(mealTab === key ? styles.segmentBtnActive : null),
-                }}
-              >
-                {MEAL_LABELS[key]}
-              </button>
-            ))}
           </div>
-
-          <div style={styles.searchWrap}>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar receita ou palavra-chave"
-              style={styles.searchInput}
-            />
-          </div>
-
-          <div style={styles.chipsRow}>
-            {chips.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => setActiveChip(chip)}
-                style={{
-                  ...styles.chip,
-                  ...(activeChip === chip ? styles.chipActive : null),
-                }}
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-
-          <div style={styles.recipeList}>
-            {visibleOptions.map((item) => {
-              const open = expandedId === item.stableId;
-              const favorite = favorites.includes(item.stableId);
-              const totalKeywords = item.keywords?.length || 0;
-              const visibleKeywordCount =
-                keywordVisibleById[item.stableId] || INITIAL_KEYWORDS_VISIBLE;
-
-              return (
-                <div
-                  key={item.stableId}
-                  id={`recipe-${item.stableId}`}
-                  style={styles.recipeCard}
-                >
-                  <div style={styles.recipeCardTop}>
-                    <button
-                      style={styles.recipeMainButton}
-                      onClick={() => setExpandedId(open ? null : item.stableId)}
-                      type="button"
-                    >
-                      <div style={styles.recipeTitle}>{item.title}</div>
-                      <div style={styles.recipeSub}>{item.subtitle}</div>
-
-                      <div style={styles.metaRow}>
-                        {item.minutes ? (
-                          <span style={styles.metaPill}>{item.minutes} min</span>
-                        ) : null}
-                        {item.calories ? (
-                          <span style={styles.metaPill}>{item.calories} kcal</span>
-                        ) : null}
-                        <span style={styles.metaPill}>{item.mealKey}</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      style={{
-                        ...styles.favoriteBtn,
-                        ...(favorite ? styles.favoriteBtnActive : null),
-                      }}
-                      onClick={() => toggleFavorite(item.stableId)}
-                      aria-label={favorite ? "Remover favorito" : "Salvar favorito"}
-                    >
-                      {favorite ? "★" : "☆"}
-                    </button>
-                  </div>
-
-                  <RecipeKeywordList
-                    item={item}
-                    expandedCount={visibleKeywordCount}
-                    onMore={() => handleMoreKeywords(item.stableId, totalKeywords)}
-                  />
-
-                  <div
-                    style={{
-                      ...styles.expandAnimated,
-                      maxHeight: open ? 620 : 0,
-                      opacity: open ? 1 : 0,
-                      marginTop: open ? 14 : 0,
-                    }}
-                  >
-                    <div style={styles.expandText}>{item.emphasis}</div>
-
-                    <div style={styles.expandBlockTitle}>Receita</div>
-
-                    <div style={styles.ingredientsWrap}>
-                      {item.ingredients?.map((v) => (
-                        <span key={v} style={styles.ingredientPill}>
-                          {v}
-                        </span>
-                      ))}
-                    </div>
-
-                    {item.steps?.length ? (
-                      <>
-                        <div style={styles.expandBlockTitle}>Como fazer</div>
-                        <div style={styles.stepsWrap}>
-                          {item.steps.map((step, idx) => (
-                            <div key={`${item.stableId}-${idx}`} style={styles.stepRow}>
-                              <div style={styles.stepIndex}>{idx + 1}</div>
-                              <div style={styles.stepText}>{step}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <div style={styles.footerBrand}>
-          fitdeal<span style={{ color: ORANGE }}>.</span>
         </div>
-      </div>
-    </div>
+      ) : null}
+    </>
   );
 }
 
@@ -1417,6 +1561,41 @@ const styles = {
     fontWeight: 600,
   },
 
+  openRecipeBalloonBtn: {
+    marginTop: 14,
+    width: "100%",
+    height: 42,
+    borderRadius: 14,
+    border: "none",
+    background: BLACK,
+    color: WHITE,
+    fontWeight: 800,
+    fontSize: 13,
+  },
+
+  emptyFavorites: {
+    padding: 18,
+    borderRadius: 22,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 8px 22px rgba(0,0,0,.03)",
+    marginBottom: 12,
+  },
+
+  emptyFavoritesTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  emptyFavoritesText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: GRAY,
+    lineHeight: 1.45,
+    fontWeight: 600,
+  },
+
   footerBrand: {
     textAlign: "center",
     marginTop: 26,
@@ -1469,4 +1648,159 @@ const styles = {
     fontSize: 16,
     fontWeight: 800,
   },
+
+  recipeOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.34)",
+    display: "flex",
+    alignItems: "flex-end",
+    zIndex: 1000,
+    padding: 0,
+  },
+
+  recipeModal: {
+    width: "100%",
+    maxHeight: "84vh",
+    overflowY: "auto",
+    background: "rgba(255,255,255,.98)",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 22,
+    boxShadow: "0 -24px 60px rgba(0,0,0,.18)",
+    animation: "nutriSlideUp .28s cubic-bezier(.22,1,.36,1)",
+  },
+
+  modalBack: {
+    border: "none",
+    background: "#F5F5F3",
+    color: BLACK,
+    height: 40,
+    padding: "0 14px",
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 800,
+    marginBottom: 14,
+  },
+
+  modalTitle: {
+    fontSize: 24,
+    lineHeight: 1.08,
+    fontWeight: 900,
+    color: BLACK,
+    letterSpacing: -0.6,
+  },
+
+  modalSub: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: GRAY,
+    fontWeight: 600,
+  },
+
+  modalMetaRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 14,
+  },
+
+  modalMetaPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  modalSection: {
+    marginTop: 18,
+    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: 900,
+    color: SOFT,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+
+  modalIngredientsWrap: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  modalIngredientPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    background: "#FAFAF8",
+    border: `1px solid ${BORDER}`,
+    fontSize: 12,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  modalSteps: {
+    display: "grid",
+    gap: 12,
+  },
+
+  modalStepRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+
+  modalStepIndex: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    background: "#FFF1E8",
+    color: ORANGE,
+    display: "grid",
+    placeItems: "center",
+    fontSize: 12,
+    fontWeight: 800,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+
+  modalStepText: {
+    fontSize: 14,
+    lineHeight: 1.55,
+    color: BLACK,
+    fontWeight: 600,
+  },
+
+  modalFavoriteBtn: {
+    marginTop: 20,
+    width: "100%",
+    height: 48,
+    borderRadius: 16,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 14,
+  },
 };
+
+if (typeof document !== "undefined" && !document.getElementById("nutri-modal-animation")) {
+  const style = document.createElement("style");
+  style.id = "nutri-modal-animation";
+  style.innerHTML = `
+    @keyframes nutriSlideUp {
+      from {
+        transform: translateY(32px);
+        opacity: .0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
