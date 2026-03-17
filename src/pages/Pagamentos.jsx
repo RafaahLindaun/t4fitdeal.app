@@ -1,90 +1,212 @@
-// ✅ COLE EM: src/pages/Pagamentos.jsx  (SEM BOTÃO FLUTUANTE, página normal)
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
-const BG = "#f8fafc";
-const TEXT = "#0f172a";
-const MUTED = "#64748b";
+const ORANGE = "#FF6A00";
+const BLACK = "#111111";
+const GRAY = "#6B6B6B";
+const WHITE = "#FFFFFF";
+const BORDER = "#E9E9E7";
+const LIGHT = "#F7F7F5";
 
 export default function Pagamentos() {
   const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
+  const nav = useNavigate();
 
-  const payments = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem(`payments_${email}`) || "[]");
-    } catch {
-      return [];
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const userId = user?.id;
+
+  useEffect(() => {
+    async function loadPayments() {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+
+        setPayments(data || []);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [email]);
+
+    loadPayments();
+  }, [userId]);
 
   return (
-    <div style={S.page}>
-      <div style={S.top}>
-        <div style={S.title}>Pagamentos efetuados</div>
-        <div style={S.sub}>Histórico do que já foi pago nesta conta.</div>
-      </div>
-
-      {payments.length === 0 ? (
-        <div style={S.item}>
-          <div style={S.itemRow}>
-            <div>
-              <div style={S.itemTitle}>Plano</div>
-              <div style={S.itemDate}>
-                {new Date().toLocaleDateString("pt-BR")} •{" "}
-                {new Date().toLocaleTimeString("pt-BR")}
-              </div>
-            </div>
-            <div style={S.itemPrice}>R$ 0,00</div>
+    <div style={styles.page}>
+      <div style={styles.wrap}>
+        <div style={styles.headerRow}>
+          <div style={styles.brand}>
+            fitdeal<span style={{ color: ORANGE }}>.</span>
           </div>
         </div>
-      ) : (
-        <div style={S.list}>
-          {payments.map((p) => (
-            <div key={p.id || p.createdAt} style={S.item}>
-              <div style={S.itemRow}>
-                <div>
-                  <div style={S.itemTitle}>{p.title || "Plano"}</div>
-                  <div style={S.itemDate}>
-                    {p.createdAt
-                      ? new Date(p.createdAt).toLocaleDateString("pt-BR")
-                      : "-"}{" "}
-                    •{" "}
-                    {p.createdAt
-                      ? new Date(p.createdAt).toLocaleTimeString("pt-BR")
-                      : "-"}
+
+        <div style={styles.title}>Pagamentos</div>
+
+        {loading ? (
+          <div style={styles.loading}>Carregando pagamentos...</div>
+        ) : payments.length === 0 ? (
+          <div style={styles.empty}>
+            Nenhum pagamento encontrado ainda.
+          </div>
+        ) : (
+          <div style={styles.list}>
+            {payments.map((p) => (
+              <div key={p.id} style={styles.card}>
+                <div style={styles.cardTop}>
+                  <div style={styles.plan}>{p.title || "Plano"}</div>
+                  <div style={styles.price}>
+                    R$ {(p.amount_brl / 100).toFixed(2)}
                   </div>
                 </div>
-                <div style={S.itemPrice}>
-                  {typeof p.amount === "number"
-                    ? `R$ ${p.amount.toFixed(2).replace(".", ",")}`
-                    : "R$ 0,00"}
+
+                <div style={styles.metaRow}>
+                  <span style={styles.meta}>
+                    {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                  </span>
+
+                  <span
+                    style={{
+                      ...styles.status,
+                      ...(p.status === "paid"
+                        ? styles.statusPaid
+                        : styles.statusPending),
+                    }}
+                  >
+                    {p.status}
+                  </span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+
+        <button style={styles.backBtn} onClick={() => nav(-1)}>
+          Voltar
+        </button>
+      </div>
     </div>
   );
 }
 
-const S = {
-  page: { padding: 20, paddingBottom: 120, background: BG, minHeight: "100vh" },
-  top: { marginBottom: 14 },
-  title: { fontSize: 24, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  sub: { marginTop: 4, fontSize: 13, color: MUTED, fontWeight: 700 },
-
-  list: { display: "grid", gap: 12 },
-  item: {
-    borderRadius: 18,
-    background: "#fff",
-    border: "1px solid rgba(15,23,42,.08)",
-    boxShadow: "0 12px 32px rgba(15,23,42,.06)",
-    padding: 16,
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: LIGHT,
+    padding: 20,
   },
-  itemRow: { display: "flex", justifyContent: "space-between", gap: 12 },
-  itemTitle: { fontSize: 14, fontWeight: 900, color: TEXT },
-  itemDate: { marginTop: 6, fontSize: 12, color: MUTED, fontWeight: 700 },
-  itemPrice: { fontSize: 14, fontWeight: 900, color: "#2563eb", whiteSpace: "nowrap" },
+
+  wrap: {
+    maxWidth: 600,
+    margin: "0 auto",
+  },
+
+  headerRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  brand: {
+    fontSize: 28,
+    fontWeight: 900,
+    color: BLACK,
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: 800,
+    marginBottom: 20,
+    color: BLACK,
+  },
+
+  loading: {
+    fontSize: 14,
+    color: GRAY,
+  },
+
+  empty: {
+    fontSize: 14,
+    color: GRAY,
+  },
+
+  list: {
+    display: "grid",
+    gap: 12,
+  },
+
+  card: {
+    padding: 18,
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: WHITE,
+  },
+
+  cardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  plan: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: BLACK,
+  },
+
+  price: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: ORANGE,
+  },
+
+  metaRow: {
+    display: "flex",
+    justifyContent: "space-between",
+  },
+
+  meta: {
+    fontSize: 12,
+    color: GRAY,
+  },
+
+  status: {
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontWeight: 700,
+  },
+
+  statusPaid: {
+    background: "#E8F8F0",
+    color: "#1F9D55",
+  },
+
+  statusPending: {
+    background: "#FFF4E5",
+    color: "#C77800",
+  },
+
+  backBtn: {
+    marginTop: 24,
+    width: "100%",
+    height: 50,
+    borderRadius: 14,
+    border: "none",
+    background: ORANGE,
+    color: BLACK,
+    fontWeight: 800,
+    fontSize: 15,
+  },
 };
