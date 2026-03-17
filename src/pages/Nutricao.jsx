@@ -40,69 +40,6 @@ function todayKey() {
   return toDateKey(new Date());
 }
 
-function getWaterStorageKey(email, dateKey) {
-  return `nutri_water_${email}_${dateKey}`;
-}
-
-function getWaterHistoryKey(email) {
-  return `nutri_water_history_${email}`;
-}
-
-function readWaterHistory(email) {
-  try {
-    const raw = localStorage.getItem(getWaterHistoryKey(email));
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeWaterHistory(email, history) {
-  localStorage.setItem(getWaterHistoryKey(email), JSON.stringify(history));
-}
-
-function persistWaterForDate(email, dateKey, ml) {
-  const safeMl = Math.max(0, Number(ml) || 0);
-  localStorage.setItem(getWaterStorageKey(email, dateKey), String(safeMl));
-  const history = readWaterHistory(email);
-  history[dateKey] = safeMl;
-  writeWaterHistory(email, history);
-}
-
-function getWaterForDate(email, dateKey) {
-  const direct = localStorage.getItem(getWaterStorageKey(email, dateKey));
-  if (direct !== null) return Math.max(0, Number(direct) || 0);
-  const history = readWaterHistory(email);
-  return Math.max(0, Number(history?.[dateKey]) || 0);
-}
-
-function buildWeekStrip(daysCount, email, waterGoal) {
-  const labels = ["D", "S", "T", "Q", "Q", "S", "S"];
-  const result = [];
-  const count = Math.max(4, Math.min(Number(daysCount) || 4, 7));
-  const now = new Date();
-
-  for (let i = 0; i < count; i += 1) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + i);
-    const key = toDateKey(d);
-    const total = getWaterForDate(email, key);
-    const done = waterGoal > 0 ? total >= waterGoal : false;
-
-    result.push({
-      key,
-      day: d.getDate(),
-      label: labels[d.getDay()],
-      isToday: i === 0,
-      total,
-      done,
-    });
-  }
-
-  return result;
-}
-
 function getGoalWater(profile) {
   const peso = Number(profile?.peso || 0);
   if (!peso) return 2500;
@@ -190,6 +127,31 @@ function generateMealOptions({ mealKey, profile, search, activeChip }) {
   return items;
 }
 
+function buildRecentDaysStrip(daysCount, hydrationMap, waterGoal) {
+  const labels = ["D", "S", "T", "Q", "Q", "S", "S"];
+  const count = Math.max(4, Math.min(Number(daysCount) || 4, 7));
+  const out = [];
+  const now = new Date();
+
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = toDateKey(d);
+    const total = Number(hydrationMap[key] || 0);
+
+    out.push({
+      key,
+      label: labels[d.getDay()],
+      day: d.getDate(),
+      total,
+      isToday: key === todayKey(),
+      done: waterGoal > 0 ? total >= waterGoal : false,
+    });
+  }
+
+  return out;
+}
+
 function RecipeKeywordList({ item, expandedCount, onMore }) {
   const keywords = item.keywords || [];
   const visibleCount = Math.min(expandedCount, keywords.length);
@@ -217,8 +179,6 @@ export default function Nutricao() {
   const nav = useNavigate();
   const { user } = useAuth();
 
-  const email = (user?.email || "anon").toLowerCase();
-
   const [profile, setProfile] = useState({
     nome: "",
     objetivo: "Hipertrofia",
@@ -227,60 +187,25 @@ export default function Nutricao() {
   });
 
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [loadingHydration, setLoadingHydration] = useState(true);
+
   const [mealTab, setMealTab] = useState("cafe");
   const [search, setSearch] = useState("");
   const [activeChip, setActiveChip] = useState("todos");
   const [expandedId, setExpandedId] = useState(null);
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [keywordVisibleById, setKeywordVisibleById] = useState({});
-  const [favorites, setFavorites] = useState(() => {
-    const raw = localStorage.getItem(`nutri_fav_${email}`);
-    return raw ? JSON.parse(raw) : [];
-  });
-  const [waterMl, setWaterMl] = useState(() => getWaterForDate(email, todayKey()));
+  const [favorites, setFavorites] = useState([]);
+  const [waterMl, setWaterMl] = useState(0);
+  const [hydrationMap, setHydrationMap] = useState({});
   const [isResettingWater, setIsResettingWater] = useState(false);
+  const [isSavingWater, setIsSavingWater] = useState(false);
+  const [subscription, setSubscription] = useState(null);
   const [suggestionSeed, setSuggestionSeed] = useState(() => Date.now());
 
-  const paidNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
-
-  useEffect(() => {
-    async function loadProfile() {
-      if (!user?.id) {
-        setLoadingProfile(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("profiles")
-        .select("nome, objetivo, peso, frequencia")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      setProfile({
-        nome:
-          data?.nome ||
-          user?.user_metadata?.nome ||
-          user?.user_metadata?.full_name ||
-          user?.email?.split("@")[0] ||
-          "",
-        objetivo: data?.objetivo || "Hipertrofia",
-        peso: data?.peso || "",
-        frequencia: data?.frequencia || 3,
-      });
-
-      setLoadingProfile(false);
-    }
-
-    loadProfile();
-  }, [user]);
-
-  useEffect(() => {
-    localStorage.setItem(`nutri_fav_${email}`, JSON.stringify(favorites));
-  }, [favorites, email]);
-
-  useEffect(() => {
-    persistWaterForDate(email, todayKey(), waterMl);
-  }, [waterMl, email]);
+  const userId = user?.id || null;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -290,6 +215,120 @@ export default function Nutricao() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    async function loadProfile() {
+      if (!userId) {
+        setLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("nome, objetivo, peso, frequencia")
+          .eq("id", userId)
+          .maybeSingle();
+
+        setProfile({
+          nome:
+            data?.nome ||
+            user?.user_metadata?.nome ||
+            user?.user_metadata?.full_name ||
+            user?.email?.split("@")[0] ||
+            "",
+          objetivo: data?.objetivo || "Hipertrofia",
+          peso: data?.peso || "",
+          frequencia: data?.frequencia || 3,
+        });
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+
+    loadProfile();
+  }, [userId, user]);
+
+  useEffect(() => {
+    async function loadSubscription() {
+      if (!userId) {
+        setLoadingSubscription(false);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from("subscriptions")
+          .select("plan_code, plan_name, status")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        setSubscription(data || null);
+      } finally {
+        setLoadingSubscription(false);
+      }
+    }
+
+    loadSubscription();
+  }, [userId]);
+
+  useEffect(() => {
+    async function loadFavorites() {
+      if (!userId) {
+        setLoadingFavorites(false);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from("favorites")
+          .select("recipe_id")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+
+        setFavorites((data || []).map((row) => row.recipe_id));
+      } finally {
+        setLoadingFavorites(false);
+      }
+    }
+
+    loadFavorites();
+  }, [userId]);
+
+  useEffect(() => {
+    async function loadHydration() {
+      if (!userId) {
+        setLoadingHydration(false);
+        return;
+      }
+
+      try {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 6);
+
+        const { data } = await supabase
+          .from("hydration_daily")
+          .select("day, ml")
+          .eq("user_id", userId)
+          .gte("day", toDateKey(start))
+          .lte("day", toDateKey(end))
+          .order("day", { ascending: true });
+
+        const map = {};
+        (data || []).forEach((row) => {
+          map[row.day] = Number(row.ml || 0);
+        });
+
+        setHydrationMap(map);
+        setWaterMl(Number(map[todayKey()] || 0));
+      } finally {
+        setLoadingHydration(false);
+      }
+    }
+
+    loadHydration();
+  }, [userId]);
+
   const waterGoal = useMemo(() => getGoalWater(profile), [profile]);
   const waterLeft = Math.max(0, waterGoal - waterMl);
   const waterPct =
@@ -297,9 +336,16 @@ export default function Nutricao() {
       ? Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100)))
       : 0;
 
+  const paidNutriPlus = useMemo(() => {
+    return (
+      subscription?.plan_code === "nutri_plus" &&
+      ["active", "trialing"].includes(subscription?.status)
+    );
+  }, [subscription]);
+
   const weekStrip = useMemo(
-    () => buildWeekStrip(profile?.frequencia || 4, email, waterGoal),
-    [profile?.frequencia, email, waterGoal, waterMl]
+    () => buildRecentDaysStrip(profile?.frequencia || 4, hydrationMap, waterGoal),
+    [profile?.frequencia, hydrationMap, waterGoal]
   );
 
   const chips = useMemo(
@@ -375,26 +421,73 @@ export default function Nutricao() {
     return source[index];
   }, [profile, suggestionSeed]);
 
-  function addWater(amount = WATER_STEP) {
-    setWaterMl((prev) => Math.min(waterGoal, prev + amount));
+  async function saveWaterToDatabase(nextMl) {
+    if (!userId) return;
+    const today = todayKey();
+
+    setIsSavingWater(true);
+    try {
+      await supabase.from("hydration_daily").upsert(
+        {
+          user_id: userId,
+          day: today,
+          ml: nextMl,
+        },
+        {
+          onConflict: "user_id,day",
+        }
+      );
+
+      setHydrationMap((prev) => ({
+        ...prev,
+        [today]: nextMl,
+      }));
+    } finally {
+      setIsSavingWater(false);
+    }
   }
 
-  function removeWater(amount = WATER_STEP) {
-    setWaterMl((prev) => Math.max(0, prev - amount));
+  async function addWater(amount = WATER_STEP) {
+    const nextMl = Math.min(waterGoal, waterMl + amount);
+    setWaterMl(nextMl);
+    await saveWaterToDatabase(nextMl);
   }
 
-  function resetWater() {
+  async function removeWater(amount = WATER_STEP) {
+    const nextMl = Math.max(0, waterMl - amount);
+    setWaterMl(nextMl);
+    await saveWaterToDatabase(nextMl);
+  }
+
+  async function resetWater() {
     setIsResettingWater(true);
     setWaterMl(0);
+    await saveWaterToDatabase(0);
     setTimeout(() => setIsResettingWater(false), 520);
   }
 
-  function toggleFavorite(id) {
-    setFavorites((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((v) => v !== id);
-      }
-      return [id, ...prev];
+  async function toggleFavorite(id) {
+    if (!userId) return;
+
+    const isFavorite = favorites.includes(id);
+
+    if (isFavorite) {
+      setFavorites((prev) => prev.filter((v) => v !== id));
+
+      await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", userId)
+        .eq("recipe_id", id);
+
+      return;
+    }
+
+    setFavorites((prev) => [id, ...prev]);
+
+    await supabase.from("favorites").insert({
+      user_id: userId,
+      recipe_id: id,
     });
   }
 
@@ -418,6 +511,19 @@ export default function Nutricao() {
   function openRecipeModal(item) {
     setExpandedId(item.stableId);
     setActiveRecipe(item);
+  }
+
+  if (loadingSubscription || loadingProfile || loadingFavorites || loadingHydration) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.wrap}>
+          <div style={styles.loadingCard}>
+            <div style={styles.loadingTitle}>Carregando Nutri+</div>
+            <div style={styles.loadingText}>Sincronizando seus dados da conta.</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!paidNutriPlus) {
@@ -465,7 +571,7 @@ export default function Nutricao() {
           <section style={styles.heroCard}>
             <div style={styles.heroContent}>
               <div style={styles.heroTitle}>
-                {loadingProfile ? "Sua nutrição" : `${profile.nome}, sua nutrição`}
+                {`${profile.nome || "Sua"}, sua nutrição`}
               </div>
 
               <div style={styles.heroSub}>
@@ -531,6 +637,7 @@ export default function Nutricao() {
                       ...(isResettingWater ? styles.resetBtnActive : null),
                     }}
                     onClick={resetWater}
+                    disabled={isSavingWater}
                   >
                     Reset
                   </button>
@@ -549,7 +656,9 @@ export default function Nutricao() {
 
                 <div style={styles.waterPercentRow}>
                   <div style={styles.waterBigPercent}>{waterPct}%</div>
-                  <div style={styles.waterPercentHint}>marcado pelo total do dia</div>
+                  <div style={styles.waterPercentHint}>
+                    {isSavingWater ? "salvando..." : "marcado pelo total do dia"}
+                  </div>
                 </div>
 
                 <div style={styles.weekStrip}>
@@ -577,23 +686,23 @@ export default function Nutricao() {
                 </div>
 
                 <div style={styles.waterQuickRow}>
-                  <button style={styles.waterMiniBtn} onClick={() => addWater(100)}>
+                  <button style={styles.waterMiniBtn} onClick={() => addWater(100)} disabled={isSavingWater}>
                     +100 ml
                   </button>
-                  <button style={styles.waterMiniBtn} onClick={() => addWater(250)}>
+                  <button style={styles.waterMiniBtn} onClick={() => addWater(250)} disabled={isSavingWater}>
                     +250 ml
                   </button>
-                  <button style={styles.waterMiniBtn} onClick={() => addWater(300)}>
+                  <button style={styles.waterMiniBtn} onClick={() => addWater(300)} disabled={isSavingWater}>
                     +300 ml
                   </button>
                 </div>
 
                 <div style={styles.waterActions}>
-                  <button style={styles.waterBtnSoft} onClick={() => removeWater(250)}>
+                  <button style={styles.waterBtnSoft} onClick={() => removeWater(250)} disabled={isSavingWater}>
                     −250 ml
                   </button>
 
-                  <button style={styles.waterBtn} onClick={() => addWater(250)}>
+                  <button style={styles.waterBtn} onClick={() => addWater(250)} disabled={isSavingWater}>
                     +250 ml
                   </button>
                 </div>
@@ -834,7 +943,7 @@ export default function Nutricao() {
             <div style={styles.modalSection}>Modo de preparo</div>
             <div style={styles.modalSteps}>
               {(activeRecipe.steps || []).map((s, i) => (
-                <div style={styles.modalStepRow} key={`${activeRecipe.stableId}-${i}`}>
+                <div style={styles.modalStepRow} key={`${activeRecipe.stableId || activeRecipe.id}-${i}`}>
                   <div style={styles.modalStepIndex}>{i + 1}</div>
                   <div style={styles.modalStepText}>{s}</div>
                 </div>
@@ -868,6 +977,29 @@ const styles = {
   wrap: {
     maxWidth: 620,
     margin: "0 auto",
+  },
+
+  loadingCard: {
+    marginTop: 24,
+    padding: 24,
+    borderRadius: 24,
+    background: WHITE,
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 10px 26px rgba(0,0,0,.04)",
+  },
+
+  loadingTitle: {
+    fontSize: 22,
+    fontWeight: 800,
+    color: BLACK,
+  },
+
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: GRAY,
+    lineHeight: 1.45,
+    fontWeight: 600,
   },
 
   headerRow: {
