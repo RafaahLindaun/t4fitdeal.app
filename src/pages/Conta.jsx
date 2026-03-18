@@ -179,8 +179,7 @@ export default function Conta() {
   const email = (user?.email || "anon").toLowerCase();
   const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
 
-  const localPhotoKey = `acct_photo_${email}`;
-  const photo = user?.photoUrl || localStorage.getItem(localPhotoKey) || "";
+  const photo = user?.photoUrl || "";
 
   const createdKey = `acct_created_${email}`;
   const [createdAt, setCreatedAt] = useState(() => {
@@ -211,7 +210,7 @@ export default function Conta() {
   }));
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetKind, setSheetKind] = useState(null); // share | treino | creator
+  const [sheetKind, setSheetKind] = useState(null);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -337,11 +336,10 @@ export default function Conta() {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = String(reader.result || "");
-        localStorage.setItem(localPhotoKey, base64);
-
         const res = await updateUser({ photoUrl: base64 });
+
         if (!res?.ok) {
-          setToast("Foto salva neste aparelho");
+          setToast(res?.msg || "Falha ao atualizar foto");
           return;
         }
 
@@ -729,7 +727,6 @@ export default function Conta() {
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Sessão</div>
         <div style={styles.card}>
-
           <Row
             icon="logout"
             title="Sair"
