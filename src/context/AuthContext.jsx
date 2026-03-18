@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext();
 
-function mapAuthUser(authUser, profile = null) {
+function mapUser(authUser, profile = null) {
   if (!authUser) return null;
 
   return {
@@ -12,6 +12,7 @@ function mapAuthUser(authUser, profile = null) {
       profile?.nome ||
       authUser?.user_metadata?.nome ||
       authUser?.user_metadata?.full_name ||
+      authUser?.user_metadata?.name ||
       authUser?.email?.split("@")[0] ||
       "",
     idade: profile?.idade ?? "",
@@ -23,7 +24,11 @@ function mapAuthUser(authUser, profile = null) {
     split: profile?.split || "",
     intensidade: profile?.intensidade || "",
     onboarded: profile?.onboarded ?? false,
-    photoUrl: profile?.photo_url || "",
+    photoUrl:
+      profile?.photo_url ||
+      authUser?.user_metadata?.avatar_url ||
+      authUser?.user_metadata?.picture ||
+      "",
     provider: profile?.provider || authUser?.app_metadata?.provider || "",
     createdAt: profile?.created_at || authUser?.created_at || "",
   };
@@ -38,24 +43,29 @@ export function AuthProvider({ children }) {
     try {
       if (!authUser?.id) return;
 
-      const baseProfile = {
+      const payload = {
         id: authUser.id,
         email: authUser.email || null,
         nome:
           authUser?.user_metadata?.nome ||
           authUser?.user_metadata?.full_name ||
+          authUser?.user_metadata?.name ||
           authUser?.email?.split("@")[0] ||
+          null,
+        photo_url:
+          authUser?.user_metadata?.avatar_url ||
+          authUser?.user_metadata?.picture ||
           null,
         provider: authUser?.app_metadata?.provider || null,
       };
 
-      await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
+      await supabase.from("profiles").upsert(payload, { onConflict: "id" });
     } catch (err) {
       console.error("ensureProfile error:", err);
     }
   }
 
-  async function fetchProfile(userId) {
+  async function getProfile(userId) {
     try {
       if (!userId) return null;
 
@@ -66,23 +76,28 @@ export function AuthProvider({ children }) {
         .maybeSingle();
 
       if (error) {
-        console.error("fetchProfile error:", error);
+        console.error("getProfile error:", error);
         return null;
       }
 
       return data || null;
     } catch (err) {
-      console.error("fetchProfile catch:", err);
+      console.error("getProfile catch:", err);
       return null;
     }
   }
 
   async function hydrateUser(authUser) {
-    if (!authUser) return null;
+    try {
+      if (!authUser) return null;
 
-    await ensureProfile(authUser);
-    const profile = await fetchProfile(authUser.id);
-    return mapAuthUser(authUser, profile);
+      await ensureProfile(authUser);
+      const profile = await getProfile(authUser.id);
+      return mapUser(authUser, profile);
+    } catch (err) {
+      console.error("hydrateUser error:", err);
+      return mapUser(authUser, null);
+    }
   }
 
   async function loadSession() {
@@ -119,32 +134,149 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    let mounted = true;
+
     loadSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         try {
+          if (!mounted) return;
+
           setSession(newSession);
 
           if (newSession?.user) {
             const mergedUser = await hydrateUser(newSession.user);
+            if (!mounted) return;
             setUser(mergedUser || newSession.user);
           } else {
             setUser(null);
           }
         } catch (err) {
-          console.error("onAuthStateChange catch:", err);
-          setUser(newSession?.user ?? null);
+          console.error("onAuthStateChange error:", err);
+          if (mounted) {
+            setUser(newSession?.user ?? null);
+          }
         } finally {
-          setLoading(false);
+          if (mounted) {
+            setLoading(false);
+          }
         }
       }
     );
 
     return () => {
-      listener?.subscription?.unsubscribe();
+      mounted = false;
+      listener?.subscription?.unsubscribe?.();
     };
   }, []);
+
+  async function signup(payload) {
+    try {
+      const { email, senha, nome } = payload;
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: senha,
+        options: {
+          data: { nome },
+        },
+      });
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      if (data?.user) {
+        await ensureProfile(data.user);
+      }
+
+      return { ok: true, user: data.user };
+    } catch (err) {
+      console.error("signup error:", err);
+      return { ok: false, msg: err?.message || "Erro no cadastro." };
+    }
+  }
+
+  async function loginWithEmail(email, senha) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      });
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      setSession(data.session);
+
+      if (data.user) {
+        const mergedUser = await hydrateUser(data.user);
+        setUser(mergedUser || data.user);
+      } else {
+        setUser(null);
+      }
+
+      return { ok: true };
+    } catch (err) {
+      console.error("loginWithEmail error:", err);
+      return { ok: false, msg: err?.message || "Erro no login." };
+    }
+  }
+
+  async function loginWithGoogle() {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        return { ok: false, msg: error.message };
+      }
+
+      return { ok: true };
+    } catch (err) {
+      console.error("loginWithGoogle error:", err);
+      return { ok: false, msg: err?.message || "Erro no login com Google." };
+    }
+  }
+
+  async function logout() {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("logout error:", err);
+    } finally {
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+    }
+  }
+
+  async function refreshUser() {
+    try {
+      const {
+        data: { user: authUser },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error || !authUser) {
+        return { ok: false, msg: error?.message || "Usuário não encontrado." };
+      }
+
+      const mergedUser = await hydrateUser(authUser);
+      setUser(mergedUser || authUser);
+
+      return { ok: true, user: mergedUser || authUser };
+    } catch (err) {
+      console.error("refreshUser error:", err);
+      return { ok: false, msg: err?.message || "Erro ao atualizar usuário." };
+    }
+  }
 
   async function updateUser(updates) {
     try {
@@ -165,9 +297,6 @@ export function AuthProvider({ children }) {
       if (updates.peso !== undefined) {
         payload.peso = updates.peso === "" ? null : Number(updates.peso);
       }
-      if (updates.photoUrl !== undefined) {
-        payload.photo_url = updates.photoUrl;
-      }
       if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo;
       if (updates.frequencia !== undefined) {
         payload.frequencia =
@@ -177,6 +306,7 @@ export function AuthProvider({ children }) {
       if (updates.split !== undefined) payload.split = updates.split;
       if (updates.intensidade !== undefined) payload.intensidade = updates.intensidade;
       if (updates.onboarded !== undefined) payload.onboarded = !!updates.onboarded;
+      if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
 
       const { error } = await supabase
         .from("profiles")
@@ -188,115 +318,37 @@ export function AuthProvider({ children }) {
         return { ok: false, msg: error.message };
       }
 
-      setUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              ...updates,
-              nome: updates.nome !== undefined ? updates.nome : prev.nome,
-              idade: updates.idade !== undefined ? updates.idade : prev.idade,
-              altura: updates.altura !== undefined ? updates.altura : prev.altura,
-              peso: updates.peso !== undefined ? updates.peso : prev.peso,
-              objetivo: updates.objetivo !== undefined ? updates.objetivo : prev.objetivo,
-              frequencia:
-                updates.frequencia !== undefined ? updates.frequencia : prev.frequencia,
-              nivel: updates.nivel !== undefined ? updates.nivel : prev.nivel,
-              split: updates.split !== undefined ? updates.split : prev.split,
-              intensidade:
-                updates.intensidade !== undefined
-                  ? updates.intensidade
-                  : prev.intensidade,
-              onboarded:
-                updates.onboarded !== undefined ? updates.onboarded : prev.onboarded,
-              photoUrl:
-                updates.photoUrl !== undefined ? updates.photoUrl : prev.photoUrl,
-            }
-          : prev
-      );
+      setUser((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          ...updates,
+          nome: updates.nome !== undefined ? updates.nome : prev.nome,
+          idade: updates.idade !== undefined ? updates.idade : prev.idade,
+          altura: updates.altura !== undefined ? updates.altura : prev.altura,
+          peso: updates.peso !== undefined ? updates.peso : prev.peso,
+          objetivo:
+            updates.objetivo !== undefined ? updates.objetivo : prev.objetivo,
+          frequencia:
+            updates.frequencia !== undefined ? updates.frequencia : prev.frequencia,
+          nivel: updates.nivel !== undefined ? updates.nivel : prev.nivel,
+          split: updates.split !== undefined ? updates.split : prev.split,
+          intensidade:
+            updates.intensidade !== undefined
+              ? updates.intensidade
+              : prev.intensidade,
+          onboarded:
+            updates.onboarded !== undefined ? updates.onboarded : prev.onboarded,
+          photoUrl:
+            updates.photoUrl !== undefined ? updates.photoUrl : prev.photoUrl,
+        };
+      });
 
       return { ok: true };
     } catch (err) {
       console.error("updateUser catch:", err);
       return { ok: false, msg: err?.message || "Erro ao atualizar usuário." };
-    }
-  }
-
-  async function signup(payload) {
-    try {
-      const { email, senha, nome } = payload;
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password: senha,
-        options: {
-          data: { nome },
-        },
-      });
-
-      if (error) return { ok: false, msg: error.message };
-
-      if (data?.user) {
-        await ensureProfile(data.user);
-      }
-
-      return { ok: true, user: data.user };
-    } catch (err) {
-      console.error("signup catch:", err);
-      return { ok: false, msg: err?.message || "Erro no cadastro." };
-    }
-  }
-
-  async function loginWithEmail(email, senha) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: senha,
-      });
-
-      if (error) return { ok: false, msg: error.message };
-
-      setSession(data.session);
-
-      if (data.user) {
-        const mergedUser = await hydrateUser(data.user);
-        setUser(mergedUser || data.user);
-      } else {
-        setUser(null);
-      }
-
-      return { ok: true };
-    } catch (err) {
-      console.error("loginWithEmail catch:", err);
-      return { ok: false, msg: err?.message || "Erro no login." };
-    }
-  }
-
-  async function loginWithGoogle() {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) return { ok: false, msg: error.message };
-
-      return { ok: true };
-    } catch (err) {
-      console.error("loginWithGoogle catch:", err);
-      return { ok: false, msg: err?.message || "Erro no login com Google." };
-    }
-  }
-
-  async function logout() {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("logout catch:", err);
-    } finally {
-      setSession(null);
-      setUser(null);
     }
   }
 
@@ -309,6 +361,7 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     logout,
     updateUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
