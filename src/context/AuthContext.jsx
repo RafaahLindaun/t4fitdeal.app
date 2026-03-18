@@ -8,13 +8,70 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  async function buildUserWithProfile(authUser) {
+    if (!authUser?.id) return null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    return {
+      ...authUser,
+      nome:
+        profile?.nome ||
+        authUser?.user_metadata?.nome ||
+        authUser?.user_metadata?.full_name ||
+        authUser?.email?.split("@")[0] ||
+        "",
+      idade: profile?.idade ?? "",
+      altura: profile?.altura ?? "",
+      peso: profile?.peso ?? "",
+      objetivo: profile?.objetivo || "",
+      frequencia: profile?.frequencia ?? "",
+      nivel: profile?.nivel || "",
+      split: profile?.split || "",
+      intensidade: profile?.intensidade || "",
+      onboarded: profile?.onboarded ?? false,
+      photoUrl: profile?.photo_url || "",
+      provider: profile?.provider || "",
+      createdAt: profile?.created_at || authUser?.created_at || "",
+    };
+  }
+
+  async function ensureProfile(authUser) {
+    if (!authUser?.id) return;
+
+    const baseProfile = {
+      id: authUser.id,
+      email: authUser.email || null,
+      nome:
+        authUser?.user_metadata?.nome ||
+        authUser?.user_metadata?.full_name ||
+        authUser?.email?.split("@")[0] ||
+        null,
+      provider: authUser?.app_metadata?.provider || null,
+    };
+
+    await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
+  }
+
   async function loadSession() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
     setSession(session);
-    setUser(session?.user ?? null);
+
+    if (session?.user) {
+      await ensureProfile(session.user);
+      const mergedUser = await buildUserWithProfile(session.user);
+      setUser(mergedUser);
+    } else {
+      setUser(null);
+    }
+
     setLoading(false);
   }
 
@@ -24,7 +81,14 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         setSession(newSession);
-        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          await ensureProfile(newSession.user);
+          const mergedUser = await buildUserWithProfile(newSession.user);
+          setUser(mergedUser);
+        } else {
+          setUser(null);
+        }
       }
     );
 
@@ -37,11 +101,6 @@ export function AuthProvider({ children }) {
     try {
       const currentUserId = user?.id;
       const currentEmail = (user?.email || "anon").toLowerCase();
-
-      setUser((prev) => ({
-        ...prev,
-        ...updates,
-      }));
 
       if (updates?.photoUrl) {
         localStorage.setItem(`acct_photo_${currentEmail}`, updates.photoUrl);
@@ -74,6 +133,13 @@ export function AuthProvider({ children }) {
             return { ok: false, msg: error.message };
           }
         }
+
+        const mergedUser = await buildUserWithProfile({
+          ...user,
+          ...updates,
+        });
+
+        setUser(mergedUser);
       }
 
       return { ok: true };
@@ -95,6 +161,10 @@ export function AuthProvider({ children }) {
 
     if (error) return { ok: false, msg: error.message };
 
+    if (data?.user) {
+      await ensureProfile(data.user);
+    }
+
     return { ok: true, user: data.user };
   }
 
@@ -107,7 +177,14 @@ export function AuthProvider({ children }) {
     if (error) return { ok: false, msg: error.message };
 
     setSession(data.session);
-    setUser(data.user);
+
+    if (data.user) {
+      await ensureProfile(data.user);
+      const mergedUser = await buildUserWithProfile(data.user);
+      setUser(mergedUser);
+    } else {
+      setUser(null);
+    }
 
     return { ok: true };
   }
