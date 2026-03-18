@@ -3,12 +3,91 @@ import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext();
 
+function mapAuthUser(authUser, profile = null) {
+  if (!authUser) return null;
+
+  return {
+    ...authUser,
+    nome:
+      profile?.nome ||
+      authUser?.user_metadata?.nome ||
+      authUser?.user_metadata?.full_name ||
+      authUser?.email?.split("@")[0] ||
+      "",
+    idade: profile?.idade ?? "",
+    altura: profile?.altura ?? "",
+    peso: profile?.peso ?? "",
+    objetivo: profile?.objetivo || "",
+    frequencia: profile?.frequencia ?? "",
+    nivel: profile?.nivel || "",
+    split: profile?.split || "",
+    intensidade: profile?.intensidade || "",
+    onboarded: profile?.onboarded ?? false,
+    photoUrl: profile?.photo_url || "",
+    provider: profile?.provider || authUser?.app_metadata?.provider || "",
+    createdAt: profile?.created_at || authUser?.created_at || "",
+  };
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  async function ensureProfile(authUser) {
+    try {
+      if (!authUser?.id) return;
+
+      const baseProfile = {
+        id: authUser.id,
+        email: authUser.email || null,
+        nome:
+          authUser?.user_metadata?.nome ||
+          authUser?.user_metadata?.full_name ||
+          authUser?.email?.split("@")[0] ||
+          null,
+        provider: authUser?.app_metadata?.provider || null,
+      };
+
+      await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
+    } catch (err) {
+      console.error("ensureProfile error:", err);
+    }
+  }
+
+  async function fetchProfile(userId) {
+    try {
+      if (!userId) return null;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("fetchProfile error:", error);
+        return null;
+      }
+
+      return data || null;
+    } catch (err) {
+      console.error("fetchProfile catch:", err);
+      return null;
+    }
+  }
+
+  async function hydrateUser(authUser) {
+    if (!authUser) return null;
+
+    await ensureProfile(authUser);
+    const profile = await fetchProfile(authUser.id);
+    return mapAuthUser(authUser, profile);
+  }
+
   async function loadSession() {
+    setLoading(true);
+
     try {
       const {
         data: { session: currentSession },
@@ -19,12 +98,17 @@ export function AuthProvider({ children }) {
         console.error("getSession error:", error);
         setSession(null);
         setUser(null);
-        setLoading(false);
         return;
       }
 
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+
+      if (currentSession?.user) {
+        const mergedUser = await hydrateUser(currentSession.user);
+        setUser(mergedUser || currentSession.user);
+      } else {
+        setUser(null);
+      }
     } catch (err) {
       console.error("loadSession catch:", err);
       setSession(null);
@@ -39,9 +123,21 @@ export function AuthProvider({ children }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false);
+        try {
+          setSession(newSession);
+
+          if (newSession?.user) {
+            const mergedUser = await hydrateUser(newSession.user);
+            setUser(mergedUser || newSession.user);
+          } else {
+            setUser(null);
+          }
+        } catch (err) {
+          console.error("onAuthStateChange catch:", err);
+          setUser(newSession?.user ?? null);
+        } finally {
+          setLoading(false);
+        }
       }
     );
 
@@ -72,6 +168,15 @@ export function AuthProvider({ children }) {
       if (updates.photoUrl !== undefined) {
         payload.photo_url = updates.photoUrl;
       }
+      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo;
+      if (updates.frequencia !== undefined) {
+        payload.frequencia =
+          updates.frequencia === "" ? null : Number(updates.frequencia);
+      }
+      if (updates.nivel !== undefined) payload.nivel = updates.nivel;
+      if (updates.split !== undefined) payload.split = updates.split;
+      if (updates.intensidade !== undefined) payload.intensidade = updates.intensidade;
+      if (updates.onboarded !== undefined) payload.onboarded = !!updates.onboarded;
 
       const { error } = await supabase
         .from("profiles")
@@ -83,10 +188,31 @@ export function AuthProvider({ children }) {
         return { ok: false, msg: error.message };
       }
 
-      setUser((prev) => ({
-        ...prev,
-        ...updates,
-      }));
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updates,
+              nome: updates.nome !== undefined ? updates.nome : prev.nome,
+              idade: updates.idade !== undefined ? updates.idade : prev.idade,
+              altura: updates.altura !== undefined ? updates.altura : prev.altura,
+              peso: updates.peso !== undefined ? updates.peso : prev.peso,
+              objetivo: updates.objetivo !== undefined ? updates.objetivo : prev.objetivo,
+              frequencia:
+                updates.frequencia !== undefined ? updates.frequencia : prev.frequencia,
+              nivel: updates.nivel !== undefined ? updates.nivel : prev.nivel,
+              split: updates.split !== undefined ? updates.split : prev.split,
+              intensidade:
+                updates.intensidade !== undefined
+                  ? updates.intensidade
+                  : prev.intensidade,
+              onboarded:
+                updates.onboarded !== undefined ? updates.onboarded : prev.onboarded,
+              photoUrl:
+                updates.photoUrl !== undefined ? updates.photoUrl : prev.photoUrl,
+            }
+          : prev
+      );
 
       return { ok: true };
     } catch (err) {
@@ -109,6 +235,10 @@ export function AuthProvider({ children }) {
 
       if (error) return { ok: false, msg: error.message };
 
+      if (data?.user) {
+        await ensureProfile(data.user);
+      }
+
       return { ok: true, user: data.user };
     } catch (err) {
       console.error("signup catch:", err);
@@ -126,7 +256,13 @@ export function AuthProvider({ children }) {
       if (error) return { ok: false, msg: error.message };
 
       setSession(data.session);
-      setUser(data.user);
+
+      if (data.user) {
+        const mergedUser = await hydrateUser(data.user);
+        setUser(mergedUser || data.user);
+      } else {
+        setUser(null);
+      }
 
       return { ok: true };
     } catch (err) {
