@@ -34,7 +34,8 @@ export default function AuthCallback() {
 
   function sleep(ms) {
     return new Promise((resolve) => {
-      timeoutRef.current = setTimeout(resolve, ms);
+      const timer = setTimeout(resolve, ms);
+      timeoutRef.current = timer;
     });
   }
 
@@ -176,17 +177,82 @@ export default function AuthCallback() {
     const startedAt = Date.now();
     setVisible(true);
 
-    async function waitForSession() {
-      for (let i = 0; i < 20; i++) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+    let authListener = null;
+    let hardTimeout = null;
 
-        if (session?.user) return session;
-        await sleep(250);
+    async function exchangeSessionIfNeeded() {
+      try {
+        const hasCode =
+          window.location.search.includes("code=") ||
+          window.location.hash.includes("access_token") ||
+          window.location.hash.includes("refresh_token");
+
+        if (!hasCode) return;
+
+        if (typeof supabase.auth.exchangeCodeForSession === "function") {
+          const { error } = await supabase.auth.exchangeCodeForSession(
+            window.location.href
+          );
+
+          if (error) {
+            console.error("exchangeCodeForSession error:", error);
+          }
+        }
+      } catch (error) {
+        console.error("exchangeSessionIfNeeded error:", error);
+      }
+    }
+
+    async function waitForSession() {
+      await exchangeSessionIfNeeded();
+
+      const {
+        data: { session: immediateSession },
+        error: immediateError,
+      } = await supabase.auth.getSession();
+
+      if (immediateError) {
+        console.error("getSession error:", immediateError);
       }
 
-      return null;
+      if (immediateSession?.user) return immediateSession;
+
+      return new Promise((resolve) => {
+        let resolved = false;
+
+        const finish = (value) => {
+          if (resolved) return;
+          resolved = true;
+
+          try {
+            authListener?.subscription?.unsubscribe?.();
+          } catch {}
+
+          resolve(value);
+        };
+
+        const { data } = supabase.auth.onAuthStateChange(
+          async (_event, newSession) => {
+            if (newSession?.user) {
+              finish(newSession);
+            }
+          }
+        );
+
+        authListener = data;
+
+        hardTimeout = setTimeout(async () => {
+          try {
+            const {
+              data: { session: fallbackSession },
+            } = await supabase.auth.getSession();
+
+            finish(fallbackSession || null);
+          } catch {
+            finish(null);
+          }
+        }, 3500);
+      });
     }
 
     async function ensureProfile(user) {
@@ -197,6 +263,7 @@ export default function AuthCallback() {
           user.user_metadata?.nome ||
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
           "",
         photo_url:
           user.user_metadata?.avatar_url ||
@@ -221,11 +288,15 @@ export default function AuthCallback() {
         if (session?.user) {
           await ensureProfile(session.user);
 
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("onboarded")
             .eq("id", session.user.id)
             .maybeSingle();
+
+          if (profileError) {
+            console.error("profile fetch error:", profileError);
+          }
 
           target = profile?.onboarded ? "/dashboard" : "/onboarding";
         }
@@ -254,6 +325,14 @@ export default function AuthCallback() {
     }
 
     run();
+
+    return () => {
+      try {
+        authListener?.subscription?.unsubscribe?.();
+      } catch {}
+
+      if (hardTimeout) clearTimeout(hardTimeout);
+    };
   }, [nav]);
 
   return (
