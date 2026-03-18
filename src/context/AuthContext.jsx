@@ -8,110 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function ensureProfile(authUser) {
-    try {
-      if (!authUser?.id) return;
-
-      const baseProfile = {
-        id: authUser.id,
-        email: authUser.email || null,
-        nome:
-          authUser?.user_metadata?.nome ||
-          authUser?.user_metadata?.full_name ||
-          authUser?.email?.split("@")[0] ||
-          null,
-        provider: authUser?.app_metadata?.provider || null,
-      };
-
-      await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
-    } catch (err) {
-      console.error("ensureProfile error:", err);
-    }
-  }
-
-  async function buildUserWithProfile(authUser) {
-    try {
-      if (!authUser?.id) return null;
-
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authUser.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("buildUserWithProfile error:", error);
-        return {
-          ...authUser,
-          nome:
-            authUser?.user_metadata?.nome ||
-            authUser?.user_metadata?.full_name ||
-            authUser?.email?.split("@")[0] ||
-            "",
-          idade: "",
-          altura: "",
-          peso: "",
-          objetivo: "",
-          frequencia: "",
-          nivel: "",
-          split: "",
-          intensidade: "",
-          onboarded: false,
-          photoUrl: "",
-          provider: authUser?.app_metadata?.provider || "",
-          createdAt: authUser?.created_at || "",
-        };
-      }
-
-      return {
-        ...authUser,
-        nome:
-          profile?.nome ||
-          authUser?.user_metadata?.nome ||
-          authUser?.user_metadata?.full_name ||
-          authUser?.email?.split("@")[0] ||
-          "",
-        idade: profile?.idade ?? "",
-        altura: profile?.altura ?? "",
-        peso: profile?.peso ?? "",
-        objetivo: profile?.objetivo || "",
-        frequencia: profile?.frequencia ?? "",
-        nivel: profile?.nivel || "",
-        split: profile?.split || "",
-        intensidade: profile?.intensidade || "",
-        onboarded: profile?.onboarded ?? false,
-        photoUrl: profile?.photo_url || "",
-        provider: profile?.provider || authUser?.app_metadata?.provider || "",
-        createdAt: profile?.created_at || authUser?.created_at || "",
-      };
-    } catch (err) {
-      console.error("buildUserWithProfile catch:", err);
-      return {
-        ...authUser,
-        nome:
-          authUser?.user_metadata?.nome ||
-          authUser?.user_metadata?.full_name ||
-          authUser?.email?.split("@")[0] ||
-          "",
-        idade: "",
-        altura: "",
-        peso: "",
-        objetivo: "",
-        frequencia: "",
-        nivel: "",
-        split: "",
-        intensidade: "",
-        onboarded: false,
-        photoUrl: "",
-        provider: authUser?.app_metadata?.provider || "",
-        createdAt: authUser?.created_at || "",
-      };
-    }
-  }
-
   async function loadSession() {
-    setLoading(true);
-
     try {
       const {
         data: { session: currentSession },
@@ -122,18 +19,12 @@ export function AuthProvider({ children }) {
         console.error("getSession error:", error);
         setSession(null);
         setUser(null);
+        setLoading(false);
         return;
       }
 
       setSession(currentSession);
-
-      if (currentSession?.user) {
-        await ensureProfile(currentSession.user);
-        const mergedUser = await buildUserWithProfile(currentSession.user);
-        setUser(mergedUser);
-      } else {
-        setUser(null);
-      }
+      setUser(currentSession?.user ?? null);
     } catch (err) {
       console.error("loadSession catch:", err);
       setSession(null);
@@ -148,22 +39,9 @@ export function AuthProvider({ children }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        try {
-          setSession(newSession);
-
-          if (newSession?.user) {
-            await ensureProfile(newSession.user);
-            const mergedUser = await buildUserWithProfile(newSession.user);
-            setUser(mergedUser);
-          } else {
-            setUser(null);
-          }
-        } catch (err) {
-          console.error("onAuthStateChange catch:", err);
-          setUser(newSession?.user ?? null);
-        } finally {
-          setLoading(false);
-        }
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        setLoading(false);
       }
     );
 
@@ -194,15 +72,6 @@ export function AuthProvider({ children }) {
       if (updates.photoUrl !== undefined) {
         payload.photo_url = updates.photoUrl;
       }
-      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo;
-      if (updates.frequencia !== undefined) {
-        payload.frequencia =
-          updates.frequencia === "" ? null : Number(updates.frequencia);
-      }
-      if (updates.nivel !== undefined) payload.nivel = updates.nivel;
-      if (updates.split !== undefined) payload.split = updates.split;
-      if (updates.intensidade !== undefined) payload.intensidade = updates.intensidade;
-      if (updates.onboarded !== undefined) payload.onboarded = !!updates.onboarded;
 
       const { error } = await supabase
         .from("profiles")
@@ -217,8 +86,6 @@ export function AuthProvider({ children }) {
       setUser((prev) => ({
         ...prev,
         ...updates,
-        photoUrl:
-          updates.photoUrl !== undefined ? updates.photoUrl : prev?.photoUrl,
       }));
 
       return { ok: true };
@@ -242,10 +109,6 @@ export function AuthProvider({ children }) {
 
       if (error) return { ok: false, msg: error.message };
 
-      if (data?.user) {
-        await ensureProfile(data.user);
-      }
-
       return { ok: true, user: data.user };
     } catch (err) {
       console.error("signup catch:", err);
@@ -263,14 +126,7 @@ export function AuthProvider({ children }) {
       if (error) return { ok: false, msg: error.message };
 
       setSession(data.session);
-
-      if (data.user) {
-        await ensureProfile(data.user);
-        const mergedUser = await buildUserWithProfile(data.user);
-        setUser(mergedUser);
-      } else {
-        setUser(null);
-      }
+      setUser(data.user);
 
       return { ok: true };
     } catch (err) {
