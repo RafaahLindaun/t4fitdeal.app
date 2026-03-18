@@ -8,6 +8,23 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  async function ensureProfile(authUser) {
+    if (!authUser?.id) return;
+
+    const baseProfile = {
+      id: authUser.id,
+      email: authUser.email || null,
+      nome:
+        authUser?.user_metadata?.nome ||
+        authUser?.user_metadata?.full_name ||
+        authUser?.email?.split("@")[0] ||
+        null,
+      provider: authUser?.app_metadata?.provider || null,
+    };
+
+    await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
+  }
+
   async function buildUserWithProfile(authUser) {
     if (!authUser?.id) return null;
 
@@ -35,44 +52,29 @@ export function AuthProvider({ children }) {
       intensidade: profile?.intensidade || "",
       onboarded: profile?.onboarded ?? false,
       photoUrl: profile?.photo_url || "",
-      provider: profile?.provider || "",
+      provider: profile?.provider || authUser?.app_metadata?.provider || "",
       createdAt: profile?.created_at || authUser?.created_at || "",
     };
   }
 
-  async function ensureProfile(authUser) {
-    if (!authUser?.id) return;
-
-    const baseProfile = {
-      id: authUser.id,
-      email: authUser.email || null,
-      nome:
-        authUser?.user_metadata?.nome ||
-        authUser?.user_metadata?.full_name ||
-        authUser?.email?.split("@")[0] ||
-        null,
-      provider: authUser?.app_metadata?.provider || null,
-    };
-
-    await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
-  }
-
   async function loadSession() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    setSession(session);
+      setSession(session);
 
-    if (session?.user) {
-      await ensureProfile(session.user);
-      const mergedUser = await buildUserWithProfile(session.user);
-      setUser(mergedUser);
-    } else {
-      setUser(null);
+      if (session?.user) {
+        await ensureProfile(session.user);
+        const mergedUser = await buildUserWithProfile(session.user);
+        setUser(mergedUser);
+      } else {
+        setUser(null);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -89,6 +91,8 @@ export function AuthProvider({ children }) {
         } else {
           setUser(null);
         }
+
+        setLoading(false);
       }
     );
 
@@ -100,47 +104,54 @@ export function AuthProvider({ children }) {
   async function updateUser(updates) {
     try {
       const currentUserId = user?.id;
-      const currentEmail = (user?.email || "anon").toLowerCase();
-
-      if (updates?.photoUrl) {
-        localStorage.setItem(`acct_photo_${currentEmail}`, updates.photoUrl);
+      if (!currentUserId) {
+        return { ok: false, msg: "Usuário não encontrado." };
       }
 
-      if (currentUserId) {
-        const payload = {};
+      const payload = {};
 
-        if (updates.nome !== undefined) payload.nome = updates.nome;
-        if (updates.idade !== undefined) {
-          payload.idade = updates.idade === "" ? null : Number(updates.idade);
-        }
-        if (updates.altura !== undefined) {
-          payload.altura = updates.altura === "" ? null : Number(updates.altura);
-        }
-        if (updates.peso !== undefined) {
-          payload.peso = updates.peso === "" ? null : Number(updates.peso);
-        }
-        if (updates.photoUrl !== undefined) {
-          payload.photo_url = updates.photoUrl;
-        }
-
-        if (Object.keys(payload).length > 0) {
-          const { error } = await supabase
-            .from("profiles")
-            .update(payload)
-            .eq("id", currentUserId);
-
-          if (error) {
-            return { ok: false, msg: error.message };
-          }
-        }
-
-        const mergedUser = await buildUserWithProfile({
-          ...user,
-          ...updates,
-        });
-
-        setUser(mergedUser);
+      if (updates.nome !== undefined) payload.nome = updates.nome;
+      if (updates.idade !== undefined) {
+        payload.idade = updates.idade === "" ? null : Number(updates.idade);
       }
+      if (updates.altura !== undefined) {
+        payload.altura = updates.altura === "" ? null : Number(updates.altura);
+      }
+      if (updates.peso !== undefined) {
+        payload.peso = updates.peso === "" ? null : Number(updates.peso);
+      }
+      if (updates.photoUrl !== undefined) {
+        payload.photo_url = updates.photoUrl;
+      }
+      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo;
+      if (updates.frequencia !== undefined) {
+        payload.frequencia =
+          updates.frequencia === "" ? null : Number(updates.frequencia);
+      }
+      if (updates.nivel !== undefined) payload.nivel = updates.nivel;
+      if (updates.split !== undefined) payload.split = updates.split;
+      if (updates.intensidade !== undefined) {
+        payload.intensidade = updates.intensidade;
+      }
+      if (updates.onboarded !== undefined) payload.onboarded = !!updates.onboarded;
+
+      if (Object.keys(payload).length > 0) {
+        const { error } = await supabase
+          .from("profiles")
+          .update(payload)
+          .eq("id", currentUserId);
+
+        if (error) {
+          return { ok: false, msg: error.message };
+        }
+      }
+
+      const mergedUser = await buildUserWithProfile({
+        ...user,
+        ...updates,
+      });
+
+      setUser(mergedUser);
 
       return { ok: true };
     } catch (err) {
