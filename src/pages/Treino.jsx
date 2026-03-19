@@ -30,19 +30,6 @@ function dayLetter(i) {
   const letters = ["A", "B", "C", "D", "E", "F"];
   return letters[i % letters.length] || "A";
 }
-function calcDayIndex(email) {
-  const key = `treino_day_${email}`;
-  const raw = localStorage.getItem(key);
-  const n = raw ? Number(raw) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-function bumpDayIndex(email, max) {
-  const key = `treino_day_${email}`;
-  const raw = localStorage.getItem(key);
-  const n = raw ? Number(raw) : 0;
-  const next = (Number.isFinite(n) ? n : 0) + 1;
-  localStorage.setItem(key, String(next % Math.max(max, 1)));
-}
 function getWeekdaysStrip(splitLen, currentIdx) {
   const out = [];
   const len = Math.max(splitLen, 1);
@@ -70,8 +57,11 @@ function normalizeName(s) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 }
+function keyForLoad(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
 
-/* ---------------- banco de grupos musculares (custom) ---------------- */
+/* ---------------- banco de grupos musculares (fallback base) ---------------- */
 const MUSCLE_GROUPS = [
   {
     id: "peito_triceps",
@@ -159,7 +149,6 @@ function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
 
-/* ✅ garante volume: se vier pouco, completa com acessórios coerentes (usado só no fallback, não no escolhido) */
 function ensureVolume(list, minCount = 7) {
   const base = Array.isArray(list) ? [...list] : [];
   if (base.length >= minCount) return base;
@@ -180,64 +169,6 @@ function ensureVolume(list, minCount = 7) {
   }
   return base;
 }
-
-/* ✅ AQUI É A CORREÇÃO PRINCIPAL:
-   - Se existir custom.dayExercises[idx], usa exatamente esses nomes.
-   - Se não existir, cai no library do grupo (como antes).
-*/
-function buildCustomPlan(email) {
-  const raw = localStorage.getItem(`custom_split_${email}`);
-  const custom = safeJsonParse(raw, null);
-  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
-
-  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
-  const days = clamp(rawDays, 2, 6);
-
-  const dayGroups = [];
-  for (let i = 0; i < days; i++) {
-    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
-  }
-
-  const prescriptions = custom.prescriptions || {};
-  const dayExercises = custom.dayExercises && typeof custom.dayExercises === "object" ? custom.dayExercises : {};
-
-  const split = dayGroups.map((gid, idx) => {
-    const g = groupById(gid);
-    const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
-
-    const chosenNames = uniqStrings(Array.isArray(dayExercises?.[idx]) ? dayExercises[idx] : []);
-
-    // tenta achar o "grupo" (label) pelo library quando bater nome, senão usa o nome do split
-    const libMap = new Map((g.library || []).map((x) => [normalizeName(x.name), x.group]));
-    const groupFallbackLabel = g.name;
-
-    const chosenList = chosenNames.map((name) => ({
-      name,
-      group: libMap.get(normalizeName(name)) || groupFallbackLabel,
-    }));
-
-    // se não tiver escolhido, usa library padrão + ensureVolume (comporta o app antigo)
-    const baseList = chosenList.length ? chosenList : ensureVolume((g.library || []).slice(0, 9), 7);
-
-    return baseList.map((ex) => ({
-      ...ex,
-      sets: pres.sets,
-      reps: pres.reps,
-      rest: pres.rest,
-      method: `Split ${custom.splitId || ""} • ${g.name}`.trim(),
-    }));
-  });
-
-  const base = {
-    sets: "custom",
-    reps: "custom",
-    rest: "custom",
-    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
-  };
-
-  return { base, split, meta: { days } };
-}
-
 
 function buildProfileFallback(profile) {
   const objetivo = String(profile?.objetivo || "Hipertrofia").trim() || "Hipertrofia";
@@ -342,15 +273,315 @@ function buildProfileFallback(profile) {
   };
 }
 
-/* ---------------- carga/progressão (localStorage) ---------------- */
-function loadLoads(email) {
-  return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
+/* ---------------- supabase helpers ---------------- */
+async function loadPaidStatus(userId) {
+  if (!userId) return false;
+
+  try {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing"])
+      .limit(1);
+
+    if (error) {
+      console.error("loadPaidStatus error:", error);
+      return false;
+    }
+
+    return Array.isArray(data) && data.length > 0;
+  } catch (err) {
+    console.error("loadPaidStatus catch:", err);
+    return false;
+  }
 }
-function saveLoads(email, obj) {
-  localStorage.setItem(`loads_${email}`, JSON.stringify(obj));
+
+async function getOrCreateUserState(userId) {
+  const { data, error } = await supabase
+    .from("workout_user_state")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getOrCreateUserState select error:", error);
+  }
+
+  if (data) return data;
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("workout_user_state")
+    .upsert({ user_id: userId, current_day_index: 0 }, { onConflict: "user_id" })
+    .select("*")
+    .maybeSingle();
+
+  if (insertError) {
+    console.error("getOrCreateUserState insert error:", insertError);
+    return { user_id: userId, current_day_index: 0 };
+  }
+
+  return inserted || { user_id: userId, current_day_index: 0 };
 }
-function keyForLoad(viewIdx, exName) {
-  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+
+async function createPlanFromFallback(userId, fallback) {
+  const split = Array.isArray(fallback?.split) ? fallback.split : [];
+  const base = fallback?.base || {};
+
+  const { data: planRow, error: planError } = await supabase
+    .from("workout_plans")
+    .insert({
+      user_id: userId,
+      title: "Plano atual",
+      split_label: base.style || "Plano atual",
+      split_len: split.length || 1,
+      is_active: true,
+      source: "fallback",
+    })
+    .select("*")
+    .single();
+
+  if (planError) throw planError;
+
+  for (let dayIdx = 0; dayIdx < split.length; dayIdx += 1) {
+    const dayExercises = split[dayIdx] || [];
+    const { data: dayRow, error: dayError } = await supabase
+      .from("workout_plan_days")
+      .insert({
+        plan_id: planRow.id,
+        day_index: dayIdx,
+        day_key: dayLetter(dayIdx),
+        title: `Treino ${dayLetter(dayIdx)}`,
+        group_id: `fallback_${dayIdx}`,
+        group_name: dayExercises[0]?.group || `Treino ${dayLetter(dayIdx)}`,
+      })
+      .select("*")
+      .single();
+
+    if (dayError) throw dayError;
+
+    if (dayExercises.length) {
+      const rows = dayExercises.map((ex, order) => ({
+        plan_day_id: dayRow.id,
+        exercise_order: order,
+        name: ex.name,
+        group_name: ex.group || "",
+        reps: `${ex.sets || 4} séries • ${ex.reps || "6–12"} • descanso ${ex.rest || "75–120s"}`,
+        notes: ex.method || "",
+      }));
+
+      const { error: exError } = await supabase
+        .from("workout_plan_exercises")
+        .insert(rows);
+
+      if (exError) throw exError;
+    }
+  }
+
+  return planRow;
+}
+
+async function getOrCreateActivePlan(userId, fallback) {
+  let { data: activePlan, error: activeError } = await supabase
+    .from("workout_plans")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (activeError) {
+    console.error("getOrCreateActivePlan select error:", activeError);
+  }
+
+  if (!activePlan) {
+    activePlan = await createPlanFromFallback(userId, fallback);
+  }
+
+  const { data: days, error: daysError } = await supabase
+    .from("workout_plan_days")
+    .select("*")
+    .eq("plan_id", activePlan.id)
+    .order("day_index", { ascending: true });
+
+  if (daysError) throw daysError;
+
+  const dayIds = (days || []).map((d) => d.id);
+
+  let exercises = [];
+  if (dayIds.length) {
+    const { data: exRows, error: exError } = await supabase
+      .from("workout_plan_exercises")
+      .select("*")
+      .in("plan_day_id", dayIds)
+      .order("exercise_order", { ascending: true });
+
+    if (exError) throw exError;
+    exercises = exRows || [];
+  }
+
+  const split = (days || []).map((day) => {
+    const exs = exercises
+      .filter((ex) => ex.plan_day_id === day.id)
+      .sort((a, b) => a.exercise_order - b.exercise_order)
+      .map((ex) => {
+        const info = String(ex.reps || "");
+        let sets = 4;
+        let reps = "6–12";
+        let rest = "75–120s";
+
+        const match = info.match(/^(.+?) séries • (.+?) • descanso (.+)$/i);
+        if (match) {
+          sets = Number(match[1]) || 4;
+          reps = match[2] || "6–12";
+          rest = match[3] || "75–120s";
+        }
+
+        return {
+          id: ex.id,
+          name: ex.name,
+          group: ex.group_name || day.group_name || "",
+          sets,
+          reps,
+          rest,
+          method: ex.notes || activePlan.split_label || "",
+        };
+      });
+
+    return exs.length ? exs : ensureVolume(groupById("fullbody").library, 7).map((ex) => ({
+      ...ex,
+      sets: 4,
+      reps: "6–12",
+      rest: "75–120s",
+      method: activePlan.split_label || "",
+    }));
+  });
+
+  return {
+    plan: activePlan,
+    days: days || [],
+    split,
+    base: {
+      style: activePlan.split_label || fallback?.base?.style || "Plano atual",
+      sets: fallback?.base?.sets || 4,
+      reps: fallback?.base?.reps || "6–12",
+      rest: fallback?.base?.rest || "75–120s",
+    },
+  };
+}
+
+async function getOrCreateTodaySession(userId, planId, planDayId, dayIndex, workout) {
+  const today = todayKey();
+
+  let { data: sessionRow, error: sessionError } = await supabase
+    .from("workout_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("session_date", today)
+    .maybeSingle();
+
+  if (sessionError) {
+    console.error("getOrCreateTodaySession select error:", sessionError);
+  }
+
+  if (!sessionRow) {
+    const { data: inserted, error: insertError } = await supabase
+      .from("workout_sessions")
+      .insert({
+        user_id: userId,
+        plan_id: planId,
+        plan_day_id: planDayId,
+        day_index: dayIndex,
+        session_date: today,
+        completed: false,
+      })
+      .select("*")
+      .single();
+
+    if (insertError) throw insertError;
+    sessionRow = inserted;
+  } else if (
+    sessionRow.plan_day_id !== planDayId ||
+    Number(sessionRow.day_index) !== Number(dayIndex)
+  ) {
+    const { data: updated, error: updateError } = await supabase
+      .from("workout_sessions")
+      .update({
+        plan_id: planId,
+        plan_day_id: planDayId,
+        day_index: dayIndex,
+      })
+      .eq("id", sessionRow.id)
+      .select("*")
+      .single();
+
+    if (updateError) throw updateError;
+    sessionRow = updated;
+  }
+
+  const { data: existingExs, error: exSelectError } = await supabase
+    .from("workout_session_exercises")
+    .select("*")
+    .eq("session_id", sessionRow.id)
+    .order("exercise_order", { ascending: true });
+
+  if (exSelectError) throw exSelectError;
+
+  const exRows = existingExs || [];
+
+  if (!exRows.length && Array.isArray(workout) && workout.length) {
+    const seedRows = workout.map((ex, idx) => ({
+      session_id: sessionRow.id,
+      plan_exercise_id: ex.id || null,
+      exercise_order: idx,
+      name: ex.name,
+      checked: false,
+    }));
+
+    const { error: seedError } = await supabase
+      .from("workout_session_exercises")
+      .insert(seedRows);
+
+    if (seedError) throw seedError;
+
+    const { data: afterSeed, error: afterSeedError } = await supabase
+      .from("workout_session_exercises")
+      .select("*")
+      .eq("session_id", sessionRow.id)
+      .order("exercise_order", { ascending: true });
+
+    if (afterSeedError) throw afterSeedError;
+
+    return { session: sessionRow, sessionExercises: afterSeed || [] };
+  }
+
+  return { session: sessionRow, sessionExercises: exRows };
+}
+
+async function loadExerciseLoads(userId, planDayId) {
+  if (!userId || !planDayId) return {};
+
+  try {
+    const { data, error } = await supabase
+      .from("workout_exercise_loads")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("plan_day_id", planDayId);
+
+    if (error) {
+      console.error("loadExerciseLoads error:", error);
+      return {};
+    }
+
+    const next = {};
+    (data || []).forEach((row) => {
+      next[keyForLoad(planDayId, row.exercise_name)] = Number(row.load || 0);
+    });
+
+    return next;
+  } catch (err) {
+    console.error("loadExerciseLoads catch:", err);
+    return {};
+  }
 }
 
 export default function Treino() {
@@ -359,14 +590,32 @@ export default function Treino() {
   const email = (user?.email || "anon").toLowerCase();
 
   const [profile, setProfile] = useState(null);
+  const [paid, setPaid] = useState(false);
+
+  const [base, setBase] = useState({
+    style: "",
+    sets: 4,
+    reps: "6–12",
+    rest: "75–120s",
+  });
+  const [split, setSplit] = useState([]);
+  const [planDays, setPlanDays] = useState([]);
+  const [planId, setPlanId] = useState(null);
+
+  const [dayIndex, setDayIndex] = useState(0);
+  const [viewIdx, setViewIdx] = useState(0);
+
+  const [done, setDone] = useState({});
+  const [tapId, setTapId] = useState(null);
+  const [loads, setLoads] = useState({});
+
+  const [todaySessionId, setTodaySessionId] = useState(null);
 
   useEffect(() => {
     let active = true;
 
     async function loadProfile() {
-      if (!user?.id) {
-        return;
-      }
+      if (!user?.id) return;
 
       const { data } = await supabase
         .from("profiles")
@@ -384,76 +633,248 @@ export default function Treino() {
     };
   }, [user?.id]);
 
-  const paid = localStorage.getItem(`paid_${email}`) === "1";
+  useEffect(() => {
+    let active = true;
 
-  const plan = useMemo(() => buildCustomPlan(email), [email]);
+    async function loadPaid() {
+      if (!user?.id) {
+        if (active) setPaid(false);
+        return;
+      }
+
+      const status = await loadPaidStatus(user.id);
+      if (active) setPaid(status);
+    }
+
+    loadPaid();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const fallbackSplit = useMemo(() => buildProfileFallback(profile), [profile]);
 
-  const base = plan?.base || fallbackSplit.base;
-  const split = plan?.split || fallbackSplit.split;
+  useEffect(() => {
+    let active = true;
 
-  const dayIndex = useMemo(() => calcDayIndex(email), [email]);
-  const [viewIdx, setViewIdx] = useState(dayIndex);
+    async function bootstrapWorkout() {
+      if (!user?.id || !fallbackSplit?.split?.length) return;
+
+      try {
+        const state = await getOrCreateUserState(user.id);
+        if (!active) return;
+
+        const currentIdx = Number(state?.current_day_index || 0);
+        setDayIndex(currentIdx);
+        setViewIdx(currentIdx);
+
+        const hydrated = await getOrCreateActivePlan(user.id, fallbackSplit);
+        if (!active) return;
+
+        setPlanId(hydrated.plan.id);
+        setPlanDays(hydrated.days || []);
+        setSplit(hydrated.split || []);
+        setBase(hydrated.base || fallbackSplit.base);
+      } catch (err) {
+        console.error("bootstrapWorkout error:", err);
+        if (!active) return;
+        setSplit(fallbackSplit.split || []);
+        setBase(fallbackSplit.base || {});
+        setPlanDays([]);
+        setPlanId(null);
+      }
+    }
+
+    bootstrapWorkout();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, fallbackSplit]);
 
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const viewingIsToday = viewSafe === mod(dayIndex, split.length);
-
   const workout = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
 
-  const doneKey = `done_ex_${email}_${viewSafe}`;
-  const [done, setDone] = useState(() => safeJsonParse(localStorage.getItem(doneKey), {}));
-  const [tapId, setTapId] = useState(null);
+  const currentPlanDay = useMemo(() => {
+    return planDays.find((d) => Number(d.day_index) === Number(viewSafe)) || null;
+  }, [planDays, viewSafe]);
 
   useEffect(() => {
-    setDone(safeJsonParse(localStorage.getItem(doneKey), {}));
-  }, [doneKey]);
+    let active = true;
 
-  const [loads, setLoads] = useState(() => loadLoads(email));
+    async function hydrateTodayState() {
+      if (!user?.id || !planId || !currentPlanDay?.id || !workout.length) {
+        if (active) {
+          setDone({});
+          setTodaySessionId(null);
+          setLoads({});
+        }
+        return;
+      }
 
-  function toggleDone(i) {
-    const next = { ...done, [i]: !done[i] };
-    setDone(next);
-    localStorage.setItem(doneKey, JSON.stringify(next));
+      try {
+        const { session, sessionExercises } = await getOrCreateTodaySession(
+          user.id,
+          planId,
+          currentPlanDay.id,
+          viewSafe,
+          workout
+        );
+
+        if (!active) return;
+
+        setTodaySessionId(session?.id || null);
+
+        const doneMap = {};
+        (sessionExercises || []).forEach((row) => {
+          doneMap[row.exercise_order] = !!row.checked;
+        });
+        setDone(doneMap);
+
+        const loadMap = await loadExerciseLoads(user.id, currentPlanDay.id);
+        if (!active) return;
+        setLoads(loadMap);
+      } catch (err) {
+        console.error("hydrateTodayState error:", err);
+        if (!active) return;
+        setDone({});
+        setTodaySessionId(null);
+        setLoads({});
+      }
+    }
+
+    hydrateTodayState();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, planId, currentPlanDay?.id, viewSafe, workout]);
+
+  async function toggleDone(i) {
+    if (!todaySessionId || !viewingIsToday) return;
+
+    const nextChecked = !done[i];
+
+    setDone((prev) => ({ ...prev, [i]: nextChecked }));
     setTapId(i);
     setTimeout(() => setTapId(null), 160);
+
+    try {
+      const { error } = await supabase
+        .from("workout_session_exercises")
+        .update({
+          checked: nextChecked,
+          checked_at: nextChecked ? new Date().toISOString() : null,
+        })
+        .eq("session_id", todaySessionId)
+        .eq("exercise_order", i);
+
+      if (error) {
+        console.error("toggleDone error:", error);
+        setDone((prev) => ({ ...prev, [i]: !nextChecked }));
+      }
+    } catch (err) {
+      console.error("toggleDone catch:", err);
+      setDone((prev) => ({ ...prev, [i]: !nextChecked }));
+    }
   }
 
-  function adjustLoad(exName, delta) {
-    const k = keyForLoad(viewSafe, exName);
+  async function adjustLoad(exName, delta) {
+    if (!user?.id || !currentPlanDay?.id) return;
+
+    const k = keyForLoad(currentPlanDay.id, exName);
     const cur = Number(loads[k] || 0);
-    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2); // 0.5kg steps
-    const next = { ...loads, [k]: nextVal };
-    setLoads(next);
-    saveLoads(email, next);
+    const nextVal = Math.max(0, Math.round((cur + delta) * 2) / 2);
+
+    setLoads((prev) => ({
+      ...prev,
+      [k]: nextVal,
+    }));
+
+    try {
+      const { error } = await supabase
+        .from("workout_exercise_loads")
+        .upsert(
+          {
+            user_id: user.id,
+            plan_day_id: currentPlanDay.id,
+            exercise_name: exName,
+            load: nextVal,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,plan_day_id,exercise_name" }
+        );
+
+      if (error) {
+        console.error("adjustLoad error:", error);
+        setLoads((prev) => ({
+          ...prev,
+          [k]: cur,
+        }));
+      }
+    } catch (err) {
+      console.error("adjustLoad catch:", err);
+      setLoads((prev) => ({
+        ...prev,
+        [k]: cur,
+      }));
+    }
   }
 
-  // ✅ CORRIGIDO: sem reload + navega para dashboard
-  function finishWorkout() {
-    if (!viewingIsToday) return;
+  async function finishWorkout() {
+    if (!viewingIsToday || !user?.id || !split.length) return;
 
-    bumpDayIndex(email, split.length);
+    try {
+      if (todaySessionId) {
+        const { error: sessionError } = await supabase
+          .from("workout_sessions")
+          .update({
+            completed: true,
+            finished_at: new Date().toISOString(),
+          })
+          .eq("id", todaySessionId);
 
-    // limpa progresso do dia atual
-    localStorage.removeItem(doneKey);
-    setDone({});
+        if (sessionError) {
+          console.error("finishWorkout session error:", sessionError);
+        }
+      }
 
-    // salva histórico (dias treinados)
-    const wkKey = `workout_${email}`;
-    const today = todayKey();
-    const raw = localStorage.getItem(wkKey);
-    const list = safeJsonParse(raw, []);
-    const arr = Array.isArray(list) ? list : [];
-    if (!arr.includes(today)) localStorage.setItem(wkKey, JSON.stringify([...arr, today]));
+      const nextDayIndex = (dayIndex + 1) % Math.max(split.length, 1);
 
-    // vai pro dashboard
-    nav("/dashboard");
+      const { error: stateError } = await supabase
+        .from("workout_user_state")
+        .upsert(
+          {
+            user_id: user.id,
+            current_day_index: nextDayIndex,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (stateError) {
+        console.error("finishWorkout state error:", stateError);
+      }
+
+      setDayIndex(nextDayIndex);
+      setViewIdx(nextDayIndex);
+      setDone({});
+      nav("/dashboard");
+    } catch (err) {
+      console.error("finishWorkout catch:", err);
+      nav("/dashboard");
+    }
   }
 
   const previewCount = Math.max(2, Math.ceil(workout.length / 2));
   const previewList = workout.slice(0, previewCount);
   const lockedList = workout.slice(previewCount);
 
-  const strip = useMemo(() => getWeekdaysStrip(split.length, mod(dayIndex, split.length)), [split.length, dayIndex]);
+  const strip = useMemo(
+    () => getWeekdaysStrip(split.length, mod(dayIndex, split.length)),
+    [split.length, dayIndex]
+  );
 
   function openExercises() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
@@ -472,20 +893,12 @@ export default function Treino() {
             Treino {dayLetter(viewSafe)} {viewingIsToday ? "• hoje" : ""}
           </div>
           <div style={styles.headerSub}>
-            {plan ? (
-              <>
-                Método: <b>{base.style}</b> • foco:{" "}
-                <b>{(split[viewSafe]?.[0]?.method || "Custom").split("•")[1] || "Personalizado"}</b>
-              </>
-            ) : (
-              <>
-                Método: <b>{base.style}</b>
-              </>
-            )}
+            <>
+              Método: <b>{base.style}</b>
+            </>
           </div>
         </div>
 
-        {/* ✅ MAIS APPLE + ÍCONE MELHOR */}
         <button
           className="settings-press"
           style={styles.settingsBtn}
@@ -518,10 +931,7 @@ export default function Treino() {
                     openExercises();
                     return;
                   }
-
                   setViewIdx(d.idx);
-                  const nextKey = `done_ex_${email}_${d.idx}`;
-                  setDone(safeJsonParse(localStorage.getItem(nextKey), {}));
                 }}
               >
                 {d.label}
@@ -640,7 +1050,7 @@ export default function Treino() {
       <div style={styles.list}>
         {previewList.map((ex, i) => {
           const isDone = !!done[i];
-          const loadKey = keyForLoad(viewSafe, ex.name);
+          const loadKey = keyForLoad(currentPlanDay?.id || viewSafe, ex.name);
           const curLoad = loads[loadKey] ?? 0;
 
           return (
@@ -712,7 +1122,9 @@ export default function Treino() {
                     ...styles.checkBtn,
                     ...(isDone ? styles.checkOn : styles.checkOff),
                     transform: tapId === i ? "scale(0.92)" : "scale(1)",
+                    opacity: viewingIsToday ? 1 : 0.7,
                   }}
+                  disabled={!viewingIsToday}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path
@@ -762,7 +1174,7 @@ export default function Treino() {
         </>
       ) : null}
 
-      {/* ✅ BOTÃO FLUTUANTE “CONCLUIR TREINO” (premium + movimento) */}
+      {/* BOTÃO FLUTUANTE “CONCLUIR TREINO” */}
       {paid ? (
         <button
           type="button"
@@ -1204,7 +1616,6 @@ const styles = {
   },
 };
 
-// animações CSS inline
 if (typeof document !== "undefined") {
   const id = "fitdeal-treino-keyframes";
   if (!document.getElementById(id)) {
