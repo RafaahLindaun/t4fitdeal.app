@@ -3,37 +3,6 @@ import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext();
 
-function mapUser(authUser, profile = null) {
-  if (!authUser) return null;
-
-  return {
-    ...authUser,
-    nome:
-      profile?.nome ||
-      authUser?.user_metadata?.nome ||
-      authUser?.user_metadata?.full_name ||
-      authUser?.user_metadata?.name ||
-      authUser?.email?.split("@")[0] ||
-      "",
-    idade: profile?.idade ?? "",
-    altura: profile?.altura ?? "",
-    peso: profile?.peso ?? "",
-    objetivo: profile?.objetivo || "",
-    frequencia: profile?.frequencia ?? "",
-    nivel: profile?.nivel || "",
-    split: profile?.split || "",
-    intensidade: profile?.intensidade || "",
-    onboarded: profile?.onboarded ?? false,
-    photoUrl:
-      profile?.photo_url ||
-      authUser?.user_metadata?.avatar_url ||
-      authUser?.user_metadata?.picture ||
-      "",
-    provider: profile?.provider || authUser?.app_metadata?.provider || "",
-    createdAt: profile?.created_at || authUser?.created_at || "",
-  };
-}
-
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -43,66 +12,100 @@ export function AuthProvider({ children }) {
     try {
       if (!authUser?.id) return;
 
-      const payload = {
+      const baseProfile = {
         id: authUser.id,
         email: authUser.email || null,
         nome:
           authUser?.user_metadata?.nome ||
           authUser?.user_metadata?.full_name ||
-          authUser?.user_metadata?.name ||
           authUser?.email?.split("@")[0] ||
-          null,
-        photo_url:
-          authUser?.user_metadata?.avatar_url ||
-          authUser?.user_metadata?.picture ||
           null,
         provider: authUser?.app_metadata?.provider || null,
       };
 
-      const { error } = await supabase
-        .from("profiles")
-        .upsert(payload, { onConflict: "id" });
-
-      if (error) {
-        console.error("ensureProfile error:", error);
-      }
+      await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
     } catch (err) {
-      console.error("ensureProfile catch:", err);
+      console.error("ensureProfile error:", err);
     }
   }
 
-  async function getProfile(userId) {
+  async function buildUserWithProfile(authUser) {
     try {
-      if (!userId) return null;
+      if (!authUser?.id) return null;
 
-      const { data, error } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", userId)
+        .eq("id", authUser.id)
         .maybeSingle();
 
       if (error) {
-        console.error("getProfile error:", error);
-        return null;
+        console.error("buildUserWithProfile error:", error);
+        return {
+          ...authUser,
+          nome:
+            authUser?.user_metadata?.nome ||
+            authUser?.user_metadata?.full_name ||
+            authUser?.email?.split("@")[0] ||
+            "",
+          idade: "",
+          altura: "",
+          peso: "",
+          objetivo: "",
+          frequencia: "",
+          nivel: "",
+          split: "",
+          intensidade: "",
+          onboarded: false,
+          photoUrl: "",
+          provider: authUser?.app_metadata?.provider || "",
+          createdAt: authUser?.created_at || "",
+        };
       }
 
-      return data || null;
+      return {
+        ...authUser,
+        nome:
+          profile?.nome ||
+          authUser?.user_metadata?.nome ||
+          authUser?.user_metadata?.full_name ||
+          authUser?.email?.split("@")[0] ||
+          "",
+        idade: profile?.idade ?? "",
+        altura: profile?.altura ?? "",
+        peso: profile?.peso ?? "",
+        objetivo: profile?.objetivo || "",
+        frequencia: profile?.frequencia ?? "",
+        nivel: profile?.nivel || "",
+        split: profile?.split || "",
+        intensidade: profile?.intensidade || "",
+        onboarded: profile?.onboarded ?? false,
+        photoUrl: profile?.photo_url || "",
+        provider: profile?.provider || authUser?.app_metadata?.provider || "",
+        createdAt: profile?.created_at || authUser?.created_at || "",
+      };
     } catch (err) {
-      console.error("getProfile catch:", err);
-      return null;
-    }
-  }
-
-  async function hydrateUser(authUser) {
-    try {
-      if (!authUser) return null;
-
-      await ensureProfile(authUser);
-      const profile = await getProfile(authUser.id);
-      return mapUser(authUser, profile);
-    } catch (err) {
-      console.error("hydrateUser catch:", err);
-      return mapUser(authUser, null);
+      console.error("buildUserWithProfile catch:", err);
+      return {
+        ...authUser,
+        nome:
+          authUser?.user_metadata?.nome ||
+          authUser?.user_metadata?.full_name ||
+          authUser?.email?.split("@")[0] ||
+          "",
+        idade: "",
+        altura: "",
+        peso: "",
+        objetivo: "",
+        frequencia: "",
+        nivel: "",
+        split: "",
+        intensidade: "",
+        onboarded: false,
+        photoUrl: "",
+        provider: authUser?.app_metadata?.provider || "",
+        createdAt: authUser?.created_at || "",
+      };
     }
   }
 
@@ -125,8 +128,9 @@ export function AuthProvider({ children }) {
       setSession(currentSession);
 
       if (currentSession?.user) {
-        const mergedUser = await hydrateUser(currentSession.user);
-        setUser(mergedUser || currentSession.user);
+        await ensureProfile(currentSession.user);
+        const mergedUser = await buildUserWithProfile(currentSession.user);
+        setUser(mergedUser);
       } else {
         setUser(null);
       }
@@ -140,42 +144,89 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    let mounted = true;
-
     loadSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         try {
-          if (!mounted) return;
-
           setSession(newSession);
 
           if (newSession?.user) {
-            const mergedUser = await hydrateUser(newSession.user);
-            if (!mounted) return;
-            setUser(mergedUser || newSession.user);
+            await ensureProfile(newSession.user);
+            const mergedUser = await buildUserWithProfile(newSession.user);
+            setUser(mergedUser);
           } else {
             setUser(null);
           }
         } catch (err) {
           console.error("onAuthStateChange catch:", err);
-          if (mounted) {
-            setUser(newSession?.user ?? null);
-          }
+          setUser(newSession?.user ?? null);
         } finally {
-          if (mounted) {
-            setLoading(false);
-          }
+          setLoading(false);
         }
       }
     );
 
     return () => {
-      mounted = false;
-      listener?.subscription?.unsubscribe?.();
+      listener?.subscription?.unsubscribe();
     };
   }, []);
+
+  async function updateUser(updates) {
+    try {
+      const currentUserId = user?.id;
+      if (!currentUserId) {
+        return { ok: false, msg: "Usuário não encontrado." };
+      }
+
+      const payload = {};
+
+      if (updates.nome !== undefined) payload.nome = updates.nome;
+      if (updates.idade !== undefined) {
+        payload.idade = updates.idade === "" ? null : Number(updates.idade);
+      }
+      if (updates.altura !== undefined) {
+        payload.altura = updates.altura === "" ? null : Number(updates.altura);
+      }
+      if (updates.peso !== undefined) {
+        payload.peso = updates.peso === "" ? null : Number(updates.peso);
+      }
+      if (updates.photoUrl !== undefined) {
+        payload.photo_url = updates.photoUrl;
+      }
+      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo;
+      if (updates.frequencia !== undefined) {
+        payload.frequencia =
+          updates.frequencia === "" ? null : Number(updates.frequencia);
+      }
+      if (updates.nivel !== undefined) payload.nivel = updates.nivel;
+      if (updates.split !== undefined) payload.split = updates.split;
+      if (updates.intensidade !== undefined) payload.intensidade = updates.intensidade;
+      if (updates.onboarded !== undefined) payload.onboarded = !!updates.onboarded;
+
+      const { error } = await supabase
+        .from("profiles")
+        .update(payload)
+        .eq("id", currentUserId);
+
+      if (error) {
+        console.error("updateUser error:", error);
+        return { ok: false, msg: error.message };
+      }
+
+      setUser((prev) => ({
+        ...prev,
+        ...updates,
+        photoUrl:
+          updates.photoUrl !== undefined ? updates.photoUrl : prev?.photoUrl,
+      }));
+
+      return { ok: true };
+    } catch (err) {
+      console.error("updateUser catch:", err);
+      return { ok: false, msg: err?.message || "Erro ao atualizar usuário." };
+    }
+  }
 
   async function signup(payload) {
     try {
@@ -189,9 +240,7 @@ export function AuthProvider({ children }) {
         },
       });
 
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
+      if (error) return { ok: false, msg: error.message };
 
       if (data?.user) {
         await ensureProfile(data.user);
@@ -211,15 +260,14 @@ export function AuthProvider({ children }) {
         password: senha,
       });
 
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
+      if (error) return { ok: false, msg: error.message };
 
       setSession(data.session);
 
       if (data.user) {
-        const mergedUser = await hydrateUser(data.user);
-        setUser(mergedUser || data.user);
+        await ensureProfile(data.user);
+        const mergedUser = await buildUserWithProfile(data.user);
+        setUser(mergedUser);
       } else {
         setUser(null);
       }
@@ -240,9 +288,7 @@ export function AuthProvider({ children }) {
         },
       });
 
-      if (error) {
-        return { ok: false, msg: error.message };
-      }
+      if (error) return { ok: false, msg: error.message };
 
       return { ok: true };
     } catch (err) {
@@ -259,120 +305,6 @@ export function AuthProvider({ children }) {
     } finally {
       setSession(null);
       setUser(null);
-      setLoading(false);
-    }
-  }
-
-  async function refreshUser() {
-    try {
-      const {
-        data: { user: authUser },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (error || !authUser) {
-        return { ok: false, msg: error?.message || "Usuário não encontrado." };
-      }
-
-      const mergedUser = await hydrateUser(authUser);
-      setUser(mergedUser || authUser);
-
-      return { ok: true, user: mergedUser || authUser };
-    } catch (err) {
-      console.error("refreshUser catch:", err);
-      return { ok: false, msg: err?.message || "Erro ao atualizar usuário." };
-    }
-  }
-
-  async function updateUser(updates) {
-    try {
-      const currentUserId = user?.id;
-
-      if (!currentUserId) {
-        return { ok: false, msg: "Usuário não encontrado." };
-      }
-
-      const payload = {
-        id: currentUserId,
-      };
-
-      if (updates.nome !== undefined) payload.nome = updates.nome || null;
-      if (updates.idade !== undefined) {
-        payload.idade = updates.idade === "" ? null : Number(updates.idade);
-      }
-      if (updates.altura !== undefined) {
-        payload.altura = updates.altura === "" ? null : Number(updates.altura);
-      }
-      if (updates.peso !== undefined) {
-        payload.peso = updates.peso === "" ? null : Number(updates.peso);
-      }
-      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo || null;
-      if (updates.frequencia !== undefined) {
-        payload.frequencia =
-          updates.frequencia === "" ? null : Number(updates.frequencia);
-      }
-      if (updates.nivel !== undefined) payload.nivel = updates.nivel || null;
-      if (updates.split !== undefined) payload.split = updates.split || null;
-      if (updates.intensidade !== undefined) {
-        payload.intensidade = updates.intensidade || null;
-      }
-      if (updates.onboarded !== undefined) {
-        payload.onboarded = !!updates.onboarded;
-      }
-      if (updates.photoUrl !== undefined) {
-        payload.photo_url = updates.photoUrl || null;
-      }
-
-      const request = supabase
-        .from("profiles")
-        .upsert(payload, { onConflict: "id" });
-
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite ao salvar perfil.")), 10000)
-      );
-
-      const result = await Promise.race([request, timeout]);
-      const error = result?.error;
-
-      if (error) {
-        console.error("updateUser error:", error);
-        return { ok: false, msg: error.message };
-      }
-
-      setUser((prev) => {
-        if (!prev) return prev;
-
-        return {
-          ...prev,
-          ...updates,
-          nome: updates.nome !== undefined ? updates.nome : prev.nome,
-          idade: updates.idade !== undefined ? updates.idade : prev.idade,
-          altura: updates.altura !== undefined ? updates.altura : prev.altura,
-          peso: updates.peso !== undefined ? updates.peso : prev.peso,
-          objetivo:
-            updates.objetivo !== undefined ? updates.objetivo : prev.objetivo,
-          frequencia:
-            updates.frequencia !== undefined ? updates.frequencia : prev.frequencia,
-          nivel: updates.nivel !== undefined ? updates.nivel : prev.nivel,
-          split: updates.split !== undefined ? updates.split : prev.split,
-          intensidade:
-            updates.intensidade !== undefined
-              ? updates.intensidade
-              : prev.intensidade,
-          onboarded:
-            updates.onboarded !== undefined ? updates.onboarded : prev.onboarded,
-          photoUrl:
-            updates.photoUrl !== undefined ? updates.photoUrl : prev.photoUrl,
-        };
-      });
-
-      return { ok: true };
-    } catch (err) {
-      console.error("updateUser catch:", err);
-      return {
-        ok: false,
-        msg: err?.message || "Erro ao atualizar usuário.",
-      };
     }
   }
 
@@ -384,7 +316,6 @@ export function AuthProvider({ children }) {
     loginWithEmail,
     loginWithGoogle,
     logout,
-    refreshUser,
     updateUser,
   };
 
