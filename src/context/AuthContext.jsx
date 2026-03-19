@@ -8,6 +8,35 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  function fallbackUser(authUser) {
+    if (!authUser) return null;
+
+    return {
+      ...authUser,
+      nome:
+        authUser?.user_metadata?.nome ||
+        authUser?.user_metadata?.full_name ||
+        authUser?.user_metadata?.name ||
+        authUser?.email?.split("@")[0] ||
+        "",
+      idade: "",
+      altura: "",
+      peso: "",
+      objetivo: "",
+      frequencia: "",
+      nivel: "",
+      split: "",
+      intensidade: "",
+      onboarded: false,
+      photoUrl:
+        authUser?.user_metadata?.avatar_url ||
+        authUser?.user_metadata?.picture ||
+        "",
+      provider: authUser?.app_metadata?.provider || "",
+      createdAt: authUser?.created_at || "",
+    };
+  }
+
   async function ensureProfile(authUser) {
     try {
       if (!authUser?.id) return;
@@ -18,14 +47,25 @@ export function AuthProvider({ children }) {
         nome:
           authUser?.user_metadata?.nome ||
           authUser?.user_metadata?.full_name ||
+          authUser?.user_metadata?.name ||
           authUser?.email?.split("@")[0] ||
           null,
         provider: authUser?.app_metadata?.provider || null,
+        photo_url:
+          authUser?.user_metadata?.avatar_url ||
+          authUser?.user_metadata?.picture ||
+          null,
       };
 
-      await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(baseProfile, { onConflict: "id" });
+
+      if (error) {
+        console.error("ensureProfile error:", error);
+      }
     } catch (err) {
-      console.error("ensureProfile error:", err);
+      console.error("ensureProfile catch:", err);
     }
   }
 
@@ -41,26 +81,7 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error("buildUserWithProfile error:", error);
-        return {
-          ...authUser,
-          nome:
-            authUser?.user_metadata?.nome ||
-            authUser?.user_metadata?.full_name ||
-            authUser?.email?.split("@")[0] ||
-            "",
-          idade: "",
-          altura: "",
-          peso: "",
-          objetivo: "",
-          frequencia: "",
-          nivel: "",
-          split: "",
-          intensidade: "",
-          onboarded: false,
-          photoUrl: "",
-          provider: authUser?.app_metadata?.provider || "",
-          createdAt: authUser?.created_at || "",
-        };
+        return fallbackUser(authUser);
       }
 
       return {
@@ -69,6 +90,7 @@ export function AuthProvider({ children }) {
           profile?.nome ||
           authUser?.user_metadata?.nome ||
           authUser?.user_metadata?.full_name ||
+          authUser?.user_metadata?.name ||
           authUser?.email?.split("@")[0] ||
           "",
         idade: profile?.idade ?? "",
@@ -80,33 +102,24 @@ export function AuthProvider({ children }) {
         split: profile?.split || "",
         intensidade: profile?.intensidade || "",
         onboarded: profile?.onboarded ?? false,
-        photoUrl: profile?.photo_url || "",
+        photoUrl:
+          profile?.photo_url ||
+          authUser?.user_metadata?.avatar_url ||
+          authUser?.user_metadata?.picture ||
+          "",
         provider: profile?.provider || authUser?.app_metadata?.provider || "",
         createdAt: profile?.created_at || authUser?.created_at || "",
       };
     } catch (err) {
       console.error("buildUserWithProfile catch:", err);
-      return {
-        ...authUser,
-        nome:
-          authUser?.user_metadata?.nome ||
-          authUser?.user_metadata?.full_name ||
-          authUser?.email?.split("@")[0] ||
-          "",
-        idade: "",
-        altura: "",
-        peso: "",
-        objetivo: "",
-        frequencia: "",
-        nivel: "",
-        split: "",
-        intensidade: "",
-        onboarded: false,
-        photoUrl: "",
-        provider: authUser?.app_metadata?.provider || "",
-        createdAt: authUser?.created_at || "",
-      };
+      return fallbackUser(authUser);
     }
+  }
+
+  async function hydrateAuthUser(authUser) {
+    if (!authUser) return null;
+    await ensureProfile(authUser);
+    return await buildUserWithProfile(authUser);
   }
 
   async function loadSession() {
@@ -128,8 +141,7 @@ export function AuthProvider({ children }) {
       setSession(currentSession);
 
       if (currentSession?.user) {
-        await ensureProfile(currentSession.user);
-        const mergedUser = await buildUserWithProfile(currentSession.user);
+        const mergedUser = await hydrateAuthUser(currentSession.user);
         setUser(mergedUser);
       } else {
         setUser(null);
@@ -144,33 +156,63 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    let mounted = true;
+
     loadSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         try {
+          if (!mounted) return;
+
           setSession(newSession);
 
           if (newSession?.user) {
-            await ensureProfile(newSession.user);
-            const mergedUser = await buildUserWithProfile(newSession.user);
+            const mergedUser = await hydrateAuthUser(newSession.user);
+            if (!mounted) return;
             setUser(mergedUser);
           } else {
             setUser(null);
           }
         } catch (err) {
           console.error("onAuthStateChange catch:", err);
-          setUser(newSession?.user ?? null);
+          if (mounted) {
+            setUser(newSession?.user ? fallbackUser(newSession.user) : null);
+          }
         } finally {
-          setLoading(false);
+          if (mounted) {
+            setLoading(false);
+          }
         }
       }
     );
 
     return () => {
-      listener?.subscription?.unsubscribe();
+      mounted = false;
+      listener?.subscription?.unsubscribe?.();
     };
   }, []);
+
+  async function refreshUser() {
+    try {
+      const {
+        data: { user: authUser },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error || !authUser) {
+        return { ok: false, msg: error?.message || "Usuário não encontrado." };
+      }
+
+      const mergedUser = await hydrateAuthUser(authUser);
+      setUser(mergedUser);
+
+      return { ok: true, user: mergedUser };
+    } catch (err) {
+      console.error("refreshUser catch:", err);
+      return { ok: false, msg: err?.message || "Erro ao atualizar usuário." };
+    }
+  }
 
   async function updateUser(updates) {
     try {
@@ -179,9 +221,11 @@ export function AuthProvider({ children }) {
         return { ok: false, msg: "Usuário não encontrado." };
       }
 
-      const payload = {};
+      const payload = {
+        id: currentUserId,
+      };
 
-      if (updates.nome !== undefined) payload.nome = updates.nome;
+      if (updates.nome !== undefined) payload.nome = updates.nome || null;
       if (updates.idade !== undefined) {
         payload.idade = updates.idade === "" ? null : Number(updates.idade);
       }
@@ -192,22 +236,21 @@ export function AuthProvider({ children }) {
         payload.peso = updates.peso === "" ? null : Number(updates.peso);
       }
       if (updates.photoUrl !== undefined) {
-        payload.photo_url = updates.photoUrl;
+        payload.photo_url = updates.photoUrl || null;
       }
-      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo;
+      if (updates.objetivo !== undefined) payload.objetivo = updates.objetivo || null;
       if (updates.frequencia !== undefined) {
         payload.frequencia =
           updates.frequencia === "" ? null : Number(updates.frequencia);
       }
-      if (updates.nivel !== undefined) payload.nivel = updates.nivel;
-      if (updates.split !== undefined) payload.split = updates.split;
-      if (updates.intensidade !== undefined) payload.intensidade = updates.intensidade;
+      if (updates.nivel !== undefined) payload.nivel = updates.nivel || null;
+      if (updates.split !== undefined) payload.split = updates.split || null;
+      if (updates.intensidade !== undefined) payload.intensidade = updates.intensidade || null;
       if (updates.onboarded !== undefined) payload.onboarded = !!updates.onboarded;
 
       const { error } = await supabase
         .from("profiles")
-        .update(payload)
-        .eq("id", currentUserId);
+        .upsert(payload, { onConflict: "id" });
 
       if (error) {
         console.error("updateUser error:", error);
@@ -217,6 +260,22 @@ export function AuthProvider({ children }) {
       setUser((prev) => ({
         ...prev,
         ...updates,
+        idade:
+          updates.idade !== undefined
+            ? updates.idade === "" ? "" : Number(updates.idade)
+            : prev?.idade,
+        altura:
+          updates.altura !== undefined
+            ? updates.altura === "" ? "" : Number(updates.altura)
+            : prev?.altura,
+        peso:
+          updates.peso !== undefined
+            ? updates.peso === "" ? "" : Number(updates.peso)
+            : prev?.peso,
+        frequencia:
+          updates.frequencia !== undefined
+            ? updates.frequencia === "" ? "" : Number(updates.frequencia)
+            : prev?.frequencia,
         photoUrl:
           updates.photoUrl !== undefined ? updates.photoUrl : prev?.photoUrl,
       }));
@@ -265,8 +324,7 @@ export function AuthProvider({ children }) {
       setSession(data.session);
 
       if (data.user) {
-        await ensureProfile(data.user);
-        const mergedUser = await buildUserWithProfile(data.user);
+        const mergedUser = await hydrateAuthUser(data.user);
         setUser(mergedUser);
       } else {
         setUser(null);
@@ -305,6 +363,7 @@ export function AuthProvider({ children }) {
     } finally {
       setSession(null);
       setUser(null);
+      setLoading(false);
     }
   }
 
@@ -317,6 +376,7 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     logout,
     updateUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
