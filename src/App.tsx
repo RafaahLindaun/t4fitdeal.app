@@ -5,6 +5,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Treino from "./pages/Treino.jsx";
 import TreinoDetalhe from "./pages/TreinoDetalhe.jsx";
+import TreinoCompartilhado from "./pages/TreinoCompartilhado";
 import FitdealTeaching from "./pages/fitdeal.teaching";
 import Cardio, { CardioMiniDock } from "./pages/Cardio.jsx";
 import Nutricao from "./pages/Nutricao";
@@ -76,7 +77,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
+<Route path="/treino/compartilhado" element={<TreinoCompartilhado />} />
         <Route
           path="/treino"
           element={
