@@ -1,11 +1,7 @@
-// ✅ COLE (com logo + nome do app no ponto ideal, sem balão, premium/clean/apple)
-// ✅ Alteração pedida: adicionar “fitdeal.” + logo (visível e firme) NO TOPO do Dashboard
-// - Sem balão / sem pill
-// - Tipografia firme, estética clean
-// - Sem mexer no resto do layout
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
@@ -35,30 +31,36 @@ function calcWeeklyCount(list) {
   }).length;
 }
 
-function calcStreak(opens, workoutSet) {
+function calcStreak(workoutDates) {
   let s = 0;
+  const workoutSet = new Set(workoutDates || []);
   const d = new Date();
   d.setHours(0, 0, 0, 0);
+
   while (true) {
     const k = d.toISOString().slice(0, 10);
-    if (opens[k] && workoutSet.has(k)) {
+    if (workoutSet.has(k)) {
       s++;
       d.setDate(d.getDate() - 1);
-    } else break;
+    } else {
+      break;
+    }
   }
+
   return s;
 }
+
 function TypeLoop({
   text = "fitdeal",
   speed = 140,
   hold = 900,
   eraseSpeed = 70,
   startDelay = 250,
-  loops = 2,        // ✅ quantas vezes repetir
-  endState = "full" // "full" = para com o texto completo | "empty" = para vazio
+  loops = 2,
+  endState = "full",
 }) {
   const [out, setOut] = useState("");
-  const [phase, setPhase] = useState("delay"); // delay | typing | hold | erasing | done
+  const [phase, setPhase] = useState("delay");
   const [i, setI] = useState(0);
   const [cycle, setCycle] = useState(0);
 
@@ -93,7 +95,6 @@ function TypeLoop({
         if (next === 0) {
           const nextCycle = cycle + 1;
 
-          // ✅ terminou a última repetição?
           if (nextCycle >= loops) {
             if (endState === "full") {
               setOut(text);
@@ -116,7 +117,7 @@ function TypeLoop({
 
   return <>{out}</>;
 }
-/* ----------------- METAS (balões) ----------------- */
+
 function safeJsonParse(raw, fallback) {
   try {
     return raw ? JSON.parse(raw) : fallback;
@@ -173,7 +174,6 @@ function ProgressPill({ value, max, label }) {
   );
 }
 
-/* ----------------- PAYWALL (CTA preto premium) ----------------- */
 function PaywallCard({ onGoPlans }) {
   return (
     <button type="button" onClick={onGoPlans} style={styles.paywallBtnWrap}>
@@ -229,7 +229,6 @@ function PaywallCard({ onGoPlans }) {
   );
 }
 
-/* ----------------- HIDRATAÇÃO (Nutri+) ----------------- */
 function WaterCard({ goalMl, waterPct, waterMl, addWater, resetWater }) {
   return (
     <div style={styles.waterCard}>
@@ -284,41 +283,176 @@ function WaterLocked({ onGoPlans }) {
   );
 }
 
+async function loadPaidStatus(userId) {
+  if (!userId) return false;
+
+  try {
+    const { data: subRows, error: subError } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing"])
+      .limit(1);
+
+    if (!subError && Array.isArray(subRows) && subRows.length > 0) {
+      return true;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_paid, plan, role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!profileError) {
+      if (profile?.is_paid === true) return true;
+      if (String(profile?.plan || "").toLowerCase() === "premium") return true;
+      if (String(profile?.role || "").toLowerCase() === "premium") return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("loadPaidStatus catch:", err);
+    return false;
+  }
+}
+
+async function loadNutriStatus(userId) {
+  if (!userId) return false;
+
+  try {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("nutri_plus, plan, role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("loadNutriStatus error:", error);
+      return false;
+    }
+
+    if (profile?.nutri_plus === true) return true;
+    if (String(profile?.plan || "").toLowerCase() === "nutri+") return true;
+    if (String(profile?.plan || "").toLowerCase() === "nutri_plus") return true;
+    if (String(profile?.role || "").toLowerCase() === "nutri+") return true;
+
+    return false;
+  } catch (err) {
+    console.error("loadNutriStatus catch:", err);
+    return false;
+  }
+}
+
+async function loadCompletedWorkoutDates(userId) {
+  if (!userId) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("workout_sessions")
+      .select("session_date")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("session_date", { ascending: false });
+
+    if (error) {
+      console.error("loadCompletedWorkoutDates error:", error);
+      return [];
+    }
+
+    return (data || []).map((row) => row.session_date).filter(Boolean);
+  } catch (err) {
+    console.error("loadCompletedWorkoutDates catch:", err);
+    return [];
+  }
+}
+
+async function loadGoals(userId) {
+  if (!userId) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("user_goals")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("loadGoals error:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error("loadGoals catch:", err);
+    return [];
+  }
+}
+
+async function loadHydration(userId, dateKey) {
+  if (!userId || !dateKey) return 0;
+
+  try {
+    const { data, error } = await supabase
+      .from("daily_hydration")
+      .select("water_ml")
+      .eq("user_id", userId)
+      .eq("date_key", dateKey)
+      .maybeSingle();
+
+    if (error) {
+      console.error("loadHydration error:", error);
+      return 0;
+    }
+
+    return Number(data?.water_ml || 0);
+  } catch (err) {
+    console.error("loadHydration catch:", err);
+    return 0;
+  }
+}
+
+async function saveHydration(userId, dateKey, waterMl) {
+  if (!userId || !dateKey) return;
+
+  try {
+    const { error } = await supabase
+      .from("daily_hydration")
+      .upsert(
+        {
+          user_id: userId,
+          date_key: dateKey,
+          water_ml: Math.max(0, Number(waterMl) || 0),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,date_key" }
+      );
+
+    if (error) {
+      console.error("saveHydration error:", error);
+    }
+  } catch (err) {
+    console.error("saveHydration catch:", err);
+  }
+}
+
 export default function Dashboard() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
 
-  const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
-
-  const hasNutriPlus = useMemo(
-    () => localStorage.getItem(`nutri_plus_${email}`) === "1",
-    [email]
-  );
-
-  const workoutKey = `workout_${email}`;
-  const openKey = `open_${email}`;
   const today = useMemo(() => todayKey(), []);
 
-  const [workouts] = useState(() => {
-    const raw = localStorage.getItem(workoutKey);
-    return raw ? JSON.parse(raw) : [];
-  });
-
-  const [opens] = useState(() => {
-    const raw = localStorage.getItem(openKey);
-    const obj = raw ? JSON.parse(raw) : {};
-    obj[today] = (obj[today] || 0) + 1;
-    localStorage.setItem(openKey, JSON.stringify(obj));
-    return obj;
-  });
-
-  const workoutSet = useMemo(() => new Set(workouts), [workouts]);
+  const [paid, setPaid] = useState(false);
+  const [hasNutriPlus, setHasNutriPlus] = useState(false);
+  const [workouts, setWorkouts] = useState([]);
+  const [goals, setGoals] = useState([]);
+  const [waterMl, setWaterMl] = useState(0);
 
   const weekGoal = Number(user?.frequencia || 4) || 4;
 
   const weekly = useMemo(() => calcWeeklyCount(workouts), [workouts]);
-  const streak = useMemo(() => calcStreak(opens, workoutSet), [opens, workoutSet]);
+  const streak = useMemo(() => calcStreak(workouts), [workouts]);
 
   const kcalPerWorkout = useMemo(() => estimateWorkoutKcal(user?.peso), [user?.peso]);
   const kcalThisWeek = useMemo(() => weekly * kcalPerWorkout, [weekly, kcalPerWorkout]);
@@ -344,31 +478,52 @@ export default function Dashboard() {
 
   const name = user?.nome ? user.nome.split(" ")[0] : "Você";
 
-  /* ✅ metas ativas */
-  const goalsKey = `active_goals_${email}`;
-  const goals = useMemo(() => {
-    const arr = safeJsonParse(localStorage.getItem(goalsKey), []);
-    return Array.isArray(arr) ? arr : [];
-  }, [goalsKey]);
-
-  /* ✅ Água */
   const peso = Number(user?.peso || 0) || 80;
   const goalMl = useMemo(() => clamp(Math.round(peso * 35), 1800, 5000), [peso]);
+  const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
 
-  const waterKey = `water_${email}_${today}`;
-  const [waterMl, setWaterMl] = useState(() => Number(localStorage.getItem(waterKey) || 0) || 0);
+  useEffect(() => {
+    let active = true;
 
-  function addWater(ml) {
+    async function bootstrap() {
+      if (!user?.id) return;
+
+      const [paidStatus, nutriStatus, workoutDates, activeGoals, hydration] = await Promise.all([
+        loadPaidStatus(user.id),
+        loadNutriStatus(user.id),
+        loadCompletedWorkoutDates(user.id),
+        loadGoals(user.id),
+        loadHydration(user.id, today),
+      ]);
+
+      if (!active) return;
+
+      setPaid(paidStatus);
+      setHasNutriPlus(nutriStatus);
+      setWorkouts(workoutDates);
+      setGoals(activeGoals);
+      setWaterMl(hydration);
+    }
+
+    bootstrap();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, today]);
+
+  async function addWater(ml) {
+    if (!user?.id) return;
     const next = clamp(waterMl + ml, 0, goalMl * 2);
     setWaterMl(next);
-    localStorage.setItem(waterKey, String(next));
-  }
-  function resetWater() {
-    setWaterMl(0);
-    localStorage.setItem(waterKey, "0");
+    await saveHydration(user.id, today, next);
   }
 
-  const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
+  async function resetWater() {
+    if (!user?.id) return;
+    setWaterMl(0);
+    await saveHydration(user.id, today, 0);
+  }
 
   return (
     <div className="page" style={styles.page}>
@@ -395,7 +550,6 @@ export default function Dashboard() {
 
       <div style={styles.bgGlow} />
 
-      {/* ✅ FITDEAL BRAND (logo + nome, sem balão, clean) */}
       <div style={styles.brandBar}>
         <img
           src={LogoMark}
@@ -406,18 +560,16 @@ export default function Dashboard() {
           }}
         />
         <div style={styles.brandName}>
-  <TypeLoop text="fitdeal" />
-  <span style={{ color: ORANGE }}>.</span>
-</div>
+          <TypeLoop text="fitdeal" />
+          <span style={{ color: ORANGE }}>.</span>
+        </div>
 
-        {/* opcional: um mini “status” bem discreto, sem balão */}
         <div style={styles.brandRight}>
           <span style={styles.brandDot} />
           <span style={styles.brandStatus}>{paid ? "Pro" : "Free"}</span>
         </div>
       </div>
 
-      {/* ✅ BALÃO DO PLANO */}
       {paid ? (
         <div style={styles.planCard}>
           <div>
@@ -431,9 +583,7 @@ export default function Dashboard() {
         </div>
       ) : null}
 
-      {/* ✅ HERO: Esquerda = Bem-vindo | Direita = Metas */}
       <div className="heroGrid" style={styles.heroGrid}>
-        {/* BEM-VINDO */}
         <button
           onClick={nextTip}
           style={{
@@ -450,7 +600,6 @@ export default function Dashboard() {
           </div>
         </button>
 
-        {/* METAS AO LADO */}
         <div style={styles.sideStack}>
           {!paid ? (
             <button
@@ -505,10 +654,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ✅ CTA premium (preto) para não pagantes */}
       {!paid ? <PaywallCard onGoPlans={() => nav("/planos")} /> : null}
 
-      {/* ✅ Hidratação: só Nutri+. Se não tiver => “Acesso bloqueado” */}
       {hasNutriPlus ? (
         <WaterCard
           goalMl={goalMl}
@@ -521,7 +668,6 @@ export default function Dashboard() {
         <WaterLocked onGoPlans={() => nav("/planos")} />
       )}
 
-      {/* ✅ resto do dashboard */}
       <div style={styles.progressRow}>
         <ProgressPill value={weekly} max={Math.max(weekGoal, 1)} label="Semana" />
         <ProgressPill value={streak} max={7} label="Streak" />
@@ -581,7 +727,6 @@ const styles = {
     filter: "blur(0px)",
   },
 
-  /* ✅ BRAND BAR (sem balão/pill) */
   brandBar: {
     position: "relative",
     zIndex: 3,
@@ -1070,7 +1215,3 @@ const styles = {
   lockedSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
   lockedChev: { marginLeft: "auto", fontSize: 26, fontWeight: 900, opacity: 0.45, color: "#111" },
 };
-
-
-
-
