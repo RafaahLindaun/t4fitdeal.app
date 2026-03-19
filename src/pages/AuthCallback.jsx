@@ -28,25 +28,13 @@ export default function AuthCallback() {
   const [visible, setVisible] = useState(false);
 
   const mountedRef = useRef(true);
-  const timerRefs = useRef([]);
+  const timeoutRef = useRef(null);
   const observerRef = useRef(null);
   const hiddenMapRef = useRef(new Map());
-  const authSubRef = useRef(null);
-
-  function registerTimer(id) {
-    timerRefs.current.push(id);
-    return id;
-  }
-
-  function clearAllTimers() {
-    timerRefs.current.forEach((id) => clearTimeout(id));
-    timerRefs.current = [];
-  }
 
   function sleep(ms) {
     return new Promise((resolve) => {
-      const id = setTimeout(resolve, ms);
-      registerTimer(id);
+      timeoutRef.current = setTimeout(resolve, ms);
     });
   }
 
@@ -90,17 +78,14 @@ export default function AuthCallback() {
 
     return () => {
       mountedRef.current = false;
-      clearAllTimers();
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       if (observerRef.current) {
         try {
           observerRef.current.disconnect();
         } catch {}
       }
-
-      try {
-        authSubRef.current?.unsubscribe?.();
-      } catch {}
 
       restoreHidden();
       document.body.classList.remove("onboarding-mode");
@@ -191,79 +176,34 @@ export default function AuthCallback() {
     const startedAt = Date.now();
     setVisible(true);
 
-    async function exchangeCodeIfNeeded() {
-      const hasCode =
-        window.location.search.includes("code=") ||
-        window.location.search.includes("error=");
+    async function exchangeIfNeeded() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
 
-      if (!hasCode) return;
+      if (!code) return null;
 
-      if (typeof supabase.auth.exchangeCodeForSession !== "function") return;
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
 
-      const { error } = await supabase.auth.exchangeCodeForSession(
-        window.location.href
-      );
-
-      if (error) {
-        console.error("exchangeCodeForSession error:", error);
-        throw error;
-      }
+      return data?.session || null;
     }
 
-    async function getSessionFast() {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+    async function getSessionWithRetry() {
+      for (let i = 0; i < 10; i += 1) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error("getSession error:", error);
-        throw error;
+        if (session) return session;
+        await sleep(250);
       }
 
-      if (session?.user) return session;
-
-      return new Promise((resolve) => {
-        let settled = false;
-
-        const finish = (value) => {
-          if (settled) return;
-          settled = true;
-
-          try {
-            authSubRef.current?.unsubscribe?.();
-          } catch {}
-
-          resolve(value);
-        };
-
-        const { data } = supabase.auth.onAuthStateChange(
-          async (_event, newSession) => {
-            if (newSession?.user) {
-              finish(newSession);
-            }
-          }
-        );
-
-        authSubRef.current = data?.subscription || data;
-
-        const fallbackId = setTimeout(async () => {
-          try {
-            const {
-              data: { session: fallbackSession },
-            } = await supabase.auth.getSession();
-
-            finish(fallbackSession || null);
-          } catch {
-            finish(null);
-          }
-        }, 2500);
-
-        registerTimer(fallbackId);
-      });
+      return null;
     }
 
     async function ensureProfile(user) {
+      if (!user?.id) return;
+
       const payload = {
         id: user.id,
         email: user.email || "",
@@ -271,7 +211,6 @@ export default function AuthCallback() {
           user.user_metadata?.nome ||
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
-          user.email?.split("@")[0] ||
           "",
         photo_url:
           user.user_metadata?.avatar_url ||
@@ -287,49 +226,52 @@ export default function AuthCallback() {
       if (error) throw error;
     }
 
-    async function finishNavigation(target) {
-      const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, MIN_LOAD_MS - elapsed);
-
-      if (remaining > 0) {
-        await sleep(remaining);
-      }
-
-      setVisible(false);
-      await sleep(FADE_MS);
-
-      if (!mountedRef.current) return;
-      nav(target, { replace: true });
-    }
-
     async function run() {
       try {
-        await exchangeCodeIfNeeded();
+        let session = await exchangeIfNeeded();
 
-        const session = await getSessionFast();
-
-        if (!session?.user) {
-          await finishNavigation("/login");
-          return;
+        if (!session) {
+          session = await getSessionWithRetry();
         }
 
-        await ensureProfile(session.user);
+        let target = "/login";
 
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("onboarded")
-          .eq("id", session.user.id)
-          .maybeSingle();
+        if (session?.user) {
+          await ensureProfile(session.user);
 
-        if (profileError) {
-          console.error("profile onboarded fetch error:", profileError);
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("onboarded")
+            .eq("id", session.user.id)
+            .maybeSingle();
+
+          if (error) {
+            target = "/dashboard";
+          } else {
+            target = profile?.onboarded ? "/dashboard" : "/onboarding";
+          }
         }
 
-        const target = profile?.onboarded ? "/dashboard" : "/onboarding";
-        await finishNavigation(target);
+        const elapsed = Date.now() - startedAt;
+        const remaining = Math.max(0, MIN_LOAD_MS - elapsed);
+
+        if (remaining > 0) {
+          await sleep(remaining);
+        }
+
+        setVisible(false);
+        await sleep(FADE_MS);
+
+        if (!mountedRef.current) return;
+        nav(target, { replace: true });
       } catch (error) {
         console.error("AuthCallback error:", error);
-        await finishNavigation("/login");
+
+        setVisible(false);
+        await sleep(FADE_MS);
+
+        if (!mountedRef.current) return;
+        nav("/login", { replace: true });
       }
     }
 
