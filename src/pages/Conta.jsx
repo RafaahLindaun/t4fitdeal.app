@@ -40,21 +40,8 @@ function daysSince(iso) {
   return days >= 0 ? days : null;
 }
 
-function mkDownload(filename, content, mime = "application/json") {
-  try {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    return true;
-  } catch {
-    return false;
-  }
+function buildShareCode() {
+  return `FD${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
 function Icon({ name }) {
@@ -171,22 +158,210 @@ function Row({ icon, title, subtitle, right, onClick, danger }) {
   );
 }
 
+async function loadPaidStatus(userId) {
+  if (!userId) return false;
+
+  try {
+    const { data: subRows, error: subError } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing"])
+      .limit(1);
+
+    if (!subError && Array.isArray(subRows) && subRows.length > 0) {
+      return true;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_paid, plan, role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!profileError) {
+      if (profile?.is_paid === true) return true;
+      if (String(profile?.plan || "").toLowerCase() === "premium") return true;
+      if (String(profile?.role || "").toLowerCase() === "premium") return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("loadPaidStatus catch:", err);
+    return false;
+  }
+}
+
+async function loadUserSettings(userId) {
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from("user_settings")
+    .select("notif_treino, notif_pagamento, privacidade_perfil, creator_code")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadUserSettings error:", error);
+    return null;
+  }
+
+  return data || null;
+}
+
+async function saveUserSettings(userId, prefs, creatorCode) {
+  if (!userId) return { ok: false };
+
+  const { error } = await supabase.from("user_settings").upsert({
+    user_id: userId,
+    notif_treino: !!prefs.notifTreino,
+    notif_pagamento: !!prefs.notifPagamento,
+    privacidade_perfil: !!prefs.privacidadePerfil,
+    creator_code: creatorCode || null,
+  });
+
+  if (error) {
+    console.error("saveUserSettings error:", error);
+    return { ok: false, msg: error.message };
+  }
+
+  return { ok: true };
+}
+
+async function buildWorkoutSharePayload(user) {
+  if (!user?.id) return null;
+
+  const { data: plan, error: planError } = await supabase
+    .from("workout_plans")
+    .select("id, title, split_label, split_len, source, created_at, updated_at")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (planError) {
+    console.error("buildWorkoutSharePayload plan error:", planError);
+    return null;
+  }
+
+  if (!plan?.id) return null;
+
+  const { data: days, error: daysError } = await supabase
+    .from("workout_plan_days")
+    .select("id, day_index, day_key, title, group_id, group_name")
+    .eq("plan_id", plan.id)
+    .order("day_index", { ascending: true });
+
+  if (daysError) {
+    console.error("buildWorkoutSharePayload days error:", daysError);
+    return null;
+  }
+
+  const dayIds = (days || []).map((d) => d.id);
+
+  let exercises = [];
+  if (dayIds.length) {
+    const { data: exRows, error: exError } = await supabase
+      .from("workout_plan_exercises")
+      .select("plan_day_id, exercise_order, name, group_name, reps, notes")
+      .in("plan_day_id", dayIds)
+      .order("exercise_order", { ascending: true });
+
+    if (exError) {
+      console.error("buildWorkoutSharePayload exercises error:", exError);
+      return null;
+    }
+
+    exercises = exRows || [];
+  }
+
+  return {
+    owner: (user?.email || "").toLowerCase(),
+    nome: user?.nome || "",
+    createdAt: new Date().toISOString(),
+    plan: {
+      id: plan.id,
+      title: plan.title,
+      splitLabel: plan.split_label,
+      splitLen: plan.split_len,
+      source: plan.source,
+      days: (days || []).map((day) => ({
+        id: day.id,
+        dayIndex: day.day_index,
+        dayKey: day.day_key,
+        title: day.title,
+        groupId: day.group_id,
+        groupName: day.group_name,
+        exercises: exercises
+          .filter((ex) => ex.plan_day_id === day.id)
+          .map((ex) => ({
+            order: ex.exercise_order,
+            name: ex.name,
+            groupName: ex.group_name,
+            reps: ex.reps,
+            notes: ex.notes,
+          })),
+      })),
+    },
+  };
+}
+
+async function getOrCreateSharedWorkout(user) {
+  if (!user?.id) return null;
+
+  const payload = await buildWorkoutSharePayload(user);
+  if (!payload) return null;
+
+  const { data: existing, error: existingError } = await supabase
+    .from("shared_workouts")
+    .select("id, share_code")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error("getOrCreateSharedWorkout existing error:", existingError);
+  }
+
+  const shareCode = existing?.share_code || buildShareCode();
+
+  const { data, error } = await supabase
+    .from("shared_workouts")
+    .upsert(
+      {
+        user_id: user.id,
+        share_code: shareCode,
+        payload,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    )
+    .select("share_code")
+    .single();
+
+  if (error) {
+    console.error("getOrCreateSharedWorkout upsert error:", error);
+    return null;
+  }
+
+  const finalCode = data?.share_code || shareCode;
+  const link = `${window.location.origin}/treino/compartilhado?code=${finalCode}`;
+
+  return {
+    shareCode: finalCode,
+    link,
+    payload,
+  };
+}
+
 export default function Conta() {
   const { user, updateUser, logout } = useAuth();
   const nav = useNavigate();
   const fileRef = useRef(null);
 
-  const email = (user?.email || "anon").toLowerCase();
-  const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
-
+  const [paid, setPaid] = useState(false);
   const photo = user?.photoUrl || "";
 
-  const createdKey = `acct_created_${email}`;
-  const [createdAt, setCreatedAt] = useState(() => {
-    const u = user?.createdAt;
-    const fromLs = localStorage.getItem(createdKey);
-    return u || fromLs || "";
-  });
+  const [createdAt, setCreatedAt] = useState(() => user?.createdAt || "");
 
   const [prefs, setPrefs] = useState({
     notifTreino: true,
@@ -195,11 +370,11 @@ export default function Conta() {
   });
 
   const [creatorCode, setCreatorCode] = useState("");
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editMsg, setEditMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const [form, setForm] = useState(() => ({
     nome: user?.nome || "",
@@ -212,6 +387,8 @@ export default function Conta() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetKind, setSheetKind] = useState(null);
   const [toast, setToast] = useState("");
+  const [sharedWorkout, setSharedWorkout] = useState(null);
+  const [shareWorkoutLoading, setShareWorkoutLoading] = useState(false);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -252,70 +429,54 @@ export default function Conta() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-
-    const uCreated = user?.createdAt;
-    const ls = localStorage.getItem(createdKey);
-
-    if (uCreated) {
-      setCreatedAt(uCreated);
-      if (!ls) localStorage.setItem(createdKey, String(uCreated));
-      return;
-    }
-
-    if (ls) {
-      setCreatedAt(ls);
-      return;
-    }
-
-    const now = new Date().toISOString();
-    setCreatedAt(now);
-    localStorage.setItem(createdKey, now);
-  }, [user, createdKey]);
+    setCreatedAt(user?.createdAt || user?.created_at || "");
+  }, [user?.createdAt, user?.created_at]);
 
   useEffect(() => {
-    async function loadSettings() {
+    let active = true;
+
+    async function bootstrap() {
       if (!user?.id) return;
 
-      const { data, error } = await supabase
-        .from("user_settings")
-        .select("notif_treino, notif_pagamento, privacidade_perfil, creator_code")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [paidStatus, settings] = await Promise.all([
+        loadPaidStatus(user.id),
+        loadUserSettings(user.id),
+      ]);
 
-      if (!error && data) {
+      if (!active) return;
+
+      setPaid(!!paidStatus);
+
+      if (settings) {
         setPrefs({
-          notifTreino: data.notif_treino ?? true,
-          notifPagamento: data.notif_pagamento ?? true,
-          privacidadePerfil: data.privacidade_perfil ?? false,
+          notifTreino: settings.notif_treino ?? true,
+          notifPagamento: settings.notif_pagamento ?? true,
+          privacidadePerfil: settings.privacidade_perfil ?? false,
         });
-        setCreatorCode(data.creator_code || "");
+        setCreatorCode(settings.creator_code || "");
       }
 
       setSettingsLoaded(true);
     }
 
-    loadSettings();
+    bootstrap();
+
+    return () => {
+      active = false;
+    };
   }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id || !settingsLoaded) return;
 
-    async function savePrefs() {
-      const { error } = await supabase.from("user_settings").upsert({
-        user_id: user.id,
-        notif_treino: !!prefs.notifTreino,
-        notif_pagamento: !!prefs.notifPagamento,
-        privacidade_perfil: !!prefs.privacidadePerfil,
-        creator_code: creatorCode || null,
-      });
-
-      if (error) {
+    const t = setTimeout(async () => {
+      const res = await saveUserSettings(user.id, prefs, creatorCode);
+      if (!res?.ok) {
         setToast("Erro ao salvar preferências");
       }
-    }
+    }, 180);
 
-    savePrefs();
+    return () => clearTimeout(t);
   }, [prefs, creatorCode, user?.id, settingsLoaded]);
 
   useEffect(() => {
@@ -425,9 +586,20 @@ export default function Conta() {
     }
   }
 
-  function openSheet(kind) {
+  async function openSheet(kind) {
     setSheetKind(kind);
     setSheetOpen(true);
+
+    if (kind === "treino" && paid) {
+      setShareWorkoutLoading(true);
+      const result = await getOrCreateSharedWorkout(user);
+      setSharedWorkout(result);
+      setShareWorkoutLoading(false);
+
+      if (!result) {
+        setToast("Não foi possível preparar o treino");
+      }
+    }
   }
 
   function closeSheet() {
@@ -455,30 +627,6 @@ export default function Conta() {
     const id = encodeURIComponent((user?.email || "anon").toLowerCase());
     return `${window?.location?.origin || ""}/perfil/${id}`;
   }, [user?.email]);
-
-  const treinoShare = useMemo(() => {
-    const plan = safeJsonParse(localStorage.getItem(`generated_plan_${email}`), null);
-    const compat = safeJsonParse(localStorage.getItem(`custom_split_${email}`), null);
-
-    const shareCode =
-      localStorage.getItem(`share_workout_code_${email}`) ||
-      `FD${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-
-    localStorage.setItem(`share_workout_code_${email}`, shareCode);
-
-    const payload = {
-      owner: email,
-      nome: user?.nome || "",
-      createdAt: new Date().toISOString(),
-      plan,
-      compat,
-    };
-
-    localStorage.setItem(`shared_workout_${shareCode}`, JSON.stringify(payload));
-
-    const link = `${window.location.origin}/treino/compartilhado?code=${shareCode}`;
-    return { shareCode, link, plan, compat };
-  }, [email, user?.nome]);
 
   async function copy(text, successMsg = "Copiado") {
     try {
@@ -528,17 +676,22 @@ export default function Conta() {
       return;
     }
 
+    if (!sharedWorkout?.shareCode || !sharedWorkout?.link) {
+      setToast("Treino ainda não ficou pronto");
+      return;
+    }
+
     try {
       const text =
         `Treino de ${user?.nome || "usuário"}\n` +
-        `Código: ${treinoShare.shareCode}\n` +
-        `Abrir no app: ${treinoShare.link}`;
+        `Código: ${sharedWorkout.shareCode}\n` +
+        `Abrir no app: ${sharedWorkout.link}`;
 
       if (navigator.share) {
         await navigator.share({
           title: "Meu treino fitdeal",
           text,
-          url: treinoShare.link,
+          url: sharedWorkout.link,
         });
         setToast("Treino compartilhado");
         return;
@@ -547,7 +700,7 @@ export default function Conta() {
       await copy(text, "Código e link copiados");
     } catch {
       await copy(
-        `Código: ${treinoShare.shareCode}\n${treinoShare.link}`,
+        `Código: ${sharedWorkout.shareCode}\n${sharedWorkout.link}`,
         "Código e link copiados"
       );
     }
@@ -860,18 +1013,23 @@ export default function Conta() {
 
                   <div style={styles.kvBox}>
                     <div style={styles.kvK}>Código</div>
-                    <div style={styles.kvV}>{treinoShare.shareCode}</div>
+                    <div style={styles.kvV}>
+                      {shareWorkoutLoading ? "Gerando..." : sharedWorkout?.shareCode || "—"}
+                    </div>
                   </div>
 
                   <div style={styles.kvBox}>
                     <div style={styles.kvK}>Link</div>
-                    <div style={styles.kvV}>{treinoShare.link}</div>
+                    <div style={styles.kvV}>
+                      {shareWorkoutLoading ? "Preparando link..." : sharedWorkout?.link || "—"}
+                    </div>
                     <div style={styles.kvActions}>
                       <button
                         style={styles.softBtn}
                         className="tap"
-                        onClick={() => copy(treinoShare.shareCode, "Código copiado")}
+                        onClick={() => copy(sharedWorkout?.shareCode || "", "Código copiado")}
                         type="button"
+                        disabled={!sharedWorkout?.shareCode}
                       >
                         Copiar código
                       </button>
@@ -880,6 +1038,7 @@ export default function Conta() {
                         className="tap"
                         onClick={shareWorkout}
                         type="button"
+                        disabled={!sharedWorkout?.link}
                       >
                         Mandar treino
                       </button>
