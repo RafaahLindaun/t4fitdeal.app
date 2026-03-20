@@ -1,17 +1,7 @@
-// ✅ COLE EM: src/pages/TreinoDetalhe.jsx
-// + Controle de séries (bolinhas 1/4) por exercício
-// + Ao marcar série: inicia descanso automaticamente
-// + Cronômetro vira “balão/mini botão” (dock) e abre ao clicar ou arrastar pra cima
-// + ✅ NOVO: clicar OU pressionar no GIF abre visualização completa (fullscreen sheet)
-// + ✅ NOVO: no modo GIF completo, botão “Voltar” embaixo (Apple-like)
-//
-// ✅ GIFs:
-// /public/gifs/<slug>.gif  (slug automático)
-// ex: "Supino reto" -> /public/gifs/supino-reto.gif
-
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 /* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
@@ -30,21 +20,17 @@ function mod(n, m) {
   if (!m) return 0;
   return ((n % m) + m) % m;
 }
-function safeJsonParse(raw, fallback) {
-  try {
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+function stripAccents(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
-
 function normalizeName(s) {
   return stripAccents(String(s || ""))
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
 }
-
 function uniqStrings(arr) {
   const out = [];
   const seen = new Set();
@@ -58,21 +44,9 @@ function uniqStrings(arr) {
   }
   return out;
 }
-function calcDayIndex(email) {
-  const key = `treino_day_${email}`;
-  const raw = localStorage.getItem(key);
-  const n = raw ? Number(raw) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
 function dayLetter(i) {
   const letters = ["A", "B", "C", "D", "E", "F"];
   return letters[i % letters.length] || "A";
-}
-
-function stripAccents(s) {
-  return String(s || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
 }
 function slugifyExercise(name) {
   const base = stripAccents(name)
@@ -83,39 +57,10 @@ function slugifyExercise(name) {
     .replace(/\s/g, "-");
   return base || "exercicio";
 }
-function gifForExercise(name) {
-  const slug = slugifyExercise(name);
-  return `/gifs/${slug}.GIF`;
-}
 function gifCandidates(name) {
   const slug = slugifyExercise(name);
   return [`/gifs/${slug}.GIF`, `/gifs/${slug}.gif`];
 }
-
-function ExerciseGif({ name, style }) {
-  const [idx, setIdx] = useState(0);
-  const sources = useMemo(() => gifCandidates(name), [name]);
-  const src = sources[idx] || sources[0];
-
-  return (
-    <img
-      src={src}
-      alt={`${name} (gif)`}
-      style={style || S.gif}
-      onError={(e) => {
-        if (idx < sources.length - 1) {
-          setIdx((p) => p + 1);
-          return;
-        }
-        e.currentTarget.style.display = "none";
-        const parent = e.currentTarget.parentElement;
-        if (parent) parent.setAttribute("data-gif-missing", "1");
-      }}
-    />
-  );
-}
-
-/** tenta extrair segundos de "75–120s" / "60-90s" / "90s" / "2min" */
 function parseRestToSeconds(restText) {
   const raw = String(restText || "").toLowerCase().trim();
   if (!raw) return 90;
@@ -134,277 +79,98 @@ function parseRestToSeconds(restText) {
 
   return 90;
 }
-
 function fmtMMSS(sec) {
   const s = Math.max(0, Math.floor(Number(sec || 0)));
   const m = Math.floor(s / 60);
   const r = s % 60;
-  const mm = String(m).padStart(2, "0");
-  const ss = String(r).padStart(2, "0");
-  return `${mm}:${ss}`;
+  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+}
+function keyForLoad(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+}
+function keyForSetProg(viewIdx, exName) {
+  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
 }
 
 /* ---------------- banco (COMPLETO do TreinoPersonalize) ---------------- */
 const EXERCISE_CATALOG = {
   peito: [
-    "Supino reto com barra",
-    "Supino reto com halteres",
-    "Supino inclinado com barra",
-    "Supino inclinado com halteres",
-    "Supino declinado",
-    "Supino máquina",
-    "Supino inclinado máquina",
-    "Crucifixo reto com halteres",
-    "Crucifixo inclinado com halteres",
-    "Peck-deck",
-    "Crossover na polia (alto)",
-    "Crossover na polia (médio)",
-    "Crossover na polia (baixo)",
-    "Flexão de braço tradicional",
-    "Flexão inclinada (banco)",
-    "Flexão declinada (pé elevado)",
-    "Flexão com pegada fechada",
-    "Pullover com halter",
-    "Pullover na polia",
-    "Squeeze press (halter)",
-    "Supino com pausa (controle)",
-    "Chest press unilateral",
-    "Crossover unilateral",
-    "Isometria de peitoral na polia",
+    "Supino reto com barra","Supino reto com halteres","Supino inclinado com barra","Supino inclinado com halteres",
+    "Supino declinado","Supino máquina","Supino inclinado máquina","Crucifixo reto com halteres",
+    "Crucifixo inclinado com halteres","Peck-deck","Crossover na polia (alto)","Crossover na polia (médio)",
+    "Crossover na polia (baixo)","Flexão de braço tradicional","Flexão inclinada (banco)","Flexão declinada (pé elevado)",
+    "Flexão com pegada fechada","Pullover com halter","Pullover na polia","Squeeze press (halter)",
+    "Supino com pausa (controle)","Chest press unilateral","Crossover unilateral","Isometria de peitoral na polia",
   ],
   triceps: [
-    "Tríceps corda",
-    "Tríceps barra reta",
-    "Tríceps barra V",
-    "Tríceps francês (halter)",
-    "Tríceps francês unilateral",
-    "Tríceps testa (barra W)",
-    "Tríceps testa (halter)",
-    "Tríceps banco (mergulho)",
-    "Mergulho nas paralelas (assistido)",
-    "Mergulho nas paralelas (livre)",
-    "Tríceps coice (halter)",
-    "Tríceps na polia acima da cabeça (corda)",
-    "Tríceps na polia acima da cabeça (barra)",
-    "Skull crusher no banco inclinado",
-    "Supino fechado (barra)",
-    "Supino fechado (halter)",
-    "Tríceps no cross unilateral",
-    "Extensão de tríceps no cabo sentado",
-    "Extensão de tríceps com elástico",
-    "Kickback no cabo",
-    "Diamond push-up (flexão diamante)",
-    "Tríceps máquina (press)",
-    "Tríceps com pegada reversa no cabo",
-    "Extensão de tríceps na polia deitado",
+    "Tríceps corda","Tríceps barra reta","Tríceps barra V","Tríceps francês (halter)","Tríceps francês unilateral",
+    "Tríceps testa (barra W)","Tríceps testa (halter)","Tríceps banco (mergulho)","Mergulho nas paralelas (assistido)",
+    "Mergulho nas paralelas (livre)","Tríceps coice (halter)","Tríceps na polia acima da cabeça (corda)",
+    "Tríceps na polia acima da cabeça (barra)","Skull crusher no banco inclinado","Supino fechado (barra)",
+    "Supino fechado (halter)","Tríceps no cross unilateral","Extensão de tríceps no cabo sentado",
+    "Extensão de tríceps com elástico","Kickback no cabo","Diamond push-up (flexão diamante)",
+    "Tríceps máquina (press)","Tríceps com pegada reversa no cabo","Extensão de tríceps na polia deitado",
   ],
   costas: [
-    "Puxada frente (puxador)",
-    "Puxada neutra (triângulo)",
-    "Puxada supinada",
-    "Puxada unilateral no cabo",
-    "Barra fixa pronada",
-    "Barra fixa supinada",
-    "Remada baixa no cabo",
-    "Remada baixa neutra",
-    "Remada unilateral com halter",
-    "Remada curvada com barra",
-    "Remada curvada com halteres",
-    "Remada máquina (hammer)",
-    "Remada articulada (serrote máquina)",
-    "Remada cavalinho (T-bar)",
-    "Pulldown braço reto",
-    "Pullover na polia (costas)",
-    "Remada alta no cabo",
-    "Encolhimento (pegada aberta) para trapézio",
-    "Face pull (escápulas/postura)",
-    "Remada no smith",
-    "Remada no banco inclinado (halter)",
-    "Good morning leve (técnica/postura)",
-    "Hiperextensão lombar",
-    "Pull-up assistido",
+    "Puxada frente (puxador)","Puxada neutra (triângulo)","Puxada supinada","Puxada unilateral no cabo","Barra fixa pronada",
+    "Barra fixa supinada","Remada baixa no cabo","Remada baixa neutra","Remada unilateral com halter",
+    "Remada curvada com barra","Remada curvada com halteres","Remada máquina (hammer)","Remada articulada (serrote máquina)",
+    "Remada cavalinho (T-bar)","Pulldown braço reto","Pullover na polia (costas)","Remada alta no cabo",
+    "Encolhimento (pegada aberta) para trapézio","Face pull (escápulas/postura)","Remada no smith",
+    "Remada no banco inclinado (halter)","Good morning leve (técnica/postura)","Hiperextensão lombar","Pull-up assistido",
   ],
   biceps: [
-    "Rosca direta (barra)",
-    "Rosca direta (barra W)",
-    "Rosca alternada (halter)",
-    "Rosca martelo (halter)",
-    "Rosca martelo cruzada",
-    "Rosca concentrada",
-    "Rosca Scott (barra)",
-    "Rosca Scott (halter)",
-    "Rosca Scott (máquina)",
-    "Rosca na polia (barra)",
-    "Rosca na polia (corda)",
-    "Rosca 21",
-    "Rosca inclinada (halter)",
-    "Rosca spider",
-    "Rosca reversa (barra)",
-    "Rosca reversa (halter)",
-    "Rosca Zottman",
-    "Rosca no cabo unilateral",
-    "Rosca bayesian (cabo atrás)",
-    "Rosca em pé com elástico",
-    "Chin-up (barra supinada)",
-    "Rosca no banco inclinado unilateral",
-    "Rosca martelo no cabo",
-    "Isometria de bíceps (90 graus)",
+    "Rosca direta (barra)","Rosca direta (barra W)","Rosca alternada (halter)","Rosca martelo (halter)",
+    "Rosca martelo cruzada","Rosca concentrada","Rosca Scott (barra)","Rosca Scott (halter)","Rosca Scott (máquina)",
+    "Rosca na polia (barra)","Rosca na polia (corda)","Rosca 21","Rosca inclinada (halter)","Rosca spider",
+    "Rosca reversa (barra)","Rosca reversa (halter)","Rosca Zottman","Rosca no cabo unilateral",
+    "Rosca bayesian (cabo atrás)","Rosca em pé com elástico","Chin-up (barra supinada)",
+    "Rosca no banco inclinado unilateral","Rosca martelo no cabo","Isometria de bíceps (90 graus)",
   ],
   quadriceps: [
-    "Agachamento livre",
-    "Agachamento no smith",
-    "Agachamento frontal",
-    "Agachamento goblet",
-    "Leg press 45°",
-    "Leg press horizontal",
-    "Hack squat",
-    "Cadeira extensora",
-    "Passada caminhando",
-    "Afundo no smith",
-    "Afundo com halteres",
-    "Bulgarian split squat",
-    "Step-up (banco)",
-    "Agachamento sumô leve",
-    "Sissy squat (controle)",
-    "Agachamento com pausa",
-    "Leg press (pés baixos)",
-    "Agachamento na caixa",
-    "Cadeira abdutora (apoio de quadril)",
-    "Cadeira adutora",
-    "Lunge reverso",
-    "Agachamento no TRX (iniciante)",
-    "Wall sit (isometria)",
-    "Extensora unilateral",
+    "Agachamento livre","Agachamento no smith","Agachamento frontal","Agachamento goblet","Leg press 45°",
+    "Leg press horizontal","Hack squat","Cadeira extensora","Passada caminhando","Afundo no smith",
+    "Afundo com halteres","Bulgarian split squat","Step-up (banco)","Agachamento sumô leve","Sissy squat (controle)",
+    "Agachamento com pausa","Leg press (pés baixos)","Agachamento na caixa","Cadeira abdutora (apoio de quadril)",
+    "Cadeira adutora","Lunge reverso","Agachamento no TRX (iniciante)","Wall sit (isometria)","Extensora unilateral",
   ],
   posterior: [
-    "Terra romeno (barra)",
-    "Stiff com halteres",
-    "Mesa flexora",
-    "Cadeira flexora",
-    "Flexora unilateral",
-    "Levantamento terra (técnica)",
-    "Good morning (leve)",
-    "Hiperextensão",
-    "Nordic curl (assistido)",
-    "Ponte de posterior no solo",
-    "Pull-through no cabo",
-    "Deadlift romeno unilateral",
-    "Swing com kettlebell (leve)",
-    "Flexão de joelho no cabo (unilateral)",
-    "Glute ham raise (assistido)",
-    "Stiff no smith",
-    "Terra romeno no cabo",
-    "Hiperextensão com foco glúteo/posterior",
-    "Flexora sentada",
-    "Curl de posterior com elástico",
-    "Isometria de posterior (ponte)",
-    "RDL com pausa",
-    "Mesa flexora com drop-set (avançado)",
-    "Flexora 1.5 reps",
+    "Terra romeno (barra)","Stiff com halteres","Mesa flexora","Cadeira flexora","Flexora unilateral","Levantamento terra (técnica)",
+    "Good morning (leve)","Hiperextensão","Nordic curl (assistido)","Ponte de posterior no solo","Pull-through no cabo",
+    "Deadlift romeno unilateral","Swing com kettlebell (leve)","Flexão de joelho no cabo (unilateral)",
+    "Glute ham raise (assistido)","Stiff no smith","Terra romeno no cabo","Hiperextensão com foco glúteo/posterior",
+    "Flexora sentada","Curl de posterior com elástico","Isometria de posterior (ponte)","RDL com pausa",
+    "Mesa flexora com drop-set (avançado)","Flexora 1.5 reps",
   ],
   gluteo: [
-    "Hip thrust (barra)",
-    "Hip thrust (máquina)",
-    "Glute bridge",
-    "Glute bridge unilateral",
-    "Abdução na máquina",
-    "Abdução no cabo (unilateral)",
-    "Passada (foco glúteo)",
-    "Bulgarian (foco glúteo)",
-    "Agachamento sumô",
-    "Pull-through no cabo",
-    "Kickback no cabo",
-    "Kickback na máquina",
-    "Step-up alto (glúteo)",
-    "Extensão de quadril no banco",
-    "Levantamento terra romeno (ênfase glúteo)",
-    "Agachamento no smith (pés à frente)",
-    "Elevação pélvica com pausa",
-    "Lunge reverso longo",
-    "Abdução com elástico",
-    "Caminhada lateral com elástico",
-    "Frog pumps",
-    "Hip thrust unilateral (halter)",
-    "Kickback com elástico",
-    "Isometria glúteo (ponte 30–60s)",
+    "Hip thrust (barra)","Hip thrust (máquina)","Glute bridge","Glute bridge unilateral","Abdução na máquina",
+    "Abdução no cabo (unilateral)","Passada (foco glúteo)","Bulgarian (foco glúteo)","Agachamento sumô",
+    "Pull-through no cabo","Kickback no cabo","Kickback na máquina","Step-up alto (glúteo)","Extensão de quadril no banco",
+    "Levantamento terra romeno (ênfase glúteo)","Agachamento no smith (pés à frente)","Elevação pélvica com pausa",
+    "Lunge reverso longo","Abdução com elástico","Caminhada lateral com elástico","Frog pumps","Hip thrust unilateral (halter)",
+    "Kickback com elástico","Isometria glúteo (ponte 30–60s)",
   ],
   panturrilha: [
-    "Panturrilha em pé na máquina",
-    "Panturrilha sentado",
-    "Panturrilha no leg press",
-    "Panturrilha unilateral em pé",
-    "Panturrilha unilateral sentado",
-    "Panturrilha no smith",
-    "Panturrilha com halter (em degrau)",
-    "Panturrilha no hack squat",
-    "Panturrilha no step (peso corpo)",
-    "Panturrilha com pausa em alongamento",
-    "Panturrilha com pausa no pico",
-    "Panturrilha isométrica (pico)",
-    "Panturrilha no leg press unilateral",
-    "Panturrilha no banco (improvisado)",
-    "Panturrilha com elástico",
-    "Panturrilha em pé com barra",
-    "Panturrilha 1.5 reps",
-    "Panturrilha sentado 1.5 reps",
-    "Panturrilha dropset (avançado)",
-    "Panturrilha em tempo (3-1-2)",
-    "Panturrilha com amplitude máxima",
-    "Panturrilha na máquina inclinada",
-    "Panturrilha no step com carga",
-    "Panturrilha no smith unilateral",
+    "Panturrilha em pé na máquina","Panturrilha sentado","Panturrilha no leg press","Panturrilha unilateral em pé",
+    "Panturrilha unilateral sentado","Panturrilha no smith","Panturrilha com halter (em degrau)","Panturrilha no hack squat",
+    "Panturrilha no step (peso corpo)","Panturrilha com pausa em alongamento","Panturrilha com pausa no pico",
+    "Panturrilha isométrica (pico)","Panturrilha no leg press unilateral","Panturrilha no banco (improvisado)",
+    "Panturrilha com elástico","Panturrilha em pé com barra","Panturrilha 1.5 reps","Panturrilha sentado 1.5 reps",
+    "Panturrilha dropset (avançado)","Panturrilha em tempo (3-1-2)","Panturrilha com amplitude máxima",
+    "Panturrilha na máquina inclinada","Panturrilha no step com carga","Panturrilha no smith unilateral",
   ],
   ombro: [
-    "Desenvolvimento com halteres",
-    "Desenvolvimento com barra",
-    "Desenvolvimento máquina",
-    "Arnold press",
-    "Elevação lateral",
-    "Elevação lateral no cabo",
-    "Elevação lateral sentado",
-    "Elevação frontal (halter)",
-    "Elevação frontal (barra)",
-    "Elevação frontal no cabo",
-    "Reverse fly (posterior)",
-    "Reverse fly na máquina",
-    "Face pull",
-    "Remada alta (barra leve)",
-    "Remada alta no cabo",
-    "Crucifixo inverso no cabo",
-    "Landmine press",
-    "Desenvolvimento unilateral no cabo",
-    "Y-raise (leve)",
-    "W-raise (postura)",
-    "Trap 3 raise",
-    "Isometria lateral (30s)",
-    "Desenvolvimento com pausa",
-    "Elevação lateral 1.5 reps",
+    "Desenvolvimento com halteres","Desenvolvimento com barra","Desenvolvimento máquina","Arnold press","Elevação lateral",
+    "Elevação lateral no cabo","Elevação lateral sentado","Elevação frontal (halter)","Elevação frontal (barra)",
+    "Elevação frontal no cabo","Reverse fly (posterior)","Reverse fly na máquina","Face pull","Remada alta (barra leve)",
+    "Remada alta no cabo","Crucifixo inverso no cabo","Landmine press","Desenvolvimento unilateral no cabo","Y-raise (leve)",
+    "W-raise (postura)","Trap 3 raise","Isometria lateral (30s)","Desenvolvimento com pausa","Elevação lateral 1.5 reps",
   ],
   core: [
-    "Prancha",
-    "Prancha lateral",
-    "Dead bug",
-    "Hollow hold",
-    "Abdominal infra (elevação de pernas)",
-    "Abdominal infra (banco)",
-    "Abdominal na polia",
-    "Crunch",
-    "Crunch na bola",
-    "Bicicleta no solo",
-    "Russian twist",
-    "Pallof press",
-    "Woodchopper (cabo)",
-    "Mountain climber (controlado)",
-    "Bird dog",
-    "Plank com toque no ombro",
-    "Prancha com elevação de perna",
-    "Farmer carry (core)",
-    "Suitcase carry (core)",
-    "V-up (avançado)",
-    "Toe touches",
-    "Rollout (ab wheel)",
-    "Abdominal máquina",
-    "Isometria anti-rotação (cabo)",
+    "Prancha","Prancha lateral","Dead bug","Hollow hold","Abdominal infra (elevação de pernas)","Abdominal infra (banco)",
+    "Abdominal na polia","Crunch","Crunch na bola","Bicicleta no solo","Russian twist","Pallof press","Woodchopper (cabo)",
+    "Mountain climber (controlado)","Bird dog","Plank com toque no ombro","Prancha com elevação de perna","Farmer carry (core)",
+    "Suitcase carry (core)","V-up (avançado)","Toe touches","Rollout (ab wheel)","Abdominal máquina","Isometria anti-rotação (cabo)",
   ],
 };
 
@@ -517,12 +283,9 @@ const MUSCLE_GROUPS = [
 function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
-
-/** garante volume */
 function ensureVolume(list, minCount = 7) {
   const base = Array.isArray(list) ? [...list] : [];
   if (base.length >= minCount) return base;
-
   const extras = [
     { name: "Aquecimento (5–8min)", group: "Preparação" },
     { name: "Alongamento curto", group: "Mobilidade" },
@@ -532,63 +295,10 @@ function ensureVolume(list, minCount = 7) {
     { name: "Tríceps corda (leve)", group: "Tríceps" },
     { name: "Panturrilha", group: "Panturrilha" },
   ];
-
   let i = 0;
   while (base.length < minCount && i < extras.length) base.push(extras[i++]);
   return base;
 }
-
-function buildCustomPlan(email) {
-  const raw = localStorage.getItem(`custom_split_${email}`);
-  const custom = safeJsonParse(raw, null);
-  if (!custom || !Array.isArray(custom.dayGroups) || custom.dayGroups.length === 0) return null;
-
-  const rawDays = Number(custom.days || custom.dayGroups.length || 3);
-  const days = clamp(rawDays, 2, 6);
-
-  const dayGroups = [];
-  for (let i = 0; i < days; i++) {
-    dayGroups.push(custom.dayGroups[i] || custom.dayGroups[i % custom.dayGroups.length] || "fullbody");
-  }
-
-  const prescriptions = custom.prescriptions || {};
-  const dayExercises = custom.dayExercises && typeof custom.dayExercises === "object" ? custom.dayExercises : {};
-
-  const split = dayGroups.map((gid, idx) => {
-    const g = groupById(gid);
-    const pres = prescriptions[idx] || { sets: 4, reps: "6–12", rest: "75–120s" };
-
-    const chosenNames = uniqStrings(Array.isArray(dayExercises?.[idx]) ? dayExercises[idx] : []);
-
-    const libMap = new Map((g.library || []).map((x) => [normalizeName(x.name), x.group]));
-    const groupFallbackLabel = g.name;
-
-    const chosenList = chosenNames.map((name) => ({
-      name,
-      group: libMap.get(normalizeName(name)) || groupFallbackLabel,
-    }));
-
-    const baseList = chosenList.length ? chosenList : ensureVolume((g.library || []).slice(0, 9), 7);
-
-    return baseList.map((ex) => ({
-      ...ex,
-      sets: pres.sets,
-      reps: pres.reps,
-      rest: pres.rest,
-      method: `Split ${custom.splitId || ""} • ${g.name}`.trim(),
-    }));
-  });
-
-  const base = {
-    sets: "custom",
-    reps: "custom",
-    rest: "custom",
-    style: `Personalizado • ${custom.splitId || `${days}x/sem`}`,
-  };
-
-  return { base, split, meta: { days } };
-}
-
 function buildFallbackSplit() {
   const A = [
     { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
@@ -620,89 +330,34 @@ function buildFallbackSplit() {
   return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
 }
 
-/* ---------------- cargas ---------------- */
-function loadLoads(email) {
-  return safeJsonParse(localStorage.getItem(`loads_${email}`), {});
-}
-function saveLoads(email, obj) {
-  localStorage.setItem(`loads_${email}`, JSON.stringify(obj));
-}
-function keyForLoad(viewIdx, exName) {
-  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
-}
-
-/* ---------------- progresso de séries ---------------- */
-function loadSetsProg(email) {
-  return safeJsonParse(localStorage.getItem(`setsprog_${email}`), {});
-}
-function saveSetsProg(email, obj) {
-  localStorage.setItem(`setsprog_${email}`, JSON.stringify(obj));
-}
-function keyForSetProg(viewIdx, exName) {
-  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
-}
-
-/* ---------------- detalhes por nome ---------------- */
+/* ---------------- details by name ---------------- */
 function detailFor(exName) {
   const n = String(exName || "").toLowerCase();
-
-  if (n.includes("supino"))
-    return {
-      area: "Peitoral, tríceps e deltoide anterior.",
-      cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura.",
-    };
-  if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover"))
-    return {
-      area: "Peitoral (isolamento).",
-      cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta.",
-    };
-
-  if (n.includes("puxada") || n.includes("pulldown"))
-    return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
-  if (n.includes("remada"))
-    return { area: "Costas médias/dorsal e estabilização.", cue: "Coluna firme. Puxe com cotovelos. Segure 1s no final. Volte controlando." };
-  if (n.includes("face pull"))
-    return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco." };
-
-  if (n.includes("rosca"))
-    return { area: "Bíceps e antebraço.", cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle." };
-  if (n.includes("tríceps") || n.includes("triceps"))
-    return { area: "Tríceps.", cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar." };
-  if (n.includes("paralelas") || n.includes("mergulho"))
-    return { area: "Tríceps e peito.", cue: "Desça controlando. Tronco levemente inclinado. Suba sem balançar." };
-
-  if (n.includes("agacha"))
-    return { area: "Quadríceps, glúteos e core.", cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte." };
-  if (n.includes("leg press"))
-    return { area: "Quadríceps e glúteos.", cue: "Amplitude segura. Não trave joelho. Controle na descida." };
-  if (n.includes("terra") || n.includes("romeno"))
-    return { area: "Posterior e glúteos.", cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura." };
-  if (n.includes("extensora"))
-    return { area: "Quadríceps (isolamento).", cue: "Segure 1s em cima. Volte lento sem bater o peso." };
-  if (n.includes("flexora"))
-    return { area: "Posterior (isolamento).", cue: "Controle total. Segure 1s contraindo. Evite levantar quadril." };
-  if (n.includes("panturrilha"))
-    return { area: "Panturrilha.", cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa." };
-  if (n.includes("afundo") || n.includes("passada"))
-    return { area: "Glúteos e quadríceps.", cue: "Passo firme. Tronco estável. Desça controlando e suba sem tombar." };
-  if (n.includes("abdu"))
-    return { area: "Glúteo médio.", cue: "Movimento controlado. Sem girar o tronco. Sinta o lado do glúteo." };
-  if (n.includes("hip thrust"))
-    return { area: "Glúteos.", cue: "Queixo neutro. Suba contraindo. Segure 1s no topo sem hiperextender lombar." };
-
-  if (n.includes("prancha"))
-    return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
-  if (n.includes("abdominal"))
-    return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
-
+  if (n.includes("supino")) return { area: "Peitoral, tríceps e deltoide anterior.", cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura." };
+  if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover")) return { area: "Peitoral (isolamento).", cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta." };
+  if (n.includes("puxada") || n.includes("pulldown")) return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
+  if (n.includes("remada")) return { area: "Costas médias/dorsal e estabilização.", cue: "Coluna firme. Puxe com cotovelos. Segure 1s no final. Volte controlando." };
+  if (n.includes("face pull")) return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco." };
+  if (n.includes("rosca")) return { area: "Bíceps e antebraço.", cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle." };
+  if (n.includes("tríceps") || n.includes("triceps")) return { area: "Tríceps.", cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar." };
+  if (n.includes("paralelas") || n.includes("mergulho")) return { area: "Tríceps e peito.", cue: "Desça controlando. Tronco levemente inclinado. Suba sem balançar." };
+  if (n.includes("agacha")) return { area: "Quadríceps, glúteos e core.", cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte." };
+  if (n.includes("leg press")) return { area: "Quadríceps e glúteos.", cue: "Amplitude segura. Não trave joelho. Controle na descida." };
+  if (n.includes("terra") || n.includes("romeno")) return { area: "Posterior e glúteos.", cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura." };
+  if (n.includes("extensora")) return { area: "Quadríceps (isolamento).", cue: "Segure 1s em cima. Volte lento sem bater o peso." };
+  if (n.includes("flexora")) return { area: "Posterior (isolamento).", cue: "Controle total. Segure 1s contraindo. Evite levantar quadril." };
+  if (n.includes("panturrilha")) return { area: "Panturrilha.", cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa." };
+  if (n.includes("afundo") || n.includes("passada")) return { area: "Glúteos e quadríceps.", cue: "Passo firme. Tronco estável. Desça controlando e suba sem tombar." };
+  if (n.includes("abdu")) return { area: "Glúteo médio.", cue: "Movimento controlado. Sem girar o tronco. Sinta o lado do glúteo." };
+  if (n.includes("hip thrust")) return { area: "Glúteos.", cue: "Queixo neutro. Suba contraindo. Segure 1s no topo sem hiperextender lombar." };
+  if (n.includes("prancha")) return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
+  if (n.includes("abdominal")) return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
   return { area: "Músculos relacionados ao movimento.", cue: "Postura firme. Controle na descida. Execução limpa sem roubar." };
 }
-
 function suggestLoadRange(exName, pesoKg, objetivo) {
   const kg = Number(pesoKg || 0) || 70;
   const n = String(exName || "").toLowerCase();
   let base = 0.35;
-
   if (n.includes("supino")) base = 0.55;
   if (n.includes("agacha")) base = 0.7;
   if (n.includes("leg press")) base = 0.8;
@@ -714,12 +369,10 @@ function suggestLoadRange(exName, pesoKg, objetivo) {
   if (n.includes("rosca")) base = 0.2;
   if (n.includes("tríceps") || n.includes("triceps")) base = 0.22;
   if (n.includes("panturrilha")) base = 0.35;
-
   const goal = String(objetivo || "").toLowerCase();
   const isForca = goal.includes("forc");
   const isHip = goal.includes("hip");
   const mult = isForca ? 1.12 : isHip ? 1.0 : 0.92;
-
   const mid = kg * base * mult;
   const low = Math.max(2, Math.round(mid * 0.85));
   const high = Math.max(low + 1, Math.round(mid * 1.05));
@@ -774,6 +427,28 @@ function IconClock() {
 }
 
 /* ---------------- UI bits ---------------- */
+function ExerciseGif({ name, style }) {
+  const [idx, setIdx] = useState(0);
+  const sources = useMemo(() => gifCandidates(name), [name]);
+  const src = sources[idx] || sources[0];
+
+  return (
+    <img
+      src={src}
+      alt={`${name} (gif)`}
+      style={style || S.gif}
+      onError={(e) => {
+        if (idx < sources.length - 1) {
+          setIdx((p) => p + 1);
+          return;
+        }
+        e.currentTarget.style.display = "none";
+        const parent = e.currentTarget.parentElement;
+        if (parent) parent.setAttribute("data-gif-missing", "1");
+      }}
+    />
+  );
+}
 function Chip({ label, value }) {
   return (
     <div style={S.chip}>
@@ -783,11 +458,9 @@ function Chip({ label, value }) {
     </div>
   );
 }
-
 function SetDots({ total, done, onToggle }) {
   const n = clamp(Number(total || 0) || 0, 1, 12);
   const d = clamp(Number(done || 0) || 0, 0, n);
-
   return (
     <div style={S.dotsBox}>
       <div style={S.dotsTitle}>Séries feitas</div>
@@ -806,27 +479,43 @@ function SetDots({ total, done, onToggle }) {
           );
         })}
       </div>
-      <div style={S.dotsMini}>
-        {d}/{n}
-      </div>
+      <div style={S.dotsMini}>{d}/{n}</div>
     </div>
   );
 }
 
-/* ---------------- Page ---------------- */
+/* ---------------- page ---------------- */
 export default function TreinoDetalhe() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const { user } = useAuth();
 
-  const email = (user?.email || "anon").toLowerCase();
-  const paid = localStorage.getItem(`paid_${email}`) === "1";
+  const userId = user?.id || null;
 
-  // ✅ NOVO: modal do GIF completo (click ou press)
+  const [paid, setPaid] = useState(false);
+  const [planData, setPlanData] = useState(null);
+  const [runtime, setRuntime] = useState({
+    current_day_index: 0,
+    timer_open: false,
+    swipe_hint_seen: false,
+  });
+  const [loads, setLoads] = useState({});
+  const [setsProg, setSetsProg] = useState({});
+  const [bootLoading, setBootLoading] = useState(true);
+
   const [gifOpen, setGifOpen] = useState(false);
   const [gifName, setGifName] = useState("");
   const gifPressTimer = useRef(null);
   const gifDidLongPress = useRef(false);
+
+  const [timerOpen, setTimerOpen] = useState(false);
+  const [restTotal, setRestTotal] = useState(90);
+  const [restLeft, setRestLeft] = useState(90);
+  const [running, setRunning] = useState(false);
+
+  const scrollerRef = useRef(null);
+  const dragStartY = useRef(null);
+  const dragMoved = useRef(false);
 
   function openGifFull(name) {
     setGifName(name);
@@ -848,7 +537,6 @@ export default function TreinoDetalhe() {
     gifPressTimer.current = null;
   }
   function onGifClick(name, e) {
-    // se já abriu por long press, não duplica
     if (gifDidLongPress.current) {
       e.preventDefault();
       e.stopPropagation();
@@ -860,31 +548,166 @@ export default function TreinoDetalhe() {
 
   useEffect(() => {
     if (!gifOpen) return;
-
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     const onKey = (e) => {
       if (e.key === "Escape") closeGifFull();
     };
     window.addEventListener("keydown", onKey);
-
     return () => {
       document.body.style.overflow = prev || "";
       window.removeEventListener("keydown", onKey);
     };
   }, [gifOpen]);
 
-  // plano
-  const plan = useMemo(() => buildCustomPlan(email), [email]);
-  const fallback = useMemo(() => buildFallbackSplit(), []);
-  const base = plan?.base || fallback.base;
-  const split = plan?.split || fallback.split;
+  useEffect(() => {
+    let active = true;
 
-  const dayIndex = useMemo(() => calcDayIndex(email), [email]);
+    async function bootstrap() {
+      if (!userId) {
+        setBootLoading(false);
+        return;
+      }
+
+      try {
+        const [
+          subRes,
+          profileRes,
+          runtimeRes,
+          planRes,
+        ] = await Promise.all([
+          supabase
+            .from("subscriptions")
+            .select("status, plan_type")
+            .eq("user_id", userId)
+            .in("status", ["active", "trialing"]),
+          supabase
+            .from("profiles")
+            .select("is_paid, plan")
+            .eq("id", userId)
+            .maybeSingle(),
+          supabase
+            .from("workout_runtime")
+            .select("current_day_index, timer_open, swipe_hint_seen")
+            .eq("user_id", userId)
+            .maybeSingle(),
+          supabase
+            .from("workout_plans")
+            .select("id, title, split_label, split_len, source")
+            .eq("user_id", userId)
+            .eq("is_active", true)
+            .maybeSingle(),
+        ]);
+
+        if (!active) return;
+
+        const hasSubscription =
+          Array.isArray(subRes.data) &&
+          subRes.data.some((row) => ["active", "trialing"].includes(String(row.status || "").toLowerCase()));
+
+        const hasPaidProfile =
+          profileRes.data?.is_paid === true ||
+          String(profileRes.data?.plan || "").toLowerCase() === "premium" ||
+          String(profileRes.data?.plan || "").toLowerCase() === "basic";
+
+        setPaid(!!hasSubscription || !!hasPaidProfile);
+
+        if (runtimeRes.data) {
+          setRuntime({
+            current_day_index: runtimeRes.data.current_day_index ?? 0,
+            timer_open: !!runtimeRes.data.timer_open,
+            swipe_hint_seen: !!runtimeRes.data.swipe_hint_seen,
+          });
+          setTimerOpen(!!runtimeRes.data.timer_open);
+        } else {
+          setTimerOpen(false);
+        }
+
+        if (planRes.data?.id) {
+          const [daysRes, exRes, loadRes, progRes] = await Promise.all([
+            supabase
+              .from("workout_plan_days")
+              .select("id, day_index, day_key, title, group_id, group_name")
+              .eq("plan_id", planRes.data.id)
+              .order("day_index", { ascending: true }),
+            supabase
+              .from("workout_plan_exercises")
+              .select("plan_day_id, exercise_order, name, group_name, sets, reps, rest, method")
+              .eq("plan_id", planRes.data.id)
+              .order("exercise_order", { ascending: true }),
+            supabase
+              .from("workout_exercise_loads")
+              .select("day_index, exercise_name, load_value")
+              .eq("user_id", userId),
+            supabase
+              .from("workout_set_progress")
+              .select("day_index, exercise_name, done_sets")
+              .eq("user_id", userId),
+          ]);
+
+          const days = daysRes.data || [];
+          const exercises = exRes.data || [];
+
+          const split = days.map((day) => {
+            const dayExercises = exercises
+              .filter((ex) => ex.plan_day_id === day.id)
+              .map((ex) => ({
+                name: ex.name,
+                group: ex.group_name || day.group_name || "Exercício",
+                sets: ex.sets || 4,
+                reps: ex.reps || "6–12",
+                rest: ex.rest || "75–120s",
+                method: ex.method || planRes.data.split_label || "Personalizado",
+              }));
+
+            const withVolume = dayExercises.length ? dayExercises : ensureVolume((groupById(day.group_id)?.library || []).slice(0, 9), 7);
+
+            return withVolume;
+          });
+
+          setPlanData({
+            base: {
+              style: planRes.data.split_label || "Personalizado",
+              sets: 4,
+              reps: "6–12",
+              rest: "75–120s",
+            },
+            split,
+          });
+
+          const loadMap = {};
+          for (const row of loadRes.data || []) {
+            loadMap[keyForLoad(row.day_index, row.exercise_name)] = row.load_value || "";
+          }
+          setLoads(loadMap);
+
+          const progMap = {};
+          for (const row of progRes.data || []) {
+            progMap[keyForSetProg(row.day_index, row.exercise_name)] = Number(row.done_sets || 0);
+          }
+          setSetsProg(progMap);
+        }
+      } catch (err) {
+        console.error("TreinoDetalhe bootstrap error:", err);
+      } finally {
+        if (active) setBootLoading(false);
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  const fallback = useMemo(() => buildFallbackSplit(), []);
+  const base = planData?.base || fallback.base;
+  const split = planData?.split || fallback.split;
 
   const dParam = Number(sp.get("d"));
-  const viewIdx = Number.isFinite(dParam) ? dParam : dayIndex;
+  const runtimeDayIndex = runtime.current_day_index || 0;
+  const viewIdx = Number.isFinite(dParam) ? dParam : runtimeDayIndex;
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
 
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
@@ -903,56 +726,9 @@ export default function TreinoDetalhe() {
     return [...exPages, { type: "cardio", key: "end_cardio" }];
   }, [workout]);
 
-  // cargas
-  const [loads, setLoads] = useState(() => loadLoads(email));
-  function setLoad(exName, v) {
-    const k = keyForLoad(viewSafe, exName);
-    const next = { ...loads, [k]: v };
-    setLoads(next);
-    saveLoads(email, next);
-  }
-
-  // séries feitas (persistente)
-  const [setsProg, setSetsProg] = useState(() => loadSetsProg(email));
-  function getDone(exName, setsTotal) {
-    const key = keyForSetProg(viewSafe, exName);
-    const val = setsProg[key];
-    const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
-    return clamp(Number(val || 0) || 0, 0, n);
-  }
-  function setDone(exName, nextDone) {
-    const key = keyForSetProg(viewSafe, exName);
-    const next = { ...setsProg, [key]: nextDone };
-    setSetsProg(next);
-    saveSetsProg(email, next);
-  }
-
-  // pager
-  const scrollerRef = useRef(null);
   const [page, setPage] = useState(0);
+  const showHint = !runtime.swipe_hint_seen;
 
-  // dica “arraste”
-  const hintKey = `td_swipe_hint_${email}`;
-  const [showHint, setShowHint] = useState(() => localStorage.getItem(hintKey) !== "1");
-
-  // cronômetro: estado + UI (dock fechado/aberto)
-  const timerKey = `td_timer_open_${email}`;
-  const [timerOpen, setTimerOpen] = useState(() => localStorage.getItem(timerKey) === "1");
-
-  const [restTotal, setRestTotal] = useState(90);
-  const [restLeft, setRestLeft] = useState(90);
-  const [running, setRunning] = useState(false);
-
-  // drag pra abrir/fechar
-  const dragStartY = useRef(null);
-  const dragMoved = useRef(false);
-
-  function setTimerOpenPersist(v) {
-    setTimerOpen(v);
-    localStorage.setItem(timerKey, v ? "1" : "0");
-  }
-
-  // quando muda de página: muda o descanso padrão
   useEffect(() => {
     const p = pages[page];
     if (!p || p.type !== "exercise") {
@@ -969,7 +745,6 @@ export default function TreinoDetalhe() {
     setRestLeft(sec);
   }, [page, pages, base.rest]);
 
-  // tick
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => {
@@ -982,14 +757,29 @@ export default function TreinoDetalhe() {
     if (restLeft === 0 && running) setRunning(false);
   }, [restLeft, running]);
 
+  async function upsertRuntime(updates) {
+    if (!userId) return;
+    const next = {
+      user_id: userId,
+      current_day_index: updates.current_day_index ?? runtime.current_day_index ?? 0,
+      timer_open: updates.timer_open ?? runtime.timer_open ?? false,
+      swipe_hint_seen: updates.swipe_hint_seen ?? runtime.swipe_hint_seen ?? false,
+      updated_at: new Date().toISOString(),
+    };
+
+    setRuntime((prev) => ({
+      current_day_index: next.current_day_index,
+      timer_open: next.timer_open,
+      swipe_hint_seen: next.swipe_hint_seen,
+    }));
+
+    const { error } = await supabase.from("workout_runtime").upsert(next, { onConflict: "user_id" });
+    if (error) console.error("upsertRuntime error:", error);
+  }
+
   function startTimer() {
     if (restLeft <= 0) setRestLeft(restTotal);
     setRunning(true);
-
-    if (showHint) {
-      localStorage.setItem(hintKey, "1");
-      setShowHint(false);
-    }
   }
   function pauseTimer() {
     setRunning(false);
@@ -999,14 +789,22 @@ export default function TreinoDetalhe() {
     setRestLeft(restTotal);
   }
 
-  // abrir “adicional” quando inicia automaticamente (mas não forçar abrir se usuário não quiser)
-  function softPingTimer() {
-    if (timerOpen) return;
-    setTimerOpenPersist(true);
-    window.setTimeout(() => setTimerOpenPersist(false), 1200);
+  async function setTimerOpenPersist(v) {
+    setTimerOpen(v);
+    await upsertRuntime({ timer_open: v });
   }
 
-  // scroll -> página
+  async function markHintSeen() {
+    if (runtime.swipe_hint_seen) return;
+    await upsertRuntime({ swipe_hint_seen: true });
+  }
+
+  function softPingTimer() {
+    if (timerOpen) return;
+    setTimerOpen(true);
+    window.setTimeout(() => setTimerOpen(false), 1200);
+  }
+
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -1018,14 +816,13 @@ export default function TreinoDetalhe() {
       setPage(safe);
 
       if (showHint && Math.abs(el.scrollLeft) > 20) {
-        localStorage.setItem(hintKey, "1");
-        setShowHint(false);
+        markHintSeen();
       }
     };
 
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [pages.length, showHint, hintKey]);
+  }, [pages.length, showHint, runtime.swipe_hint_seen]);
 
   function goTo(i) {
     const el = scrollerRef.current;
@@ -1034,7 +831,6 @@ export default function TreinoDetalhe() {
     el.scrollTo({ left: w * i, behavior: "smooth" });
   }
 
-  // css
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "treino-detalhe-book-ui-v2";
@@ -1064,32 +860,55 @@ export default function TreinoDetalhe() {
     document.head.appendChild(style);
   }, []);
 
-  if (!paid) {
-    return (
-      <div style={S.page}>
-        <div style={S.lockCard}>
-          <div style={S.lockTitle}>Treino em modo “livro”</div>
-          <div style={S.lockText}>Assine para liberar páginas, GIFs, marcação de séries e cronômetro opcional.</div>
-          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
-            Ver planos
-          </button>
-          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="td-press">
-            Voltar
-          </button>
-        </div>
-      </div>
+  async function setLoad(exName, v) {
+    const k = keyForLoad(viewSafe, exName);
+    const next = { ...loads, [k]: v };
+    setLoads(next);
+
+    if (!userId) return;
+
+    const { error } = await supabase.from("workout_exercise_loads").upsert(
+      {
+        user_id: userId,
+        day_index: viewSafe,
+        exercise_name: exName,
+        load_value: v,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,day_index,exercise_name" }
     );
+
+    if (error) console.error("setLoad error:", error);
   }
 
-  const pNow = pages[page];
-  const isExercise = pNow?.type === "exercise";
-  const exNow = isExercise ? pNow.ex : null;
+  function getDone(exName, setsTotal) {
+    const key = keyForSetProg(viewSafe, exName);
+    const val = setsProg[key];
+    const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
+    return clamp(Number(val || 0) || 0, 0, n);
+  }
 
-  const exCount = workout.length;
-  const totalPages = pages.length;
-  const progressText = `${page + 1}/${totalPages}`;
+  async function setDone(exName, nextDone) {
+    const key = keyForSetProg(viewSafe, exName);
+    const next = { ...setsProg, [key]: nextDone };
+    setSetsProg(next);
 
-  // drag handlers do dock
+    if (!userId) return;
+
+    const { error } = await supabase.from("workout_set_progress").upsert(
+      {
+        user_id: userId,
+        day_index: viewSafe,
+        exercise_name: exName,
+        done_sets: nextDone,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,day_index,exercise_name" }
+    );
+
+    if (error) console.error("setDone error:", error);
+  }
+
   function onDockPointerDown(e) {
     dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
     dragMoved.current = false;
@@ -1119,9 +938,44 @@ export default function TreinoDetalhe() {
     setTimerOpenPersist(!timerOpen);
   }
 
+  if (bootLoading) {
+    return (
+      <div style={S.page}>
+        <div style={S.lockCard}>
+          <div style={S.lockTitle}>fitdeal<span style={{ color: ORANGE }}>.</span></div>
+          <div style={S.lockText}>Carregando treino...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!paid) {
+    return (
+      <div style={S.page}>
+        <div style={S.lockCard}>
+          <div style={S.lockTitle}>Treino em modo “livro”</div>
+          <div style={S.lockText}>Assine para liberar páginas, GIFs, marcação de séries e cronômetro opcional.</div>
+          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
+            Ver planos
+          </button>
+          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="td-press">
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const pNow = pages[page];
+  const isExercise = pNow?.type === "exercise";
+  const exNow = isExercise ? pNow.ex : null;
+
+  const exCount = workout.length;
+  const totalPages = pages.length;
+  const progressText = `${page + 1}/${totalPages}`;
+
   return (
     <div style={S.page}>
-      {/* ✅ MODAL DO GIF COMPLETO */}
       {gifOpen && (
         <div style={S.gifOverlay} role="presentation" onClick={closeGifFull}>
           <div style={S.gifSheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
@@ -1145,7 +999,6 @@ export default function TreinoDetalhe() {
         </div>
       )}
 
-      {/* TOP HEADER */}
       <div style={S.head}>
         <div style={S.headGlow} aria-hidden="true" />
 
@@ -1169,7 +1022,6 @@ export default function TreinoDetalhe() {
         </div>
       </div>
 
-      {/* Dots (páginas) */}
       <div style={S.dotsNav}>
         {pages.map((_, i) => (
           <button
@@ -1183,7 +1035,6 @@ export default function TreinoDetalhe() {
         ))}
       </div>
 
-      {/* PAGER */}
       <div ref={scrollerRef} style={S.pager} aria-label="Treino em páginas">
         {pages.map((p, idx) => {
           if (p.type === "cardio") {
@@ -1229,12 +1080,12 @@ export default function TreinoDetalhe() {
           const done = getDone(ex.name, sets);
           const totalSets = clamp(Number(sets) || 4, 1, 12);
 
-          function toggleSet(i) {
+          async function toggleSet(i) {
             let nextDone = 0;
             if (i < done) nextDone = i;
             else nextDone = i + 1;
 
-            setDone(ex.name, nextDone);
+            await setDone(ex.name, nextDone);
 
             if (nextDone > done) {
               const sec = parseRestToSeconds(rest);
@@ -1271,7 +1122,6 @@ export default function TreinoDetalhe() {
                   </button>
                 </div>
 
-                {/* ✅ GIF (clicar OU pressionar para ver completo) */}
                 <div
                   style={S.gifWrap}
                   role="button"
@@ -1296,17 +1146,14 @@ export default function TreinoDetalhe() {
                   </div>
                 </div>
 
-                {/* Chips */}
                 <div style={S.bigChips}>
                   <Chip label="Séries" value={String(sets)} />
                   <Chip label="Repetições" value={String(reps)} />
                   <Chip label="Descanso" value={String(rest)} />
                 </div>
 
-                {/* Séries (bolinhas) */}
                 <SetDots total={totalSets} done={done} onToggle={toggleSet} />
 
-                {/* Carga */}
                 <div style={S.loadBox}>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Carga sugerida</div>
@@ -1326,7 +1173,6 @@ export default function TreinoDetalhe() {
                   </div>
                 </div>
 
-                {/* Execução */}
                 <div id={`exec_${idx}`} style={S.execPanel}>
                   <div style={S.execTitle}>Execução — o que focar</div>
                   <div style={S.execArea}>
@@ -1366,7 +1212,6 @@ export default function TreinoDetalhe() {
         })}
       </div>
 
-      {/* DOCK: botão “Cronômetro de descanso” (opcional) */}
       <div
         style={{ ...S.dock, ...(timerOpen ? S.dockOpen : S.dockClosed) }}
         onMouseDown={onDockPointerDown}
@@ -1743,7 +1588,6 @@ const S = {
   },
   endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, position: "relative" },
 
-  /* Lock */
   lockCard: {
     borderRadius: 26,
     padding: 16,
@@ -1775,7 +1619,6 @@ const S = {
     fontWeight: 950,
   },
 
-  /* Dock do cronômetro (fechado/aberto) */
   dock: {
     position: "fixed",
     left: 12,
@@ -1868,7 +1711,6 @@ const S = {
   },
   dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
 
-  /* ✅ Modal GIF full */
   gifOverlay: {
     position: "fixed",
     inset: 0,
@@ -1931,7 +1773,6 @@ const S = {
   },
 };
 
-/* 🔧 se GIF não existir, mostra fallback */
 if (typeof window !== "undefined") {
   const id = "td-gif-missing-style";
   if (!document.getElementById(id)) {
