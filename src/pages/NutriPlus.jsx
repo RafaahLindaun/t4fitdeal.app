@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const BLACK = "#111111";
@@ -19,35 +20,128 @@ function fmtBRL(n) {
 export default function NutriPlus() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
 
-  const paidNutriPlus = localStorage.getItem(`nutri_plus_${email}`) === "1";
+  const [paidNutriPlus, setPaidNutriPlus] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const nutriPlus = 65.99;
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadNutriStatus() {
+      if (!user?.id) {
+        if (!active) return;
+        setPaidNutriPlus(false);
+        setChecking(false);
+        return;
+      }
+
+      try {
+        const [subRes, profileRes] = await Promise.all([
+          supabase
+            .from("subscriptions")
+            .select("status, plan_type")
+            .eq("user_id", user.id)
+            .eq("plan_type", "nutri_plus")
+            .in("status", ["active", "trialing"]),
+          supabase
+            .from("profiles")
+            .select("nutri_plus, plan")
+            .eq("id", user.id)
+            .maybeSingle(),
+        ]);
+
+        if (!active) return;
+
+        const bySubscription =
+          Array.isArray(subRes.data) &&
+          subRes.data.some((row) =>
+            ["active", "trialing"].includes(String(row.status || "").toLowerCase())
+          );
+
+        const byProfile =
+          profileRes.data?.nutri_plus === true ||
+          String(profileRes.data?.plan || "").toLowerCase() === "nutri_plus";
+
+        setPaidNutriPlus(!!bySubscription || !!byProfile);
+      } catch (err) {
+        console.error("NutriPlus load status error:", err);
+        if (!active) return;
+        setPaidNutriPlus(false);
+      } finally {
+        if (active) setChecking(false);
+      }
+    }
+
+    loadNutriStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   async function payMock() {
+    if (!user?.id || loading) return;
+
     setLoading(true);
 
-    setTimeout(() => {
-      localStorage.setItem(`nutri_plus_${email}`, "1");
+    try {
+      const nowIso = new Date().toISOString();
+      const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      const payKey = `payments_${email}`;
-      const raw = localStorage.getItem(payKey);
-      const list = raw ? JSON.parse(raw) : [];
+      const { error: subError } = await supabase.from("subscriptions").upsert(
+        {
+          user_id: user.id,
+          plan_type: "nutri_plus",
+          status: "active",
+          amount: nutriPlus,
+          currency: "BRL",
+          current_period_end: periodEnd,
+          updated_at: nowIso,
+        },
+        { onConflict: "user_id,plan_type" }
+      );
 
-      list.unshift({
-        id: String(Date.now()),
+      if (subError) {
+        console.error("NutriPlus subscription error:", subError);
+        setLoading(false);
+        return;
+      }
+
+      const { error: paymentError } = await supabase.from("payments").insert({
+        user_id: user.id,
         plan: "Nutri+",
         amount: nutriPlus,
-        createdAt: new Date().toISOString(),
+        status: "paid",
+        created_at: nowIso,
       });
 
-      localStorage.setItem(payKey, JSON.stringify(list.slice(0, 50)));
+      if (paymentError) {
+        console.error("NutriPlus payment error:", paymentError);
+      }
 
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          nutri_plus: true,
+          plan: "nutri_plus",
+          updated_at: nowIso,
+        })
+        .eq("id", user.id);
+
+      if (profileError) {
+        console.error("NutriPlus profile error:", profileError);
+      }
+
+      setPaidNutriPlus(true);
       setLoading(false);
       nav("/nutricao");
-    }, 900);
+    } catch (err) {
+      console.error("NutriPlus payMock catch:", err);
+      setLoading(false);
+    }
   }
 
   return (
@@ -91,7 +185,11 @@ export default function NutriPlus() {
           <div style={styles.price}>{fmtBRL(nutriPlus)}</div>
           <div style={styles.priceSub}>por mês</div>
 
-          {!paidNutriPlus ? (
+          {checking ? (
+            <button style={styles.ctaDark} disabled>
+              Carregando...
+            </button>
+          ) : !paidNutriPlus ? (
             <button style={styles.cta} onClick={payMock} disabled={loading}>
               {loading ? "Processando..." : "Quero subir de nível"}
             </button>
