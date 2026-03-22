@@ -1,25 +1,51 @@
-// ✅ COLE EM: src/pages/Metas.jsx
-// Metas + “Apple vibe” + incentivo real de conclusão (sem cassino / sem “dopamina”)
-// - Ativar metas (catálogo + PR custom)
-// - Registrar progresso (1 toque: “Registrar hoje”, “Registrar sessão”, “Registrar PR”)
-// - Mostra progresso, faltam X, e libera “Concluir” quando bater a meta
-// - Mantém compatibilidade com o Dashboard lendo: active_goals_<email>
-
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 
-function safeJsonParse(raw, fallback) {
-  try {
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
+const ICONS = {
+  target: "/icons/goal-target-white.png",
+  calendar: "/icons/goal-calendar-white.png",
+  strength: "/icons/goal-strength-white.png",
+  scale: "/icons/goal-scale-white.png",
+  cardio: "/icons/goal-cardio-white.png",
+  spark: "/icons/goal-spark-white.png",
+};
+
+function SafeIcon({ src, alt = "", size = 18 }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 999,
+          background: "rgba(255,255,255,.22)",
+        }}
+      />
+    );
   }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      style={{
+        width: size,
+        height: size,
+        objectFit: "contain",
+        display: "block",
+      }}
+    />
+  );
 }
 
 function uid() {
@@ -40,10 +66,9 @@ function yyyyMmDd(d = new Date()) {
 }
 
 function startOfWeekISO(d = new Date()) {
-  // segunda-feira como início
   const dt = new Date(d);
-  const day = dt.getDay(); // 0 dom .. 6 sab
-  const diff = (day === 0 ? -6 : 1) - day; // move para segunda
+  const day = dt.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
   dt.setDate(dt.getDate() + diff);
   dt.setHours(0, 0, 0, 0);
   return yyyyMmDd(dt);
@@ -62,47 +87,73 @@ function labelFromGoal(g) {
   return g.title || "Meta";
 }
 
-function iconFromGoal(g) {
-  if (!g) return "🎯";
-  if (g.type === "freq") return "📅";
-  if (g.type === "pr") return "🏋️";
-  if (g.type === "peso") return "⚖️";
-  if (g.type === "cardio") return "🏃";
-  return "🎯";
+function iconSrcFromGoal(g) {
+  if (!g) return ICONS.target;
+  if (g.type === "freq") return ICONS.calendar;
+  if (g.type === "pr") return ICONS.strength;
+  if (g.type === "peso") return ICONS.scale;
+  if (g.type === "cardio") return ICONS.cardio;
+  return ICONS.target;
 }
 
 function ensureGoalShape(g) {
-  // ✅ compatível com goals antigos (sem quebrar)
-  const base = {
+  return {
     id: g?.id || uid(),
-    catalogId: g?.catalogId ?? null,
+    catalogId: g?.catalogId ?? g?.catalog_id ?? null,
     type: g?.type || "freq",
     value: Number(g?.value || 0) || 0,
-    exercise: g?.exercise,
-    title: g?.title,
-    createdAt: g?.createdAt || Date.now(),
-
-    // novos campos (incentivo / progresso)
-    status: g?.status || "active", // active | done
-    completedAt: g?.completedAt || null,
-
-    // progresso por tipo
-    days: Array.isArray(g?.days) ? g.days : [], // freq: lista de yyyy-mm-dd
-    weekId: g?.weekId || startOfWeekISO(new Date()), // cardio: semana atual
-    weekCount: Number(g?.weekCount || 0) || 0, // cardio: sessões na semana atual
-    cardioLog: Array.isArray(g?.cardioLog) ? g.cardioLog : [], // cardio: datas (opcional)
-
-    bestKg: Number(g?.bestKg || 0) || 0, // pr: melhor kg registrado
-    lastPrAt: g?.lastPrAt || null,
-
-    currentWeight: Number(g?.currentWeight || 0) || 0, // peso: último peso registrado
-    lastWeightAt: g?.lastWeightAt || null,
-
-    // micro feedback
-    lastActionAt: g?.lastActionAt || null,
+    exercise: g?.exercise || null,
+    title: g?.title || null,
+    createdAt: g?.createdAt || g?.created_at || Date.now(),
+    status: g?.status || "active",
+    completedAt: g?.completedAt || g?.completed_at || null,
+    days: Array.isArray(g?.days) ? g.days : [],
+    weekId: g?.weekId || g?.week_id || startOfWeekISO(new Date()),
+    weekCount: Number(g?.weekCount || g?.week_count || 0) || 0,
+    cardioLog: Array.isArray(g?.cardioLog || g?.cardio_log) ? (g?.cardioLog || g?.cardio_log) : [],
+    bestKg: Number(g?.bestKg || g?.best_kg || 0) || 0,
+    lastPrAt: g?.lastPrAt || g?.last_pr_at || null,
+    currentWeight: Number(g?.currentWeight || g?.current_weight || 0) || 0,
+    startWeight: Number(g?.startWeight || g?.start_weight || 0) || 0,
+    lastWeightAt: g?.lastWeightAt || g?.last_weight_at || null,
+    lastActionAt: g?.lastActionAt || g?.last_action_at || null,
   };
+}
 
-  return base;
+function toDbGoal(goal, userId) {
+  const g = ensureGoalShape(goal);
+  return {
+    id: g.id,
+    user_id: userId,
+    catalog_id: g.catalogId,
+    type: g.type,
+    value: g.value,
+    exercise: g.exercise,
+    title: g.title,
+    created_at: typeof g.createdAt === "number" ? new Date(g.createdAt).toISOString() : g.createdAt,
+    status: g.status,
+    completed_at:
+      typeof g.completedAt === "number"
+        ? new Date(g.completedAt).toISOString()
+        : g.completedAt || null,
+    days: g.days || [],
+    week_id: g.weekId,
+    week_count: g.weekCount || 0,
+    cardio_log: g.cardioLog || [],
+    best_kg: g.bestKg || 0,
+    last_pr_at:
+      typeof g.lastPrAt === "number" ? new Date(g.lastPrAt).toISOString() : g.lastPrAt || null,
+    current_weight: g.currentWeight || 0,
+    start_weight: g.startWeight || 0,
+    last_weight_at:
+      typeof g.lastWeightAt === "number"
+        ? new Date(g.lastWeightAt).toISOString()
+        : g.lastWeightAt || null,
+    last_action_at:
+      typeof g.lastActionAt === "number"
+        ? new Date(g.lastActionAt).toISOString()
+        : g.lastActionAt || null,
+  };
 }
 
 function progressOfGoal(g) {
@@ -114,14 +165,12 @@ function progressOfGoal(g) {
   }
 
   if (goal.type === "cardio") {
-    // se semana mudou, zera para semana atual
     const nowWeek = startOfWeekISO(new Date());
     if (goal.weekId !== nowWeek) return 0;
     return clamp(goal.weekCount || 0, 0, goal.value || 0);
   }
 
   if (goal.type === "pr") {
-    // progresso “visual”: quanto do alvo já tem
     const target = goal.value || 0;
     const best = goal.bestKg || 0;
     if (target <= 0) return 0;
@@ -129,9 +178,6 @@ function progressOfGoal(g) {
   }
 
   if (goal.type === "peso") {
-    // para peso-alvo: progresso é “quanto falta” visualmente invertido
-    // (como não sabemos se o usuário quer ganhar/perder, usamos regra simples:
-    // se currentWeight > target => progresso aumenta conforme aproxima)
     const target = goal.value || 0;
     const cur = goal.currentWeight || 0;
     if (target <= 0 || cur <= 0) return 0;
@@ -150,24 +196,22 @@ function isCompleted(g) {
 
   if (goal.status === "done") return true;
 
-  if (goal.type === "freq") {
+  if (goal.type === "freq" || goal.type === "cardio") {
     const p = progressOfGoal(goal);
     return p >= (goal.value || 0);
   }
-  if (goal.type === "cardio") {
-    const p = progressOfGoal(goal);
-    return p >= (goal.value || 0);
-  }
+
   if (goal.type === "pr") {
     return (goal.bestKg || 0) >= (goal.value || 0);
   }
+
   if (goal.type === "peso") {
     const target = goal.value || 0;
     const cur = goal.currentWeight || 0;
     if (target <= 0 || cur <= 0) return false;
-    // atingiu “bem perto” (0.3kg)
     return Math.abs(cur - target) <= 0.3;
   }
+
   return false;
 }
 
@@ -206,7 +250,6 @@ function remainingText(g) {
 }
 
 function whyThisMatters(g) {
-  // ✅ “por que concluir” sem cassino/sem dopamina: foco em clareza, consistência, autoestima, processo
   const goal = ensureGoalShape(g);
 
   if (goal.type === "freq")
@@ -224,57 +267,134 @@ function whyThisMatters(g) {
   return "Concluir metas dá direção e clareza. Menos dúvida, mais execução.";
 }
 
-/* ---- catálogo (simples e direto) ---- */
 const GOALS_CATALOG = [
   { id: "g_freq_30", type: "freq", title: "Frequência", subtitle: "Consistência", value: 30, accent: "soft" },
   { id: "g_freq_60", type: "freq", title: "Frequência", subtitle: "Disciplina", value: 60, accent: "orange" },
   { id: "g_freq_90", type: "freq", title: "Frequência", subtitle: "Transformação", value: 90, accent: "soft" },
-
   { id: "g_pr_supino_50", type: "pr", title: "PR — Supino", subtitle: "Força no peito", exercise: "Supino", value: 50, accent: "orange" },
   { id: "g_pr_supino_60", type: "pr", title: "PR — Supino", subtitle: "Meta forte", exercise: "Supino", value: 60, accent: "soft" },
   { id: "g_pr_agacho_80", type: "pr", title: "PR — Agachamento", subtitle: "Base de pernas", exercise: "Agachamento", value: 80, accent: "soft" },
-
   { id: "g_cardio_3", type: "cardio", title: "Cardio", subtitle: "Saúde e corte", value: 3, accent: "soft" },
-  { id: "g_cardio_5", type: "cardio", title: "Cardio", subtitle: "Turbo no shape", value: 5, accent: "orange" },
-
-  // opcional (fica leve e ajuda a “concluir” algo curto)
+  { id: "g_cardio_5", type: "cardio", title: "Turbo no shape", subtitle: "Turbo no shape", value: 5, accent: "orange" },
   { id: "g_freq_7", type: "freq", title: "Frequência", subtitle: "Começo rápido", value: 7, accent: "orange" },
 ];
 
 export default function Metas() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
 
-  const storageKey = `active_goals_${email}`;
-
-  const initial = useMemo(() => safeJsonParse(localStorage.getItem(storageKey), []), [storageKey]);
-  const [active, setActive] = useState(Array.isArray(initial) ? initial.map(ensureGoalShape) : []);
-
-  // custom PR
+  const [active, setActive] = useState([]);
   const [customKg, setCustomKg] = useState("");
   const [customEx, setCustomEx] = useState("Supino");
+  const [sheet, setSheet] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // micro “sheet” para registrar valor (PR / Peso)
-  const [sheet, setSheet] = useState(null); // { goalId, kind: 'pr'|'peso', value: '' }
-  const [toast, setToast] = useState(null); // { title, sub }
+  async function loadGoals() {
+    if (!user?.id) {
+      setActive([]);
+      setLoading(false);
+      return;
+    }
 
-  function persist(next) {
-    const shaped = Array.isArray(next) ? next.map(ensureGoalShape) : [];
-    setActive(shaped);
-    localStorage.setItem(storageKey, JSON.stringify(shaped));
+    try {
+      const { data, error } = await supabase
+        .from("user_goals")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("loadGoals error:", error);
+        setLoading(false);
+        return;
+      }
+
+      setActive((data || []).map(ensureGoalShape));
+    } catch (err) {
+      console.error("loadGoals catch:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadGoals();
+  }, [user?.id]);
+
+  async function persistAll(next) {
+    setActive(next.map(ensureGoalShape));
+
+    if (!user?.id) return;
+
+    try {
+      const payload = next.map((goal) => toDbGoal(goal, user.id));
+      const ids = payload.map((x) => x.id);
+
+      if (ids.length > 0) {
+        const { error: upsertError } = await supabase
+          .from("user_goals")
+          .upsert(payload, { onConflict: "id" });
+
+        if (upsertError) {
+          console.error("persistAll upsert error:", upsertError);
+          return;
+        }
+      }
+
+      const currentIds = active.map((x) => x.id);
+      const removedIds = currentIds.filter((id) => !ids.includes(id));
+
+      if (removedIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("user_goals")
+          .delete()
+          .eq("user_id", user.id)
+          .in("id", removedIds);
+
+        if (deleteError) {
+          console.error("persistAll delete error:", deleteError);
+        }
+      }
+    } catch (err) {
+      console.error("persistAll catch:", err);
+    }
+  }
+
+  async function insertGoal(goal) {
+    const shaped = ensureGoalShape(goal);
+    const next = [shaped, ...active].slice(0, 12);
+    await persistAll(next);
+    showToast("Meta ativada", labelFromGoal(shaped));
+  }
+
+  async function updateGoal(goalId, updater, toastTitle, toastSub) {
+    const next = active.map((g) => {
+      if (g.id !== goalId) return g;
+      return ensureGoalShape(updater(ensureGoalShape(g)));
+    });
+
+    await persistAll(next);
+    if (toastTitle) showToast(toastTitle, toastSub);
+  }
+
+  async function deleteGoal(goalId) {
+    const next = active.filter((g) => g.id !== goalId);
+    await persistAll(next);
+    showToast("Removida", "Meta removida da lista");
   }
 
   function isActive(catalogId) {
     return active.some((g) => g.catalogId === catalogId && ensureGoalShape(g).status !== "done");
   }
 
-  function toggleCatalogGoal(item) {
+  async function toggleCatalogGoal(item) {
     const on = isActive(item.id);
 
     if (on) {
       const next = active.filter((g) => g.catalogId !== item.id);
-      return persist(next);
+      await persistAll(next);
+      return;
     }
 
     const goal = ensureGoalShape({
@@ -287,25 +407,15 @@ export default function Metas() {
       createdAt: Date.now(),
     });
 
-    // cardio: inicializa semana
     if (goal.type === "cardio") {
       goal.weekId = startOfWeekISO(new Date());
       goal.weekCount = 0;
     }
 
-    const next = [goal, ...active].slice(0, 12);
-    persist(next);
-
-    showToast("Meta ativada", labelFromGoal(goal));
+    await insertGoal(goal);
   }
 
-  function removeGoal(goalId) {
-    const next = active.filter((g) => g.id !== goalId);
-    persist(next);
-    showToast("Removida", "Meta removida da lista");
-  }
-
-  function addCustomPR() {
+  async function addCustomPR() {
     const kg = normalizeNumber(customKg);
     const ex = String(customEx || "").trim();
     if (!ex || kg <= 0) return;
@@ -320,11 +430,8 @@ export default function Metas() {
       createdAt: Date.now(),
     });
 
-    const next = [goal, ...active].slice(0, 12);
-    persist(next);
+    await insertGoal(goal);
     setCustomKg("");
-
-    showToast("Meta criada", labelFromGoal(goal));
   }
 
   function showToast(title, sub) {
@@ -332,40 +439,41 @@ export default function Metas() {
     setTimeout(() => setToast(null), 2200);
   }
 
-  function softComplete(goalId) {
-    const next = active.map((g) => {
-      if (g.id !== goalId) return g;
-      const gg = ensureGoalShape(g);
-      gg.status = "done";
-      gg.completedAt = Date.now();
-      gg.lastActionAt = Date.now();
-      return gg;
-    });
-    persist(next);
-    showToast("Concluída", "Meta registrada como concluída");
+  async function softComplete(goalId) {
+    await updateGoal(
+      goalId,
+      (gg) => ({
+        ...gg,
+        status: "done",
+        completedAt: Date.now(),
+        lastActionAt: Date.now(),
+      }),
+      "Concluída",
+      "Meta registrada como concluída"
+    );
   }
 
-  function reactivate(goalId) {
-    const next = active.map((g) => {
-      if (g.id !== goalId) return g;
-      const gg = ensureGoalShape(g);
-      gg.status = "active";
-      gg.completedAt = null;
-      gg.lastActionAt = Date.now();
-
-      // reinicia lógica “semana” do cardio ao reativar
-      if (gg.type === "cardio") {
-        gg.weekId = startOfWeekISO(new Date());
-        gg.weekCount = 0;
-      }
-
-      return gg;
-    });
-    persist(next);
-    showToast("Reativada", "Meta voltou para Ativas");
+  async function reactivate(goalId) {
+    await updateGoal(
+      goalId,
+      (gg) => ({
+        ...gg,
+        status: "active",
+        completedAt: null,
+        lastActionAt: Date.now(),
+        ...(gg.type === "cardio"
+          ? {
+              weekId: startOfWeekISO(new Date()),
+              weekCount: 0,
+            }
+          : {}),
+      }),
+      "Reativada",
+      "Meta voltou para Ativas"
+    );
   }
 
-  function registerToday(goalId) {
+  async function registerToday(goalId) {
     const today = yyyyMmDd(new Date());
 
     const next = active.map((g) => {
@@ -375,10 +483,10 @@ export default function Metas() {
 
       const set = new Set(gg.days || []);
       set.add(today);
+
       gg.days = Array.from(set).sort().slice(-200);
       gg.lastActionAt = Date.now();
 
-      // auto “done”
       if (isCompleted(gg)) {
         gg.status = "done";
         gg.completedAt = Date.now();
@@ -387,14 +495,13 @@ export default function Metas() {
       return gg;
     });
 
-    persist(next);
+    await persistAll(next);
 
     const updated = next.find((x) => x.id === goalId);
-    const left = remainingText(updated);
-    showToast("Registrado", left);
+    showToast("Registrado", remainingText(updated));
   }
 
-  function registerCardioSession(goalId) {
+  async function registerCardioSession(goalId) {
     const today = yyyyMmDd(new Date());
     const nowWeek = startOfWeekISO(new Date());
 
@@ -403,7 +510,6 @@ export default function Metas() {
       const gg = ensureGoalShape(g);
       if (gg.type !== "cardio") return gg;
 
-      // se semana virou, zera
       if (gg.weekId !== nowWeek) {
         gg.weekId = nowWeek;
         gg.weekCount = 0;
@@ -421,7 +527,7 @@ export default function Metas() {
       return gg;
     });
 
-    persist(next);
+    await persistAll(next);
 
     const updated = next.find((x) => x.id === goalId);
     showToast("Sessão registrada", remainingText(updated));
@@ -437,13 +543,14 @@ export default function Metas() {
     });
   }
 
-  function savePR() {
+  async function savePR() {
     const v = normalizeNumber(sheet?.value);
     if (!sheet?.goalId || v <= 0) return;
 
     const next = active.map((g) => {
       if (g.id !== sheet.goalId) return g;
       const gg = ensureGoalShape(g);
+
       gg.bestKg = Math.max(Number(gg.bestKg || 0), v);
       gg.lastPrAt = Date.now();
       gg.lastActionAt = Date.now();
@@ -456,24 +563,23 @@ export default function Metas() {
       return gg;
     });
 
-    persist(next);
+    await persistAll(next);
     setSheet(null);
 
     const updated = next.find((x) => x.id === sheet.goalId);
     showToast("PR registrado", remainingText(updated));
   }
 
-  // ---- listas derivadas
   const activeList = useMemo(
     () => active.filter((g) => ensureGoalShape(g).status !== "done"),
     [active]
   );
+
   const doneList = useMemo(
     () => active.filter((g) => ensureGoalShape(g).status === "done"),
     [active]
   );
 
-  // ---- pequenas animações (estilo clean)
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "metas-apple-keyframes";
@@ -497,7 +603,6 @@ export default function Metas() {
 
   return (
     <div style={S.page}>
-      {/* Toast */}
       {toast ? (
         <div style={S.toastWrap} aria-live="polite">
           <div style={S.toast}>
@@ -507,7 +612,6 @@ export default function Metas() {
         </div>
       ) : null}
 
-      {/* header */}
       <div style={S.head}>
         <button style={S.back} onClick={() => nav("/dashboard")} aria-label="Voltar">
           ←
@@ -523,11 +627,12 @@ export default function Metas() {
         </button>
       </div>
 
-      {/* INSIGHT (por que concluir) */}
       <div style={S.sectionTitle}>Por que concluir</div>
       <div style={S.insightCard}>
         <div style={S.insightRow}>
-          <div style={S.insightIcon}>⟡</div>
+          <div style={S.insightIcon}>
+            <SafeIcon src={ICONS.spark} alt="" size={18} />
+          </div>
           <div style={{ minWidth: 0 }}>
             <div style={S.insightTitle}>Clareza + direção</div>
             <div style={S.insightSub}>
@@ -537,10 +642,13 @@ export default function Metas() {
         </div>
       </div>
 
-      {/* ACTIVE */}
       <div style={S.sectionTitle}>Ativas</div>
 
-      {activeList.length === 0 ? (
+      {loading ? (
+        <div style={S.emptyCard}>
+          <div style={S.emptyBig}>Carregando metas...</div>
+        </div>
+      ) : activeList.length === 0 ? (
         <div style={S.emptyCard}>
           <div style={S.emptyBig}>Sem metas ativas.</div>
           <div style={S.emptySmall}>Escolha uma meta abaixo. Depois, registre progresso aqui com 1 toque.</div>
@@ -550,7 +658,6 @@ export default function Metas() {
           {activeList.map((raw) => {
             const g = ensureGoalShape(raw);
             const p = progressOfGoal(g);
-            const target = g.type === "pr" ? g.value : g.value;
             const ratio =
               g.type === "pr"
                 ? (g.value > 0 ? clamp((g.bestKg || 0) / g.value, 0, 1) : 0)
@@ -561,19 +668,20 @@ export default function Metas() {
             return (
               <div key={g.id} style={S.activeCard}>
                 <div style={S.activeTop}>
-                  <div style={S.pillIcon}>{iconFromGoal(g)}</div>
+                  <div style={S.pillIcon}>
+                    <SafeIcon src={iconSrcFromGoal(g)} alt="" size={18} />
+                  </div>
 
                   <div style={{ minWidth: 0 }}>
                     <div style={S.pillText}>{labelFromGoal(g)}</div>
                     <div style={S.pillSub}>{remainingText(g)}</div>
                   </div>
 
-                  <button style={S.pillX} onClick={() => removeGoal(g.id)} aria-label="Remover">
+                  <button style={S.pillX} onClick={() => deleteGoal(g.id)} aria-label="Remover">
                     ✕
                   </button>
                 </div>
 
-                {/* progress bar */}
                 <div style={S.progressWrap}>
                   <div style={S.progressTrack}>
                     <div style={{ ...S.progressFill, width: `${Math.round(ratio * 100)}%` }} />
@@ -597,13 +705,11 @@ export default function Metas() {
                   </div>
                 </div>
 
-                {/* incentive copy */}
                 <div style={S.whyCard}>
                   <div style={S.whyTitle}>Motivo</div>
                   <div style={S.whySub}>{whyThisMatters(g)}</div>
                 </div>
 
-                {/* actions */}
                 <div style={S.actionsRow}>
                   {g.type === "freq" ? (
                     <button style={S.primaryAction} onClick={() => registerToday(g.id)}>
@@ -639,7 +745,6 @@ export default function Metas() {
         </div>
       )}
 
-      {/* DONE */}
       {doneList.length > 0 ? (
         <>
           <div style={S.sectionTitle}>Concluídas</div>
@@ -647,10 +752,13 @@ export default function Metas() {
             {doneList.slice(0, 10).map((raw) => {
               const g = ensureGoalShape(raw);
               const when = g.completedAt ? new Date(g.completedAt).toLocaleDateString() : "—";
+
               return (
                 <div key={g.id} style={S.doneCard}>
                   <div style={S.doneRow}>
-                    <div style={S.doneIcon}>{iconFromGoal(g)}</div>
+                    <div style={S.doneIcon}>
+                      <SafeIcon src={iconSrcFromGoal(g)} alt="" size={18} />
+                    </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={S.doneTitle}>{labelFromGoal(g)}</div>
                       <div style={S.doneSub}>Concluída em {when}</div>
@@ -667,7 +775,6 @@ export default function Metas() {
         </>
       ) : null}
 
-      {/* QUICK PICK */}
       <div style={S.sectionTitle}>Escolha rápida</div>
       <div style={S.grid}>
         {GOALS_CATALOG.map((item) => {
@@ -686,7 +793,19 @@ export default function Metas() {
             >
               <div style={S.goalTop}>
                 <div style={S.goalIcon}>
-                  {item.type === "freq" ? "📅" : item.type === "pr" ? "🏋️" : item.type === "cardio" ? "🏃" : "🎯"}
+                  <SafeIcon
+                    src={
+                      item.type === "freq"
+                        ? ICONS.calendar
+                        : item.type === "pr"
+                        ? ICONS.strength
+                        : item.type === "cardio"
+                        ? ICONS.cardio
+                        : ICONS.target
+                    }
+                    alt=""
+                    size={18}
+                  />
                 </div>
                 <div style={{ marginLeft: "auto", ...S.toggleDot, ...(on ? S.toggleOn : S.toggleOff) }} />
               </div>
@@ -700,7 +819,6 @@ export default function Metas() {
         })}
       </div>
 
-      {/* CUSTOM PR */}
       <div style={S.sectionTitle}>Meta personalizada</div>
       <div style={S.customCard}>
         <div style={S.customTop}>
@@ -738,7 +856,6 @@ export default function Metas() {
         </button>
       </div>
 
-      {/* CTA */}
       <button style={S.cta} onClick={() => nav("/dashboard")}>
         <div style={S.ctaRow}>
           <div>
@@ -752,7 +869,6 @@ export default function Metas() {
         </div>
       </button>
 
-      {/* Sheet para registrar PR */}
       {sheet ? (
         <>
           <div style={S.sheetBackdrop} onClick={() => setSheet(null)} />
@@ -795,7 +911,6 @@ export default function Metas() {
   );
 }
 
-/* ----------------- styles (apple simples) ----------------- */
 const S = {
   page: { padding: 18, paddingBottom: 130, background: BG },
 
@@ -869,10 +984,8 @@ const S = {
     borderRadius: 16,
     display: "grid",
     placeItems: "center",
-    background: "rgba(255,255,255,.85)",
+    background: "#0f172a",
     border: "1px solid rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
     flexShrink: 0,
   },
   insightTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
@@ -906,10 +1019,9 @@ const S = {
     borderRadius: 16,
     display: "grid",
     placeItems: "center",
-    background: "rgba(15,23,42,.04)",
+    background: "#0f172a",
     border: "1px solid rgba(15,23,42,.06)",
     flexShrink: 0,
-    fontSize: 18,
   },
   pillText: {
     fontSize: 14,
@@ -1017,7 +1129,7 @@ const S = {
     borderRadius: 16,
     display: "grid",
     placeItems: "center",
-    background: "rgba(255,255,255,.90)",
+    background: "#0f172a",
     border: "1px solid rgba(15,23,42,.06)",
     flexShrink: 0,
   },
@@ -1052,11 +1164,10 @@ const S = {
     width: 40,
     height: 40,
     borderRadius: 16,
-    background: "rgba(15,23,42,.04)",
+    background: "#0f172a",
     border: "1px solid rgba(15,23,42,.06)",
     display: "grid",
     placeItems: "center",
-    fontSize: 18,
   },
   toggleDot: { width: 14, height: 14, borderRadius: 999 },
   toggleOn: { background: ORANGE, boxShadow: "0 10px 24px rgba(255,106,0,.25)" },
@@ -1144,7 +1255,6 @@ const S = {
   ctaTrack: { marginTop: 12, height: 10, borderRadius: 999, background: "rgba(15,23,42,.08)", overflow: "hidden" },
   ctaFill: { height: "100%", width: "78%", borderRadius: 999, background: "linear-gradient(90deg, #FF6A00, #FFB26B)" },
 
-  /* Sheet */
   sheetBackdrop: {
     position: "fixed",
     inset: 0,
