@@ -984,7 +984,7 @@ const S = {
     borderRadius: 16,
     display: "grid",
     placeItems: "center",
-    background: "#0f172a",
+    background: "linear-gradient(135deg, #FFFFFF, #F7F7F5)",
     border: "1px solid rgba(15,23,42,.06)",
     flexShrink: 0,
   },
