@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 /* ---------------- THEME ---------------- */
 const ORANGE = "#FF6A00";
@@ -12,10 +13,9 @@ const BORDER = "rgba(15,23,42,.08)";
 const SOFT = "rgba(15,23,42,.04)";
 const SUCCESS = "#22c55e";
 
-/* ---------------- STORAGE ---------------- */
-const STORAGE_KEY = "cardio_sessions_fitdeal_v13";
-const LIVE_KEY = "cardio_live_fitdeal_v13";
+/* ---------------- CONFIG ---------------- */
 const WEEKLY_GOAL_MINUTES = 150;
+const MAX_SESSIONS = 200;
 
 /* ---------------- DATA ---------------- */
 const WORKOUTS = [
@@ -82,14 +82,6 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-function safeJsonParse(raw, fallback) {
-  try {
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -126,30 +118,191 @@ function caloriesFromMET({ met, minutes, weightKg }) {
   return Math.round(minutes * ((met * 3.5 * weightKg) / 200));
 }
 
-function liveStorageKey(email) {
-  return `${LIVE_KEY}_${email}`;
-}
-
-function sessionsStorageKey(email) {
-  return `${STORAGE_KEY}_${email}`;
-}
-
-function getLiveState(email) {
-  return safeJsonParse(localStorage.getItem(liveStorageKey(email)), null);
-}
-
-function setLiveState(email, data) {
-  localStorage.setItem(liveStorageKey(email), JSON.stringify(data));
-}
-
 function computeLiveElapsed(live) {
   if (!live) return 0;
-  if (!live.running) return Number(live.elapsedSec || 0);
+  if (!live.running) return Number(live.elapsed_sec || 0);
 
-  const base = Number(live.elapsedSec || 0);
-  const startedAt = Number(live.startedAt || 0);
+  const base = Number(live.elapsed_sec || 0);
+  const startedAt = Number(live.started_at_ms || 0);
   const extra = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
   return base + extra;
+}
+
+function toCardioStateRow(userId, payload) {
+  return {
+    user_id: userId,
+    selected_workout_id: payload.selectedWorkoutId ?? "treadmill",
+    selected_intensity: payload.selectedIntensity ?? "moderate",
+    minutes: Number(payload.minutes || 20),
+    duration_sec: Number(payload.durationSec || 0),
+    mode: payload.mode || "timer",
+    running: !!payload.running,
+    elapsed_sec: Number(payload.elapsedSec || 0),
+    started_at_ms: Number(payload.startedAt || 0),
+    finished_at_ms: Number(payload.finishedAt || 0),
+    dock_open: !!payload.dockOpen,
+  };
+}
+
+function fromCardioStateRow(row) {
+  if (!row) return null;
+  return {
+    selectedWorkoutId: row.selected_workout_id || "treadmill",
+    selectedIntensity: row.selected_intensity || "moderate",
+    minutes: Number(row.minutes || 20),
+    durationSec: Number(row.duration_sec || 0),
+    mode: row.mode || "timer",
+    running: !!row.running,
+    elapsedSec: Number(row.elapsed_sec || 0),
+    startedAt: Number(row.started_at_ms || 0),
+    finishedAt: Number(row.finished_at_ms || 0),
+    dockOpen: !!row.dock_open,
+  };
+}
+
+async function loadPaidStatus(userId) {
+  if (!userId) return false;
+
+  try {
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("plan_type, status")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing"])
+      .in("plan_type", ["basic", "basico", "nutri_plus"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sub?.plan_type) return true;
+  } catch {}
+
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, paid, basic_active, premium")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (
+      profile?.paid === true ||
+      profile?.basic_active === true ||
+      profile?.premium === true ||
+      profile?.plan === "basic" ||
+      profile?.plan === "basico" ||
+      profile?.plan === "nutri_plus"
+    ) {
+      return true;
+    }
+  } catch {}
+
+  return false;
+}
+
+async function fetchCardioSessions(userId) {
+  if (!userId) return [];
+
+  const { data, error } = await supabase
+    .from("cardio_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(MAX_SESSIONS);
+
+  if (error) {
+    console.error("fetchCardioSessions error:", error);
+    return [];
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    date: row.date_key,
+    workoutId: row.workout_id,
+    workoutName: row.workout_name,
+    intensity: row.intensity,
+    intensityLabel: row.intensity_label,
+    minutes: Number(row.minutes || 0),
+    calories: Number(row.calories || 0),
+    weightKg: Number(row.weight_kg || 0),
+    mode: row.mode,
+  }));
+}
+
+async function insertCardioSession(userId, entry) {
+  if (!userId) return { ok: false };
+
+  const payload = {
+    user_id: userId,
+    date_key: entry.date,
+    workout_id: entry.workoutId,
+    workout_name: entry.workoutName,
+    intensity: entry.intensity,
+    intensity_label: entry.intensityLabel,
+    minutes: Number(entry.minutes || 0),
+    calories: Number(entry.calories || 0),
+    weight_kg: Number(entry.weightKg || 0),
+    mode: entry.mode || "timer",
+  };
+
+  const { data, error } = await supabase
+    .from("cardio_sessions")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("insertCardioSession error:", error);
+    return { ok: false, error };
+  }
+
+  return {
+    ok: true,
+    row: {
+      id: data.id,
+      createdAt: data.created_at,
+      date: data.date_key,
+      workoutId: data.workout_id,
+      workoutName: data.workout_name,
+      intensity: data.intensity,
+      intensityLabel: data.intensity_label,
+      minutes: Number(data.minutes || 0),
+      calories: Number(data.calories || 0),
+      weightKg: Number(data.weight_kg || 0),
+      mode: data.mode,
+    },
+  };
+}
+
+async function fetchLiveState(userId) {
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from("cardio_live_state")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("fetchLiveState error:", error);
+    return null;
+  }
+
+  return fromCardioStateRow(data);
+}
+
+async function saveLiveState(userId, payload) {
+  if (!userId) return;
+
+  const row = toCardioStateRow(userId, payload);
+
+  const { error } = await supabase
+    .from("cardio_live_state")
+    .upsert(row, { onConflict: "user_id" });
+
+  if (error) {
+    console.error("saveLiveState error:", error);
+  }
 }
 
 /* ---------------- ICONS ---------------- */
@@ -375,8 +528,12 @@ export default function Cardio() {
   const nav = useNavigate();
   const { user } = useAuth();
 
+  const userId = user?.id || null;
   const email = (user?.email || "anon").toLowerCase();
-  const paid = localStorage.getItem(`paid_${email}`) === "1";
+
+  const [paid, setPaid] = useState(false);
+  const [loadingPaid, setLoadingPaid] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
 
   const [mode, setMode] = useState("timer");
   const [selectedWorkoutId, setSelectedWorkoutId] = useState("treadmill");
@@ -385,22 +542,14 @@ export default function Cardio() {
   const [minutesInput, setMinutesInput] = useState("20");
   const [calTarget, setCalTarget] = useState("");
   const [toast, setToast] = useState(null);
-  const [sessions, setSessions] = useState(() => {
-    try {
-      const raw = localStorage.getItem(sessionsStorageKey(email));
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [sessions, setSessions] = useState([]);
 
   const [running, setRunning] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [durationSec, setDurationSec] = useState(20 * 60);
   const [justFinished, setJustFinished] = useState(false);
 
-  const dockKey = `cardio_dock_open_${email}`;
-  const [dockOpen, setDockOpen] = useState(() => localStorage.getItem(dockKey) === "1");
+  const [dockOpen, setDockOpen] = useState(false);
   const dragStartY = useRef(null);
   const dragMoved = useRef(false);
   const tickRef = useRef(null);
@@ -453,23 +602,44 @@ export default function Cardio() {
     return mode === "timer" ? "Toque em iniciar timer" : "Toque em iniciar cronômetro";
   }, [mode, calTarget, running, elapsedSec, justFinished]);
 
-  function persistDock(v) {
+  async function persistDock(v) {
     setDockOpen(v);
-    localStorage.setItem(dockKey, v ? "1" : "0");
+    if (!userId) return;
+
+    const live = await fetchLiveState(userId);
+    await saveLiveState(userId, {
+      ...(live || {
+        selectedWorkoutId,
+        selectedIntensity,
+        minutes,
+        durationSec,
+        mode,
+        running,
+        elapsedSec,
+        startedAt: 0,
+        finishedAt: 0,
+      }),
+      dockOpen: v,
+    });
   }
 
-  function persistLive(next) {
-    setLiveState(email, {
+  async function persistLive(next) {
+    if (!userId) return;
+
+    await saveLiveState(userId, {
       selectedWorkoutId,
       selectedIntensity,
       minutes,
       durationSec,
       mode,
+      running,
+      elapsedSec,
+      dockOpen,
       ...next,
     });
   }
 
-  function saveSessionFromMinutes(mins, modeLabel) {
+  async function saveSessionFromMinutes(mins, modeLabel) {
     const safeMinutes = Math.max(1, Math.round(mins));
     const kcal = caloriesFromMET({
       met: metNow,
@@ -478,8 +648,6 @@ export default function Cardio() {
     });
 
     const entry = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
       date: todayKey,
       workoutId: selectedWorkout.id,
       workoutName: selectedWorkout.name,
@@ -491,14 +659,76 @@ export default function Cardio() {
       mode: modeLabel,
     };
 
-    setSessions((prev) => [entry, ...prev].slice(0, 200));
+    const result = await insertCardioSession(userId, entry);
+    if (!result?.ok) {
+      setToast({
+        title: "Erro ao salvar",
+        text: "Não foi possível salvar a sessão agora.",
+      });
+      return false;
+    }
+
+    setSessions((prev) => [result.row, ...prev].slice(0, MAX_SESSIONS));
+    return true;
   }
 
   useEffect(() => {
-    try {
-      localStorage.setItem(sessionsStorageKey(email), JSON.stringify(sessions));
-    } catch {}
-  }, [sessions, email]);
+    let active = true;
+
+    async function bootstrap() {
+      if (!userId) {
+        if (!active) return;
+        setPaid(false);
+        setLoadingPaid(false);
+        setLoadingData(false);
+        return;
+      }
+
+      setLoadingPaid(true);
+      setLoadingData(true);
+
+      const [paidNow, sessionsNow, liveNow] = await Promise.all([
+        loadPaidStatus(userId),
+        fetchCardioSessions(userId),
+        fetchLiveState(userId),
+      ]);
+
+      if (!active) return;
+
+      setPaid(!!paidNow);
+      setLoadingPaid(false);
+      setSessions(Array.isArray(sessionsNow) ? sessionsNow : []);
+
+      if (liveNow) {
+        setMode(liveNow.mode || "timer");
+        setSelectedWorkoutId(liveNow.selectedWorkoutId || "treadmill");
+        setSelectedIntensity(liveNow.selectedIntensity || "moderate");
+
+        const mins = Number(liveNow.minutes || 20);
+        setMinutes(clamp(mins, 1, 240));
+        setMinutesInput(String(clamp(mins, 1, 240)));
+
+        setDurationSec(Number(liveNow.durationSec || mins * 60));
+        setElapsedSec(computeLiveElapsed({
+          elapsed_sec: liveNow.elapsedSec,
+          running: liveNow.running,
+          started_at_ms: liveNow.startedAt,
+        }));
+        setRunning(!!liveNow.running);
+        setDockOpen(!!liveNow.dockOpen);
+      } else {
+        setDurationSec(20 * 60);
+      }
+
+      setLoadingData(false);
+    }
+
+    bootstrap();
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!toast) return;
@@ -507,44 +737,32 @@ export default function Cardio() {
   }, [toast]);
 
   useEffect(() => {
-    const live = getLiveState(email);
-    if (!live) {
-      setDurationSec(minutes * 60);
-      return;
-    }
-
-    setMode(live.mode || "timer");
-    setSelectedWorkoutId(live.selectedWorkoutId || "treadmill");
-    setSelectedIntensity(live.selectedIntensity || "moderate");
-
-    const mins = Number(live.minutes || 20);
-    setMinutes(clamp(mins, 1, 240));
-    setMinutesInput(String(clamp(mins, 1, 240)));
-
-    setDurationSec(Number(live.durationSec || mins * 60));
-    setElapsedSec(computeLiveElapsed(live));
-    setRunning(!!live.running);
-  }, [email]);
-
-  useEffect(() => {
     if (mode === "timer" && !running) {
       setDurationSec(minutes * 60);
     }
   }, [minutes, mode, running]);
 
   useEffect(() => {
+    if (!userId) return;
+
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
 
-    const sync = () => {
-      const live = getLiveState(email);
+    const sync = async () => {
+      const live = await fetchLiveState(userId);
       if (!live) return;
 
-      const elapsed = computeLiveElapsed(live);
+      const elapsed = computeLiveElapsed({
+        elapsed_sec: live.elapsedSec,
+        running: live.running,
+        started_at_ms: live.startedAt,
+      });
+
       setElapsedSec(elapsed);
       setRunning(!!live.running);
+      setDockOpen(!!live.dockOpen);
 
       if (live.mode === "timer") {
         const total = Number(live.durationSec || 0);
@@ -555,12 +773,17 @@ export default function Cardio() {
           setRunning(false);
           setJustFinished(true);
 
-          setLiveState(email, {
-            ...live,
+          await saveLiveState(userId, {
+            selectedWorkoutId: live.selectedWorkoutId,
+            selectedIntensity: live.selectedIntensity,
+            minutes: live.minutes,
+            durationSec: total,
+            mode: "timer",
             running: false,
             elapsedSec: total,
             startedAt: 0,
             finishedAt: Date.now(),
+            dockOpen: true,
           });
 
           vibrate([40, 60, 40]);
@@ -569,18 +792,18 @@ export default function Cardio() {
             title: "Timer concluído",
             text: "Seu cardio terminou. Agora salve a sessão.",
           });
-          persistDock(true);
+          setDockOpen(true);
         }
       }
     };
 
     sync();
-    tickRef.current = setInterval(sync, 250);
+    tickRef.current = setInterval(sync, 1000);
 
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, [email]);
+  }, [userId]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -611,10 +834,10 @@ export default function Cardio() {
     document.head.appendChild(style);
   }, []);
 
-  function startTimer() {
+  async function startTimer() {
     setJustFinished(false);
     const total = clamp(minutes, 1, 240) * 60;
-    const live = getLiveState(email);
+    const live = userId ? await fetchLiveState(userId) : null;
 
     if (
       live &&
@@ -623,7 +846,7 @@ export default function Cardio() {
       Number(live.elapsedSec || 0) > 0 &&
       Number(live.durationSec || 0) === total
     ) {
-      persistLive({
+      await persistLive({
         mode: "timer",
         durationSec: total,
         running: true,
@@ -633,11 +856,11 @@ export default function Cardio() {
       });
       setRunning(true);
       vibrate(10);
-      persistDock(true);
+      setDockOpen(true);
       return;
     }
 
-    persistLive({
+    await persistLive({
       mode: "timer",
       durationSec: total,
       running: true,
@@ -649,15 +872,15 @@ export default function Cardio() {
     setDurationSec(total);
     setRunning(true);
     vibrate(10);
-    persistDock(true);
+    setDockOpen(true);
   }
 
-  function startChrono() {
+  async function startChrono() {
     setJustFinished(false);
-    const live = getLiveState(email);
+    const live = userId ? await fetchLiveState(userId) : null;
 
     if (live && live.mode === "chrono" && !live.running && Number(live.elapsedSec || 0) > 0) {
-      persistLive({
+      await persistLive({
         mode: "chrono",
         running: true,
         elapsedSec: Number(live.elapsedSec || 0),
@@ -666,11 +889,11 @@ export default function Cardio() {
       });
       setRunning(true);
       vibrate(10);
-      persistDock(true);
+      setDockOpen(true);
       return;
     }
 
-    persistLive({
+    await persistLive({
       mode: "chrono",
       running: true,
       elapsedSec: 0,
@@ -680,15 +903,21 @@ export default function Cardio() {
     setElapsedSec(0);
     setRunning(true);
     vibrate(10);
-    persistDock(true);
+    setDockOpen(true);
   }
 
-  function pauseCurrent() {
-    const live = getLiveState(email);
+  async function pauseCurrent() {
+    if (!userId) return;
+    const live = await fetchLiveState(userId);
     if (!live) return;
 
-    const elapsed = computeLiveElapsed(live);
-    persistLive({
+    const elapsed = computeLiveElapsed({
+      elapsed_sec: live.elapsedSec,
+      running: live.running,
+      started_at_ms: live.startedAt,
+    });
+
+    await persistLive({
       ...live,
       running: false,
       elapsedSec: elapsed,
@@ -699,11 +928,11 @@ export default function Cardio() {
     vibrate(8);
   }
 
-  function resetCurrent() {
+  async function resetCurrent() {
     setJustFinished(false);
 
     if (mode === "timer") {
-      persistLive({
+      await persistLive({
         mode: "timer",
         running: false,
         elapsedSec: 0,
@@ -719,7 +948,7 @@ export default function Cardio() {
     }
 
     if (mode === "chrono") {
-      persistLive({
+      await persistLive({
         mode: "chrono",
         running: false,
         elapsedSec: 0,
@@ -732,10 +961,12 @@ export default function Cardio() {
     }
   }
 
-  function saveTimerSession() {
+  async function saveTimerSession() {
     const doneMinutes = Math.max(1, Math.round(elapsedSec / 60));
-    saveSessionFromMinutes(doneMinutes, "timer");
-    persistLive({
+    const ok = await saveSessionFromMinutes(doneMinutes, "timer");
+    if (!ok) return;
+
+    await persistLive({
       mode: "timer",
       running: false,
       elapsedSec: 0,
@@ -754,10 +985,12 @@ export default function Cardio() {
     });
   }
 
-  function saveChronoSession() {
+  async function saveChronoSession() {
     const doneMinutes = Math.max(1, Math.round(elapsedSec / 60));
-    saveSessionFromMinutes(doneMinutes, "chrono");
-    persistLive({
+    const ok = await saveSessionFromMinutes(doneMinutes, "chrono");
+    if (!ok) return;
+
+    await persistLive({
       mode: "chrono",
       running: false,
       elapsedSec: 0,
@@ -775,7 +1008,7 @@ export default function Cardio() {
     });
   }
 
-  function startByCalories() {
+  async function startByCalories() {
     const kcal = Math.max(0, Math.round(Number(calTarget || 0)));
     if (kcal <= 0) return;
 
@@ -785,7 +1018,7 @@ export default function Cardio() {
     setMode("timer");
     setJustFinished(false);
 
-    setLiveState(email, {
+    await saveLiveState(userId, {
       selectedWorkoutId,
       selectedIntensity,
       minutes: mins,
@@ -795,13 +1028,14 @@ export default function Cardio() {
       elapsedSec: 0,
       startedAt: Date.now(),
       finishedAt: 0,
+      dockOpen: true,
     });
 
     setDurationSec(mins * 60);
     setElapsedSec(0);
     setRunning(true);
     vibrate(10);
-    persistDock(true);
+    setDockOpen(true);
     setToast({
       type: "success",
       title: "Meta iniciada",
@@ -809,13 +1043,13 @@ export default function Cardio() {
     });
   }
 
-  function changeMode(nextMode) {
-    if (running) pauseCurrent();
+  async function changeMode(nextMode) {
+    if (running) await pauseCurrent();
     setMode(nextMode);
     setJustFinished(false);
 
     if (nextMode === "timer") {
-      setLiveState(email, {
+      await saveLiveState(userId, {
         selectedWorkoutId,
         selectedIntensity,
         minutes,
@@ -825,6 +1059,7 @@ export default function Cardio() {
         elapsedSec: 0,
         startedAt: 0,
         finishedAt: 0,
+        dockOpen,
       });
       setElapsedSec(0);
       setDurationSec(minutes * 60);
@@ -832,7 +1067,7 @@ export default function Cardio() {
     }
 
     if (nextMode === "chrono") {
-      setLiveState(email, {
+      await saveLiveState(userId, {
         selectedWorkoutId,
         selectedIntensity,
         minutes,
@@ -842,6 +1077,7 @@ export default function Cardio() {
         elapsedSec: 0,
         startedAt: 0,
         finishedAt: 0,
+        dockOpen,
       });
       setElapsedSec(0);
       setRunning(false);
@@ -899,6 +1135,10 @@ export default function Cardio() {
   function onDockClick() {
     if (dragMoved.current) return;
     persistDock(!dockOpen);
+  }
+
+  if (loadingPaid || loadingData) {
+    return <div style={S.page} />;
   }
 
   if (!paid) {
@@ -1614,7 +1854,7 @@ export function CardioMiniDock() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const email = (user?.email || "anon").toLowerCase();
+  const userId = user?.id || null;
   const [info, setInfo] = useState({
     liveRunning: false,
     liveTime: "00:00",
@@ -1622,8 +1862,22 @@ export function CardioMiniDock() {
   });
 
   useEffect(() => {
-    function pull() {
-      const live = getLiveState(email);
+    let active = true;
+
+    async function pull() {
+      if (!userId) {
+        if (!active) return;
+        setInfo({
+          liveRunning: false,
+          liveTime: "00:00",
+          title: "Cardio",
+        });
+        return;
+      }
+
+      const live = await fetchLiveState(userId);
+      if (!active) return;
+
       if (!live) {
         setInfo({
           liveRunning: false,
@@ -1633,7 +1887,12 @@ export function CardioMiniDock() {
         return;
       }
 
-      const elapsed = computeLiveElapsed(live);
+      const elapsed = computeLiveElapsed({
+        elapsed_sec: live.elapsedSec,
+        running: live.running,
+        started_at_ms: live.startedAt,
+      });
+
       let liveTime = "00:00";
 
       if (live.mode === "timer") {
@@ -1653,9 +1912,13 @@ export function CardioMiniDock() {
     }
 
     pull();
-    const t = setInterval(pull, 300);
-    return () => clearInterval(t);
-  }, [email]);
+    const t = setInterval(pull, 1000);
+
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
+  }, [userId]);
 
   if (!info.liveRunning) return null;
   if (typeof window !== "undefined" && window.location.pathname === "/cardio") return null;
