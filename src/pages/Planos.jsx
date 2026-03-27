@@ -1,7 +1,7 @@
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
@@ -11,33 +11,103 @@ export default function Planos() {
   const nav = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
   const email = (user?.email || "anon").toLowerCase();
 
-  const paid = useMemo(() => localStorage.getItem(`paid_${email}`) === "1", [email]);
-
-  // refs para scroll suave (corrige botão Nutri+ e qualquer deep link)
   const basicRef = useRef(null);
   const nutriRef = useRef(null);
 
   const [tap, setTap] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [subscription, setSubscription] = useState(null);
 
-  function activateBasic() {
-    // SIMULA pagamento do básico (depois troca por Stripe)
-    localStorage.setItem(`paid_${email}`, "1");
-    const paymentsKey = `payments_${email}`;
-    const raw = localStorage.getItem(paymentsKey);
-    const list = raw ? JSON.parse(raw) : [];
+  const qs = useMemo(
+    () => new URLSearchParams(location.search || ""),
+    [location.search]
+  );
 
-    list.unshift({
-      id: String(Date.now()),
-      plan: "Básico",
-      price: 12.99,
-      at: Date.now(),
-      note: "Recorrente (simulado)",
-    });
+  const checkoutStatus = (qs.get("checkout") || "").toLowerCase();
 
-    localStorage.setItem(paymentsKey, JSON.stringify(list.slice(0, 50)));
-    nav("/treino");
+  const paid =
+    subscription?.status === "active" ||
+    subscription?.status === "trialing";
+
+  async function loadSubscription() {
+    if (!user?.id) {
+      setSubscription(null);
+      setLoadingSubscription(false);
+      return;
+    }
+
+    setLoadingSubscription(true);
+
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("loadSubscription error:", error);
+      setSubscription(null);
+    } else {
+      setSubscription(data ?? null);
+    }
+
+    setLoadingSubscription(false);
+  }
+
+  async function activateBasic() {
+    try {
+      if (!user) {
+        nav("/login");
+        return;
+      }
+
+      setCheckoutLoading(true);
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("Sessão inválida. Faça login novamente.");
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            priceId: import.meta.env.VITE_STRIPE_PRICE_BASIC,
+            planKey: "basico",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível iniciar o checkout.");
+      }
+
+      if (!data?.url) {
+        throw new Error("A URL do checkout não foi retornada.");
+      }
+
+      window.location.href = data.url;
+    } catch (err) {
+      console.error("activateBasic error:", err);
+      alert(err?.message || "Erro ao abrir o pagamento.");
+    } finally {
+      setCheckoutLoading(false);
+    }
   }
 
   function scrollTo(ref) {
@@ -45,22 +115,34 @@ export default function Planos() {
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // /planos#nutri ou /planos?focus=nutri vai direto pra seção certa
+  useEffect(() => {
+    loadSubscription();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (checkoutStatus === "success") {
+      const timer = setTimeout(() => {
+        loadSubscription();
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [checkoutStatus, user?.id]);
+
   useEffect(() => {
     const hash = (location.hash || "").toLowerCase();
-    const qs = new URLSearchParams(location.search || "");
     const focus = (qs.get("focus") || "").toLowerCase();
 
     if (hash === "#nutri" || focus === "nutri" || focus === "nutri+") {
       setTimeout(() => scrollTo(nutriRef), 60);
       return;
     }
+
     if (hash === "#basico" || focus === "basico" || focus === "basic") {
       setTimeout(() => scrollTo(basicRef), 60);
     }
-  }, [location.hash, location.search]);
+  }, [location.hash, qs]);
 
-  // mini “tabs” no topo (glass/Apple)
   function goTab(which) {
     setTap(which);
     setTimeout(() => setTap(null), 140);
@@ -69,14 +151,12 @@ export default function Planos() {
   }
 
   return (
-    <div className="page" style={styles.page}>
+    <div style={styles.page}>
       <div style={styles.bgGlow} />
 
-      {/* HERO */}
-      <div style={styles.hero}>
+      <section style={styles.hero}>
         <div style={styles.heroTop}>
           <button
-            type="button"
             onClick={() => nav(-1)}
             style={styles.backMini}
             aria-label="Voltar"
@@ -85,17 +165,17 @@ export default function Planos() {
             <ChevronLeft />
           </button>
 
-          <div style={{ minWidth: 0 }}>
+          <div>
             <div style={styles.kicker}>Planos</div>
             <div style={styles.title}>Escolha seu acesso</div>
-            <div style={styles.sub}>Pagamento recorrente. Cancelamento simples, sem burocracia.</div>
+            <div style={styles.sub}>
+              Pagamento recorrente. Cancelamento simples, sem burocracia.
+            </div>
           </div>
         </div>
 
-        {/* Tabs “glass” */}
         <div style={styles.tabs}>
           <button
-            type="button"
             onClick={() => goTab("basico")}
             style={{
               ...styles.tab,
@@ -104,8 +184,8 @@ export default function Planos() {
           >
             Básico
           </button>
+
           <button
-            type="button"
             onClick={() => goTab("nutri")}
             style={{
               ...styles.tabPremium,
@@ -116,92 +196,174 @@ export default function Planos() {
           </button>
         </div>
 
-        {paid ? (
+        {loadingSubscription ? (
+          <div style={styles.freeBanner}>
+            <div style={styles.lockMark}>
+              <LockGlyph />
+            </div>
+            <div>
+              <div style={styles.freeTitle}>Verificando assinatura</div>
+              <div style={styles.freeText}>
+                Aguarde um instante enquanto buscamos seu status.
+              </div>
+            </div>
+            <div style={styles.freeRight}>
+              <div style={styles.freePulseDot} />
+            </div>
+          </div>
+        ) : paid ? (
           <div style={styles.paidBanner}>
-            <span style={styles.paidDot} />
-            Você já tem o <b>Básico</b> ativo.
-            <button type="button" style={styles.paidBtn} onClick={() => nav("/dashboard")}>
+            <div style={styles.paidDot} />
+            Você já tem o Básico ativo.
+            <button style={styles.paidBtn} onClick={() => nav("/dashboard")}>
               Ir pro dashboard
             </button>
           </div>
-        ) : (
-          /* ✅ ALTERADO: SOMENTE ESTE “BALÃO” (texto + estilo) */
+        ) : checkoutStatus === "success" ? (
           <div style={styles.freeBanner}>
-            <span style={styles.lockMark} aria-hidden="true">
+            <div style={styles.lockMark}>
               <LockGlyph />
-            </span>
-
-            <div style={{ minWidth: 0 }}>
-              <div style={styles.freeTitle}>Você está no Free</div>
+            </div>
+            <div>
+              <div style={styles.freeTitle}>Pagamento recebido</div>
               <div style={styles.freeText}>
-                Assine o <b>Básico</b> pra liberar o treino completo (detalhes, séries e evolução).
+                Se a liberação ainda não apareceu, atualize em alguns segundos.
+              </div>
+            </div>
+            <div style={styles.freeRight}>
+              <div style={styles.freePulseDot} />
+            </div>
+          </div>
+        ) : checkoutStatus === "cancel" ? (
+          <div style={styles.freeBanner}>
+            <div style={styles.lockMark}>
+              <LockGlyph />
+            </div>
+
+            <div>
+              <div style={styles.freeTitle}>Pagamento não concluído</div>
+              <div style={styles.freeText}>
+                Você voltou do checkout sem finalizar a assinatura.
               </div>
             </div>
 
-            <div style={styles.freeRight} aria-hidden="true">
-              <span style={styles.freePulseDot} />
+            <div style={styles.freeRight}>
+              <div style={styles.freePulseDot} />
+            </div>
+          </div>
+        ) : (
+          <div style={styles.freeBanner}>
+            <div style={styles.lockMark}>
+              <LockGlyph />
+            </div>
+
+            <div>
+              <div style={styles.freeTitle}>Você está no Free</div>
+              <div style={styles.freeText}>
+                Assine o Básico pra liberar o treino completo (detalhes, séries
+                e evolução).
+              </div>
+            </div>
+
+            <div style={styles.freeRight}>
+              <div style={styles.freePulseDot} />
             </div>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* CARD — BÁSICO */}
-      <div ref={basicRef} id="basico" style={styles.section}>
+      <section ref={basicRef} style={styles.section}>
         <div style={styles.card}>
           <div style={styles.cardHeader}>
-            <div style={styles.tag}>BÁSICO</div>
+            <span style={styles.tag}>BÁSICO</span>
+
             <div style={styles.priceWrap}>
-              <div style={styles.price}>R$ 12,99</div>
-              <div style={styles.per}>/mês</div>
+              <span style={styles.price}>R$ 12,99</span>
+              <span style={styles.per}>/mês</span>
             </div>
           </div>
 
           <div style={styles.cardTitle}>Treinos personalizados</div>
-          <div style={styles.cardNote}>Foque no essencial: execução, constância e progressão.</div>
+          <div style={styles.cardNote}>
+            Foque no essencial: execução, constância e progressão.
+          </div>
 
           <div style={styles.featureGrid}>
-            <Feature title="Treino do dia" text="Rotina clara e progresso no app" />
-            <Feature title="Consistência" text="Streak e frequência semanal" />
-            <Feature title="Estimativa kcal" text="Visão rápida de gasto por treino" />
+            <Feature
+              title="Treino completo"
+              text="Detalhes dos exercícios, séries e organização clara."
+            />
+            <Feature
+              title="Evolução"
+              text="Acompanhe sua constância e progresso com mais controle."
+            />
+            <Feature
+              title="Liberação do app"
+              text="Ao ativar, o treino deixa o modo limitado e libera o fluxo completo."
+            />
           </div>
 
           <button
-            type="button"
+            onClick={paid ? () => nav("/dashboard") : activateBasic}
+            disabled={paid || checkoutLoading || loadingSubscription}
             style={{
               ...styles.primary,
-              ...(paid ? styles.primaryDisabled : null),
+              ...(paid || checkoutLoading || loadingSubscription
+                ? styles.primaryDisabled
+                : null),
             }}
-            onClick={paid ? () => nav("/dashboard") : activateBasic}
-            disabled={paid}
           >
-            {paid ? "Já ativado" : "Assinar agora"}
+            {paid
+              ? "Já ativado"
+              : checkoutLoading
+              ? "Abrindo pagamento..."
+              : loadingSubscription
+              ? "Verificando..."
+              : "Assinar agora"}
           </button>
 
-          <div style={styles.micro}>Ao assinar, o app libera o treino completo e evolução.</div>
+          <div style={styles.micro}>
+            Ao assinar, o app libera o treino completo e evolução.
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* CARD — NUTRI+ */}
-      <div ref={nutriRef} id="nutri" style={styles.section}>
+      <section ref={nutriRef} style={styles.section}>
         <div style={styles.cardPremium}>
           <div style={styles.cardHeader}>
-            <div style={styles.tagPremium}>NUTRI+</div>
+            <span style={styles.tagPremium}>NUTRI+</span>
+
             <div style={styles.priceWrap}>
-              <div style={{ ...styles.price, color: "#fff" }}>R$ 65,99</div>
-              <div style={{ ...styles.per, color: "rgba(255,255,255,.72)" }}>/mês</div>
+              <span style={{ ...styles.price, color: "rgba(255,255,255,.96)" }}>
+                R$ 65,99
+              </span>
+              <span style={{ ...styles.per, color: "rgba(255,255,255,.70)" }}>
+                /mês
+              </span>
             </div>
           </div>
 
           <div style={styles.cardTitlePremium}>Nutrição + Treino (upgrade)</div>
-          <div style={styles.cardNotePremium}>Para quem quer dieta guiada e evolução completa.</div>
-
-          <div style={styles.featureGridPremium}>
-            <FeaturePremium title="Cardápios" text="Rotativos e práticos, alinhados ao seu objetivo" />
-            <FeaturePremium title="Lista de compras" text="Organização automática para o dia a dia" />
-            <FeaturePremium title="Hidratação" text="Controle diário com meta recomendada" />
+          <div style={styles.cardNotePremium}>
+            Para quem quer dieta guiada e evolução completa.
           </div>
 
-          <button type="button" style={styles.premiumCta} onClick={() => nav("/nutriplus")}>
+          <div style={styles.featureGridPremium}>
+            <FeaturePremium
+              title="Plano alimentar"
+              text="Organização alimentar integrada ao treino."
+            />
+            <FeaturePremium
+              title="Acompanhamento"
+              text="Uma área mais completa para evolução guiada."
+            />
+            <FeaturePremium
+              title="Fluxo premium"
+              text="Inclui recursos extras de nutrição e acompanhamento."
+            />
+          </div>
+
+          <button style={styles.premiumCta} onClick={() => nav("/nutriplus")}>
             Ver área de nutrição
           </button>
 
@@ -209,26 +371,25 @@ export default function Planos() {
             Inclui recursos de nutrição e acompanhamento no mesmo fluxo.
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* FOOTER */}
-      <div style={styles.footer}>
-        <button type="button" style={styles.back} onClick={() => nav("/dashboard")}>
+      <section style={styles.footer}>
+        <button style={styles.back} onClick={() => nav("/dashboard")}>
           Voltar
         </button>
-      </div>
+      </section>
     </div>
   );
 }
 
-/* ---------- UI bits ---------- */
 function Feature({ title, text }) {
   return (
     <div style={styles.feat}>
-      <div style={styles.featIcon} aria-hidden="true">
-        <CheckGlyph color={ORANGE} />
+      <div style={styles.featIcon}>
+        <CheckGlyph color="#111" />
       </div>
-      <div style={{ minWidth: 0 }}>
+
+      <div>
         <div style={styles.featTitle}>{title}</div>
         <div style={styles.featText}>{text}</div>
       </div>
@@ -239,10 +400,11 @@ function Feature({ title, text }) {
 function FeaturePremium({ title, text }) {
   return (
     <div style={styles.featPremium}>
-      <div style={styles.featIconPremium} aria-hidden="true">
-        <CheckGlyph color="rgba(255,255,255,.90)" />
+      <div style={styles.featIconPremium}>
+        <CheckGlyph color="#fff" />
       </div>
-      <div style={{ minWidth: 0 }}>
+
+      <div>
         <div style={styles.featTitlePremium}>{title}</div>
         <div style={styles.featTextPremium}>{text}</div>
       </div>
@@ -252,11 +414,11 @@ function FeaturePremium({ title, text }) {
 
 function ChevronLeft() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <path
-        d="M15 18l-6-6 6-6"
-        stroke="#111"
-        strokeWidth="2.6"
+        d="M15 18L9 12L15 6"
+        stroke={TEXT}
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -266,11 +428,11 @@ function ChevronLeft() {
 
 function CheckGlyph({ color = "#111" }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <path
-        d="M20 6L9 17l-5-5"
+        d="M20 7L9 18L4 13"
         stroke={color}
-        strokeWidth="2.6"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -280,24 +442,27 @@ function CheckGlyph({ color = "#111" }) {
 
 function LockGlyph() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <path
-        d="M8.5 11V8.7c0-2.3 1.7-4.2 3.5-4.2s3.5 1.9 3.5 4.2V11"
-        stroke="rgba(15,23,42,.65)"
+        d="M8 10V8a4 4 0 118 0v2"
+        stroke={ORANGE}
         strokeWidth="2.2"
         strokeLinecap="round"
-      />
-      <path
-        d="M7.5 11h9c.9 0 1.5.6 1.5 1.5v6c0 .9-.6 1.5-1.5 1.5h-9c-.9 0-1.5-.6-1.5-1.5v-6c0-.9.6-1.5 1.5-1.5Z"
-        stroke="rgba(15,23,42,.65)"
-        strokeWidth="2.2"
         strokeLinejoin="round"
+      />
+      <rect
+        x="5"
+        y="10"
+        width="14"
+        height="10"
+        rx="3"
+        stroke={ORANGE}
+        strokeWidth="2.2"
       />
     </svg>
   );
 }
 
-/* ---------- styles (Apple-like: menos ruído, mais respiro, camadas sutis) ---------- */
 const styles = {
   page: {
     padding: 18,
@@ -307,6 +472,7 @@ const styles = {
     background:
       "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.16), rgba(248,250,252,0) 60%), linear-gradient(180deg, #f8fafc, #f7f9fc)",
   },
+
   bgGlow: {
     position: "absolute",
     inset: -120,
@@ -326,7 +492,12 @@ const styles = {
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
   },
-  heroTop: { display: "flex", gap: 12, alignItems: "flex-start" },
+
+  heroTop: {
+    display: "flex",
+    gap: 12,
+    alignItems: "flex-start",
+  },
 
   backMini: {
     width: 44,
@@ -340,9 +511,28 @@ const styles = {
     flexShrink: 0,
   },
 
-  kicker: { fontSize: 12, fontWeight: 950, color: MUTED },
-  title: { marginTop: 6, fontSize: 28, fontWeight: 950, color: TEXT, letterSpacing: -0.8, lineHeight: 1.05 },
-  sub: { marginTop: 8, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
+  kicker: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: MUTED,
+  },
+
+  title: {
+    marginTop: 6,
+    fontSize: 28,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.8,
+    lineHeight: 1.05,
+  },
+
+  sub: {
+    marginTop: 8,
+    fontSize: 13,
+    color: MUTED,
+    fontWeight: 800,
+    lineHeight: 1.35,
+  },
 
   tabs: {
     marginTop: 14,
@@ -350,6 +540,7 @@ const styles = {
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
   },
+
   tab: {
     padding: 12,
     borderRadius: 18,
@@ -360,6 +551,7 @@ const styles = {
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
     transition: "transform .12s ease",
   },
+
   tabPremium: {
     padding: 12,
     borderRadius: 18,
@@ -367,10 +559,14 @@ const styles = {
     background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 100%)",
     fontWeight: 950,
     color: "rgba(255,255,255,.94)",
-    boxShadow: "0 14px 38px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.06)",
+    boxShadow:
+      "0 14px 38px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.06)",
     transition: "transform .12s ease",
   },
-  tabTap: { transform: "scale(0.985)" },
+
+  tabTap: {
+    transform: "scale(0.985)",
+  },
 
   paidBanner: {
     marginTop: 12,
@@ -385,7 +581,14 @@ const styles = {
     alignItems: "center",
     gap: 10,
   },
-  paidDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE },
+
+  paidDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: ORANGE,
+  },
+
   paidBtn: {
     marginLeft: "auto",
     padding: "10px 12px",
@@ -397,7 +600,6 @@ const styles = {
     cursor: "pointer",
   },
 
-  /* ✅ ALTERADO: SOMENTE O “BALÃO” DO FREE */
   freeBanner: {
     marginTop: 12,
     borderRadius: 18,
@@ -413,6 +615,7 @@ const styles = {
     position: "relative",
     overflow: "hidden",
   },
+
   lockMark: {
     width: 36,
     height: 36,
@@ -425,9 +628,29 @@ const styles = {
     boxShadow: "0 10px 26px rgba(255,106,0,.10)",
     flexShrink: 0,
   },
-  freeTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2, lineHeight: 1.15 },
-  freeText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.3 },
-  freeRight: { marginLeft: "auto", display: "grid", placeItems: "center" },
+
+  freeTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+    lineHeight: 1.15,
+  },
+
+  freeText: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#475569",
+    lineHeight: 1.3,
+  },
+
+  freeRight: {
+    marginLeft: "auto",
+    display: "grid",
+    placeItems: "center",
+  },
+
   freePulseDot: {
     width: 10,
     height: 10,
@@ -436,7 +659,11 @@ const styles = {
     boxShadow: "0 0 0 6px rgba(255,106,0,.12)",
   },
 
-  section: { position: "relative", zIndex: 1, marginTop: 14 },
+  section: {
+    position: "relative",
+    zIndex: 1,
+    marginTop: 14,
+  },
 
   card: {
     borderRadius: 26,
@@ -449,14 +676,21 @@ const styles = {
   cardPremium: {
     borderRadius: 26,
     padding: 18,
-    background: "linear-gradient(180deg, #0B0C0F 0%, #14161B 55%, #0E0F13 100%)",
+    background:
+      "linear-gradient(180deg, #0B0C0F 0%, #14161B 55%, #0E0F13 100%)",
     border: "1px solid rgba(255,255,255,.10)",
-    boxShadow: "0 22px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06)",
+    boxShadow:
+      "0 22px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06)",
     position: "relative",
     overflow: "hidden",
   },
 
-  cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
 
   tag: {
     display: "inline-flex",
@@ -482,12 +716,40 @@ const styles = {
     letterSpacing: 0.2,
   },
 
-  priceWrap: { display: "flex", alignItems: "baseline", gap: 6 },
-  price: { fontSize: 28, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
-  per: { fontSize: 12, fontWeight: 900, color: MUTED },
+  priceWrap: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 6,
+  },
 
-  cardTitle: { marginTop: 12, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-  cardNote: { marginTop: 6, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.4 },
+  price: {
+    fontSize: 28,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.7,
+  },
+
+  per: {
+    fontSize: 12,
+    fontWeight: 900,
+    color: MUTED,
+  },
+
+  cardTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.3,
+  },
+
+  cardNote: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: 800,
+    color: MUTED,
+    lineHeight: 1.4,
+  },
 
   cardTitlePremium: {
     marginTop: 12,
@@ -496,6 +758,7 @@ const styles = {
     color: "rgba(255,255,255,.96)",
     letterSpacing: -0.3,
   },
+
   cardNotePremium: {
     marginTop: 6,
     fontSize: 13,
@@ -504,8 +767,17 @@ const styles = {
     lineHeight: 1.4,
   },
 
-  featureGrid: { marginTop: 12, display: "grid", gap: 10 },
-  featureGridPremium: { marginTop: 12, display: "grid", gap: 10 },
+  featureGrid: {
+    marginTop: 12,
+    display: "grid",
+    gap: 10,
+  },
+
+  featureGridPremium: {
+    marginTop: 12,
+    display: "grid",
+    gap: 10,
+  },
 
   feat: {
     borderRadius: 18,
@@ -516,6 +788,7 @@ const styles = {
     gap: 10,
     alignItems: "center",
   },
+
   featIcon: {
     width: 40,
     height: 40,
@@ -526,8 +799,21 @@ const styles = {
     placeItems: "center",
     flexShrink: 0,
   },
-  featTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  featText: { marginTop: 3, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.3 },
+
+  featTitle: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
+
+  featText: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: 800,
+    color: MUTED,
+    lineHeight: 1.3,
+  },
 
   featPremium: {
     borderRadius: 18,
@@ -538,6 +824,7 @@ const styles = {
     gap: 10,
     alignItems: "center",
   },
+
   featIconPremium: {
     width: 40,
     height: 40,
@@ -549,8 +836,21 @@ const styles = {
     flexShrink: 0,
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
   },
-  featTitlePremium: { fontSize: 13, fontWeight: 950, color: "rgba(255,255,255,.92)", letterSpacing: -0.2 },
-  featTextPremium: { marginTop: 3, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.70)", lineHeight: 1.3 },
+
+  featTitlePremium: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: "rgba(255,255,255,.92)",
+    letterSpacing: -0.2,
+  },
+
+  featTextPremium: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "rgba(255,255,255,.70)",
+    lineHeight: 1.3,
+  },
 
   primary: {
     marginTop: 14,
@@ -564,7 +864,12 @@ const styles = {
     boxShadow: "0 18px 60px rgba(255,106,0,.26)",
     cursor: "pointer",
   },
-  primaryDisabled: { opacity: 0.55, boxShadow: "none", cursor: "default" },
+
+  primaryDisabled: {
+    opacity: 0.55,
+    boxShadow: "none",
+    cursor: "default",
+  },
 
   premiumCta: {
     marginTop: 14,
@@ -576,25 +881,32 @@ const styles = {
     color: "rgba(255,255,255,.92)",
     fontWeight: 950,
     cursor: "pointer",
-    boxShadow: "0 14px 40px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.06)",
+    boxShadow:
+      "0 14px 40px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.06)",
   },
 
-  secondary: {
+  micro: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: 800,
+    color: MUTED,
+    lineHeight: 1.35,
+  },
+
+  microPremium: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "rgba(255,255,255,.70)",
+    lineHeight: 1.35,
+  },
+
+  footer: {
+    position: "relative",
+    zIndex: 1,
     marginTop: 14,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.30)",
-    background: "rgba(255,106,0,.12)",
-    color: TEXT,
-    fontWeight: 950,
-    cursor: "pointer",
   },
 
-  micro: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  microPremium: { marginTop: 10, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,.70)", lineHeight: 1.35 },
-
-  footer: { position: "relative", zIndex: 1, marginTop: 14 },
   back: {
     width: "100%",
     padding: 14,
@@ -607,4 +919,3 @@ const styles = {
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
 };
-
