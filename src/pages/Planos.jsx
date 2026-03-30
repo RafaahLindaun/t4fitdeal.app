@@ -59,56 +59,80 @@ export default function Planos() {
   }
 
   async function activateBasic() {
-    try {
-      if (!user) {
-        nav("/login");
-        return;
-      }
-
-      setCheckoutLoading(true);
-
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError || !session?.access_token) {
-        throw new Error("Sessão inválida. Faça login novamente.");
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            priceId: import.meta.env.VITE_STRIPE_PRICE_BASIC,
-            planKey: "basico",
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Não foi possível iniciar o checkout.");
-      }
-
-      if (!data?.url) {
-        throw new Error("A URL do checkout não foi retornada.");
-      }
-
-      window.location.href = data.url;
-    } catch (err) {
-      console.error("activateBasic error:", err);
-      alert(err?.message || "Erro ao abrir o pagamento.");
-    } finally {
-      setCheckoutLoading(false);
+  try {
+    if (!user) {
+      nav("/login");
+      return;
     }
+
+    setCheckoutLoading(true);
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const priceId = import.meta.env.VITE_STRIPE_PRICE_BASIC;
+
+    if (!supabaseUrl) {
+      throw new Error("VITE_SUPABASE_URL não está configurada na Vercel.");
+    }
+
+    if (!priceId) {
+      throw new Error("VITE_STRIPE_PRICE_BASIC não está configurada na Vercel.");
+    }
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      throw new Error("Sessão inválida. Faça login novamente.");
+    }
+
+    const endpoint = `${supabaseUrl}/functions/v1/create-checkout`;
+
+    console.log("Chamando checkout:", endpoint);
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        priceId,
+        planKey: "basico",
+      }),
+    });
+
+    const text = await response.text();
+    let data = {};
+
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { raw: text };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ||
+          data?.raw ||
+          `Erro ${response.status} ao criar checkout.`
+      );
+    }
+
+    if (!data?.url) {
+      throw new Error("A function não retornou a URL do checkout.");
+    }
+
+    window.location.href = data.url;
+  } catch (err) {
+    console.error("activateBasic error:", err);
+    alert(err?.message || "Não foi possível abrir o pagamento.");
+  } finally {
+    setCheckoutLoading(false);
   }
+}
+  
 
   function scrollTo(ref) {
     if (!ref?.current) return;
