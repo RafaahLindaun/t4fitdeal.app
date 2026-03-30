@@ -67,27 +67,15 @@ export default function Planos() {
 
     setCheckoutLoading(true);
 
-  async function activateBasic() {
-  try {
-    if (!user) {
-      nav("/login");
-      return;
-    }
-
-    setCheckoutLoading(true);
-
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const priceId = import.meta.env.VITE_STRIPE_PRICE_BASIC;
 
-    console.log("VITE_SUPABASE_URL:", supabaseUrl);
-    console.log("VITE_STRIPE_PRICE_BASIC:", priceId);
-
     if (!supabaseUrl) {
-      throw new Error("VITE_SUPABASE_URL ausente na Vercel.");
+      throw new Error("VITE_SUPABASE_URL não está configurada na Vercel.");
     }
 
     if (!priceId) {
-      throw new Error("VITE_STRIPE_PRICE_BASIC ausente na Vercel.");
+      throw new Error("VITE_STRIPE_PRICE_BASIC não está configurada na Vercel.");
     }
 
     const {
@@ -100,7 +88,8 @@ export default function Planos() {
     }
 
     const endpoint = `${supabaseUrl}/functions/v1/create-checkout`;
-    console.log("endpoint:", endpoint);
+
+    console.log("Chamando checkout:", endpoint);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -114,18 +103,21 @@ export default function Planos() {
       }),
     });
 
-    const raw = await response.text();
-    console.log("create-checkout raw:", raw);
-
+    const text = await response.text();
     let data = {};
+
     try {
-      data = raw ? JSON.parse(raw) : {};
+      data = text ? JSON.parse(text) : {};
     } catch {
-      data = { raw };
+      data = { raw: text };
     }
 
     if (!response.ok) {
-      throw new Error(data?.error || data?.raw || `Erro ${response.status}`);
+      throw new Error(
+        data?.error ||
+          data?.raw ||
+          `Erro ${response.status} ao criar checkout.`
+      );
     }
 
     if (!data?.url) {
@@ -140,6 +132,7 @@ export default function Planos() {
     setCheckoutLoading(false);
   }
 }
+  
 
   function scrollTo(ref) {
     if (!ref?.current) return;
