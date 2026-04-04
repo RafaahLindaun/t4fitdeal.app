@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -19,6 +19,7 @@ function fmtBRL(n) {
 
 export default function NutriPlus() {
   const nav = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const [paidNutriPlus, setPaidNutriPlus] = useState(false);
@@ -26,120 +27,121 @@ export default function NutriPlus() {
   const [checking, setChecking] = useState(true);
 
   const nutriPlus = 65.99;
+  const qs = new URLSearchParams(location.search || "");
+  const checkoutStatus = (qs.get("checkout") || "").toLowerCase();
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadNutriStatus() {
-      if (!user?.id) {
-        if (!active) return;
-        setPaidNutriPlus(false);
-        setChecking(false);
-        return;
-      }
-
-      try {
-        const [subRes, profileRes] = await Promise.all([
-          supabase
-            .from("subscriptions")
-            .select("status, plan_type")
-            .eq("user_id", user.id)
-            .eq("plan_type", "nutri_plus")
-            .in("status", ["active", "trialing"]),
-          supabase
-            .from("profiles")
-            .select("nutri_plus, plan")
-            .eq("id", user.id)
-            .maybeSingle(),
-        ]);
-
-        if (!active) return;
-
-        const bySubscription =
-          Array.isArray(subRes.data) &&
-          subRes.data.some((row) =>
-            ["active", "trialing"].includes(String(row.status || "").toLowerCase())
-          );
-
-        const byProfile =
-          profileRes.data?.nutri_plus === true ||
-          String(profileRes.data?.plan || "").toLowerCase() === "nutri_plus";
-
-        setPaidNutriPlus(!!bySubscription || !!byProfile);
-      } catch (err) {
-        console.error("NutriPlus load status error:", err);
-        if (!active) return;
-        setPaidNutriPlus(false);
-      } finally {
-        if (active) setChecking(false);
-      }
+  async function loadNutriStatus() {
+    if (!user?.id) {
+      setPaidNutriPlus(false);
+      setChecking(false);
+      return;
     }
 
-    loadNutriStatus();
-
-    return () => {
-      active = false;
-    };
-  }, [user?.id]);
-
-  async function payMock() {
-    if (!user?.id || loading) return;
-
-    setLoading(true);
+    setChecking(true);
 
     try {
-      const nowIso = new Date().toISOString();
-      const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("user_subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("plan_key", "nutri")
+        .maybeSingle();
 
-      const { error: subError } = await supabase.from("subscriptions").upsert(
+      if (error) {
+        console.error("NutriPlus load status error:", error);
+        setPaidNutriPlus(false);
+      } else {
+        const active =
+          data?.status === "active" || data?.status === "trialing";
+        setPaidNutriPlus(!!active);
+      }
+    } catch (err) {
+      console.error("NutriPlus load status catch:", err);
+      setPaidNutriPlus(false);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  useEffect(() => {
+    loadNutriStatus();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (checkoutStatus === "success") {
+      const timer = setTimeout(() => {
+        loadNutriStatus();
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [checkoutStatus, user?.id]);
+
+  async function activateNutri() {
+    if (!user?.id || loading) return;
+
+    try {
+      setLoading(true);
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const priceId = import.meta.env.VITE_STRIPE_PRICE_NUTRI;
+
+      if (!supabaseUrl) {
+        throw new Error("VITE_SUPABASE_URL ausente.");
+      }
+
+      if (!priceId) {
+        throw new Error("VITE_STRIPE_PRICE_NUTRI ausente.");
+      }
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("Sessão inválida. Faça login novamente.");
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/create-checkout`,
         {
-          user_id: user.id,
-          plan_type: "nutri_plus",
-          status: "active",
-          amount: nutriPlus,
-          currency: "BRL",
-          current_period_end: periodEnd,
-          updated_at: nowIso,
-        },
-        { onConflict: "user_id,plan_type" }
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            priceId,
+            planKey: "nutri",
+          }),
+        }
       );
 
-      if (subError) {
-        console.error("NutriPlus subscription error:", subError);
-        setLoading(false);
-        return;
+      const text = await response.text();
+      let data = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { raw: text };
       }
 
-      const { error: paymentError } = await supabase.from("payments").insert({
-        user_id: user.id,
-        plan: "Nutri+",
-        amount: nutriPlus,
-        status: "paid",
-        created_at: nowIso,
-      });
-
-      if (paymentError) {
-        console.error("NutriPlus payment error:", paymentError);
+      if (!response.ok) {
+        throw new Error(
+          data?.error || data?.raw || `Erro ${response.status}`
+        );
       }
 
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          nutri_plus: true,
-          plan: "nutri_plus",
-          updated_at: nowIso,
-        })
-        .eq("id", user.id);
-
-      if (profileError) {
-        console.error("NutriPlus profile error:", profileError);
+      if (!data?.url) {
+        throw new Error("A function não retornou a URL do checkout.");
       }
 
-      setPaidNutriPlus(true);
-      setLoading(false);
-      nav("/nutricao");
+      window.location.href = data.url;
     } catch (err) {
-      console.error("NutriPlus payMock catch:", err);
+      console.error("NutriPlus activateNutri error:", err);
+      alert(err?.message || "Não foi possível abrir o pagamento.");
+    } finally {
       setLoading(false);
     }
   }
@@ -147,40 +149,54 @@ export default function NutriPlus() {
   return (
     <div style={styles.page}>
       <div style={styles.wrap}>
-        <div style={styles.brand}>
-          Nutri<span style={{ color: ORANGE }}>+</span>
-        </div>
+        <div style={styles.brand}>Nutri+</div>
 
-        <div style={styles.hero}>
+        <section style={styles.hero}>
           <h1 style={styles.title}>Melhore sua alimentação dentro do FitDeal.</h1>
-
           <p style={styles.sub}>
-            Um plano premium para quem quer mais consistência, mais clareza e uma rotina alimentar
-            mais forte junto com o treino.
+            Um plano premium para quem quer mais consistência, mais clareza e uma
+            rotina alimentar mais forte junto com o treino.
           </p>
-        </div>
+        </section>
 
-        <div style={styles.section}>
+        {checkoutStatus === "success" && !paidNutriPlus && (
+          <section style={styles.section}>
+            <p style={styles.copy}>
+              Pagamento recebido. Se sua liberação ainda não apareceu, aguarde
+              alguns segundos e tente novamente.
+            </p>
+          </section>
+        )}
+
+        {checkoutStatus === "cancel" && !paidNutriPlus && (
+          <section style={styles.section}>
+            <p style={styles.copy}>
+              O pagamento não foi concluído. Quando quiser, você pode tentar de
+              novo.
+            </p>
+          </section>
+        )}
+
+        <section style={styles.section}>
           <div style={styles.sectionTitle}>O que você desbloqueia</div>
 
           <div style={styles.list}>
-            <SimpleItem text="Refeições organizadas dentro do app" />
-            <SimpleItem text="Receitas completas para facilitar sua rotina" />
-            <SimpleItem text="Acompanhamento de hidratação" />
-            <SimpleItem text="Sugestões de suplementação" />
-            <SimpleItem text="Uma experiência mais completa para evoluir" />
+            <SimpleItem text="Acompanhamento nutricional dentro do app." />
+            <SimpleItem text="Uma área mais completa para organizar melhor sua rotina alimentar." />
+            <SimpleItem text="Fluxo premium integrado com a jornada de treino." />
           </div>
-        </div>
+        </section>
 
-        <div style={styles.section}>
+        <section style={styles.section}>
           <div style={styles.sectionTitle}>Por que assinar</div>
-          <p style={styles.copy}>
-            Porque treinar bem é só parte do processo. O Nutri+ deixa sua jornada mais completa,
-            mais prática e mais alinhada com resultado real.
-          </p>
-        </div>
 
-        <div style={styles.footerCard}>
+          <p style={styles.copy}>
+            Porque treinar bem é só parte do processo. O Nutri+ deixa sua jornada
+            mais completa, mais prática e mais alinhada com resultado real.
+          </p>
+        </section>
+
+        <section style={styles.footerCard}>
           <div style={styles.priceLabel}>Nutri+ mensal</div>
           <div style={styles.price}>{fmtBRL(nutriPlus)}</div>
           <div style={styles.priceSub}>por mês</div>
@@ -190,7 +206,7 @@ export default function NutriPlus() {
               Carregando...
             </button>
           ) : !paidNutriPlus ? (
-            <button style={styles.cta} onClick={payMock} disabled={loading}>
+            <button style={styles.cta} onClick={activateNutri} disabled={loading}>
               {loading ? "Processando..." : "Quero subir de nível"}
             </button>
           ) : (
@@ -200,9 +216,10 @@ export default function NutriPlus() {
           )}
 
           <div style={styles.small}>
-            Assinatura mensal com renovação automática. Cancelamento quando quiser.
+            Assinatura mensal com renovação automática. Cancelamento quando
+            quiser.
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
