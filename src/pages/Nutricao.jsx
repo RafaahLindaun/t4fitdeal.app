@@ -248,28 +248,33 @@ export default function Nutricao() {
     loadProfile();
   }, [userId, user]);
 
-  useEffect(() => {
-    async function loadSubscription() {
-      if (!userId) {
-        setLoadingSubscription(false);
-        return;
-      }
-
-      try {
-        const { data } = await supabase
-          .from("subscriptions")
-          .select("plan_code, plan_name, status")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        setSubscription(data || null);
-      } finally {
-        setLoadingSubscription(false);
-      }
+useEffect(() => {
+  async function loadSubscription() {
+    if (!userId) {
+      setLoadingSubscription(false);
+      return;
     }
 
-    loadSubscription();
-  }, [userId]);
+    try {
+      const { data, error } = await supabase
+        .from("user_subscriptions")
+        .select("plan_key, status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("loadSubscription error:", error);
+        setSubscription(null);
+      } else {
+        setSubscription(data || null);
+      }
+    } finally {
+      setLoadingSubscription(false);
+    }
+  }
+
+  loadSubscription();
+}, [userId]);
 
   useEffect(() => {
     async function loadFavorites() {
@@ -336,12 +341,12 @@ export default function Nutricao() {
       ? Math.max(0, Math.min(100, Math.round((waterMl / waterGoal) * 100)))
       : 0;
 
-  const paidNutriPlus = useMemo(() => {
-    return (
-      subscription?.plan_code === "nutri_plus" &&
-      ["active", "trialing"].includes(subscription?.status)
-    );
-  }, [subscription]);
+ const paidNutriPlus = useMemo(() => {
+  return (
+    subscription?.plan_key === "nutri" &&
+    ["active", "trialing"].includes(subscription?.status)
+  );
+}, [subscription]);
 
   const weekStrip = useMemo(
     () => buildRecentDaysStrip(profile?.frequencia || 4, hydrationMap, waterGoal),
