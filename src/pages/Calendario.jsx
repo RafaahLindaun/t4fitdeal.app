@@ -1,11 +1,7 @@
-// ✅ CRIE/COLE EM: src/pages/Calendario.jsx
-// Calendário (Apple vibe) — histórico de água por dia (mês atual)
-// Lê: water_history_<email> (salvo pelo Nutricao.jsx)
-// ✅ FIX: evita “empurrar pro lado” quando aparece ml/% (minmax(0,1fr) + minWidth:0 + overflowX hidden)
-
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
@@ -34,22 +30,13 @@ function waterGoalMl(pesoKg = 80) {
 export default function Calendario() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
 
+  const userId = user?.id || null;
   const peso = Number(user?.peso || 0) || 80;
   const goalMl = useMemo(() => waterGoalMl(peso), [peso]);
 
-  const historyKey = `water_history_${email}`;
-  const history = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(historyKey);
-      const obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
-    } catch {
-      return {};
-    }
-  }, [historyKey]);
-
+  const [history, setHistory] = useState({});
+  const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -58,19 +45,62 @@ export default function Calendario() {
   });
 
   const monthLabel = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+    const fmt = new Intl.DateTimeFormat("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
     return fmt.format(cursor);
   }, [cursor]);
+
+  useEffect(() => {
+    async function loadMonthHydration() {
+      if (!userId) {
+        setHistory({});
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+
+      const startKey = dayKeyLocalFromDate(start);
+      const endKey = dayKeyLocalFromDate(end);
+
+      const { data, error } = await supabase
+        .from("hydration_daily")
+        .select("day,total_ml")
+        .eq("user_id", userId)
+        .gte("day", startKey)
+        .lte("day", endKey)
+        .order("day", { ascending: true });
+
+      if (error) {
+        console.error("Calendario hydration error:", error);
+        setHistory({});
+        setLoading(false);
+        return;
+      }
+
+      const obj = {};
+      for (const row of data || []) {
+        obj[row.day] = Number(row.total_ml || 0) || 0;
+      }
+
+      setHistory(obj);
+      setLoading(false);
+    }
+
+    loadMonthHydration();
+  }, [userId, cursor]);
 
   const days = useMemo(() => {
     const y = cursor.getFullYear();
     const m = cursor.getMonth();
-
     const first = new Date(y, m, 1);
     const last = new Date(y, m + 1, 0);
     const totalDays = last.getDate();
-
-    // 0=dom ... 6=sab
     const startWeekday = first.getDay();
 
     const grid = [];
@@ -93,6 +123,7 @@ export default function Calendario() {
     d.setDate(1);
     setCursor(d);
   }
+
   function nextMonth() {
     const d = new Date(cursor);
     d.setMonth(d.getMonth() + 1);
@@ -106,71 +137,75 @@ export default function Calendario() {
     <div style={S.page}>
       <div style={S.bgGlow} />
 
-      <div style={S.head}>
-        <div style={{ minWidth: 0 }}>
+      <section style={S.head}>
+        <div>
           <div style={S.kicker}>Calendário</div>
-          <div style={S.title}>
-            Hidratação<span style={{ color: ORANGE }}>.</span>
-          </div>
+          <div style={S.title}>Hidratação.</div>
           <div style={S.sub}>
-            Meta diária sugerida: <b>{goalMl} ml</b>
+            Meta diária sugerida: {goalMl} ml
           </div>
         </div>
 
-        <button style={S.backBtn} onClick={() => nav("/nutricao")} type="button">
+        <button onClick={() => nav("/nutricao")} type="button" style={S.backBtn}>
           Voltar
         </button>
-      </div>
+      </section>
 
-      <div style={S.monthBar}>
-        <button style={S.monthBtn} onClick={prevMonth} type="button" aria-label="Mês anterior">
+      <section style={S.monthBar}>
+        <button onClick={prevMonth} type="button" style={S.monthBtn}>
           ‹
         </button>
+
         <div style={S.monthLabel}>{monthLabel}</div>
-        <button style={S.monthBtn} onClick={nextMonth} type="button" aria-label="Próximo mês">
+
+        <button onClick={nextMonth} type="button" style={S.monthBtn}>
           ›
         </button>
-      </div>
+      </section>
 
-      <div style={S.weekRow}>
+      <section style={S.weekRow}>
         {["D", "S", "T", "Q", "Q", "S", "S"].map((w, i) => (
-          <div key={`${w}_${i}`} style={S.weekCell}>
+          <div key={`${w}-${i}`} style={S.weekCell}>
             {w}
           </div>
         ))}
-      </div>
+      </section>
 
-      <div style={S.grid}>
+      <section style={S.grid}>
         {days.map((it, idx) => {
-          if (!it) return <div key={`e_${idx}`} style={S.emptyCell} />;
+          if (!it) return <div key={`e-${idx}`} style={S.emptyCell} />;
 
           const pct = goalMl ? clamp(it.ml / goalMl, 0, 1) : 0;
           const isToday = it.key === todayKey;
 
           return (
-            <div key={it.key} style={{ ...S.cell, ...(isToday ? S.todayCell : null) }}>
+            <div
+              key={it.key}
+              style={{
+                ...S.cell,
+                ...(isToday ? S.todayCell : null),
+              }}
+            >
               <div style={S.cellTop}>
                 <div style={S.dayNum}>{it.d}</div>
-                <div style={S.ml} title={it.ml ? `${it.ml} ml` : ""}>
-                  {it.ml ? `${it.ml}ml` : ""}
-                </div>
+                <div style={S.ml}>{it.ml ? `${it.ml}ml` : ""}</div>
               </div>
 
-              <div style={S.track} aria-hidden="true">
+              <div style={S.track}>
                 <div style={{ ...S.fill, width: `${Math.round(pct * 100)}%` }} />
               </div>
 
-              <div style={S.pct}>{it.ml ? `${Math.round(pct * 100)}%` : "—"}</div>
+              <div style={S.pct}>
+                {loading ? "..." : it.ml ? `${Math.round(pct * 100)}%` : "—"}
+              </div>
             </div>
           );
         })}
-      </div>
+      </section>
 
       <div style={S.footerNote}>
-        Dica: sua água é salva automaticamente todos os dias. À meia-noite, o contador do dia reseta sozinho.
+        Dica: sua água é salva automaticamente no banco por dia. Isso deixa o histórico igual em qualquer aparelho.
       </div>
-
-      <div style={{ height: 120 }} />
     </div>
   );
 }
@@ -183,15 +218,17 @@ const S = {
       "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.10), rgba(248,250,252,0) 60%), linear-gradient(180deg, #f8fafc, #f7f9fc)",
     position: "relative",
     overflow: "hidden",
-    overflowX: "hidden", // ✅ trava scroll lateral
+    overflowX: "hidden",
     maxWidth: "100%",
     boxSizing: "border-box",
   },
+
   bgGlow: {
     position: "absolute",
     inset: -120,
     pointerEvents: "none",
-    background: "radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
+    background:
+      "radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
   },
 
   head: {
@@ -210,9 +247,29 @@ const S = {
     WebkitBackdropFilter: "blur(12px)",
   },
 
-  kicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  title: { marginTop: 4, fontSize: 20, fontWeight: 950, color: TEXT, letterSpacing: -0.5 },
-  sub: { marginTop: 8, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
+  kicker: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: MUTED,
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+  },
+
+  title: {
+    marginTop: 4,
+    fontSize: 20,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.5,
+  },
+
+  sub: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: 800,
+    color: MUTED,
+    lineHeight: 1.35,
+  },
 
   backBtn: {
     padding: "12px 14px",
@@ -242,6 +299,7 @@ const S = {
     maxWidth: "100%",
     boxSizing: "border-box",
   },
+
   monthLabel: {
     fontSize: 14,
     fontWeight: 950,
@@ -253,6 +311,7 @@ const S = {
     textOverflow: "ellipsis",
     minWidth: 0,
   },
+
   monthBtn: {
     width: 44,
     height: 44,
@@ -271,12 +330,13 @@ const S = {
     zIndex: 1,
     marginTop: 10,
     display: "grid",
-    gridTemplateColumns: "repeat(7, minmax(0, 1fr))", // ✅ não deixa conteúdo “forçar” largura
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
     gap: 8,
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
   },
+
   weekCell: {
     textAlign: "center",
     fontSize: 11,
@@ -291,7 +351,7 @@ const S = {
     zIndex: 1,
     marginTop: 8,
     display: "grid",
-    gridTemplateColumns: "repeat(7, minmax(0, 1fr))", // ✅ principal correção
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
     gap: 8,
     width: "100%",
     maxWidth: "100%",
@@ -303,7 +363,7 @@ const S = {
     borderRadius: 18,
     border: "1px dashed rgba(15,23,42,.06)",
     background: "rgba(255,255,255,.45)",
-    minWidth: 0, // ✅
+    minWidth: 0,
   },
 
   cell: {
@@ -316,10 +376,11 @@ const S = {
     display: "grid",
     gap: 8,
     alignContent: "start",
-    minWidth: 0, // ✅
-    overflow: "hidden", // ✅ impede conteúdo estourar e empurrar grid
+    minWidth: 0,
+    overflow: "hidden",
     boxSizing: "border-box",
   },
+
   todayCell: {
     border: "1px solid rgba(255,106,0,.26)",
     boxShadow: "0 14px 30px rgba(255,106,0,.10)",
@@ -330,8 +391,9 @@ const S = {
     alignItems: "baseline",
     justifyContent: "space-between",
     gap: 8,
-    minWidth: 0, // ✅
+    minWidth: 0,
   },
+
   dayNum: {
     fontSize: 13,
     fontWeight: 950,
@@ -339,6 +401,7 @@ const S = {
     flexShrink: 0,
     whiteSpace: "nowrap",
   },
+
   ml: {
     fontSize: 11,
     fontWeight: 900,
@@ -357,14 +420,16 @@ const S = {
     background: "rgba(15,23,42,.06)",
     overflow: "hidden",
     border: "1px solid rgba(15,23,42,.06)",
-    minWidth: 0, // ✅
+    minWidth: 0,
   },
+
   fill: {
     height: "100%",
     borderRadius: 999,
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     transition: "width .25s ease",
   },
+
   pct: {
     fontSize: 11,
     fontWeight: 950,
@@ -372,7 +437,7 @@ const S = {
     opacity: 0.9,
     whiteSpace: "nowrap",
     fontVariantNumeric: "tabular-nums",
-    minWidth: 0, // ✅
+    minWidth: 0,
   },
 
   footerNote: {
