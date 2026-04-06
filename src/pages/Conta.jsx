@@ -158,37 +158,65 @@ function Row({ icon, title, subtitle, right, onClick, danger }) {
   );
 }
 
-async function loadPaidStatus(userId) {
-  if (!userId) return false;
+function normalizePlanLabel(planKey) {
+  if (planKey === "nutri") return "Nutri+";
+  if (planKey === "basico") return "Básico";
+  return "Free";
+}
+
+function isActiveSubscription(status) {
+  return ["active", "trialing"].includes(String(status || "").toLowerCase());
+}
+
+async function loadSubscriptionSummary(userId) {
+  if (!userId) {
+    return {
+      paid: false,
+      planKey: null,
+      status: "inactive",
+      currentPeriodEnd: null,
+      stripePriceId: null,
+      stripeSubscriptionId: null,
+    };
+  }
 
   try {
-    const { data: subRows, error: subError } = await supabase
-      .from("subscriptions")
-      .select("status")
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("plan_key, status, current_period_end, stripe_price_id, stripe_subscription_id")
       .eq("user_id", userId)
-      .in("status", ["active", "trialing"])
-      .limit(1);
-
-    if (!subError && Array.isArray(subRows) && subRows.length > 0) {
-      return true;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_paid, plan, role")
-      .eq("id", userId)
       .maybeSingle();
 
-    if (!profileError) {
-      if (profile?.is_paid === true) return true;
-      if (String(profile?.plan || "").toLowerCase() === "premium") return true;
-      if (String(profile?.role || "").toLowerCase() === "premium") return true;
+    if (error) {
+      console.error("loadSubscriptionSummary error:", error);
+      return {
+        paid: false,
+        planKey: null,
+        status: "inactive",
+        currentPeriodEnd: null,
+        stripePriceId: null,
+        stripeSubscriptionId: null,
+      };
     }
 
-    return false;
+    return {
+      paid: isActiveSubscription(data?.status),
+      planKey: data?.plan_key || null,
+      status: data?.status || "inactive",
+      currentPeriodEnd: data?.current_period_end || null,
+      stripePriceId: data?.stripe_price_id || null,
+      stripeSubscriptionId: data?.stripe_subscription_id || null,
+    };
   } catch (err) {
-    console.error("loadPaidStatus catch:", err);
-    return false;
+    console.error("loadSubscriptionSummary catch:", err);
+    return {
+      paid: false,
+      planKey: null,
+      status: "inactive",
+      currentPeriodEnd: null,
+      stripePriceId: null,
+      stripeSubscriptionId: null,
+    };
   }
 }
 
@@ -358,7 +386,9 @@ export default function Conta() {
   const nav = useNavigate();
   const fileRef = useRef(null);
 
-  const [paid, setPaid] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState({ paid: false, planKey: null, status: "inactive", currentPeriodEnd: null, stripePriceId: null, stripeSubscriptionId: null });
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const paid = subscriptionInfo.paid;
   const photo = user?.photoUrl || "";
 
   const [createdAt, setCreatedAt] = useState(() => user?.createdAt || "");
@@ -438,14 +468,14 @@ export default function Conta() {
     async function bootstrap() {
       if (!user?.id) return;
 
-      const [paidStatus, settings] = await Promise.all([
-        loadPaidStatus(user.id),
+      const [subscription, settings] = await Promise.all([
+        loadSubscriptionSummary(user.id),
         loadUserSettings(user.id),
       ]);
 
       if (!active) return;
 
-      setPaid(!!paidStatus);
+      setSubscriptionInfo(subscription);
 
       if (settings) {
         setPrefs({
@@ -628,6 +658,83 @@ export default function Conta() {
     return `${window?.location?.origin || ""}/perfil/${id}`;
   }, [user?.email]);
 
+  const currentPlanLabel = useMemo(() => {
+    return normalizePlanLabel(subscriptionInfo.planKey);
+  }, [subscriptionInfo.planKey]);
+
+  const currentStatusLabel = useMemo(() => {
+    const raw = String(subscriptionInfo.status || "inactive").toLowerCase();
+    if (raw === "trialing") return "Em teste";
+    if (raw === "active") return "Ativa";
+    if (raw === "canceled") return "Cancelada";
+    if (raw === "past_due") return "Pagamento pendente";
+    return "Inativa";
+  }, [subscriptionInfo.status]);
+
+  const renewalText = useMemo(() => {
+    return subscriptionInfo.currentPeriodEnd
+      ? `Renova até ${formatPtDate(subscriptionInfo.currentPeriodEnd)}`
+      : "Sem renovação ativa";
+  }, [subscriptionInfo.currentPeriodEnd]);
+
+
+  async function cancelSubscription() {
+    if (!user?.id || cancelLoading || !subscriptionInfo.stripeSubscriptionId) {
+      if (!subscriptionInfo.stripeSubscriptionId) {
+        setToast("Assinatura ainda não encontrada");
+      }
+      return;
+    }
+
+    try {
+      setCancelLoading(true);
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("Sessão inválida. Faça login novamente.");
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cancel-subscription`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            subscriptionId: subscriptionInfo.stripeSubscriptionId,
+          }),
+        }
+      );
+
+      const text = await response.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { raw: text };
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || data?.raw || `Erro ${response.status}`);
+      }
+
+      const refreshed = await loadSubscriptionSummary(user.id);
+      setSubscriptionInfo(refreshed);
+      setToast("Assinatura cancelada");
+    } catch (err) {
+      console.error("cancelSubscription error:", err);
+      setToast(err?.message || "Não foi possível cancelar");
+    } finally {
+      setCancelLoading(false);
+    }
+  }
+
   async function copy(text, successMsg = "Copiado") {
     try {
       if (navigator.clipboard?.writeText) {
@@ -779,8 +886,8 @@ export default function Conta() {
       <div style={styles.statsStrip}>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Plano</div>
-          <div style={styles.statValue}>{paid ? "Assinante" : "Free"}</div>
-          <div style={styles.statSub}>{paid ? "Recursos premium ativos" : "Acesse mais com planos"}</div>
+          <div style={styles.statValue}>{currentPlanLabel}</div>
+          <div style={styles.statSub}>{paid ? renewalText : "Acesse mais com planos"}</div>
         </div>
 
         <div style={styles.statCard}>
@@ -871,9 +978,18 @@ export default function Conta() {
           <Row
             icon="pay"
             title="Pagamentos"
-            subtitle="Histórico, status e recibos"
+            subtitle={`${currentPlanLabel} • ${currentStatusLabel}`}
             onClick={() => nav("/pagamentos")}
           />
+          {paid ? <div style={styles.divider} /> : null}
+          {paid ? (
+            <Row
+              icon="pay"
+              title={cancelLoading ? "Cancelando assinatura..." : "Cancelar assinatura"}
+              subtitle="A assinatura permanece ativa até o fim do período atual."
+              onClick={cancelSubscription}
+            />
+          ) : null}
         </div>
       </div>
 
