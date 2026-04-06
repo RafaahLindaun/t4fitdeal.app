@@ -1,32 +1,111 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://fitdeal.vercel.app",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
+};
 
-console.log("Hello from Functions!")
-
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
+  try {
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        { status: 405, headers: corsHeaders }
+      );
+    }
 
-/* To invoke locally:
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing Authorization header" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      return new Response(
+        JSON.stringify({ error: "Missing STRIPE_SECRET_KEY" }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/create-checkout' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2024-04-10",
+    });
 
-*/
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") || "",
+      Deno.env.get("SUPABASE_ANON_KEY") || "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized user" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const { priceId, planKey } = await req.json();
+
+    if (!priceId || !planKey) {
+      return new Response(
+        JSON.stringify({ error: "Missing priceId or planKey" }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const origin = "https://fitdeal.vercel.app";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${origin}/planos?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/planos?checkout=cancel`,
+      customer_email: user.email ?? undefined,
+      client_reference_id: user.id,
+      metadata: {
+        supabase_user_id: user.id,
+        plan_key: planKey,
+      },
+      subscription_data: {
+        metadata: {
+          supabase_user_id: user.id,
+          plan_key: planKey,
+        },
+      },
+    });
+
+    return new Response(JSON.stringify({ url: session.url }), {
+      status: 200,
+      headers: corsHeaders,
+    });
+  } catch (err) {
+    console.error("create-checkout error:", err);
+
+    return new Response(
+      JSON.stringify({
+        error: err instanceof Error ? err.message : "Unknown error",
+      }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+});
