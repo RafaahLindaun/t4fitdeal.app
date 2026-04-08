@@ -70,7 +70,7 @@ export default function Calendario() {
 
       const { data, error } = await supabase
         .from("hydration_daily")
-        .select("day,total_ml")
+        .select("day,ml")
         .eq("user_id", userId)
         .gte("day", startKey)
         .lte("day", endKey)
@@ -85,7 +85,7 @@ export default function Calendario() {
 
       const obj = {};
       for (const row of data || []) {
-        obj[row.day] = Number(row.total_ml || 0) || 0;
+        obj[row.day] = Number(row.ml || 0) || 0;
       }
 
       setHistory(obj);
