@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const ORANGE_SOFT = "rgba(255,106,0,.12)";
@@ -438,77 +439,41 @@ function uniq(arr) {
   return out;
 }
 
+
 export default function TreinoPersonalize() {
   const nav = useNavigate();
   const { user } = useAuth();
   const email = (user?.email || "anon").toLowerCase();
-  const paid = localStorage.getItem(`paid_${email}`) === "1";
-  const storageKey = `custom_split_${email}`;
+  const userId = user?.id || null;
 
-  if (!paid) {
-    return (
-      <div style={S.page}>
-        <HeaderBrand title="Personalizar treino" subtitle="Disponível somente para assinantes." onBack={() => nav("/treino")} />
+  const defaultDays = clamp(Number(user?.frequencia || 4) || 4, 2, 6);
+  const defaultSplitId =
+    defaultDays === 2 ? "AB" :
+    defaultDays === 3 ? "ABC" :
+    defaultDays === 4 ? "ABCD" :
+    defaultDays === 5 ? "ABCDE" : "ABCDEF";
 
-        <div style={S.lockCard}>
-          <div style={S.lockIcon}>🔒</div>
-          <div style={S.lockTitle}>Recurso exclusivo</div>
-          <div style={S.lockText}>
-            Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, volume semanal e seleção de exercícios.
-          </div>
+  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [paid, setPaid] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-          <button style={S.cta} onClick={() => nav("/planos")}>
-            Ver planos
-          </button>
-
-          <button style={S.ghost} onClick={() => nav("/treino")}>
-            Voltar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const saved = useMemo(() => {
-    const raw = localStorage.getItem(storageKey);
-    return raw ? JSON.parse(raw) : null;
-  }, [storageKey]);
-
-  const initialDays = saved?.days || Number(user?.frequencia || 4) || 4;
-  const initialSplit =
-    saved?.splitId ||
-    (initialDays === 2 ? "AB" : initialDays === 3 ? "ABC" : initialDays === 4 ? "ABCD" : initialDays === 5 ? "ABCDE" : "ABCDEF");
-
-  const [daysPerWeek, setDaysPerWeek] = useState(clamp(initialDays, 2, 6));
-  const [splitId, setSplitId] = useState(initialSplit);
-
-  const [dayGroups, setDayGroups] = useState(() => {
-    const base = saved?.dayGroups;
-    if (Array.isArray(base) && base.length) return base;
-    return pickDefaultSplit(clamp(initialDays, 2, 6));
-  });
-
+  const [daysPerWeek, setDaysPerWeek] = useState(defaultDays);
+  const [splitId, setSplitId] = useState(defaultSplitId);
+  const [dayGroups, setDayGroups] = useState(() => pickDefaultSplit(defaultDays));
   const [prescriptions, setPrescriptions] = useState(() => {
-    const base = saved?.prescriptions;
-    if (base && typeof base === "object") return base;
-
     const obj = {};
-    const baseGroups = pickDefaultSplit(clamp(initialDays, 2, 6));
+    const baseGroups = pickDefaultSplit(defaultDays);
     for (let i = 0; i < baseGroups.length; i++) {
       const g = MUSCLE_GROUPS.find((x) => x.id === baseGroups[i]);
       obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
     }
     return obj;
   });
-
   const [dayExercises, setDayExercises] = useState(() => {
-    const base = saved?.dayExercises;
-    if (base && typeof base === "object") return base;
-
     const out = {};
-    const n = clamp(initialDays, 2, 6);
-    const baseGroups = pickDefaultSplit(n);
-    for (let i = 0; i < n; i++) {
+    const baseGroups = pickDefaultSplit(defaultDays);
+    for (let i = 0; i < defaultDays; i++) {
       const g = MUSCLE_GROUPS.find((x) => x.id === baseGroups[i]);
       const list = (g?.library || []).map((x) => x.name);
       out[i] = uniq(list).slice(0, 8);
@@ -518,6 +483,141 @@ export default function TreinoPersonalize() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerDayIndex, setPickerDayIndex] = useState(0);
+
+  useEffect(() => {
+    async function loadAccess() {
+      if (!userId) {
+        setPaid(false);
+        setLoadingAccess(false);
+        return;
+      }
+
+      setLoadingAccess(true);
+      const { data, error } = await supabase
+        .from("user_subscriptions")
+        .select("plan_key,status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("TreinoPersonalize access error:", error);
+        setPaid(false);
+      } else {
+        const allowed =
+          ["active", "trialing"].includes(data?.status) &&
+          ["basico", "nutri"].includes(data?.plan_key);
+        setPaid(!!allowed);
+      }
+
+      setLoadingAccess(false);
+    }
+
+    loadAccess();
+  }, [userId]);
+
+  useEffect(() => {
+    async function loadPlanFromDb() {
+      if (!userId || !paid) {
+        setLoadingPlan(false);
+        return;
+      }
+
+      setLoadingPlan(true);
+
+      const { data: plan, error: planError } = await supabase
+        .from("workout_plans")
+        .select("id, split_label, split_len")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (planError) {
+        console.error("TreinoPersonalize plan error:", planError);
+        setLoadingPlan(false);
+        return;
+      }
+
+      if (!plan?.id) {
+        setLoadingPlan(false);
+        return;
+      }
+
+      const { data: planDays, error: daysError } = await supabase
+        .from("workout_plan_days")
+        .select("id, day_index, day_key, group_id, group_name")
+        .eq("plan_id", plan.id)
+        .order("day_index", { ascending: true });
+
+      if (daysError) {
+        console.error("TreinoPersonalize plan days error:", daysError);
+        setLoadingPlan(false);
+        return;
+      }
+
+      const dayIds = (planDays || []).map((d) => d.id);
+      let exercises = [];
+
+      if (dayIds.length) {
+        const { data: exData, error: exError } = await supabase
+          .from("workout_plan_exercises")
+          .select("plan_day_id, exercise_order, name, reps, notes")
+          .in("plan_day_id", dayIds)
+          .order("exercise_order", { ascending: true });
+
+        if (exError) {
+          console.error("TreinoPersonalize exercises error:", exError);
+        } else {
+          exercises = exData || [];
+        }
+      }
+
+      const splitLen = clamp(Number(plan.split_len || planDays?.length || defaultDays), 2, 6);
+      const nextSplitId = SPLITS.find((s) => s.days === splitLen)?.id || defaultSplitId;
+      const nextGroups = pickDefaultSplit(splitLen);
+      const nextPrescriptions = {};
+      const nextExercises = {};
+
+      for (let i = 0; i < splitLen; i++) {
+        const row = (planDays || []).find((d) => Number(d.day_index) === i);
+        const groupId = row?.group_id && MUSCLE_GROUPS.some((g) => g.id === row.group_id)
+          ? row.group_id
+          : nextGroups[i];
+        nextGroups[i] = groupId;
+
+        const groupObj = MUSCLE_GROUPS.find((g) => g.id === groupId);
+        const baseDefault = groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+        const exRows = row ? exercises.filter((ex) => ex.plan_day_id === row.id) : [];
+
+        let sets = baseDefault.sets;
+        let reps = baseDefault.reps;
+        let rest = baseDefault.rest;
+
+        if (exRows[0]?.reps) {
+          const text = String(exRows[0].reps);
+          const setsMatch = text.match(/(\d+)\s*séries/i);
+          const repsMatch = text.match(/séries\s*•\s*([^•]+)/i);
+          const restMatch = text.match(/descanso\s*(.+)$/i);
+          if (setsMatch) sets = clamp(Number(setsMatch[1] || sets), 1, 8);
+          if (repsMatch) reps = String(repsMatch[1] || reps).trim();
+          if (restMatch) rest = String(restMatch[1] || rest).trim();
+        }
+
+        nextPrescriptions[i] = { sets, reps, rest };
+        nextExercises[i] = exRows.length
+          ? uniq(exRows.map((ex) => ex.name))
+          : uniq((groupObj?.library || []).map((x) => x.name)).slice(0, 8);
+      }
+
+      setDaysPerWeek(splitLen);
+      setSplitId(nextSplitId);
+      setDayGroups(nextGroups);
+      setPrescriptions(nextPrescriptions);
+      setDayExercises(nextExercises);
+      setLoadingPlan(false);
+    }
+
+    loadPlanFromDb();
+  }, [userId, paid]);
 
   function ensureDaysConfig(nextDays) {
     const n = clamp(nextDays, 2, 6);
@@ -576,7 +676,6 @@ export default function TreinoPersonalize() {
   function changeDays(d) {
     const next = clamp(d, 2, 6);
     setDaysPerWeek(next);
-
     const map = next === 2 ? "AB" : next === 3 ? "ABC" : next === 4 ? "ABCD" : next === 5 ? "ABCDE" : "ABCDEF";
     setSplitId(map);
     ensureDaysConfig(next);
@@ -603,7 +702,6 @@ export default function TreinoPersonalize() {
     setDayExercises((prev) => {
       const out = { ...(prev || {}) };
       if (Array.isArray(out[dayIndex]) && out[dayIndex].length >= 5) return out;
-
       const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
       const list = (g?.library || []).map((x) => x.name);
       out[dayIndex] = uniq(list).slice(0, 8);
@@ -639,28 +737,123 @@ export default function TreinoPersonalize() {
 
   const weeklyVolume = useMemo(() => calcWeeklyVolume(daysConfig), [daysConfig]);
 
-  function save() {
-    const normalizedPrescriptions = {};
+  async function save() {
+    if (!userId || saving) return;
 
-    Object.keys(prescriptions || {}).forEach((key) => {
-      const item = prescriptions[key] || {};
-      normalizedPrescriptions[key] = {
-        ...item,
-        sets: clamp(Number(item.sets || 4), 1, 8),
-      };
-    });
+    try {
+      setSaving(true);
 
-    const payload = {
-      splitId,
-      days: daysPerWeek,
-      dayGroups,
-      prescriptions: normalizedPrescriptions,
-      dayExercises,
-      updatedAt: Date.now(),
-    };
+      const normalizedPrescriptions = {};
+      Object.keys(prescriptions || {}).forEach((key) => {
+        const item = prescriptions[key] || {};
+        normalizedPrescriptions[key] = {
+          ...item,
+          sets: clamp(Number(item.sets || 4), 1, 8),
+        };
+      });
 
-    localStorage.setItem(storageKey, JSON.stringify(payload));
-    nav("/treino", { replace: true });
+      let { data: planRow, error: planError } = await supabase
+        .from("workout_plans")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (planError) throw planError;
+
+      if (!planRow?.id) {
+        const { data: insertedPlan, error: insertPlanError } = await supabase
+          .from("workout_plans")
+          .insert({
+            user_id: userId,
+            title: "Plano atual",
+            split_label: splitId,
+            split_len: daysPerWeek,
+            is_active: true,
+            source: "custom",
+          })
+          .select("id")
+          .single();
+
+        if (insertPlanError) throw insertPlanError;
+        planRow = insertedPlan;
+      } else {
+        const { error: updatePlanError } = await supabase
+          .from("workout_plans")
+          .update({
+            title: "Plano atual",
+            split_label: splitId,
+            split_len: daysPerWeek,
+            is_active: true,
+            source: "custom",
+          })
+          .eq("id", planRow.id);
+
+        if (updatePlanError) throw updatePlanError;
+      }
+
+      const { data: existingDays, error: existingDaysError } = await supabase
+        .from("workout_plan_days")
+        .select("id")
+        .eq("plan_id", planRow.id);
+
+      if (existingDaysError) throw existingDaysError;
+
+      const dayIds = (existingDays || []).map((d) => d.id);
+      if (dayIds.length) {
+        const { error: deleteExError } = await supabase
+          .from("workout_plan_exercises")
+          .delete()
+          .in("plan_day_id", dayIds);
+        if (deleteExError) throw deleteExError;
+
+        const { error: deleteDaysError } = await supabase
+          .from("workout_plan_days")
+          .delete()
+          .eq("plan_id", planRow.id);
+        if (deleteDaysError) throw deleteDaysError;
+      }
+
+      for (const day of daysConfig) {
+        const { data: dayRow, error: dayError } = await supabase
+          .from("workout_plan_days")
+          .insert({
+            plan_id: planRow.id,
+            day_index: day.dayIndex,
+            day_key: day.letter,
+            title: `Treino ${day.letter}`,
+            group_id: day.groupId,
+            group_name: day.groupObj?.name || `Treino ${day.letter}`,
+          })
+          .select("id")
+          .single();
+
+        if (dayError) throw dayError;
+
+        const rows = (day.chosenExercises || []).map((name, order) => ({
+          plan_day_id: dayRow.id,
+          exercise_order: order,
+          name,
+          group_name: day.groupObj?.name || "",
+          reps: `${day.prescription?.sets || 4} séries • ${day.prescription?.reps || "6–12"} • descanso ${day.prescription?.rest || "75–120s"}`,
+          notes: splitId,
+        }));
+
+        if (rows.length) {
+          const { error: exError } = await supabase
+            .from("workout_plan_exercises")
+            .insert(rows);
+          if (exError) throw exError;
+        }
+      }
+
+      nav("/treino", { replace: true });
+    } catch (err) {
+      console.error("TreinoPersonalize save error:", err);
+      alert(err?.message || "Não foi possível salvar o treino agora.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function reset() {
@@ -685,8 +878,6 @@ export default function TreinoPersonalize() {
       ex[i] = uniq((g?.library || []).map((x) => x.name)).slice(0, 8);
     }
     setDayExercises(ex);
-
-    localStorage.removeItem(storageKey);
   }
 
   function openPicker(dayIndex) {
@@ -704,6 +895,39 @@ export default function TreinoPersonalize() {
       out[dayIndex] = uniq(list).slice(0, 40);
       return out;
     });
+  }
+
+  if (loadingAccess || loadingPlan) {
+    return (
+      <div style={S.page}>
+        <div style={S.bgGlow} />
+        <HeaderBrand title="Personalizar treino" subtitle="Carregando seu plano..." onBack={() => nav("/treino")} />
+      </div>
+    );
+  }
+
+  if (!paid) {
+    return (
+      <div style={S.page}>
+        <HeaderBrand title="Personalizar treino" subtitle="Disponível somente para assinantes." onBack={() => nav("/treino")} />
+
+        <div style={S.lockCard}>
+          <div style={S.lockIcon}>🔒</div>
+          <div style={S.lockTitle}>Recurso exclusivo</div>
+          <div style={S.lockText}>
+            Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, volume semanal e seleção de exercícios.
+          </div>
+
+          <button style={S.cta} onClick={() => nav("/planos")}>
+            Ver planos
+          </button>
+
+          <button style={S.ghost} onClick={() => nav("/treino")}>
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -889,7 +1113,7 @@ export default function TreinoPersonalize() {
 
       <div style={S.actions}>
         <button style={S.save} onClick={save}>
-          Salvar
+          {saving ? "Salvando..." : "Salvar"}
         </button>
         <button style={S.reset} onClick={reset}>
           Restaurar padrão
