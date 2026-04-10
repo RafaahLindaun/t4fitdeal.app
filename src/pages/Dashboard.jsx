@@ -50,6 +50,34 @@ function calcStreak(workoutDates) {
   return s;
 }
 
+function startOfWeek(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function buildWeekDays(workoutDates = []) {
+  const workoutSet = new Set(workoutDates || []);
+  const start = startOfWeek(new Date());
+  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  return Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+
+    return {
+      key,
+      label: labels[i],
+      dayNum: d.getDate(),
+      done: workoutSet.has(key),
+      isToday: key === new Date().toISOString().slice(0, 10),
+    };
+  });
+}
+
 function TypeLoop({
   text = "fitdeal",
   speed = 140,
@@ -157,10 +185,21 @@ function GoalChip({ goal, onClick }) {
   );
 }
 
-function ProgressPill({ value, max, label }) {
+function ProgressPill({ value, max, label, onClick, active = false }) {
   const pct = max <= 0 ? 0 : clamp(value / max, 0, 1);
+  const clickable = typeof onClick === "function";
+
   return (
-    <div style={styles.pill}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!clickable}
+      style={{
+        ...styles.pill,
+        ...(clickable ? styles.pillButton : null),
+        ...(active ? styles.pillActive : null),
+      }}
+    >
       <div style={styles.pillTop}>
         <div style={styles.pillLabel}>{label}</div>
         <div style={styles.pillValue}>
@@ -170,7 +209,7 @@ function ProgressPill({ value, max, label }) {
       <div style={styles.pillTrack}>
         <div style={{ ...styles.pillFill, width: `${Math.round(pct * 100)}%` }} />
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -448,11 +487,14 @@ export default function Dashboard() {
   const [workouts, setWorkouts] = useState([]);
   const [goals, setGoals] = useState([]);
   const [waterMl, setWaterMl] = useState(0);
+  const [weekOpen, setWeekOpen] = useState(false);
+  const [weekTap, setWeekTap] = useState(false);
 
   const weekGoal = Number(user?.frequencia || 4) || 4;
 
   const weekly = useMemo(() => calcWeeklyCount(workouts), [workouts]);
   const streak = useMemo(() => calcStreak(workouts), [workouts]);
+  const weekDays = useMemo(() => buildWeekDays(workouts), [workouts]);
 
   const kcalPerWorkout = useMemo(() => estimateWorkoutKcal(user?.peso), [user?.peso]);
   const kcalThisWeek = useMemo(() => weekly * kcalPerWorkout, [weekly, kcalPerWorkout]);
@@ -474,6 +516,12 @@ export default function Dashboard() {
     setTap(true);
     setTimeout(() => setTap(false), 140);
     setTipIndex((i) => (i + 1) % tips.length);
+  }
+
+  function toggleWeek() {
+    setWeekTap(true);
+    setTimeout(() => setWeekTap(false), 160);
+    setWeekOpen((v) => !v);
   }
 
   const name = user?.nome ? user.nome.split(" ")[0] : "Você";
@@ -669,9 +717,55 @@ export default function Dashboard() {
       )}
 
       <div style={styles.progressRow}>
-        <ProgressPill value={weekly} max={Math.max(weekGoal, 1)} label="Semana" />
+        <ProgressPill
+          value={weekly}
+          max={Math.max(weekGoal, 1)}
+          label="Semana"
+          onClick={toggleWeek}
+          active={weekOpen}
+        />
         <ProgressPill value={streak} max={7} label="Streak" />
       </div>
+
+      {weekOpen ? (
+        <div
+          style={{
+            ...styles.weekCalendarWrap,
+            ...(weekTap ? styles.weekCalendarTap : null),
+          }}
+        >
+          <div style={styles.weekCalendarHeader}>
+            <div style={styles.weekCalendarTitle}>Seu ritmo da semana</div>
+            <div style={styles.weekCalendarSub}>
+              Dias marcados = treino concluído salvo no Supabase
+            </div>
+          </div>
+
+          <div style={styles.weekCalendarGrid}>
+            {weekDays.map((item) => (
+              <div
+                key={item.key}
+                style={{
+                  ...styles.weekDayCard,
+                  ...(item.done ? styles.weekDayDone : null),
+                  ...(item.isToday ? styles.weekDayToday : null),
+                }}
+              >
+                <div style={styles.weekDayLabel}>{item.label}</div>
+                <div style={styles.weekDayNum}>{item.dayNum}</div>
+                <div style={styles.weekDayDotWrap}>
+                  <div
+                    style={{
+                      ...styles.weekDayDot,
+                      ...(item.done ? styles.weekDayDotDone : null),
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div style={styles.grid}>
         <div style={styles.cardSoft}>
@@ -1154,6 +1248,17 @@ const styles = {
     border: "1px solid rgba(15,23,42,.06)",
     boxShadow: "0 12px 34px rgba(15,23,42,.06)",
   },
+  pillButton: {
+    width: "100%",
+    textAlign: "left",
+    border: "1px solid rgba(15,23,42,.06)",
+    cursor: "pointer",
+    transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
+  },
+  pillActive: {
+    border: "1px solid rgba(255,106,0,.24)",
+    boxShadow: "0 16px 38px rgba(255,106,0,.10)",
+  },
   pillTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 },
   pillLabel: { fontSize: 12, fontWeight: 950, color: MUTED },
   pillValue: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
@@ -1170,6 +1275,96 @@ const styles = {
     background: "linear-gradient(90deg, #FF6A00, #FFB26B)",
     boxShadow: "0 10px 24px rgba(255,106,0,.18)",
     transition: "width .25s ease",
+  },
+
+  weekCalendarWrap: {
+    position: "relative",
+    zIndex: 1,
+    marginTop: 12,
+    borderRadius: 22,
+    padding: 14,
+    background: "rgba(255,255,255,.88)",
+    border: "1px solid rgba(15,23,42,.06)",
+    boxShadow: "0 16px 40px rgba(15,23,42,.08)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    transformOrigin: "top center",
+    transition: "transform .18s ease, opacity .18s ease",
+  },
+  weekCalendarTap: {
+    transform: "scale(.992)",
+  },
+  weekCalendarHeader: {
+    marginBottom: 12,
+  },
+  weekCalendarTitle: {
+    fontSize: 14,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
+  weekCalendarSub: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: 800,
+    color: MUTED,
+    lineHeight: 1.35,
+  },
+  weekCalendarGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+    gap: 8,
+  },
+  weekDayCard: {
+    borderRadius: 18,
+    padding: 10,
+    background: "rgba(15,23,42,.03)",
+    border: "1px solid rgba(15,23,42,.06)",
+    display: "grid",
+    justifyItems: "center",
+    gap: 6,
+    minHeight: 86,
+    transition:
+      "transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease",
+  },
+  weekDayDone: {
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.22)",
+    boxShadow: "0 10px 24px rgba(255,106,0,.08)",
+  },
+  weekDayToday: {
+    transform: "translateY(-1px)",
+    boxShadow: "0 10px 26px rgba(15,23,42,.10)",
+  },
+  weekDayLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+  },
+  weekDayNum: {
+    fontSize: 16,
+    fontWeight: 950,
+    color: TEXT,
+  },
+  weekDayDotWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(15,23,42,.05)",
+  },
+  weekDayDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.16)",
+  },
+  weekDayDotDone: {
+    width: 10,
+    height: 10,
+    background: ORANGE,
+    boxShadow: "0 0 0 5px rgba(255,106,0,.14)",
   },
 
   grid: { position: "relative", zIndex: 1, marginTop: 14, display: "grid", gap: 12 },
