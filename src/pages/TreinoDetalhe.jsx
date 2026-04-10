@@ -85,11 +85,11 @@ function fmtMMSS(sec) {
   const r = s % 60;
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
-function keyForLoad(viewIdx, exName) {
-  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+function keyForLoad(planDayKey, exName) {
+  return `${String(planDayKey)}__${String(exName || "").toLowerCase()}`;
 }
-function keyForSetProg(viewIdx, exName) {
-  return `${viewIdx}__${String(exName || "").toLowerCase()}`;
+function keyForSetProg(planDayKey, exName) {
+  return `${String(planDayKey)}__${String(exName || "").toLowerCase()}`;
 }
 
 /* ---------------- banco (COMPLETO do TreinoPersonalize) ---------------- */
@@ -494,6 +494,8 @@ export default function TreinoDetalhe() {
 
   const [paid, setPaid] = useState(false);
   const [planData, setPlanData] = useState(null);
+  const [planDays, setPlanDays] = useState([]);
+  const [activePlanId, setActivePlanId] = useState(null);
   const [runtime, setRuntime] = useState({
     current_day_index: 0,
     timer_open: false,
@@ -571,20 +573,15 @@ export default function TreinoDetalhe() {
 
       try {
         const [
-          subRes,
-          profileRes,
+          subscriptionRes,
           runtimeRes,
-          planRes,
+          activePlanRes,
         ] = await Promise.all([
           supabase
-            .from("subscriptions")
-            .select("status, plan_type")
+            .from("user_subscriptions")
+            .select("plan_key, status")
             .eq("user_id", userId)
-            .in("status", ["active", "trialing"]),
-          supabase
-            .from("profiles")
-            .select("is_paid, plan")
-            .eq("id", userId)
+            .in("status", ["active", "trialing"])
             .maybeSingle(),
           supabase
             .from("workout_runtime")
@@ -593,24 +590,22 @@ export default function TreinoDetalhe() {
             .maybeSingle(),
           supabase
             .from("workout_plans")
-            .select("id, title, split_label, split_len, source")
+            .select("id, title, split_label, split_len, source, updated_at, created_at")
             .eq("user_id", userId)
             .eq("is_active", true)
-            .maybeSingle(),
+            .order("updated_at", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(1),
         ]);
 
         if (!active) return;
 
-        const hasSubscription =
-          Array.isArray(subRes.data) &&
-          subRes.data.some((row) => ["active", "trialing"].includes(String(row.status || "").toLowerCase()));
+        const sub = subscriptionRes.data;
+        const hasWorkoutAccess =
+          ["active", "trialing"].includes(String(sub?.status || "").toLowerCase()) &&
+          ["basico", "nutri"].includes(String(sub?.plan_key || "").toLowerCase());
 
-        const hasPaidProfile =
-          profileRes.data?.is_paid === true ||
-          String(profileRes.data?.plan || "").toLowerCase() === "premium" ||
-          String(profileRes.data?.plan || "").toLowerCase() === "basic";
-
-        setPaid(!!hasSubscription || !!hasPaidProfile);
+        setPaid(!!hasWorkoutAccess);
 
         if (runtimeRes.data) {
           setRuntime({
@@ -623,17 +618,21 @@ export default function TreinoDetalhe() {
           setTimerOpen(false);
         }
 
-        if (planRes.data?.id) {
+        const planRow = Array.isArray(activePlanRes.data) ? activePlanRes.data[0] : null;
+
+        if (planRow?.id) {
+          setActivePlanId(planRow.id);
+
           const [daysRes, exRes, loadRes, progRes] = await Promise.all([
             supabase
               .from("workout_plan_days")
               .select("id, day_index, day_key, title, group_id, group_name")
-              .eq("plan_id", planRes.data.id)
+              .eq("plan_id", planRow.id)
               .order("day_index", { ascending: true }),
             supabase
               .from("workout_plan_exercises")
               .select("plan_day_id, exercise_order, name, group_name, sets, reps, rest, method")
-              .eq("plan_id", planRes.data.id)
+              .eq("plan_id", planRow.id)
               .order("exercise_order", { ascending: true }),
             supabase
               .from("workout_exercise_loads")
@@ -647,6 +646,7 @@ export default function TreinoDetalhe() {
 
           const days = daysRes.data || [];
           const exercises = exRes.data || [];
+          setPlanDays(days);
 
           const split = days.map((day) => {
             const dayExercises = exercises
@@ -657,17 +657,19 @@ export default function TreinoDetalhe() {
                 sets: ex.sets || 4,
                 reps: ex.reps || "6–12",
                 rest: ex.rest || "75–120s",
-                method: ex.method || planRes.data.split_label || "Personalizado",
+                method: ex.method || planRow.split_label || "Personalizado",
               }));
 
-            const withVolume = dayExercises.length ? dayExercises : ensureVolume((groupById(day.group_id)?.library || []).slice(0, 9), 7);
+            const withVolume = dayExercises.length
+              ? dayExercises
+              : ensureVolume((groupById(day.group_id)?.library || []).slice(0, 9), 7);
 
             return withVolume;
           });
 
           setPlanData({
             base: {
-              style: planRes.data.split_label || "Personalizado",
+              style: planRow.split_label || "Personalizado",
               sets: 4,
               reps: "6–12",
               rest: "75–120s",
@@ -677,15 +679,22 @@ export default function TreinoDetalhe() {
 
           const loadMap = {};
           for (const row of loadRes.data || []) {
-            loadMap[keyForLoad(row.day_index, row.exercise_name)] = row.load_value || "";
+            const day = days.find((d) => Number(d.day_index) === Number(row.day_index));
+            const key = keyForLoad(day?.id || row.day_index, row.exercise_name);
+            loadMap[key] = row.load_value || "";
           }
           setLoads(loadMap);
 
           const progMap = {};
           for (const row of progRes.data || []) {
-            progMap[keyForSetProg(row.day_index, row.exercise_name)] = Number(row.done_sets || 0);
+            const day = days.find((d) => Number(d.day_index) === Number(row.day_index));
+            const key = keyForSetProg(day?.id || row.day_index, row.exercise_name);
+            progMap[key] = Number(row.done_sets || 0);
           }
           setSetsProg(progMap);
+        } else {
+          setActivePlanId(null);
+          setPlanDays([]);
         }
       } catch (err) {
         console.error("TreinoDetalhe bootstrap error:", err);
@@ -709,6 +718,8 @@ export default function TreinoDetalhe() {
   const runtimeDayIndex = runtime.current_day_index || 0;
   const viewIdx = Number.isFinite(dParam) ? dParam : runtimeDayIndex;
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
+  const currentPlanDay = useMemo(() => planDays?.[viewSafe] || null, [planDays, viewSafe]);
+  const currentDayKey = currentPlanDay?.id || currentPlanDay?.day_index || viewSafe;
 
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
   const workout = useMemo(
@@ -861,16 +872,21 @@ export default function TreinoDetalhe() {
   }, []);
 
   async function setLoad(exName, v) {
-    const k = keyForLoad(viewSafe, exName);
-    const next = { ...loads, [k]: v };
+    const storageKey = keyForLoad(currentDayKey, exName);
+    const next = { ...loads, [storageKey]: v };
     setLoads(next);
 
     if (!userId) return;
 
+    const persistedDayIndex =
+      Number.isFinite(Number(currentPlanDay?.day_index))
+        ? Number(currentPlanDay.day_index)
+        : Number(viewSafe);
+
     const { error } = await supabase.from("workout_exercise_loads").upsert(
       {
         user_id: userId,
-        day_index: viewSafe,
+        day_index: persistedDayIndex,
         exercise_name: exName,
         load_value: v,
         updated_at: new Date().toISOString(),
@@ -882,23 +898,28 @@ export default function TreinoDetalhe() {
   }
 
   function getDone(exName, setsTotal) {
-    const key = keyForSetProg(viewSafe, exName);
-    const val = setsProg[key];
+    const storageKey = keyForSetProg(currentDayKey, exName);
+    const val = setsProg[storageKey];
     const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
     return clamp(Number(val || 0) || 0, 0, n);
   }
 
   async function setDone(exName, nextDone) {
-    const key = keyForSetProg(viewSafe, exName);
-    const next = { ...setsProg, [key]: nextDone };
+    const storageKey = keyForSetProg(currentDayKey, exName);
+    const next = { ...setsProg, [storageKey]: nextDone };
     setSetsProg(next);
 
     if (!userId) return;
 
+    const persistedDayIndex =
+      Number.isFinite(Number(currentPlanDay?.day_index))
+        ? Number(currentPlanDay.day_index)
+        : Number(viewSafe);
+
     const { error } = await supabase.from("workout_set_progress").upsert(
       {
         user_id: userId,
-        day_index: viewSafe,
+        day_index: persistedDayIndex,
         exercise_name: exName,
         done_sets: nextDone,
         updated_at: new Date().toISOString(),
@@ -1070,8 +1091,8 @@ export default function TreinoDetalhe() {
           const objetivo = user?.objetivo ?? user?.goal ?? "";
           const suggested = suggestLoadRange(ex.name, peso, objetivo);
 
-          const k = keyForLoad(viewSafe, ex.name);
-          const myLoad = loads[k] ?? "";
+          const loadStorageKey = keyForLoad(currentDayKey, ex.name);
+          const myLoad = loads[loadStorageKey] ?? "";
 
           const sets = ex.sets ?? base.sets;
           const reps = ex.reps ?? base.reps;
