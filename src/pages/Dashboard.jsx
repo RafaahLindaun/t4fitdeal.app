@@ -737,7 +737,7 @@ export default function Dashboard() {
           <div style={styles.weekCalendarHeader}>
             <div style={styles.weekCalendarTitle}>Seu ritmo da semana</div>
             <div style={styles.weekCalendarSub}>
-              Dias marcados = treino concluído salvo no Supabase
+              Uma otima Ofensiva, significa mais Resultado!
             </div>
           </div>
 
