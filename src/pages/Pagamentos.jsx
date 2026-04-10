@@ -4,120 +4,105 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
-const BLACK = "#111111";
-const GRAY = "#6B6B6B";
-const WHITE = "#FFFFFF";
-const BORDER = "#E9E9E7";
-const LIGHT = "#F7F7F5";
+const TEXT = "#0f172a";
+const MUTED = "#64748b";
+const BG = "#f8fafc";
+const BORDER = "rgba(15,23,42,.08)";
+const SOFT = "rgba(15,23,42,.04)";
 
-function normalizePlanLabel(planKey) {
-  if (planKey === "nutri") return "Nutri+";
-  if (planKey === "basico") return "Básico";
-  return "Plano";
+function moneyBRL(v) {
+  return (Number(v || 0) || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
-function normalizeStatusLabel(status) {
-  const raw = String(status || "").toLowerCase();
-  if (raw === "active") return "Ativa";
-  if (raw === "trialing") return "Em teste";
-  if (raw === "paid") return "Pago";
-  if (raw === "canceled") return "Cancelada";
-  if (raw === "past_due") return "Pendente";
-  return raw || "—";
+function planLabel(planKey) {
+  const k = String(planKey || "").toLowerCase();
+  if (k === "nutri") return "Nutri+";
+  if (k === "basico") return "Básico";
+  return "Plano ativo";
 }
 
-function planAmountByKey(planKey) {
-  if (planKey === "nutri") return 6599;
-  if (planKey === "basico") return 1299;
+function planPrice(planKey) {
+  const k = String(planKey || "").toLowerCase();
+  if (k === "nutri") return 65.99;
+  if (k === "basico") return 12.99;
   return 0;
 }
 
-
 export default function Pagamentos() {
-  const { user } = useAuth();
   const nav = useNavigate();
+  const { user } = useAuth();
 
+  const [subscription, setSubscription] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [cancelLoading, setCancelLoading] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
-  const userId = user?.id;
+  const activeStatus = useMemo(() => {
+    return ["active", "trialing"].includes(
+      String(subscription?.status || "").toLowerCase()
+    );
+  }, [subscription]);
 
   useEffect(() => {
-    async function loadPayments() {
-      if (!userId) {
+    let alive = true;
+
+    async function loadData() {
+      if (!user?.id) {
         setLoading(false);
         return;
       }
 
-      try {
-        const [{ data: paymentRows }, { data: subscriptionRow, error: subError }] =
-          await Promise.all([
-            supabase
-              .from("payments")
-              .select("*")
-              .eq("user_id", userId)
-              .order("created_at", { ascending: false }),
-            supabase
-              .from("user_subscriptions")
-              .select("plan_key,status,current_period_end,stripe_subscription_id,stripe_price_id,created_at,updated_at")
-              .eq("user_id", userId)
-              .maybeSingle(),
-          ]);
+      setLoading(true);
 
-        if (subError) {
-          console.error("Pagamentos subscription error:", subError);
-        }
+      const [subRes, payRes] = await Promise.all([
+        supabase
+          .from("user_subscriptions")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle(),
 
-        setSubscriptionInfo(subscriptionRow || null);
+        supabase
+          .from("payments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
 
-        const rows = Array.isArray(paymentRows) ? paymentRows : [];
-        if (rows.length > 0) {
-          setPayments(rows);
-        } else if (subscriptionRow) {
-          setPayments([
-            {
-              id: subscriptionRow.stripe_subscription_id || "subscription-row",
-              title: normalizePlanLabel(subscriptionRow.plan_key),
-              amount_brl: planAmountByKey(subscriptionRow.plan_key),
-              created_at:
-                subscriptionRow.updated_at ||
-                subscriptionRow.created_at ||
-                subscriptionRow.current_period_end ||
-                new Date().toISOString(),
-              status:
-                subscriptionRow.status === "active" || subscriptionRow.status === "trialing"
-                  ? "paid"
-                  : subscriptionRow.status,
-              source: "subscription",
-            },
-          ]);
-        } else {
-          setPayments([]);
-        }
-      } finally {
-        setLoading(false);
+      if (!alive) return;
+
+      if (subRes.error) {
+        console.error("Pagamentos subscription error:", subRes.error);
       }
+
+      if (payRes.error) {
+        console.error("Pagamentos payments error:", payRes.error);
+      }
+
+      setSubscription(subRes.data || null);
+      setPayments(payRes.data || []);
+      setLoading(false);
     }
 
-    loadPayments();
-  }, [userId]);
+    loadData();
 
-
-  const currentPlanLabel = useMemo(() => {
-    return subscriptionInfo ? normalizePlanLabel(subscriptionInfo.plan_key) : "Sem plano";
-  }, [subscriptionInfo]);
-
-  const currentStatusLabel = useMemo(() => {
-    return subscriptionInfo ? normalizeStatusLabel(subscriptionInfo.status) : "Inativa";
-  }, [subscriptionInfo]);
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
 
   async function cancelSubscription() {
-    if (!subscriptionInfo?.stripe_subscription_id || cancelLoading) return;
+    if (!user?.id || !subscription?.stripe_subscription_id || canceling) return;
 
     try {
-      setCancelLoading(true);
+      setCanceling(true);
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error("VITE_SUPABASE_URL ausente.");
+      }
 
       const {
         data: { session },
@@ -129,7 +114,7 @@ export default function Pagamentos() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cancel-subscription`,
+        `${supabaseUrl}/functions/v1/cancel-subscription`,
         {
           method: "POST",
           headers: {
@@ -137,13 +122,14 @@ export default function Pagamentos() {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            subscriptionId: subscriptionInfo.stripe_subscription_id,
+            subscriptionId: subscription.stripe_subscription_id,
           }),
         }
       );
 
       const text = await response.text();
       let data = {};
+
       try {
         data = text ? JSON.parse(text) : {};
       } catch {
@@ -154,237 +140,381 @@ export default function Pagamentos() {
         throw new Error(data?.error || data?.raw || `Erro ${response.status}`);
       }
 
-      const { data: refreshed } = await supabase
+      const { data: refreshed, error: refreshError } = await supabase
         .from("user_subscriptions")
-        .select("plan_key,status,current_period_end,stripe_subscription_id,stripe_price_id,created_at,updated_at")
-        .eq("user_id", userId)
+        .select("*")
+        .eq("user_id", user.id)
         .maybeSingle();
 
-      setSubscriptionInfo(refreshed || null);
+      if (refreshError) {
+        console.error("refresh subscription error:", refreshError);
+      } else {
+        setSubscription(refreshed || null);
+      }
+
+      alert("Assinatura cancelada com sucesso.");
     } catch (err) {
+      console.error("cancelSubscription error:", err);
       alert(err?.message || "Não foi possível cancelar a assinatura.");
     } finally {
-      setCancelLoading(false);
+      setCanceling(false);
     }
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.wrap}>
-        <div style={styles.headerRow}>
-          <div style={styles.brand}>
-            fitdeal<span style={{ color: ORANGE }}>.</span>
+    <div style={S.page}>
+      <div style={S.wrap}>
+        <div style={S.header}>
+          <div>
+            <div style={S.kicker}>Pagamentos</div>
+            <div style={S.title}>Sua assinatura.</div>
+            <div style={S.sub}>
+              Veja seu plano atual, status e histórico.
+            </div>
           </div>
+
+          <button style={S.backBtn} onClick={() => nav(-1)} type="button">
+            Voltar
+          </button>
         </div>
 
-        <div style={styles.title}>Pagamentos</div>
-
-        {subscriptionInfo ? (
-          <div style={styles.summaryCard}>
-            <div style={styles.cardTop}>
-              <div style={styles.plan}>{currentPlanLabel}</div>
-              <div
-                style={{
-                  ...styles.status,
-                  ...(subscriptionInfo.status === "active" || subscriptionInfo.status === "trialing"
-                    ? styles.statusPaid
-                    : styles.statusPending),
-                }}
-              >
-                {currentStatusLabel}
-              </div>
-            </div>
-
-            <div style={styles.metaRow}>
-              <span style={styles.meta}>
-                {subscriptionInfo.current_period_end
-                  ? `Válida até ${new Date(subscriptionInfo.current_period_end).toLocaleDateString("pt-BR")}`
-                  : "Sem renovação ativa"}
-              </span>
-            </div>
-
-            {(subscriptionInfo.status === "active" || subscriptionInfo.status === "trialing") ? (
-              <button style={styles.cancelBtn} onClick={cancelSubscription}>
-                {cancelLoading ? "Cancelando..." : "Cancelar assinatura"}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
         {loading ? (
-          <div style={styles.loading}>Carregando pagamentos...</div>
-        ) : payments.length === 0 ? (
-          <div style={styles.empty}>
-            Nenhum pagamento encontrado ainda.
-          </div>
+          <section style={S.card}>
+            <div style={S.rowTitle}>Carregando...</div>
+          </section>
         ) : (
-          <div style={styles.list}>
-            {payments.map((p) => (
-              <div key={p.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <div style={styles.plan}>{p.title || normalizePlanLabel(p.plan_key)}</div>
-                  <div style={styles.price}>
-                    R$ {((Number(p.amount_brl || 0)) / 100).toFixed(2)}
+          <>
+            <section style={S.card}>
+              <div style={S.rowTop}>
+                <div>
+                  <div style={S.rowTitle}>Plano atual</div>
+                  <div style={S.planName}>
+                    {subscription ? planLabel(subscription.plan_key) : "Sem plano"}
                   </div>
                 </div>
 
-                <div style={styles.metaRow}>
-                  <span style={styles.meta}>
-                    {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </span>
-
-                  <span
-                    style={{
-                      ...styles.status,
-                      ...(p.status === "paid"
-                        ? styles.statusPaid
-                        : styles.statusPending),
-                    }}
-                  >
-                    {normalizeStatusLabel(p.status)}
-                  </span>
+                <div
+                  style={{
+                    ...S.statusPill,
+                    ...(activeStatus ? S.statusOn : S.statusOff),
+                  }}
+                >
+                  {activeStatus ? "Ativo" : "Inativo"}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
 
-        <button style={styles.backBtn} onClick={() => nav(-1)}>
-          Voltar
-        </button>
+              <div style={S.metaGrid}>
+                <div style={S.metaBox}>
+                  <div style={S.metaLabel}>Cobrança</div>
+                  <div style={S.metaValue}>
+                    {subscription ? moneyBRL(planPrice(subscription.plan_key)) : "—"}
+                  </div>
+                </div>
+
+                <div style={S.metaBox}>
+                  <div style={S.metaLabel}>Recorrência</div>
+                  <div style={S.metaValue}>Mensal</div>
+                </div>
+
+                <div style={S.metaBox}>
+                  <div style={S.metaLabel}>Status Stripe</div>
+                  <div style={S.metaValue}>{subscription?.status || "—"}</div>
+                </div>
+
+                <div style={S.metaBox}>
+                  <div style={S.metaLabel}>Fim do período</div>
+                  <div style={S.metaValue}>
+                    {subscription?.current_period_end
+                      ? new Date(subscription.current_period_end).toLocaleDateString("pt-BR")
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={S.noticeBox}>
+                <div style={S.noticeTitle}>Informações importantes</div>
+                <div style={S.noticeText}>
+                  A cobrança da assinatura é mensal e renovada automaticamente
+                  até o cancelamento.
+                </div>
+                <div style={S.noticeText}>
+                  Após a cobrança efetivada, não há devolução do valor já pago.
+                </div>
+              </div>
+
+              {activeStatus && subscription?.stripe_subscription_id ? (
+                <button
+                  type="button"
+                  style={S.cancelBtn}
+                  onClick={cancelSubscription}
+                  disabled={canceling}
+                >
+                  {canceling ? "Cancelando..." : "Cancelar assinatura"}
+                </button>
+              ) : null}
+            </section>
+
+            <section style={S.card}>
+              <div style={S.rowTitle}>Histórico</div>
+
+              {payments.length === 0 ? (
+                <div style={S.empty}>
+                  Nenhum pagamento salvo no histórico ainda.
+                </div>
+              ) : (
+                <div style={S.list}>
+                  {payments.map((item) => (
+                    <div key={item.id} style={S.item}>
+                      <div>
+                        <div style={S.itemTitle}>
+                          {item.description || planLabel(item.plan_key)}
+                        </div>
+                        <div style={S.itemSub}>
+                          {item.created_at
+                            ? new Date(item.created_at).toLocaleDateString("pt-BR")
+                            : "—"}
+                        </div>
+                      </div>
+
+                      <div style={S.itemRight}>
+                        <div style={S.itemPrice}>
+                          {moneyBRL(item.amount || planPrice(item.plan_key))}
+                        </div>
+                        <div style={S.itemStatus}>
+                          {item.status || "pago"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-const styles = {
+const S = {
   page: {
     minHeight: "100vh",
-    background: LIGHT,
-    padding: 20,
+    background: BG,
+    padding: 18,
+    paddingBottom: 120,
   },
 
   wrap: {
-    maxWidth: 600,
+    maxWidth: 760,
     margin: "0 auto",
   },
 
-  headerRow: {
+  header: {
     display: "flex",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 14,
   },
 
-  brand: {
-    fontSize: 28,
+  kicker: {
+    fontSize: 12,
     fontWeight: 900,
-    color: BLACK,
+    color: MUTED,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
 
   title: {
-    fontSize: 24,
-    fontWeight: 800,
-    marginBottom: 20,
-    color: BLACK,
+    marginTop: 6,
+    fontSize: 30,
+    lineHeight: 1.05,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -1,
   },
 
-  loading: {
+  sub: {
+    marginTop: 8,
     fontSize: 14,
-    color: GRAY,
+    lineHeight: 1.45,
+    color: MUTED,
+    fontWeight: 700,
   },
 
-  empty: {
-    fontSize: 14,
-    color: GRAY,
-  },
-
-  summaryCard: {
-    marginBottom: 16,
-    padding: 18,
-    borderRadius: 18,
+  backBtn: {
+    padding: "12px 14px",
+    borderRadius: 16,
     border: `1px solid ${BORDER}`,
-    background: WHITE,
+    background: "#fff",
+    color: TEXT,
+    fontWeight: 900,
+  },
+
+  card: {
+    borderRadius: 24,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+    padding: 16,
+    marginBottom: 14,
+  },
+
+  rowTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+
+  rowTitle: {
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+  },
+
+  planName: {
+    marginTop: 8,
+    fontSize: 22,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.5,
+  },
+
+  statusPill: {
+    padding: "8px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 900,
+    border: `1px solid ${BORDER}`,
+    whiteSpace: "nowrap",
+  },
+
+  statusOn: {
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.20)",
+    color: TEXT,
+  },
+
+  statusOff: {
+    background: SOFT,
+    color: MUTED,
+  },
+
+  metaGrid: {
+    marginTop: 16,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+  },
+
+  metaBox: {
+    borderRadius: 18,
+    background: SOFT,
+    border: `1px solid ${BORDER}`,
+    padding: 12,
+  },
+
+  metaLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
+
+  metaValue: {
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: 900,
+    color: TEXT,
+  },
+
+  noticeBox: {
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    background: "rgba(255,106,0,.08)",
+    border: "1px solid rgba(255,106,0,.16)",
+  },
+
+  noticeTitle: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: TEXT,
+  },
+
+  noticeText: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 1.45,
+    color: MUTED,
+    fontWeight: 700,
   },
 
   cancelBtn: {
     marginTop: 14,
     width: "100%",
-    height: 46,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: 18,
     border: "none",
-    background: BLACK,
-    color: WHITE,
-    fontWeight: 800,
-    fontSize: 14,
+    background: "#111",
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+
+  empty: {
+    marginTop: 12,
+    fontSize: 13,
+    color: MUTED,
+    fontWeight: 700,
   },
 
   list: {
+    marginTop: 12,
     display: "grid",
-    gap: 12,
+    gap: 10,
   },
 
-  card: {
-    padding: 18,
+  item: {
     borderRadius: 18,
     border: `1px solid ${BORDER}`,
-    background: WHITE,
-  },
-
-  cardTop: {
+    background: SOFT,
+    padding: 12,
     display: "flex",
     justifyContent: "space-between",
-    marginBottom: 10,
+    gap: 12,
+    alignItems: "center",
   },
 
-  plan: {
-    fontSize: 16,
-    fontWeight: 700,
-    color: BLACK,
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: 900,
+    color: TEXT,
   },
 
-  price: {
-    fontSize: 16,
-    fontWeight: 800,
-    color: ORANGE,
-  },
-
-  metaRow: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
-
-  meta: {
+  itemSub: {
+    marginTop: 4,
     fontSize: 12,
-    color: GRAY,
-  },
-
-  status: {
-    fontSize: 12,
-    padding: "4px 10px",
-    borderRadius: 999,
+    color: MUTED,
     fontWeight: 700,
   },
 
-  statusPaid: {
-    background: "#E8F8F0",
-    color: "#1F9D55",
+  itemRight: {
+    textAlign: "right",
   },
 
-  statusPending: {
-    background: "#FFF4E5",
-    color: "#C77800",
+  itemPrice: {
+    fontSize: 14,
+    fontWeight: 900,
+    color: TEXT,
   },
 
-  backBtn: {
-    marginTop: 24,
-    width: "100%",
-    height: 50,
-    borderRadius: 14,
-    border: "none",
-    background: ORANGE,
-    color: BLACK,
-    fontWeight: 800,
-    fontSize: 15,
+  itemStatus: {
+    marginTop: 4,
+    fontSize: 12,
+    color: MUTED,
+    fontWeight: 700,
   },
 };
