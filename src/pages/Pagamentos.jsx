@@ -217,7 +217,7 @@ export default function Pagamentos() {
                 </div>
 
                 <div style={S.metaBox}>
-                  <div style={S.metaLabel}>Status Stripe</div>
+                  <div style={S.metaLabel}>Status </div>
                   <div style={S.metaValue}>{subscription?.status || "—"}</div>
                 </div>
 
