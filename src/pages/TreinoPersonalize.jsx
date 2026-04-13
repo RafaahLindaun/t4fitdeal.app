@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
 const ORANGE_SOFT = "rgba(255,106,0,.12)";
@@ -1142,7 +1143,14 @@ function HeaderBrand({ title, subtitle, onBack }) {
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         <div style={S.brandMark}>
-          <div style={S.brandInner} />
+          <img
+            src={LogoMark}
+            alt="fitdeal"
+            style={S.brandLogo}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
         </div>
 
         <div style={{ minWidth: 0 }}>
@@ -1357,22 +1365,24 @@ const S = {
     fontSize: 16,
     flexShrink: 0,
   },
-
   brandMark: {
     width: 36,
     height: 36,
     borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    boxShadow: "0 14px 30px rgba(255,106,0,.20)",
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.14)",
     display: "grid",
     placeItems: "center",
     flexShrink: 0,
+    overflow: "hidden",
   },
-  brandInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 6,
-    background: "rgba(255,255,255,.92)",
+  brandLogo: {
+    width: 34,
+    height: 34,
+    objectFit: "contain",
+    padding: 6,
+    borderRadius: 10,
+    display: "block",
   },
   brandTop: { display: "flex", gap: 8, alignItems: "center" },
   brandName: { fontWeight: 950, letterSpacing: -0.4, color: TEXT, fontSize: 14 },
