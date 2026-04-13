@@ -495,7 +495,6 @@ export default function TreinoDetalhe() {
   const [paid, setPaid] = useState(false);
   const [planData, setPlanData] = useState(null);
   const [planDays, setPlanDays] = useState([]);
-  const [activePlanId, setActivePlanId] = useState(null);
   const [runtime, setRuntime] = useState({
     current_day_index: 0,
     timer_open: false,
@@ -514,6 +513,9 @@ export default function TreinoDetalhe() {
   const [restTotal, setRestTotal] = useState(90);
   const [restLeft, setRestLeft] = useState(90);
   const [running, setRunning] = useState(false);
+
+  const [doneFlash, setDoneFlash] = useState(false);
+  const [doneFlashKey, setDoneFlashKey] = useState("");
 
   const scrollerRef = useRef(null);
   const dragStartY = useRef(null);
@@ -548,6 +550,15 @@ export default function TreinoDetalhe() {
     openGifFull(name);
   }
 
+  function triggerDoneFlash(key) {
+    setDoneFlashKey(key);
+    setDoneFlash(true);
+    window.setTimeout(() => {
+      setDoneFlash(false);
+      setDoneFlashKey("");
+    }, 720);
+  }
+
   useEffect(() => {
     if (!gifOpen) return;
     const prev = document.body.style.overflow;
@@ -572,11 +583,7 @@ export default function TreinoDetalhe() {
       }
 
       try {
-        const [
-          subscriptionRes,
-          runtimeRes,
-          activePlanRes,
-        ] = await Promise.all([
+        const [subRes, runtimeRes, planRes] = await Promise.all([
           supabase
             .from("user_subscriptions")
             .select("plan_key, status")
@@ -590,7 +597,7 @@ export default function TreinoDetalhe() {
             .maybeSingle(),
           supabase
             .from("workout_plans")
-            .select("id, title, split_label, split_len, source, updated_at, created_at")
+            .select("id, title, split_label, split_len, source, created_at, updated_at")
             .eq("user_id", userId)
             .eq("is_active", true)
             .order("updated_at", { ascending: false })
@@ -600,10 +607,9 @@ export default function TreinoDetalhe() {
 
         if (!active) return;
 
-        const sub = subscriptionRes.data;
         const hasWorkoutAccess =
-          ["active", "trialing"].includes(String(sub?.status || "").toLowerCase()) &&
-          ["basico", "nutri"].includes(String(sub?.plan_key || "").toLowerCase());
+          ["active", "trialing"].includes(String(subRes.data?.status || "").toLowerCase()) &&
+          ["basico", "nutri"].includes(String(subRes.data?.plan_key || "").toLowerCase());
 
         setPaid(!!hasWorkoutAccess);
 
@@ -618,21 +624,19 @@ export default function TreinoDetalhe() {
           setTimerOpen(false);
         }
 
-        const planRow = Array.isArray(activePlanRes.data) ? activePlanRes.data[0] : null;
+        const activePlan = Array.isArray(planRes.data) ? planRes.data[0] : null;
 
-        if (planRow?.id) {
-          setActivePlanId(planRow.id);
-
+        if (activePlan?.id) {
           const [daysRes, exRes, loadRes, progRes] = await Promise.all([
             supabase
               .from("workout_plan_days")
               .select("id, day_index, day_key, title, group_id, group_name")
-              .eq("plan_id", planRow.id)
+              .eq("plan_id", activePlan.id)
               .order("day_index", { ascending: true }),
             supabase
               .from("workout_plan_exercises")
               .select("plan_day_id, exercise_order, name, group_name, sets, reps, rest, method")
-              .eq("plan_id", planRow.id)
+              .eq("plan_id", activePlan.id)
               .order("exercise_order", { ascending: true }),
             supabase
               .from("workout_exercise_loads")
@@ -657,7 +661,7 @@ export default function TreinoDetalhe() {
                 sets: ex.sets || 4,
                 reps: ex.reps || "6–12",
                 rest: ex.rest || "75–120s",
-                method: ex.method || planRow.split_label || "Personalizado",
+                method: ex.method || activePlan.split_label || "Personalizado",
               }));
 
             const withVolume = dayExercises.length
@@ -669,7 +673,7 @@ export default function TreinoDetalhe() {
 
           setPlanData({
             base: {
-              style: planRow.split_label || "Personalizado",
+              style: activePlan.split_label || "Personalizado",
               sets: 4,
               reps: "6–12",
               rest: "75–120s",
@@ -679,22 +683,19 @@ export default function TreinoDetalhe() {
 
           const loadMap = {};
           for (const row of loadRes.data || []) {
-            const day = days.find((d) => Number(d.day_index) === Number(row.day_index));
-            const key = keyForLoad(day?.id || row.day_index, row.exercise_name);
-            loadMap[key] = row.load_value || "";
+            const matchedDay = days.find((d) => Number(d.day_index) === Number(row.day_index));
+            const storageKey = keyForLoad(matchedDay?.id || row.day_index, row.exercise_name);
+            loadMap[storageKey] = row.load_value || "";
           }
           setLoads(loadMap);
 
           const progMap = {};
           for (const row of progRes.data || []) {
-            const day = days.find((d) => Number(d.day_index) === Number(row.day_index));
-            const key = keyForSetProg(day?.id || row.day_index, row.exercise_name);
-            progMap[key] = Number(row.done_sets || 0);
+            const matchedDay = days.find((d) => Number(d.day_index) === Number(row.day_index));
+            const storageKey = keyForSetProg(matchedDay?.id || row.day_index, row.exercise_name);
+            progMap[storageKey] = Number(row.done_sets || 0);
           }
           setSetsProg(progMap);
-        } else {
-          setActivePlanId(null);
-          setPlanDays([]);
         }
       } catch (err) {
         console.error("TreinoDetalhe bootstrap error:", err);
@@ -719,7 +720,7 @@ export default function TreinoDetalhe() {
   const viewIdx = Number.isFinite(dParam) ? dParam : runtimeDayIndex;
   const viewSafe = useMemo(() => mod(viewIdx, split.length), [viewIdx, split.length]);
   const currentPlanDay = useMemo(() => planDays?.[viewSafe] || null, [planDays, viewSafe]);
-  const currentDayKey = currentPlanDay?.id || currentPlanDay?.day_index || viewSafe;
+  const currentDayStorageKey = currentPlanDay?.id || currentPlanDay?.day_index || viewSafe;
 
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
   const workout = useMemo(
@@ -778,13 +779,16 @@ export default function TreinoDetalhe() {
       updated_at: new Date().toISOString(),
     };
 
-    setRuntime((prev) => ({
+    setRuntime({
       current_day_index: next.current_day_index,
       timer_open: next.timer_open,
       swipe_hint_seen: next.swipe_hint_seen,
-    }));
+    });
 
-    const { error } = await supabase.from("workout_runtime").upsert(next, { onConflict: "user_id" });
+    const { error } = await supabase
+      .from("workout_runtime")
+      .upsert(next, { onConflict: "user_id" });
+
     if (error) console.error("upsertRuntime error:", error);
   }
 
@@ -844,7 +848,7 @@ export default function TreinoDetalhe() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "treino-detalhe-book-ui-v2";
+    const id = "treino-detalhe-book-ui-v3";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -857,6 +861,17 @@ export default function TreinoDetalhe() {
       @keyframes tdPop {
         0%,100% { transform: scale(1); }
         50% { transform: scale(1.02); }
+      }
+      @keyframes tdDoneBurst {
+        0% { opacity: 0; transform: scale(.72); }
+        18% { opacity: 1; transform: scale(1.04); }
+        72% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0; transform: scale(1.1); }
+      }
+      @keyframes tdDoneBg {
+        0% { opacity: 0; }
+        18% { opacity: 1; }
+        100% { opacity: 0; }
       }
       .td-press { transition: transform .12s ease, filter .12s ease; }
       .td-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
@@ -872,8 +887,8 @@ export default function TreinoDetalhe() {
   }, []);
 
   async function setLoad(exName, v) {
-    const storageKey = keyForLoad(currentDayKey, exName);
-    const next = { ...loads, [storageKey]: v };
+    const k = keyForLoad(currentDayStorageKey, exName);
+    const next = { ...loads, [k]: v };
     setLoads(next);
 
     if (!userId) return;
@@ -898,15 +913,15 @@ export default function TreinoDetalhe() {
   }
 
   function getDone(exName, setsTotal) {
-    const storageKey = keyForSetProg(currentDayKey, exName);
-    const val = setsProg[storageKey];
+    const key = keyForSetProg(currentDayStorageKey, exName);
+    const val = setsProg[key];
     const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
     return clamp(Number(val || 0) || 0, 0, n);
   }
 
   async function setDone(exName, nextDone) {
-    const storageKey = keyForSetProg(currentDayKey, exName);
-    const next = { ...setsProg, [storageKey]: nextDone };
+    const key = keyForSetProg(currentDayStorageKey, exName);
+    const next = { ...setsProg, [key]: nextDone };
     setSetsProg(next);
 
     if (!userId) return;
@@ -1091,8 +1106,8 @@ export default function TreinoDetalhe() {
           const objetivo = user?.objetivo ?? user?.goal ?? "";
           const suggested = suggestLoadRange(ex.name, peso, objetivo);
 
-          const loadStorageKey = keyForLoad(currentDayKey, ex.name);
-          const myLoad = loads[loadStorageKey] ?? "";
+          const k = keyForLoad(currentDayStorageKey, ex.name);
+          const myLoad = loads[k] ?? "";
 
           const sets = ex.sets ?? base.sets;
           const reps = ex.reps ?? base.reps;
@@ -1114,12 +1129,23 @@ export default function TreinoDetalhe() {
               setRestLeft(sec);
               setRunning(true);
               softPingTimer();
+              triggerDoneFlash(p.key);
             }
           }
 
           return (
             <div key={p.key} style={S.pageItem}>
               <div style={S.cardPage}>
+                {doneFlash && doneFlashKey === p.key ? (
+                  <div style={S.doneOverlay} aria-hidden="true">
+                    <div style={S.doneGlow} />
+                    <div style={S.doneMarkWrap}>
+                      <div style={S.doneMark}>✓</div>
+                      <div style={S.doneText}>Série feita</div>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div style={S.cardGlow} aria-hidden="true" />
                 <div style={S.cardSheen} aria-hidden="true" />
 
@@ -1405,6 +1431,48 @@ const S = {
     transform: "translateX(-70%)",
     animation: "tdSheen 6.2s ease-in-out infinite",
     pointerEvents: "none",
+  },
+
+  doneOverlay: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 12,
+    display: "grid",
+    placeItems: "center",
+    pointerEvents: "none",
+    animation: "tdDoneBg .72s ease forwards",
+  },
+  doneGlow: {
+    position: "absolute",
+    inset: 0,
+    background: "radial-gradient(420px 240px at 50% 45%, rgba(255,106,0,.18), rgba(255,255,255,0) 65%)",
+  },
+  doneMarkWrap: {
+    position: "relative",
+    display: "grid",
+    justifyItems: "center",
+    gap: 10,
+    animation: "tdDoneBurst .72s ease forwards",
+  },
+  doneMark: {
+    width: 116,
+    height: 116,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
+    color: "#fff",
+    fontSize: 62,
+    fontWeight: 950,
+    lineHeight: 1,
+    boxShadow: "0 22px 80px rgba(255,106,0,.34), 0 0 0 10px rgba(255,106,0,.12)",
+  },
+  doneText: {
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.35,
+    textShadow: "0 2px 12px rgba(255,255,255,.55)",
   },
 
   exerciseTop: { position: "relative", display: "flex", gap: 12, alignItems: "center" },
