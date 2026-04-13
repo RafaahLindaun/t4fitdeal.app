@@ -164,39 +164,23 @@ async function loadPaidStatus(userId) {
   if (!userId) return false;
 
   try {
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("plan_type, status")
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("plan_key, status")
       .eq("user_id", userId)
       .in("status", ["active", "trialing"])
-      .in("plan_type", ["basic", "basico", "nutri_plus"])
-      .order("created_at", { ascending: false })
-      .limit(1)
       .maybeSingle();
 
-    if (sub?.plan_type) return true;
-  } catch {}
-
-  try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan, paid, basic_active, premium")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (
-      profile?.paid === true ||
-      profile?.basic_active === true ||
-      profile?.premium === true ||
-      profile?.plan === "basic" ||
-      profile?.plan === "basico" ||
-      profile?.plan === "nutri_plus"
-    ) {
-      return true;
+    if (error) {
+      console.error("loadPaidStatus error:", error);
+      return false;
     }
-  } catch {}
 
-  return false;
+    return ["basico", "nutri"].includes(String(data?.plan_key || "").toLowerCase());
+  } catch (err) {
+    console.error("loadPaidStatus catch:", err);
+    return false;
+  }
 }
 
 async function fetchCardioSessions(userId) {
