@@ -31,19 +31,6 @@ function normalizeName(s) {
     .replace(/\s+/g, " ")
     .trim();
 }
-function uniqStrings(arr) {
-  const out = [];
-  const seen = new Set();
-  for (const x of arr || []) {
-    const v = String(x || "").trim();
-    if (!v) continue;
-    const k = normalizeName(v);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(v);
-  }
-  return out;
-}
 function dayLetter(i) {
   const letters = ["A", "B", "C", "D", "E", "F"];
   return letters[i % letters.length] || "A";
@@ -92,190 +79,91 @@ function keyForSetProg(planDayKey, exName) {
   return `${String(planDayKey)}__${String(exName || "").toLowerCase()}`;
 }
 
-/* ---------------- banco (COMPLETO do TreinoPersonalize) ---------------- */
+/* -------- parse do formato salvo pelo TreinoPersonalize -------- */
+function parsePackedExerciseMeta(rawReps, rawMethod, rawNotes) {
+  const text = String(rawReps || "").trim();
+
+  let sets = null;
+  let reps = null;
+  let rest = null;
+
+  const setsMatch = text.match(/(\d+)\s*s[ée]ries?/i);
+  if (setsMatch) sets = Number(setsMatch[1]);
+
+  const restMatch = text.match(/descanso\s*([0-9]+(?:\s*[-–]\s*[0-9]+)?\s*(?:s|min))/i);
+  if (restMatch) rest = restMatch[1].replace(/\s+/g, " ").trim();
+
+  const parts = text.split("•").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const repCandidate = parts.find(
+      (p) =>
+        !/s[ée]ries?/i.test(p) &&
+        !/descanso/i.test(p)
+    );
+    if (repCandidate) reps = repCandidate;
+  }
+
+  if (!reps) {
+    const rangeMatch = text.match(/(\d+\s*[-–]\s*\d+|\d+\s*(?:a|até)\s*\d+)/i);
+    if (rangeMatch) reps = rangeMatch[1].replace(/\s+/g, " ").trim();
+  }
+
+  return {
+    sets: Number(sets || 4),
+    reps: reps || "6–12",
+    rest: rest || "75–120s",
+    method: String(rawMethod || rawNotes || "Personalizado"),
+  };
+}
+
+/* ---------------- fallback database helpers ---------------- */
 const EXERCISE_CATALOG = {
-  peito: [
-    "Supino reto com barra","Supino reto com halteres","Supino inclinado com barra","Supino inclinado com halteres",
-    "Supino declinado","Supino máquina","Supino inclinado máquina","Crucifixo reto com halteres",
-    "Crucifixo inclinado com halteres","Peck-deck","Crossover na polia (alto)","Crossover na polia (médio)",
-    "Crossover na polia (baixo)","Flexão de braço tradicional","Flexão inclinada (banco)","Flexão declinada (pé elevado)",
-    "Flexão com pegada fechada","Pullover com halter","Pullover na polia","Squeeze press (halter)",
-    "Supino com pausa (controle)","Chest press unilateral","Crossover unilateral","Isometria de peitoral na polia",
-  ],
-  triceps: [
-    "Tríceps corda","Tríceps barra reta","Tríceps barra V","Tríceps francês (halter)","Tríceps francês unilateral",
-    "Tríceps testa (barra W)","Tríceps testa (halter)","Tríceps banco (mergulho)","Mergulho nas paralelas (assistido)",
-    "Mergulho nas paralelas (livre)","Tríceps coice (halter)","Tríceps na polia acima da cabeça (corda)",
-    "Tríceps na polia acima da cabeça (barra)","Skull crusher no banco inclinado","Supino fechado (barra)",
-    "Supino fechado (halter)","Tríceps no cross unilateral","Extensão de tríceps no cabo sentado",
-    "Extensão de tríceps com elástico","Kickback no cabo","Diamond push-up (flexão diamante)",
-    "Tríceps máquina (press)","Tríceps com pegada reversa no cabo","Extensão de tríceps na polia deitado",
-  ],
-  costas: [
-    "Puxada frente (puxador)","Puxada neutra (triângulo)","Puxada supinada","Puxada unilateral no cabo","Barra fixa pronada",
-    "Barra fixa supinada","Remada baixa no cabo","Remada baixa neutra","Remada unilateral com halter",
-    "Remada curvada com barra","Remada curvada com halteres","Remada máquina (hammer)","Remada articulada (serrote máquina)",
-    "Remada cavalinho (T-bar)","Pulldown braço reto","Pullover na polia (costas)","Remada alta no cabo",
-    "Encolhimento (pegada aberta) para trapézio","Face pull (escápulas/postura)","Remada no smith",
-    "Remada no banco inclinado (halter)","Good morning leve (técnica/postura)","Hiperextensão lombar","Pull-up assistido",
-  ],
-  biceps: [
-    "Rosca direta (barra)","Rosca direta (barra W)","Rosca alternada (halter)","Rosca martelo (halter)",
-    "Rosca martelo cruzada","Rosca concentrada","Rosca Scott (barra)","Rosca Scott (halter)","Rosca Scott (máquina)",
-    "Rosca na polia (barra)","Rosca na polia (corda)","Rosca 21","Rosca inclinada (halter)","Rosca spider",
-    "Rosca reversa (barra)","Rosca reversa (halter)","Rosca Zottman","Rosca no cabo unilateral",
-    "Rosca bayesian (cabo atrás)","Rosca em pé com elástico","Chin-up (barra supinada)",
-    "Rosca no banco inclinado unilateral","Rosca martelo no cabo","Isometria de bíceps (90 graus)",
-  ],
-  quadriceps: [
-    "Agachamento livre","Agachamento no smith","Agachamento frontal","Agachamento goblet","Leg press 45°",
-    "Leg press horizontal","Hack squat","Cadeira extensora","Passada caminhando","Afundo no smith",
-    "Afundo com halteres","Bulgarian split squat","Step-up (banco)","Agachamento sumô leve","Sissy squat (controle)",
-    "Agachamento com pausa","Leg press (pés baixos)","Agachamento na caixa","Cadeira abdutora (apoio de quadril)",
-    "Cadeira adutora","Lunge reverso","Agachamento no TRX (iniciante)","Wall sit (isometria)","Extensora unilateral",
-  ],
-  posterior: [
-    "Terra romeno (barra)","Stiff com halteres","Mesa flexora","Cadeira flexora","Flexora unilateral","Levantamento terra (técnica)",
-    "Good morning (leve)","Hiperextensão","Nordic curl (assistido)","Ponte de posterior no solo","Pull-through no cabo",
-    "Deadlift romeno unilateral","Swing com kettlebell (leve)","Flexão de joelho no cabo (unilateral)",
-    "Glute ham raise (assistido)","Stiff no smith","Terra romeno no cabo","Hiperextensão com foco glúteo/posterior",
-    "Flexora sentada","Curl de posterior com elástico","Isometria de posterior (ponte)","RDL com pausa",
-    "Mesa flexora com drop-set (avançado)","Flexora 1.5 reps",
-  ],
-  gluteo: [
-    "Hip thrust (barra)","Hip thrust (máquina)","Glute bridge","Glute bridge unilateral","Abdução na máquina",
-    "Abdução no cabo (unilateral)","Passada (foco glúteo)","Bulgarian (foco glúteo)","Agachamento sumô",
-    "Pull-through no cabo","Kickback no cabo","Kickback na máquina","Step-up alto (glúteo)","Extensão de quadril no banco",
-    "Levantamento terra romeno (ênfase glúteo)","Agachamento no smith (pés à frente)","Elevação pélvica com pausa",
-    "Lunge reverso longo","Abdução com elástico","Caminhada lateral com elástico","Frog pumps","Hip thrust unilateral (halter)",
-    "Kickback com elástico","Isometria glúteo (ponte 30–60s)",
-  ],
-  panturrilha: [
-    "Panturrilha em pé na máquina","Panturrilha sentado","Panturrilha no leg press","Panturrilha unilateral em pé",
-    "Panturrilha unilateral sentado","Panturrilha no smith","Panturrilha com halter (em degrau)","Panturrilha no hack squat",
-    "Panturrilha no step (peso corpo)","Panturrilha com pausa em alongamento","Panturrilha com pausa no pico",
-    "Panturrilha isométrica (pico)","Panturrilha no leg press unilateral","Panturrilha no banco (improvisado)",
-    "Panturrilha com elástico","Panturrilha em pé com barra","Panturrilha 1.5 reps","Panturrilha sentado 1.5 reps",
-    "Panturrilha dropset (avançado)","Panturrilha em tempo (3-1-2)","Panturrilha com amplitude máxima",
-    "Panturrilha na máquina inclinada","Panturrilha no step com carga","Panturrilha no smith unilateral",
-  ],
-  ombro: [
-    "Desenvolvimento com halteres","Desenvolvimento com barra","Desenvolvimento máquina","Arnold press","Elevação lateral",
-    "Elevação lateral no cabo","Elevação lateral sentado","Elevação frontal (halter)","Elevação frontal (barra)",
-    "Elevação frontal no cabo","Reverse fly (posterior)","Reverse fly na máquina","Face pull","Remada alta (barra leve)",
-    "Remada alta no cabo","Crucifixo inverso no cabo","Landmine press","Desenvolvimento unilateral no cabo","Y-raise (leve)",
-    "W-raise (postura)","Trap 3 raise","Isometria lateral (30s)","Desenvolvimento com pausa","Elevação lateral 1.5 reps",
-  ],
-  core: [
-    "Prancha","Prancha lateral","Dead bug","Hollow hold","Abdominal infra (elevação de pernas)","Abdominal infra (banco)",
-    "Abdominal na polia","Crunch","Crunch na bola","Bicicleta no solo","Russian twist","Pallof press","Woodchopper (cabo)",
-    "Mountain climber (controlado)","Bird dog","Plank com toque no ombro","Prancha com elevação de perna","Farmer carry (core)",
-    "Suitcase carry (core)","V-up (avançado)","Toe touches","Rollout (ab wheel)","Abdominal máquina","Isometria anti-rotação (cabo)",
-  ],
+  peito: ["Supino reto com barra", "Supino inclinado com halteres", "Crucifixo inclinado com halteres", "Peck-deck", "Crossover na polia (alto)", "Flexão de braço tradicional"],
+  triceps: ["Tríceps corda", "Tríceps barra reta", "Tríceps francês (halter)", "Tríceps testa (barra W)", "Mergulho nas paralelas (assistido)"],
+  costas: ["Puxada frente (puxador)", "Barra fixa pronada", "Remada baixa no cabo", "Remada unilateral com halter", "Face pull"],
+  biceps: ["Rosca direta (barra)", "Rosca alternada (halter)", "Rosca martelo (halter)", "Rosca Scott (máquina)"],
+  quadriceps: ["Agachamento livre", "Leg press 45°", "Hack squat", "Cadeira extensora", "Afundo com halteres"],
+  posterior: ["Terra romeno (barra)", "Mesa flexora", "Cadeira flexora", "Hiperextensão"],
+  gluteo: ["Hip thrust (barra)", "Abdução na máquina", "Kickback no cabo", "Glute bridge"],
+  panturrilha: ["Panturrilha em pé na máquina", "Panturrilha sentado", "Panturrilha no leg press"],
+  ombro: ["Desenvolvimento com halteres", "Elevação lateral", "Reverse fly (posterior)", "Arnold press"],
+  core: ["Prancha", "Dead bug", "Crunch", "Pallof press"],
 };
 
 const MUSCLE_GROUPS = [
   {
     id: "peito_triceps",
     name: "Peito + Tríceps",
-    muscles: ["Peito", "Tríceps", "Ombro ant."],
     library: [
-      { name: "Supino reto", group: "Peito" },
-      { name: "Supino inclinado", group: "Peito" },
-      { name: "Crucifixo / Peck-deck", group: "Peito" },
-      { name: "Crossover", group: "Peito" },
-      { name: "Tríceps corda", group: "Tríceps" },
-      { name: "Tríceps francês", group: "Tríceps" },
       ...EXERCISE_CATALOG.peito.map((name) => ({ name, group: "Peito" })),
       ...EXERCISE_CATALOG.triceps.map((name) => ({ name, group: "Tríceps" })),
-      ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
     ],
   },
   {
     id: "costas_biceps",
     name: "Costas + Bíceps",
-    muscles: ["Costas", "Bíceps", "Ombro post."],
     library: [
-      { name: "Puxada (barra/puxador)", group: "Costas" },
-      { name: "Remada (máquina/curvada)", group: "Costas" },
-      { name: "Remada unilateral", group: "Costas" },
-      { name: "Face pull", group: "Ombro/escápulas" },
-      { name: "Rosca direta", group: "Bíceps" },
-      { name: "Rosca martelo", group: "Bíceps" },
       ...EXERCISE_CATALOG.costas.map((name) => ({ name, group: "Costas" })),
       ...EXERCISE_CATALOG.biceps.map((name) => ({ name, group: "Bíceps" })),
-      ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
     ],
   },
   {
     id: "pernas",
-    name: "Pernas (Quad + geral)",
-    muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
+    name: "Pernas",
     library: [
-      { name: "Agachamento", group: "Pernas" },
-      { name: "Leg press", group: "Pernas" },
-      { name: "Cadeira extensora", group: "Quadríceps" },
-      { name: "Afundo / passada", group: "Glúteo/Quadríceps" },
-      { name: "Panturrilha", group: "Panturrilha" },
-      { name: "Core (prancha)", group: "Core" },
       ...EXERCISE_CATALOG.quadriceps.map((name) => ({ name, group: "Quadríceps" })),
-      ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
-      ...EXERCISE_CATALOG.panturrilha.map((name) => ({ name, group: "Panturrilha" })),
-      ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
-    ],
-  },
-  {
-    id: "posterior_gluteo",
-    name: "Posterior + Glúteo",
-    muscles: ["Posterior", "Glúteos", "Core"],
-    library: [
-      { name: "Terra romeno", group: "Posterior" },
-      { name: "Mesa flexora", group: "Posterior" },
-      { name: "Hip thrust", group: "Glúteo" },
-      { name: "Abdução", group: "Glúteo médio" },
-      { name: "Passada (foco glúteo)", group: "Glúteo" },
-      { name: "Core (dead bug)", group: "Core" },
       ...EXERCISE_CATALOG.posterior.map((name) => ({ name, group: "Posterior" })),
       ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
+      ...EXERCISE_CATALOG.panturrilha.map((name) => ({ name, group: "Panturrilha" })),
       ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
     ],
   },
   {
     id: "ombro_core",
     name: "Ombro + Core",
-    muscles: ["Ombros", "Trapézio", "Core"],
     library: [
-      { name: "Desenvolvimento", group: "Ombros" },
-      { name: "Elevação lateral", group: "Ombros" },
-      { name: "Posterior (reverse)", group: "Ombro posterior" },
-      { name: "Encolhimento", group: "Trapézio" },
-      { name: "Pallof press", group: "Core" },
-      { name: "Abdominal", group: "Core" },
       ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
       ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
-    ],
-  },
-  {
-    id: "fullbody",
-    name: "Full body (seguro / saúde)",
-    muscles: ["Corpo todo"],
-    library: [
-      { name: "Agachamento (leve)", group: "Pernas" },
-      { name: "Supino (leve)", group: "Peito" },
-      { name: "Remada (leve)", group: "Costas" },
-      { name: "Desenvolvimento (leve)", group: "Ombros" },
-      { name: "Posterior (leve)", group: "Posterior" },
-      { name: "Core (prancha)", group: "Core" },
-      ...EXERCISE_CATALOG.quadriceps.map((name) => ({ name, group: "Quadríceps" })),
-      ...EXERCISE_CATALOG.peito.map((name) => ({ name, group: "Peito" })),
-      ...EXERCISE_CATALOG.costas.map((name) => ({ name, group: "Costas" })),
-      ...EXERCISE_CATALOG.ombro.map((name) => ({ name, group: "Ombros" })),
-      ...EXERCISE_CATALOG.posterior.map((name) => ({ name, group: "Posterior" })),
-      ...EXERCISE_CATALOG.gluteo.map((name) => ({ name, group: "Glúteos" })),
-      ...EXERCISE_CATALOG.core.map((name) => ({ name, group: "Core" })),
-      ...EXERCISE_CATALOG.panturrilha.map((name) => ({ name, group: "Panturrilha" })),
-      ...EXERCISE_CATALOG.biceps.map((name) => ({ name, group: "Bíceps" })),
-      ...EXERCISE_CATALOG.triceps.map((name) => ({ name, group: "Tríceps" })),
     ],
   },
 ];
@@ -283,6 +171,7 @@ const MUSCLE_GROUPS = [
 function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
+
 function ensureVolume(list, minCount = 7) {
   const base = Array.isArray(list) ? [...list] : [];
   if (base.length >= minCount) return base;
@@ -299,33 +188,25 @@ function ensureVolume(list, minCount = 7) {
   while (base.length < minCount && i < extras.length) base.push(extras[i++]);
   return base;
 }
+
 function buildFallbackSplit() {
   const A = [
     { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
     { name: "Supino inclinado", group: "Peito", sets: 4, reps: "6–12", rest: "75–120s", method: "Básico" },
     { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
     { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-    { name: "Crucifixo", group: "Peito", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
-    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-    { name: "Paralelas", group: "Tríceps/Peito", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
   ];
   const B = [
     { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
     { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
-    { name: "Remada unilateral", group: "Costas", sets: 3, reps: "10–12", rest: "75–120s", method: "Básico" },
     { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
-    { name: "Rosca martelo", group: "Bíceps", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
     { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
-    { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45–75s", method: "Básico" },
   ];
   const C = [
     { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
     { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
     { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
-    { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "60–90s", method: "Básico" },
     { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
-    { name: "Afundo", group: "Pernas", sets: 3, reps: "10–12", rest: "60–90s", method: "Básico" },
-    { name: "Abdominal", group: "Core", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
   ];
   return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
 }
@@ -340,20 +221,15 @@ function detailFor(exName) {
   if (n.includes("face pull")) return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco." };
   if (n.includes("rosca")) return { area: "Bíceps e antebraço.", cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle." };
   if (n.includes("tríceps") || n.includes("triceps")) return { area: "Tríceps.", cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar." };
-  if (n.includes("paralelas") || n.includes("mergulho")) return { area: "Tríceps e peito.", cue: "Desça controlando. Tronco levemente inclinado. Suba sem balançar." };
   if (n.includes("agacha")) return { area: "Quadríceps, glúteos e core.", cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte." };
   if (n.includes("leg press")) return { area: "Quadríceps e glúteos.", cue: "Amplitude segura. Não trave joelho. Controle na descida." };
   if (n.includes("terra") || n.includes("romeno")) return { area: "Posterior e glúteos.", cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura." };
-  if (n.includes("extensora")) return { area: "Quadríceps (isolamento).", cue: "Segure 1s em cima. Volte lento sem bater o peso." };
-  if (n.includes("flexora")) return { area: "Posterior (isolamento).", cue: "Controle total. Segure 1s contraindo. Evite levantar quadril." };
   if (n.includes("panturrilha")) return { area: "Panturrilha.", cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa." };
-  if (n.includes("afundo") || n.includes("passada")) return { area: "Glúteos e quadríceps.", cue: "Passo firme. Tronco estável. Desça controlando e suba sem tombar." };
-  if (n.includes("abdu")) return { area: "Glúteo médio.", cue: "Movimento controlado. Sem girar o tronco. Sinta o lado do glúteo." };
-  if (n.includes("hip thrust")) return { area: "Glúteos.", cue: "Queixo neutro. Suba contraindo. Segure 1s no topo sem hiperextender lombar." };
   if (n.includes("prancha")) return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
   if (n.includes("abdominal")) return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
   return { area: "Músculos relacionados ao movimento.", cue: "Postura firme. Controle na descida. Execução limpa sem roubar." };
 }
+
 function suggestLoadRange(exName, pesoKg, objetivo) {
   const kg = Number(pesoKg || 0) || 70;
   const n = String(exName || "").toLowerCase();
@@ -449,6 +325,7 @@ function ExerciseGif({ name, style }) {
     />
   );
 }
+
 function Chip({ label, value }) {
   return (
     <div style={S.chip}>
@@ -458,6 +335,7 @@ function Chip({ label, value }) {
     </div>
   );
 }
+
 function SetDots({ total, done, onToggle }) {
   const n = clamp(Number(total || 0) || 0, 1, 12);
   const d = clamp(Number(done || 0) || 0, 0, n);
@@ -549,7 +427,6 @@ export default function TreinoDetalhe() {
     }
     openGifFull(name);
   }
-
   function triggerDoneFlash(key) {
     setDoneFlashKey(key);
     setDoneFlash(true);
@@ -635,7 +512,7 @@ export default function TreinoDetalhe() {
               .order("day_index", { ascending: true }),
             supabase
               .from("workout_plan_exercises")
-              .select("plan_day_id, exercise_order, name, group_name, sets, reps, rest, method")
+              .select("plan_day_id, exercise_order, name, group_name, reps, notes, method, sets, rest")
               .eq("plan_id", activePlan.id)
               .order("exercise_order", { ascending: true }),
             supabase
@@ -655,14 +532,24 @@ export default function TreinoDetalhe() {
           const split = days.map((day) => {
             const dayExercises = exercises
               .filter((ex) => ex.plan_day_id === day.id)
-              .map((ex) => ({
-                name: ex.name,
-                group: ex.group_name || day.group_name || "Exercício",
-                sets: ex.sets || 4,
-                reps: ex.reps || "6–12",
-                rest: ex.rest || "75–120s",
-                method: ex.method || activePlan.split_label || "Personalizado",
-              }));
+              .map((ex) => {
+                const unpacked = parsePackedExerciseMeta(
+                  ex.reps,
+                  ex.method,
+                  ex.notes
+                );
+
+                return {
+                  name: ex.name,
+                  group: ex.group_name || day.group_name || "Exercício",
+                  sets: Number(ex.sets || unpacked.sets || 4),
+                  reps: ex.sets && ex.reps && !String(ex.reps).includes("séries")
+                    ? ex.reps
+                    : unpacked.reps,
+                  rest: ex.rest || unpacked.rest || "75–120s",
+                  method: ex.method || unpacked.method || activePlan.split_label || "Personalizado",
+                };
+              });
 
             const withVolume = dayExercises.length
               ? dayExercises
@@ -848,7 +735,7 @@ export default function TreinoDetalhe() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "treino-detalhe-book-ui-v3";
+    const id = "treino-detalhe-book-ui-v4";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
@@ -1548,9 +1435,21 @@ const S = {
     fontWeight: 950,
     marginBottom: 8,
   },
-  gifFallbackText: { fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, maxWidth: 320 },
+  gifFallbackText: {
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+    maxWidth: 320,
+  },
 
-  bigChips: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, position: "relative" },
+  bigChips: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
+    position: "relative",
+  },
   chip: {
     borderRadius: 20,
     padding: 12,
@@ -1561,12 +1460,25 @@ const S = {
     overflow: "hidden",
     minHeight: 72,
   },
-  chipLabel: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.7, textTransform: "uppercase" },
-  chipValue: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.45 },
+  chipLabel: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: MUTED,
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+  },
+  chipValue: {
+    marginTop: 10,
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.45,
+  },
   chipSheen: {
     position: "absolute",
     inset: 0,
-    background: "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)",
+    background:
+      "linear-gradient(110deg, rgba(255,255,255,.45) 0%, transparent 25%, transparent 70%, rgba(255,255,255,.18) 100%)",
     opacity: 0.42,
     pointerEvents: "none",
   },
@@ -1580,12 +1492,37 @@ const S = {
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     position: "relative",
   },
-  dotsTitle: { fontSize: 12, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  dotsRowInner: { marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" },
-  dotBtn: { width: 16, height: 16, borderRadius: 999, border: "none" },
-  dotBtnOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
-  dotBtnOff: { background: "rgba(15,23,42,.14)" },
-  dotsMini: { marginTop: 10, fontSize: 12, fontWeight: 900, color: MUTED },
+  dotsTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
+  dotsRowInner: {
+    marginTop: 10,
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  dotBtn: {
+    width: 16,
+    height: 16,
+    borderRadius: 999,
+    border: "none",
+  },
+  dotBtnOn: {
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
+  },
+  dotBtnOff: {
+    background: "rgba(15,23,42,.14)",
+  },
+  dotsMini: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: 900,
+    color: MUTED,
+  },
 
   loadBox: {
     marginTop: 14,
@@ -1602,9 +1539,25 @@ const S = {
   },
   loadLeft: { minWidth: 0 },
   loadRight: { minWidth: 0 },
-  loadLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
-  loadVal: { marginTop: 6, fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  loadHint: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#475569", lineHeight: 1.35 },
+  loadLabel: {
+    fontSize: 12,
+    fontWeight: 900,
+    color: MUTED,
+  },
+  loadVal: {
+    marginTop: 6,
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.4,
+  },
+  loadHint: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#475569",
+    lineHeight: 1.35,
+  },
   input: {
     width: "100%",
     marginTop: 6,
@@ -1627,13 +1580,34 @@ const S = {
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     position: "relative",
   },
-  execTitle: { fontSize: 13, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
+  execTitle: {
+    fontSize: 13,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
   execArea: { marginTop: 10 },
   execCue: { marginTop: 10 },
-  execLabel: { fontSize: 12, fontWeight: 900, color: MUTED },
-  execText: { marginTop: 6, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.45 },
+  execLabel: {
+    fontSize: 12,
+    fontWeight: 900,
+    color: MUTED,
+  },
+  execText: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: 850,
+    color: "#334155",
+    lineHeight: 1.45,
+  },
 
-  navRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" },
+  navRow: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    position: "relative",
+  },
   navBtn: {
     padding: 14,
     borderRadius: 20,
@@ -1645,9 +1619,30 @@ const S = {
   },
   navBtnDisabled: { opacity: 0.55 },
 
-  endKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase", position: "relative" },
-  endTitle: { marginTop: 10, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, position: "relative" },
-  endSub: { marginTop: 10, fontSize: 13, fontWeight: 850, color: "#334155", lineHeight: 1.5, position: "relative" },
+  endKicker: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: MUTED,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    position: "relative",
+  },
+  endTitle: {
+    marginTop: 10,
+    fontSize: 22,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.7,
+    position: "relative",
+  },
+  endSub: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: 850,
+    color: "#334155",
+    lineHeight: 1.5,
+    position: "relative",
+  },
   endCta: {
     marginTop: 16,
     width: "100%",
@@ -1664,7 +1659,14 @@ const S = {
     gap: 10,
     position: "relative",
   },
-  endCtaIcon: { width: 40, height: 40, borderRadius: 16, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+  endCtaIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.10)",
+    display: "grid",
+    placeItems: "center",
+  },
   endGhost: {
     marginTop: 10,
     width: "100%",
@@ -1675,7 +1677,14 @@ const S = {
     color: TEXT,
     fontWeight: 950,
   },
-  endNote: { marginTop: 12, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35, position: "relative" },
+  endNote: {
+    marginTop: 12,
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+    position: "relative",
+  },
 
   lockCard: {
     borderRadius: 26,
@@ -1684,8 +1693,18 @@ const S = {
     border: "1px solid rgba(255,106,0,.22)",
     boxShadow: "0 18px 60px rgba(15,23,42,.10)",
   },
-  lockTitle: { fontSize: 16, fontWeight: 950, color: TEXT },
-  lockText: { marginTop: 6, fontSize: 13, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  lockTitle: {
+    fontSize: 16,
+    fontWeight: 950,
+    color: TEXT,
+  },
+  lockText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: MUTED,
+    fontWeight: 800,
+    lineHeight: 1.4,
+  },
   lockBtn: {
     marginTop: 10,
     width: "100%",
@@ -1728,7 +1747,12 @@ const S = {
   dockOpen: { paddingBottom: 14 },
   dockClosed: { paddingBottom: 10 },
 
-  dockHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  dockHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   dockPill: {
     display: "inline-flex",
     alignItems: "center",
@@ -1748,17 +1772,54 @@ const S = {
     background: "rgba(255,255,255,.70)",
     border: "1px solid rgba(255,255,255,.55)",
   },
-  dockTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
+  dockTitle: {
+    fontSize: 12,
+    fontWeight: 950,
+    color: TEXT,
+  },
 
-  dockMini: { display: "grid", justifyItems: "end", gap: 2 },
-  dockMiniTime: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  dockMiniState: { fontSize: 11, fontWeight: 900, color: MUTED },
+  dockMini: {
+    display: "grid",
+    justifyItems: "end",
+    gap: 2,
+  },
+  dockMiniTime: {
+    fontSize: 14,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
+  dockMiniState: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+  },
 
-  dockBody: { marginTop: 12, cursor: "default" },
-  dockBigTime: { fontSize: 34, fontWeight: 950, color: TEXT, letterSpacing: -1.0 },
-  dockSub: { marginTop: 6, fontSize: 12, fontWeight: 850, color: MUTED, lineHeight: 1.35 },
+  dockBody: {
+    marginTop: 12,
+    cursor: "default",
+  },
+  dockBigTime: {
+    fontSize: 34,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -1,
+  },
+  dockSub: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+    lineHeight: 1.35,
+  },
 
-  dockBtns: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" },
+  dockBtns: {
+    marginTop: 12,
+    display: "grid",
+    gridTemplateColumns: "1fr auto auto",
+    gap: 10,
+    alignItems: "center",
+  },
 
   bigStart: {
     width: "100%",
@@ -1774,7 +1835,14 @@ const S = {
     gap: 10,
     boxShadow: "0 18px 55px rgba(0,0,0,.18)",
   },
-  bigStartIcon: { width: 42, height: 42, borderRadius: 18, background: "rgba(255,255,255,.10)", display: "grid", placeItems: "center" },
+  bigStartIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 18,
+    background: "rgba(255,255,255,.10)",
+    display: "grid",
+    placeItems: "center",
+  },
 
   smallPause: {
     padding: "14px 14px",
@@ -1798,7 +1866,12 @@ const S = {
     placeItems: "center",
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  dockHint: { marginTop: 10, fontSize: 11, fontWeight: 900, color: MUTED },
+  dockHint: {
+    marginTop: 10,
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+  },
 
   gifOverlay: {
     position: "fixed",
@@ -1825,8 +1898,18 @@ const S = {
     padding: 14,
   },
   gifSheetTop: { padding: "6px 6px 10px" },
-  gifSheetTitle: { fontSize: 14, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  gifSheetSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
+  gifSheetTitle: {
+    fontSize: 14,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
+  gifSheetSub: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: 800,
+    color: MUTED,
+  },
 
   gifFullWrap: {
     borderRadius: 22,
@@ -1835,7 +1918,13 @@ const S = {
     background: "rgba(15,23,42,.03)",
     position: "relative",
   },
-  gifFull: { width: "100%", height: "min(72vh, 560px)", objectFit: "contain", display: "block", background: "rgba(15,23,42,.03)" },
+  gifFull: {
+    width: "100%",
+    height: "min(72vh, 560px)",
+    objectFit: "contain",
+    display: "block",
+    background: "rgba(15,23,42,.03)",
+  },
 
   gifFallbackFull: {
     position: "absolute",
@@ -1846,7 +1935,7 @@ const S = {
     textAlign: "center",
     background:
       "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
-    opacity: 0.0,
+    opacity: 0,
   },
 
   gifBackBtn: {
