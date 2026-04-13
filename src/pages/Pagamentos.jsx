@@ -39,6 +39,7 @@ export default function Pagamentos() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const activeStatus = useMemo(() => {
     return ["active", "trialing"].includes(
@@ -92,6 +93,24 @@ export default function Pagamentos() {
       alive = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!confirmOpen) return;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") setConfirmOpen(false);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prev || "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [confirmOpen]);
 
   async function cancelSubscription() {
     if (!user?.id || !subscription?.stripe_subscription_id || canceling) return;
@@ -152,6 +171,7 @@ export default function Pagamentos() {
         setSubscription(refreshed || null);
       }
 
+      setConfirmOpen(false);
       alert("Assinatura cancelada com sucesso.");
     } catch (err) {
       console.error("cancelSubscription error:", err);
@@ -217,7 +237,7 @@ export default function Pagamentos() {
                 </div>
 
                 <div style={S.metaBox}>
-                  <div style={S.metaLabel}>Status </div>
+                  <div style={S.metaLabel}>Status Stripe</div>
                   <div style={S.metaValue}>{subscription?.status || "—"}</div>
                 </div>
 
@@ -246,7 +266,7 @@ export default function Pagamentos() {
                 <button
                   type="button"
                   style={S.cancelBtn}
-                  onClick={cancelSubscription}
+                  onClick={() => setConfirmOpen(true)}
                   disabled={canceling}
                 >
                   {canceling ? "Cancelando..." : "Cancelar assinatura"}
@@ -292,6 +312,46 @@ export default function Pagamentos() {
           </>
         )}
       </div>
+
+      {confirmOpen ? (
+        <div style={S.modalOverlay} onClick={() => setConfirmOpen(false)}>
+          <div style={S.modalWrap}>
+            <div style={S.modalCard} onClick={(e) => e.stopPropagation()}>
+              <div style={S.modalIconWrap}>
+                <div style={S.modalIcon}>!</div>
+              </div>
+
+              <div style={S.modalTitle}>Tem certeza?</div>
+              <div style={S.modalText}>
+                Ao cancelar, sua assinatura não será renovada no próximo ciclo.
+              </div>
+              <div style={S.modalText}>
+                O valor já cobrado no período atual não é reembolsável.
+              </div>
+
+              <div style={S.modalActions}>
+                <button
+                  type="button"
+                  style={S.modalGhostBtn}
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={canceling}
+                >
+                  Voltar
+                </button>
+
+                <button
+                  type="button"
+                  style={S.modalDangerBtn}
+                  onClick={cancelSubscription}
+                  disabled={canceling}
+                >
+                  {canceling ? "Cancelando..." : "Confirmar cancelamento"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -516,5 +576,93 @@ const S = {
     fontSize: 12,
     color: MUTED,
     fontWeight: 700,
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15,23,42,.34)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    display: "grid",
+    placeItems: "center",
+    padding: 18,
+    zIndex: 120,
+  },
+
+  modalWrap: {
+    width: "100%",
+    maxWidth: 430,
+  },
+
+  modalCard: {
+    borderRadius: 28,
+    background: "rgba(255,255,255,.88)",
+    border: `1px solid rgba(255,255,255,.55)`,
+    boxShadow: "0 28px 90px rgba(15,23,42,.22)",
+    padding: 18,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    animation: "none",
+  },
+
+  modalIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    background: "rgba(255,106,0,.10)",
+    border: "1px solid rgba(255,106,0,.18)",
+    display: "grid",
+    placeItems: "center",
+    marginBottom: 14,
+  },
+
+  modalIcon: {
+    fontSize: 24,
+    fontWeight: 900,
+    color: ORANGE,
+    lineHeight: 1,
+  },
+
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.6,
+  },
+
+  modalText: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: MUTED,
+    fontWeight: 700,
+  },
+
+  modalActions: {
+    marginTop: 18,
+    display: "grid",
+    gap: 10,
+  },
+
+  modalGhostBtn: {
+    height: 50,
+    borderRadius: 18,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(255,255,255,.84)",
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: 900,
+  },
+
+  modalDangerBtn: {
+    height: 52,
+    borderRadius: 18,
+    border: "none",
+    background: "#111",
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: 900,
+    boxShadow: "0 18px 40px rgba(15,23,42,.14)",
   },
 };
