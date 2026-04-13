@@ -529,45 +529,50 @@ export default function TreinoDetalhe() {
           const exercises = exRes.data || [];
           setPlanDays(days);
 
-          const split = days.map((day) => {
-            const dayExercises = exercises
-              .filter((ex) => ex.plan_day_id === day.id)
-              .map((ex) => {
-                const unpacked = parsePackedExerciseMeta(
-                  ex.reps,
-                  ex.method,
-                  ex.notes
-                );
+const split = days.map((day) => {
+  const savedForDay = exercises
+    .filter((ex) => ex.plan_day_id === day.id)
+    .sort((a, b) => Number(a.exercise_order || 0) - Number(b.exercise_order || 0))
+    .map((ex) => {
+      const unpacked = parsePackedExerciseMeta(
+        ex.reps,
+        ex.method,
+        ex.notes
+      );
 
-                return {
-                  name: ex.name,
-                  group: ex.group_name || day.group_name || "Exercício",
-                  sets: Number(ex.sets || unpacked.sets || 4),
-                  reps:
-                    ex.sets && ex.reps && !String(ex.reps).includes("séries")
-                      ? ex.reps
-                      : unpacked.reps,
-                  rest: ex.rest || unpacked.rest || "75–120s",
-                  method: ex.method || unpacked.method || activePlan.split_label || "Personalizado",
-                };
-              });
+      return {
+        name: ex.name,
+        group: ex.group_name || day.group_name || "Exercício",
+        sets: Number(ex.sets || unpacked.sets || 4),
+        reps:
+          ex.sets && ex.reps && !String(ex.reps).includes("séries")
+            ? ex.reps
+            : unpacked.reps,
+        rest: ex.rest || unpacked.rest || "75–120s",
+        method:
+          ex.method ||
+          unpacked.method ||
+          activePlan.split_label ||
+          "Personalizado",
+      };
+    });
 
-            const withVolume = dayExercises.length
-              ? dayExercises
-              : ensureVolume((groupById(day.group_id)?.library || []).slice(0, 9), 7);
+  if (savedForDay.length > 0) {
+    return savedForDay;
+  }
 
-            return withVolume;
-          });
-
-          setPlanData({
-            base: {
-              style: activePlan.split_label || "Personalizado",
-              sets: 4,
-              reps: "6–12",
-              rest: "75–120s",
-            },
-            split,
-          });
+  return ensureVolume(
+    (groupById(day.group_id)?.library || []).slice(0, 9),
+    7
+  ).map((ex) => ({
+    name: ex.name,
+    group: ex.group || day.group_name || "Exercício",
+    sets: 4,
+    reps: "6–12",
+    rest: "75–120s",
+    method: activePlan.split_label || "Personalizado",
+  }));
+});
 
           const loadMap = {};
           for (const row of loadRes.data || []) {
