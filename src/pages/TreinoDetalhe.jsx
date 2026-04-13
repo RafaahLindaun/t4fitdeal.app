@@ -543,9 +543,10 @@ export default function TreinoDetalhe() {
                   name: ex.name,
                   group: ex.group_name || day.group_name || "Exercício",
                   sets: Number(ex.sets || unpacked.sets || 4),
-                  reps: ex.sets && ex.reps && !String(ex.reps).includes("séries")
-                    ? ex.reps
-                    : unpacked.reps,
+                  reps:
+                    ex.sets && ex.reps && !String(ex.reps).includes("séries")
+                      ? ex.reps
+                      : unpacked.reps,
                   rest: ex.rest || unpacked.rest || "75–120s",
                   method: ex.method || unpacked.method || activePlan.split_label || "Personalizado",
                 };
@@ -899,7 +900,7 @@ export default function TreinoDetalhe() {
 
   return (
     <div style={S.page}>
-      {gifOpen && (
+      {gifOpen ? (
         <div style={S.gifOverlay} role="presentation" onClick={closeGifFull}>
           <div style={S.gifSheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div style={S.gifSheetTop}>
@@ -920,7 +921,7 @@ export default function TreinoDetalhe() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div style={S.head}>
         <div style={S.headGlow} aria-hidden="true" />
@@ -1172,7 +1173,7 @@ export default function TreinoDetalhe() {
           </div>
         </div>
 
-        {timerOpen && (
+        {timerOpen ? (
           <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
             <div style={S.dockBigTime}>{fmtMMSS(restLeft)}</div>
             <div style={S.dockSub}>
@@ -1205,7 +1206,7 @@ export default function TreinoDetalhe() {
 
             <div style={S.dockHint}>Dica: arraste pra cima pra abrir, pra baixo pra fechar.</div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -1423,7 +1424,7 @@ const S = {
     textAlign: "center",
     background:
       "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
-    opacity: 0.0,
+    opacity: 0,
   },
   gifFallbackBadge: {
     display: "inline-flex",
