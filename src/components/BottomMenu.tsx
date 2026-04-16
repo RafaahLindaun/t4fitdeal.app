@@ -1,5 +1,5 @@
+import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 
 type IconProps = {
   active: boolean;
@@ -9,11 +9,11 @@ type Item = {
   to: string;
   label: string;
   Icon: (p: IconProps) => JSX.Element;
+  main?: boolean;
 };
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
-const MUTED = "#64748b";
 
 function HomeIcon({ active }: IconProps) {
   return (
@@ -62,6 +62,55 @@ function NutritionIcon({ active }: IconProps) {
         d="M9.2 12.1c1.7.4 3.8.2 5.6-1.3"
         stroke={active ? "#fff" : ORANGE}
         strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DumbbellIcon({ active }: IconProps) {
+  return (
+    <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6.2 8.4 15.6 17.8"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3.9 10.7 8.5 6.1"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+      <path
+        d="M15.5 17.9 20.1 13.3"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3.1 8.7 5.3 6.5"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+      <path
+        d="M18.7 17.5 20.9 15.3"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.7 4.9 10.9 2.7"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13.1 21.3 15.3 19.1"
+        stroke={active ? "#fff" : "#fff"}
+        strokeWidth="2.45"
         strokeLinecap="round"
       />
     </svg>
@@ -118,9 +167,6 @@ export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
 
-  const auth = useAuth() as any;
-  const logoutFn = auth?.logout;
-
   const items: Item[] = [
     {
       to: "/dashboard",
@@ -131,6 +177,12 @@ export default function BottomMenu() {
       to: "/nutricao",
       label: "Nutrição",
       Icon: NutritionIcon,
+    },
+    {
+      to: "/treino",
+      label: "Treino",
+      Icon: DumbbellIcon,
+      main: true,
     },
     {
       to: "/pagamentos",
@@ -167,6 +219,42 @@ export default function BottomMenu() {
         {items.map((item) => {
           const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
           const Icon = item.Icon;
+
+          if (item.main) {
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => go(item.to)}
+                className="fitdeal-bottom-item fitdeal-main-item"
+                style={styles.mainItem}
+              >
+                <span
+                  style={{
+                    ...styles.mainIconCircle,
+                    transform: active
+                      ? "translateY(-6px) scale(1.08)"
+                      : "translateY(-5px) scale(1)",
+                    boxShadow: active
+                      ? "0 20px 48px rgba(255,106,0,.40), 0 0 0 7px rgba(255,106,0,.12)"
+                      : "0 18px 42px rgba(255,106,0,.32), 0 0 0 6px rgba(255,106,0,.10)",
+                  }}
+                >
+                  <Icon active={active} />
+                </span>
+
+                <span
+                  style={{
+                    ...styles.mainLabel,
+                    color: active ? ORANGE : TEXT,
+                    opacity: active ? 1 : 0.72,
+                  }}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          }
 
           return (
             <button
@@ -217,6 +305,10 @@ export default function BottomMenu() {
           filter: brightness(.98);
         }
 
+        .fitdeal-main-item:active {
+          transform: scale(.94);
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .fitdeal-bottom-item {
             transition: none !important;
@@ -256,7 +348,7 @@ const styles: Record<string, React.CSSProperties> = {
       "0 28px 70px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55)",
     backdropFilter: "blur(34px)",
     WebkitBackdropFilter: "blur(34px)",
-    overflow: "hidden",
+    overflow: "visible",
     pointerEvents: "auto",
   },
 
@@ -292,6 +384,25 @@ const styles: Record<string, React.CSSProperties> = {
     WebkitTapHighlightColor: "transparent",
   },
 
+  mainItem: {
+    position: "relative",
+    zIndex: 3,
+    flex: 1,
+    height: 56,
+    border: "none",
+    background: "transparent",
+    borderRadius: 28,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 0,
+    padding: 0,
+    paddingBottom: 6,
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  },
+
   iconWrap: {
     width: 24,
     height: 24,
@@ -301,7 +412,32 @@ const styles: Record<string, React.CSSProperties> = {
       "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
+  mainIconCircle: {
+    position: "absolute",
+    top: -19,
+    width: 58,
+    height: 58,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background:
+      "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
+    border: "1px solid rgba(255,255,255,.55)",
+    transition:
+      "transform .34s cubic-bezier(.22,1,.36,1), box-shadow .28s ease",
+  },
+
   label: {
+    fontSize: 8,
+    lineHeight: 1,
+    fontWeight: 950,
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition:
+      "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  mainLabel: {
     fontSize: 8,
     lineHeight: 1,
     fontWeight: 950,
