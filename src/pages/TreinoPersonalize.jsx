@@ -659,7 +659,7 @@ setDayExercises((prev) => {
 
   return out;
 });
-    });
+  
   }
 
   function changeSplit(nextSplitId) {
