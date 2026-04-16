@@ -548,26 +548,20 @@ setPlanDays(days);
               .filter((ex) => ex.plan_day_id === day.id)
               .sort((a, b) => Number(a.exercise_order || 0) - Number(b.exercise_order || 0))
               .map((ex) => {
-                const unpacked = parsePackedExerciseMeta(
-                  ex.reps,
-                  ex.method,
-                  ex.notes
-                );
+      const unpacked = parsePackedExerciseMeta(
+  ex.reps,
+  null,
+  ex.notes
+);
 
-                return {
-                  name: ex.name,
-                  group: ex.group_name || day.group_name || "Exercício",
-                  sets: Number(ex.sets || unpacked.sets || 4),
-                  reps:
-                    ex.sets && ex.reps && !String(ex.reps).includes("séries")
-                      ? ex.reps
-                      : unpacked.reps,
-                  rest: ex.rest || unpacked.rest || "75–120s",
-                  method:
-                    ex.method ||
-                    unpacked.method ||
-                    activePlan.split_label ||
-                    "Personalizado",
+return {
+  name: ex.name,
+  group: ex.group_name || day.group_name || "Exercício",
+  sets: unpacked.sets,
+  reps: unpacked.reps,
+  rest: unpacked.rest,
+  method: unpacked.method || activePlan.split_label || "Personalizado",
+};
                 };
               });
 
