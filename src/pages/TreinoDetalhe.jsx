@@ -561,10 +561,7 @@ export default function TreinoDetalhe() {
               return savedForDay;
             }
 
-            return ensureVolume(
-              (groupById(day.group_id)?.library || []).slice(0, 9),
-              7
-            ).map((ex) => ({
+            const groupFallback = (groupById(day.group_id)?.library || []).map((ex) => ({
               name: ex.name,
               group: ex.group || day.group_name || "Exercício",
               sets: 4,
@@ -572,6 +569,18 @@ export default function TreinoDetalhe() {
               rest: "75–120s",
               method: activePlan.split_label || "Personalizado",
             }));
+
+            const fullbodyFallback = (groupById("fullbody")?.library || []).map((ex) => ({
+              name: ex.name,
+              group: ex.group || day.group_name || "Exercício",
+              sets: 4,
+              reps: "6–12",
+              rest: "75–120s",
+              method: activePlan.split_label || "Personalizado",
+            }));
+
+            const preferredFallback = groupFallback.length > 0 ? groupFallback : fullbodyFallback;
+            return ensureVolume(preferredFallback.slice(0, 9), 7);
           });
 
           setPlanData({
