@@ -473,6 +473,11 @@ export default function TreinoDetalhe() {
             .eq("user_id", userId)
             .maybeSingle(),
           supabase
+  .from("workout_plan_exercises")
+  .select("plan_day_id, exercise_order, name, group_name, reps, notes")
+  .in("plan_day_id", days.map((d) => d.id))
+  .order("exercise_order", { ascending: true }),
+          supabase
             .from("workout_plans")
             .select("id, title, split_label, split_len, source, created_at, updated_at")
             .eq("user_id", userId)
