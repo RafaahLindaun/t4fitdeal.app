@@ -543,10 +543,6 @@ if (dayIds.length > 0) {
 
 setPlanDays(days);
 
-          const days = daysRes.data || [];
-          const exercises = exRes.data || [];
-          setPlanDays(days);
-
           const split = days.map((day) => {
             const savedForDay = exercises
               .filter((ex) => ex.plan_day_id === day.id)
