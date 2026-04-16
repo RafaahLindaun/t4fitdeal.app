@@ -1,17 +1,147 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+type IconProps = {
+  active: boolean;
+};
+
+type Item = {
+  to: string;
+  label: string;
+  Icon: (p: IconProps) => JSX.Element;
+};
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
+const MUTED = "#64748b";
+
+function HomeIcon({ active }: IconProps) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 10.7 12 4.4l7.5 6.3"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 19.7v-5.1h4v5.1"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function NutritionIcon({ active }: IconProps) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 21c-3.9-2.7-6.2-6.1-6.2-9.1A6.2 6.2 0 0 1 12 5.7a6.2 6.2 0 0 1 6.2 6.2c0 3-2.3 6.4-6.2 9.1Z"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 5.7V3.4"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.2 12.1c1.7.4 3.8.2 5.6-1.3"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CardIcon({ active }: IconProps) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="3.7"
+        y="6.4"
+        width="16.6"
+        height="11.2"
+        rx="2.6"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+      />
+      <path
+        d="M4.2 10h15.6"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.4 14.5h3.5"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function UserIcon({ active }: IconProps) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+      />
+      <path
+        d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5"
+        stroke={active ? "#fff" : ORANGE}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export default function BottomMenu() {
   const { pathname } = useLocation();
+  const nav = useNavigate();
 
-  const items = [
-    { to: "/dashboard", label: "Início", icon: "⌂" },
-    { to: "/treino", label: "Treino", icon: "◈" },
-    { to: "/cardio", label: "Cardio", icon: "⌁" },
-    { to: "/nutricao", label: "Nutri+", icon: "✦" },
-    { to: "/conta", label: "Conta", icon: "☻" },
+  const auth = useAuth() as any;
+  const logoutFn = auth?.logout;
+
+  const items: Item[] = [
+    {
+      to: "/dashboard",
+      label: "Início",
+      Icon: HomeIcon,
+    },
+    {
+      to: "/nutricao",
+      label: "Nutrição",
+      Icon: NutritionIcon,
+    },
+    {
+      to: "/pagamentos",
+      label: "Planos",
+      Icon: CardIcon,
+    },
+    {
+      to: "/conta",
+      label: "Conta",
+      Icon: UserIcon,
+    },
   ];
 
   const activeIndex = Math.max(
@@ -19,63 +149,76 @@ export default function BottomMenu() {
     items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
   );
 
+  function go(to: string) {
+    nav(to);
+  }
+
   return (
     <div style={styles.wrapper}>
       <nav style={styles.nav}>
         <div
           style={{
             ...styles.activePill,
-            width: `${100 / items.length}%`,
+            width: `calc((100% - 12px) / ${items.length})`,
             transform: `translateX(${activeIndex * 100}%)`,
           }}
         />
 
-        {items.map((it) => {
-          const active = pathname === it.to || pathname.startsWith(`${it.to}/`);
+        {items.map((item) => {
+          const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+          const Icon = item.Icon;
 
           return (
-            <Link key={it.to} to={it.to} style={styles.link}>
-              <div style={styles.item} className="bottom-menu-item">
-                <span
-                  style={{
-                    ...styles.icon,
-                    color: active ? "#fff" : TEXT,
-                    transform: active ? "translateY(-1px) scale(1.05)" : "translateY(0) scale(1)",
-                  }}
-                >
-                  {it.icon}
-                </span>
+            <button
+              key={item.to}
+              type="button"
+              onClick={() => go(item.to)}
+              className="fitdeal-bottom-item"
+              style={styles.item}
+            >
+              <span
+                style={{
+                  ...styles.iconWrap,
+                  transform: active
+                    ? "translateY(-1px) scale(1.06)"
+                    : "translateY(0) scale(1)",
+                  filter: active
+                    ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
+                    : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
+                }}
+              >
+                <Icon active={active} />
+              </span>
 
-                <span
-                  style={{
-                    ...styles.label,
-                    color: active ? "#fff" : TEXT,
-                    opacity: active ? 1 : 0.55,
-                    transform: active ? "translateY(-1px)" : "translateY(0)",
-                  }}
-                >
-                  {it.label}
-                </span>
-              </div>
-            </Link>
+              <span
+                style={{
+                  ...styles.label,
+                  color: active ? "#fff" : TEXT,
+                  opacity: active ? 1 : 0.62,
+                  transform: active ? "translateY(-1px)" : "translateY(0)",
+                }}
+              >
+                {item.label}
+              </span>
+            </button>
           );
         })}
       </nav>
 
       <style>{`
-        .bottom-menu-item {
+        .fitdeal-bottom-item {
           transition:
             transform .16s cubic-bezier(.2,.9,.2,1),
             filter .16s ease;
         }
 
-        .bottom-menu-item:active {
+        .fitdeal-bottom-item:active {
           transform: scale(.91);
           filter: brightness(.98);
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .bottom-menu-item {
+          .fitdeal-bottom-item {
             transition: none !important;
           }
         }
@@ -84,7 +227,7 @@ export default function BottomMenu() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   wrapper: {
     position: "fixed",
     left: 0,
@@ -106,9 +249,11 @@ const styles = {
     padding: 6,
     gap: 4,
     borderRadius: 34,
-    background: "rgba(255,255,255,.76)",
-    border: "1px solid rgba(255,255,255,.50)",
-    boxShadow: "0 28px 70px rgba(15,23,42,.16)",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.66))",
+    border: "1px solid rgba(255,255,255,.52)",
+    boxShadow:
+      "0 28px 70px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55)",
     backdropFilter: "blur(34px)",
     WebkitBackdropFilter: "blur(34px)",
     overflow: "hidden",
@@ -121,44 +266,46 @@ const styles = {
     bottom: 6,
     left: 6,
     borderRadius: 28,
-    background: `linear-gradient(135deg, #0B0B0C, #151515)`,
-    boxShadow: `0 16px 38px rgba(0,0,0,.22), 0 0 0 1px rgba(255,106,0,.10)`,
+    background:
+      "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
+    boxShadow:
+      "0 16px 38px rgba(255,106,0,.30), 0 0 0 1px rgba(255,255,255,.22)",
     transition: "transform .38s cubic-bezier(.22,1,.36,1)",
     zIndex: 1,
   },
 
-  link: {
+  item: {
     position: "relative",
     zIndex: 2,
     flex: 1,
-    textDecoration: "none",
-    color: "inherit",
-    WebkitTapHighlightColor: "transparent",
-  },
-
-  item: {
     height: 56,
+    border: "none",
+    background: "transparent",
     borderRadius: 28,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
-    position: "relative",
+    padding: 0,
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
   },
 
-  icon: {
-    fontSize: 19,
-    lineHeight: 1,
+  iconWrap: {
+    width: 24,
+    height: 24,
+    display: "grid",
+    placeItems: "center",
     transition:
-      "color .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+      "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
   label: {
     fontSize: 8,
     lineHeight: 1,
     fontWeight: 950,
-    letterSpacing: 0.9,
+    letterSpacing: 0.85,
     textTransform: "uppercase",
     transition:
       "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
