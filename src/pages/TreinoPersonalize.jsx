@@ -18,9 +18,6 @@ const SPLITS = [
   { id: "ABCDEF", days: 6, label: "ABCDEF (6 dias)" },
 ];
 
-/**
- * ✅ Catálogo grande (20+ por “membro muscular” / foco)
- */
 const EXERCISE_CATALOG = {
   peito: [
     "Supino reto com barra",
@@ -402,9 +399,7 @@ function calcWeeklyVolume(daysConfig) {
     if (!g) continue;
     const muscles = Array.isArray(g.muscles) ? g.muscles : [];
     const share = muscles.length ? sets / muscles.length : 0;
-    for (const m of muscles) {
-      volume[m] = (volume[m] || 0) + share;
-    }
+    for (const m of muscles) volume[m] = (volume[m] || 0) + share;
   }
   const out = {};
   Object.keys(volume).forEach((k) => (out[k] = Math.round(volume[k] * 10) / 10));
@@ -440,19 +435,35 @@ function uniq(arr) {
   return out;
 }
 
+function parsePrescriptionFromReps(raw, fallback) {
+  const text = String(raw || "");
+  let sets = fallback?.sets ?? 4;
+  let reps = fallback?.reps ?? "6–12";
+  let rest = fallback?.rest ?? "75–120s";
+
+  const setsMatch = text.match(/(\d+)\s*s[ée]ries/i);
+  const repsMatch = text.match(/s[ée]ries\s*•\s*([^•]+)/i);
+  const restMatch = text.match(/descanso\s*(.+)$/i);
+
+  if (setsMatch) sets = clamp(Number(setsMatch[1] || sets), 1, 8);
+  if (repsMatch) reps = String(repsMatch[1] || reps).trim();
+  if (restMatch) rest = String(restMatch[1] || rest).trim();
+
+  return { sets, reps, rest };
+}
+
+function defaultExercisesForGroup(groupId) {
+  const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
+  return uniq((g?.library || []).map((x) => x.name)).slice(0, 8);
+}
 
 export default function TreinoPersonalize() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const email = (user?.email || "anon").toLowerCase();
   const userId = user?.id || null;
 
   const defaultDays = clamp(Number(user?.frequencia || 4) || 4, 2, 6);
-  const defaultSplitId =
-    defaultDays === 2 ? "AB" :
-    defaultDays === 3 ? "ABC" :
-    defaultDays === 4 ? "ABCD" :
-    defaultDays === 5 ? "ABCDE" : "ABCDEF";
+  const defaultSplitId = defaultDays === 2 ? "AB" : defaultDays === 3 ? "ABC" : defaultDays === 4 ? "ABCD" : defaultDays === 5 ? "ABCDE" : "ABCDEF";
 
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [paid, setPaid] = useState(false);
@@ -474,11 +485,7 @@ export default function TreinoPersonalize() {
   const [dayExercises, setDayExercises] = useState(() => {
     const out = {};
     const baseGroups = pickDefaultSplit(defaultDays);
-    for (let i = 0; i < defaultDays; i++) {
-      const g = MUSCLE_GROUPS.find((x) => x.id === baseGroups[i]);
-      const list = (g?.library || []).map((x) => x.name);
-      out[i] = uniq(list).slice(0, 8);
-    }
+    for (let i = 0; i < defaultDays; i++) out[i] = defaultExercisesForGroup(baseGroups[i]);
     return out;
   });
 
@@ -486,10 +493,14 @@ export default function TreinoPersonalize() {
   const [pickerDayIndex, setPickerDayIndex] = useState(0);
 
   useEffect(() => {
+    let active = true;
+
     async function loadAccess() {
       if (!userId) {
-        setPaid(false);
-        setLoadingAccess(false);
+        if (active) {
+          setPaid(false);
+          setLoadingAccess(false);
+        }
         return;
       }
 
@@ -498,15 +509,18 @@ export default function TreinoPersonalize() {
         .from("user_subscriptions")
         .select("plan_key,status")
         .eq("user_id", userId)
-        .maybeSingle();
+        .in("status", ["active", "trialing"])
+        .order("updated_at", { ascending: false })
+        .limit(1);
+
+      if (!active) return;
 
       if (error) {
         console.error("TreinoPersonalize access error:", error);
         setPaid(false);
       } else {
-        const allowed =
-          ["active", "trialing"].includes(data?.status) &&
-          ["basico", "nutri"].includes(data?.plan_key);
+        const row = Array.isArray(data) ? data[0] : null;
+        const allowed = ["active", "trialing"].includes(String(row?.status || "").toLowerCase()) && ["basico", "nutri"].includes(String(row?.plan_key || "").toLowerCase());
         setPaid(!!allowed);
       }
 
@@ -514,23 +528,32 @@ export default function TreinoPersonalize() {
     }
 
     loadAccess();
+    return () => {
+      active = false;
+    };
   }, [userId]);
 
   useEffect(() => {
+    let active = true;
+
     async function loadPlanFromDb() {
       if (!userId || !paid) {
-        setLoadingPlan(false);
+        if (active) setLoadingPlan(false);
         return;
       }
 
       setLoadingPlan(true);
 
-      const { data: plan, error: planError } = await supabase
+      const { data: plans, error: planError } = await supabase
         .from("workout_plans")
-        .select("id, split_label, split_len")
+        .select("id, split_label, split_len, updated_at, created_at")
         .eq("user_id", userId)
         .eq("is_active", true)
-        .maybeSingle();
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (!active) return;
 
       if (planError) {
         console.error("TreinoPersonalize plan error:", planError);
@@ -538,6 +561,7 @@ export default function TreinoPersonalize() {
         return;
       }
 
+      const plan = Array.isArray(plans) ? plans[0] : null;
       if (!plan?.id) {
         setLoadingPlan(false);
         return;
@@ -548,6 +572,8 @@ export default function TreinoPersonalize() {
         .select("id, day_index, day_key, group_id, group_name")
         .eq("plan_id", plan.id)
         .order("day_index", { ascending: true });
+
+      if (!active) return;
 
       if (daysError) {
         console.error("TreinoPersonalize plan days error:", daysError);
@@ -565,12 +591,11 @@ export default function TreinoPersonalize() {
           .in("plan_day_id", dayIds)
           .order("exercise_order", { ascending: true });
 
-        if (exError) {
-          console.error("TreinoPersonalize exercises error:", exError);
-        } else {
-          exercises = exData || [];
-        }
+        if (exError) console.error("TreinoPersonalize exercises error:", exError);
+        else exercises = exData || [];
       }
+
+      if (!active) return;
 
       const splitLen = clamp(Number(plan.split_len || planDays?.length || defaultDays), 2, 6);
       const nextSplitId = SPLITS.find((s) => s.days === splitLen)?.id || defaultSplitId;
@@ -580,33 +605,15 @@ export default function TreinoPersonalize() {
 
       for (let i = 0; i < splitLen; i++) {
         const row = (planDays || []).find((d) => Number(d.day_index) === i);
-        const groupId = row?.group_id && MUSCLE_GROUPS.some((g) => g.id === row.group_id)
-          ? row.group_id
-          : nextGroups[i];
+        const groupId = row?.group_id && MUSCLE_GROUPS.some((g) => g.id === row.group_id) ? row.group_id : nextGroups[i];
         nextGroups[i] = groupId;
 
         const groupObj = MUSCLE_GROUPS.find((g) => g.id === groupId);
         const baseDefault = groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
-        const exRows = row ? exercises.filter((ex) => ex.plan_day_id === row.id) : [];
+        const exRows = row ? exercises.filter((ex) => ex.plan_day_id === row.id).sort((a, b) => Number(a.exercise_order || 0) - Number(b.exercise_order || 0)) : [];
 
-        let sets = baseDefault.sets;
-        let reps = baseDefault.reps;
-        let rest = baseDefault.rest;
-
-        if (exRows[0]?.reps) {
-          const text = String(exRows[0].reps);
-          const setsMatch = text.match(/(\d+)\s*séries/i);
-          const repsMatch = text.match(/séries\s*•\s*([^•]+)/i);
-          const restMatch = text.match(/descanso\s*(.+)$/i);
-          if (setsMatch) sets = clamp(Number(setsMatch[1] || sets), 1, 8);
-          if (repsMatch) reps = String(repsMatch[1] || reps).trim();
-          if (restMatch) rest = String(restMatch[1] || rest).trim();
-        }
-
-        nextPrescriptions[i] = { sets, reps, rest };
-        nextExercises[i] = exRows.length
-          ? uniq(exRows.map((ex) => ex.name))
-          : uniq((groupObj?.library || []).map((x) => x.name)).slice(0, 8);
+        nextPrescriptions[i] = exRows[0]?.reps ? parsePrescriptionFromReps(exRows[0].reps, baseDefault) : baseDefault;
+        nextExercises[i] = exRows.length ? uniq(exRows.map((ex) => ex.name)) : defaultExercisesForGroup(groupId);
       }
 
       setDaysPerWeek(splitLen);
@@ -618,18 +625,18 @@ export default function TreinoPersonalize() {
     }
 
     loadPlanFromDb();
-  }, [userId, paid]);
+    return () => {
+      active = false;
+    };
+  }, [userId, paid, defaultDays, defaultSplitId]);
 
   function ensureDaysConfig(nextDays) {
     const n = clamp(nextDays, 2, 6);
+    const defaults = pickDefaultSplit(n);
 
     setDayGroups((prev) => {
       const base = Array.isArray(prev) ? [...prev] : [];
-      if (base.length === n) return base;
-      if (base.length < n) {
-        const add = pickDefaultSplit(n).slice(base.length);
-        return [...base, ...add];
-      }
+      if (base.length < n) return [...base, ...defaults.slice(base.length)];
       return base.slice(0, n);
     });
 
@@ -637,29 +644,30 @@ export default function TreinoPersonalize() {
       const out = { ...(prev || {}) };
       for (let i = 0; i < n; i++) {
         if (!out[i]) {
-          const gid = (Array.isArray(dayGroups) && dayGroups[i]) || pickDefaultSplit(n)[i];
+          const gid = (Array.isArray(dayGroups) && dayGroups[i]) || defaults[i];
           const g = MUSCLE_GROUPS.find((x) => x.id === gid);
           out[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
         }
       }
       Object.keys(out).forEach((k) => {
-        const idx = Number(k);
-        if (idx >= n) delete out[k];
+        if (Number(k) >= n) delete out[k];
       });
       return out;
     });
 
-setDayExercises((prev) => {
-  const out = { ...(prev || {}) };
-
-  const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
-  const list = (g?.library || []).map((x) => x.name);
-
-  out[dayIndex] = uniq(list).slice(0, 8);
-
-  return out;
-});
-  
+    setDayExercises((prev) => {
+      const out = { ...(prev || {}) };
+      for (let i = 0; i < n; i++) {
+        if (!Array.isArray(out[i])) {
+          const gid = (Array.isArray(dayGroups) && dayGroups[i]) || defaults[i];
+          out[i] = defaultExercisesForGroup(gid);
+        }
+      }
+      Object.keys(out).forEach((k) => {
+        if (Number(k) >= n) delete out[k];
+      });
+      return out;
+    });
   }
 
   function changeSplit(nextSplitId) {
@@ -678,29 +686,23 @@ setDayExercises((prev) => {
   }
 
   function setDayGroup(dayIndex, groupId) {
+    const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
+
     setDayGroups((prev) => {
-      const arr = [...prev];
+      const arr = [...(Array.isArray(prev) ? prev : [])];
       arr[dayIndex] = groupId;
       return arr;
     });
 
     setPrescriptions((prev) => {
       const out = { ...(prev || {}) };
-      const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
-      out[dayIndex] = {
-        sets: out[dayIndex]?.sets ?? g?.default?.sets ?? 4,
-        reps: out[dayIndex]?.reps ?? g?.default?.reps ?? "6–12",
-        rest: out[dayIndex]?.rest ?? g?.default?.rest ?? "75–120s",
-      };
+      out[dayIndex] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
       return out;
     });
 
     setDayExercises((prev) => {
       const out = { ...(prev || {}) };
-      if (Array.isArray(out[dayIndex]) && out[dayIndex].length >= 5) return out;
-      const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
-      const list = (g?.library || []).map((x) => x.name);
-      out[dayIndex] = uniq(list).slice(0, 8);
+      out[dayIndex] = defaultExercisesForGroup(groupId);
       return out;
     });
   }
@@ -716,6 +718,7 @@ setDayExercises((prev) => {
   const daysConfig = useMemo(() => {
     const n = clamp(daysPerWeek, 2, 6);
     const arr = [];
+
     for (let i = 0; i < n; i++) {
       const gid = dayGroups[i] || pickDefaultSplit(n)[i];
       const groupObj = MUSCLE_GROUPS.find((x) => x.id === gid);
@@ -728,6 +731,7 @@ setDayExercises((prev) => {
         chosenExercises: Array.isArray(dayExercises?.[i]) ? dayExercises[i] : [],
       });
     }
+
     return arr;
   }, [daysPerWeek, dayGroups, prescriptions, dayExercises]);
 
@@ -739,23 +743,29 @@ setDayExercises((prev) => {
     try {
       setSaving(true);
 
-      const normalizedPrescriptions = {};
-      Object.keys(prescriptions || {}).forEach((key) => {
-        const item = prescriptions[key] || {};
-        normalizedPrescriptions[key] = {
-          ...item,
-          sets: clamp(Number(item.sets || 4), 1, 8),
-        };
-      });
+      const normalizedDays = daysConfig.map((day) => ({
+        ...day,
+        prescription: {
+          ...(day.prescription || {}),
+          sets: clamp(Number(day.prescription?.sets || 4), 1, 8),
+          reps: day.prescription?.reps || "6–12",
+          rest: day.prescription?.rest || "75–120s",
+        },
+        chosenExercises: uniq(day.chosenExercises || []),
+      }));
 
-      let { data: planRow, error: planError } = await supabase
+      const { data: currentPlans, error: planError } = await supabase
         .from("workout_plans")
         .select("id")
         .eq("user_id", userId)
         .eq("is_active", true)
-        .maybeSingle();
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
 
       if (planError) throw planError;
+
+      let planRow = Array.isArray(currentPlans) ? currentPlans[0] : null;
 
       if (!planRow?.id) {
         const { data: insertedPlan, error: insertPlanError } = await supabase
@@ -767,6 +777,7 @@ setDayExercises((prev) => {
             split_len: daysPerWeek,
             is_active: true,
             source: "custom",
+            updated_at: new Date().toISOString(),
           })
           .select("id")
           .single();
@@ -782,11 +793,20 @@ setDayExercises((prev) => {
             split_len: daysPerWeek,
             is_active: true,
             source: "custom",
+            updated_at: new Date().toISOString(),
           })
           .eq("id", planRow.id);
 
         if (updatePlanError) throw updatePlanError;
       }
+
+      const { error: deactivateOtherPlansError } = await supabase
+        .from("workout_plans")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .neq("id", planRow.id);
+
+      if (deactivateOtherPlansError) throw deactivateOtherPlansError;
 
       const { data: existingDays, error: existingDaysError } = await supabase
         .from("workout_plan_days")
@@ -795,52 +815,65 @@ setDayExercises((prev) => {
 
       if (existingDaysError) throw existingDaysError;
 
-      const dayIds = (existingDays || []).map((d) => d.id);
-      if (dayIds.length) {
+      const oldDayIds = (existingDays || []).map((d) => d.id);
+      if (oldDayIds.length) {
         const { error: deleteExError } = await supabase
           .from("workout_plan_exercises")
           .delete()
-          .in("plan_day_id", dayIds);
-        if (deleteExError) throw deleteExError;
+          .in("plan_day_id", oldDayIds);
 
-        const { error: deleteDaysError } = await supabase
-          .from("workout_plan_days")
-          .delete()
-          .eq("plan_id", planRow.id);
-        if (deleteDaysError) throw deleteDaysError;
+        if (deleteExError) throw deleteExError;
       }
 
-      for (const day of daysConfig) {
-        const { data: dayRow, error: dayError } = await supabase
-          .from("workout_plan_days")
-          .insert({
-            plan_id: planRow.id,
-            day_index: day.dayIndex,
-            day_key: day.letter,
-            title: `Treino ${day.letter}`,
-            group_id: day.groupId,
-            group_name: day.groupObj?.name || `Treino ${day.letter}`,
-          })
-          .select("id")
-          .single();
+      const { error: deleteDaysError } = await supabase
+        .from("workout_plan_days")
+        .delete()
+        .eq("plan_id", planRow.id);
 
-        if (dayError) throw dayError;
+      if (deleteDaysError) throw deleteDaysError;
 
-        const rows = (day.chosenExercises || []).map((name, order) => ({
-          plan_day_id: dayRow.id,
-          exercise_order: order,
-          name,
-          group_name: day.groupObj?.name || "",
-          reps: `${day.prescription?.sets || 4} séries • ${day.prescription?.reps || "6–12"} • descanso ${day.prescription?.rest || "75–120s"}`,
-          notes: splitId,
-        }));
+      const dayRowsPayload = normalizedDays.map((day) => ({
+        plan_id: planRow.id,
+        day_index: day.dayIndex,
+        day_key: day.letter,
+        title: `Treino ${day.letter}`,
+        group_id: day.groupId,
+        group_name: day.groupObj?.name || `Treino ${day.letter}`,
+      }));
 
-        if (rows.length) {
-          const { error: exError } = await supabase
-            .from("workout_plan_exercises")
-            .insert(rows);
-          if (exError) throw exError;
+      const { data: insertedDays, error: insertDaysError } = await supabase
+        .from("workout_plan_days")
+        .insert(dayRowsPayload)
+        .select("id, day_index");
+
+      if (insertDaysError) throw insertDaysError;
+
+      const exercisesPayload = [];
+      for (const day of normalizedDays) {
+        const dayRow = (insertedDays || []).find((row) => Number(row.day_index) === Number(day.dayIndex));
+        if (!dayRow?.id) continue;
+
+        const prescription = day.prescription || {};
+        const repsText = `${prescription.sets || 4} séries • ${prescription.reps || "6–12"} • descanso ${prescription.rest || "75–120s"}`;
+
+        for (const [order, name] of (day.chosenExercises || []).entries()) {
+          exercisesPayload.push({
+            plan_day_id: dayRow.id,
+            exercise_order: order,
+            name,
+            group_name: day.groupObj?.name || "",
+            reps: repsText,
+            notes: splitId,
+          });
         }
+      }
+
+      if (exercisesPayload.length) {
+        const { error: exError } = await supabase
+          .from("workout_plan_exercises")
+          .insert(exercisesPayload);
+
+        if (exError) throw exError;
       }
 
       nav("/treino", { replace: true });
@@ -855,24 +888,20 @@ setDayExercises((prev) => {
   function reset() {
     const d = clamp(Number(user?.frequencia || 4) || 4, 2, 6);
     const sid = d === 2 ? "AB" : d === 3 ? "ABC" : d === 4 ? "ABCD" : d === 5 ? "ABCDE" : "ABCDEF";
-    setDaysPerWeek(d);
-    setSplitId(sid);
-
     const groups = pickDefaultSplit(d);
-    setDayGroups(groups);
-
     const obj = {};
+    const ex = {};
+
     for (let i = 0; i < groups.length; i++) {
       const g = MUSCLE_GROUPS.find((x) => x.id === groups[i]);
       obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+      ex[i] = defaultExercisesForGroup(groups[i]);
     }
-    setPrescriptions(obj);
 
-    const ex = {};
-    for (let i = 0; i < groups.length; i++) {
-      const g = MUSCLE_GROUPS.find((x) => x.id === groups[i]);
-      ex[i] = uniq((g?.library || []).map((x) => x.name)).slice(0, 8);
-    }
+    setDaysPerWeek(d);
+    setSplitId(sid);
+    setDayGroups(groups);
+    setPrescriptions(obj);
     setDayExercises(ex);
   }
 
@@ -897,7 +926,7 @@ setDayExercises((prev) => {
     return (
       <div style={S.page}>
         <div style={S.bgGlow} />
-        <HeaderBrand title="Personalizar treino" subtitle="Carregando seu plano..." onBack={() => nav("/treino")} />
+        <HeaderBrand title="Personalizar treino" subtitle="Carregando suas escolhas..." onBack={() => nav("/treino")} />
       </div>
     );
   }
@@ -905,22 +934,15 @@ setDayExercises((prev) => {
   if (!paid) {
     return (
       <div style={S.page}>
-        <HeaderBrand title="Personalizar treino" subtitle="Disponível somente para assinantes." onBack={() => nav("/treino")} />
+        <div style={S.bgGlow} />
+        <HeaderBrand title="Personalizar treino" subtitle="Monte seu split e exercícios" onBack={() => nav("/treino")} />
 
         <div style={S.lockCard}>
           <div style={S.lockIcon}>🔒</div>
           <div style={S.lockTitle}>Recurso exclusivo</div>
-          <div style={S.lockText}>
-            Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, volume semanal e seleção de exercícios.
-          </div>
-
-          <button style={S.cta} onClick={() => nav("/planos")}>
-            Ver planos
-          </button>
-
-          <button style={S.ghost} onClick={() => nav("/treino")}>
-            Voltar
-          </button>
+          <div style={S.lockText}>Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, volume semanal e seleção de exercícios.</div>
+          <button style={S.cta} onClick={() => nav("/planos")} type="button">Ver planos</button>
+          <button style={S.ghost} onClick={() => nav("/treino")} type="button">Voltar</button>
         </div>
       </div>
     );
@@ -929,60 +951,49 @@ setDayExercises((prev) => {
   return (
     <div style={S.page}>
       <div style={S.bgGlow} />
-
-      <HeaderBrand title="Personalizar treino" subtitle="Split, volume e exercícios do seu jeito." onBack={() => nav("/treino")} />
+      <HeaderBrand title="Personalizar treino" subtitle="Monte o treino do seu jeito" onBack={() => nav("/treino")} />
 
       <div style={S.card}>
         <div style={S.cardTitle}>1) Split</div>
-
         <div style={S.splitRow}>
           {SPLITS.map((s) => (
             <button
               key={s.id}
               onClick={() => changeSplit(s.id)}
-              style={{
-                ...S.pill,
-                ...(splitId === s.id ? S.pillOn : S.pillOff),
-              }}
+              style={{ ...S.pill, ...(splitId === s.id ? S.pillOn : S.pillOff) }}
+              type="button"
             >
               {s.id}
             </button>
           ))}
         </div>
-
-        <div style={S.smallNote}>
-          Dias/semana:
-          <div style={S.daysRow}>
-            {[2, 3, 4, 5, 6].map((d) => (
-              <button
-                key={d}
-                onClick={() => changeDays(d)}
-                style={{
-                  ...S.dayBtn,
-                  ...(daysPerWeek === d ? S.dayOn : S.dayOff),
-                }}
-              >
-                {d}x
-              </button>
-            ))}
-          </div>
+        <div style={S.smallNote}>Dias/semana:</div>
+        <div style={S.daysRow}>
+          {[2, 3, 4, 5, 6].map((d) => (
+            <button
+              key={d}
+              onClick={() => changeDays(d)}
+              style={{ ...S.dayBtn, ...(daysPerWeek === d ? S.dayOn : S.dayOff) }}
+              type="button"
+            >
+              {d}x
+            </button>
+          ))}
         </div>
       </div>
 
       <div style={S.card}>
         <div style={S.cardTitle}>2) Músculos por dia</div>
-
         <div style={S.daysGrid}>
           {daysConfig.map((d) => (
             <div key={d.dayIndex} style={S.dayCard}>
               <div style={S.dayTop}>
                 <div style={S.badge}>{d.letter}</div>
-                <div style={{ minWidth: 0 }}>
+                <div>
                   <div style={S.dayLabel}>Dia {d.letter}</div>
                   <div style={S.daySub}>Escolha o foco do dia</div>
                 </div>
-
-                <button style={S.appleBtn} onClick={() => openPicker(d.dayIndex)}>
+                <button style={S.appleBtn} onClick={() => openPicker(d.dayIndex)} type="button">
                   <span style={S.appleBtnDot} />
                   Escolher exercícios
                 </button>
@@ -990,9 +1001,7 @@ setDayExercises((prev) => {
 
               <select value={d.groupId} onChange={(e) => setDayGroup(d.dayIndex, e.target.value)} style={S.select}>
                 {MUSCLE_GROUPS.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
+                  <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
 
@@ -1002,21 +1011,14 @@ setDayExercises((prev) => {
                 <div style={S.presBox}>
                   <div style={S.presLabel}>Séries</div>
                   <input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={8}
-                    value={d.prescription.sets ?? ""}
+                    value={d.prescription?.sets ?? ""}
                     onChange={(e) => {
                       const raw = e.target.value;
-
                       if (raw === "") {
                         setPrescription(d.dayIndex, { sets: "" });
                         return;
                       }
-
                       if (!/^\d+$/.test(raw)) return;
-
                       setPrescription(d.dayIndex, { sets: raw });
                     }}
                     onBlur={(e) => {
@@ -1026,25 +1028,13 @@ setDayExercises((prev) => {
                     style={S.input}
                   />
                 </div>
-
                 <div style={S.presBox}>
                   <div style={S.presLabel}>Reps</div>
-                  <input
-                    value={d.prescription.reps}
-                    onChange={(e) => setPrescription(d.dayIndex, { reps: e.target.value })}
-                    placeholder="ex: 6–12"
-                    style={S.input}
-                  />
+                  <input value={d.prescription?.reps || ""} onChange={(e) => setPrescription(d.dayIndex, { reps: e.target.value })} placeholder="ex: 6–12" style={S.input} />
                 </div>
-
                 <div style={S.presBox}>
                   <div style={S.presLabel}>Descanso</div>
-                  <input
-                    value={d.prescription.rest}
-                    onChange={(e) => setPrescription(d.dayIndex, { rest: e.target.value })}
-                    placeholder="ex: 75–120s"
-                    style={S.input}
-                  />
+                  <input value={d.prescription?.rest || ""} onChange={(e) => setPrescription(d.dayIndex, { rest: e.target.value })} placeholder="ex: 75–120s" style={S.input} />
                 </div>
               </div>
 
@@ -1059,11 +1049,9 @@ setDayExercises((prev) => {
                 ) : (
                   <div style={S.previewChips}>
                     {d.chosenExercises.slice(0, 10).map((name) => (
-                      <div key={name} style={S.chip}>
-                        {name}
-                      </div>
+                      <span key={name} style={S.chip}>{name}</span>
                     ))}
-                    {d.chosenExercises.length > 10 ? <div style={S.moreChip}>+{d.chosenExercises.length - 10}</div> : null}
+                    {d.chosenExercises.length > 10 ? <span style={S.moreChip}>+{d.chosenExercises.length - 10}</span> : null}
                   </div>
                 )}
               </div>
@@ -1072,9 +1060,9 @@ setDayExercises((prev) => {
                 <div style={S.previewTitle}>Sugestões do grupo</div>
                 <div style={S.previewList}>
                   {(d.groupObj?.library || []).slice(0, 6).map((x, i) => (
-                    <div key={i} style={S.previewItem}>
+                    <div key={`${x.name}_${i}`} style={S.previewItem}>
                       <span style={S.dot} />
-                      <div style={{ minWidth: 0 }}>
+                      <div>
                         <div style={S.previewName}>{x.name}</div>
                         <div style={S.previewSub}>{x.group}</div>
                       </div>
@@ -1101,22 +1089,13 @@ setDayExercises((prev) => {
             ))
           )}
         </div>
-
-        <div style={S.volTip}>
-          Dica: consistência + progressão de carga (sem pressa) é o que mais “vende resultado” pro usuário comum.
-        </div>
+        <div style={S.volTip}>Dica: consistência + progressão de carga (sem pressa) é o que mais “vende resultado” pro usuário comum.</div>
       </div>
 
       <div style={S.actions}>
-        <button style={S.save} onClick={save}>
-          {saving ? "Salvando..." : "Salvar"}
-        </button>
-        <button style={S.reset} onClick={reset}>
-          Restaurar padrão
-        </button>
+        <button style={S.save} onClick={save} disabled={saving} type="button">{saving ? "Salvando..." : "Salvar"}</button>
+        <button style={S.reset} onClick={reset} type="button">Restaurar padrão</button>
       </div>
-
-      <div style={{ height: 140 }} />
 
       <ExercisePickerSheet
         open={pickerOpen}
@@ -1132,31 +1111,17 @@ setDayExercises((prev) => {
 function HeaderBrand({ title, subtitle, onBack }) {
   return (
     <div style={S.head}>
-      <button style={S.back} onClick={onBack}>
-        ←
-      </button>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-        <div style={S.brandMark}>
-          <img
-            src={LogoMark}
-            alt="fitdeal"
-            style={S.brandLogo}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+      <button style={S.back} onClick={onBack} type="button">←</button>
+      <div style={S.brandMark}>
+        <img src={LogoMark} alt="fitdeal" style={S.brandLogo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={S.brandTop}>
+          <div style={S.brandName}>fitdeal</div>
+          <div style={S.brandBadge}>PRO</div>
         </div>
-
-        <div style={{ minWidth: 0 }}>
-          <div style={S.brandTop}>
-            <span style={S.brandName}>fitdeal</span>
-            <span style={S.brandBadge}>PRO</span>
-          </div>
-
-          <div style={S.hTitle}>{title}</div>
-          <div style={S.hSub}>{subtitle}</div>
-        </div>
+        <div style={S.hTitle}>{title}</div>
+        <div style={S.hSub}>{subtitle}</div>
       </div>
     </div>
   );
@@ -1166,7 +1131,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
   const group = day?.groupObj;
   const groupName = group?.name || `Dia ${day?.letter || ""}`;
   const pickerKeys = Array.isArray(group?.pickerKeys) ? group.pickerKeys : [];
-
   const [tab, setTab] = useState(() => pickerKeys[0] || "peito");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(() => (Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []));
@@ -1183,7 +1147,6 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
     const base = (EXERCISE_CATALOG[tab] || []).map((name) => ({ name, key: tab }));
     const term = String(q || "").trim().toLowerCase();
     if (!term) return base;
-
     return base.filter((x) => x.name.toLowerCase().includes(term));
   }, [tab, q]);
 
@@ -1209,48 +1172,25 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
   if (!open) return null;
 
   return (
-    <div style={S.sheetOverlay} onMouseDown={onClose}>
-      <div style={S.sheet} onMouseDown={(e) => e.stopPropagation()}>
+    <div style={S.sheetOverlay} onClick={onClose}>
+      <div style={S.sheet} onClick={(e) => e.stopPropagation()}>
         <div style={S.sheetTop}>
-          <div style={{ minWidth: 0 }}>
+          <div>
             <div style={S.sheetTitle}>Escolher exercícios</div>
-            <div style={S.sheetSub}>
-              {groupName} • Dia {day?.letter || ""} • toque para adicionar
-            </div>
+            <div style={S.sheetSub}>{groupName} • Dia {day?.letter || ""} • toque para adicionar</div>
           </div>
-
-          <button style={S.sheetClose} onClick={onClose}>
-            ✕
-          </button>
+          <button style={S.sheetClose} onClick={onClose} type="button">✕</button>
         </div>
 
         <div style={S.searchWrap}>
           <div style={S.searchIcon}>⌕</div>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar exercício..."
-            style={S.search}
-          />
-          {q ? (
-            <button style={S.searchClear} onClick={() => setQ("")}>
-              Limpar
-            </button>
-          ) : null}
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar exercício..." style={S.search} />
+          {q ? <button type="button" onClick={() => setQ("")} style={S.searchClear}>Limpar</button> : null}
         </div>
 
         <div style={S.tabsRow}>
           {pickerKeys.map((k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              style={{
-                ...S.tab,
-                ...(tab === k ? S.tabOn : S.tabOff),
-              }}
-            >
-              {prettyKeyLabel(k)}
-            </button>
+            <button key={k} type="button" onClick={() => setTab(k)} style={{ ...S.tab, ...(tab === k ? S.tabOn : S.tabOff) }}>{prettyKeyLabel(k)}</button>
           ))}
         </div>
 
@@ -1259,27 +1199,22 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
             <div style={S.selectedTitle}>Selecionados</div>
             <div style={S.selectedCount}>{selected.length} exercícios</div>
           </div>
-
-          <button style={S.clearBtn} onClick={clearAll} disabled={selected.length === 0}>
-            Limpar
-          </button>
+          <button type="button" onClick={clearAll} style={S.clearBtn}>Limpar</button>
         </div>
 
         {selected.length ? (
           <div style={S.selectedChips}>
             {selected.slice(0, 20).map((name) => (
-              <button key={name} style={S.selChip} onClick={() => remove(name)} title="Remover">
+              <button key={name} type="button" onClick={() => remove(name)} style={S.selChip} title="Remover">
                 <span style={S.selChipDot} />
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {name}
-                </span>
+                {name}
                 <span style={S.selChipX}>×</span>
               </button>
             ))}
-            {selected.length > 20 ? <div style={S.moreSel}>+{selected.length - 20}</div> : null}
+            {selected.length > 20 ? <span style={S.moreSel}>+{selected.length - 20}</span> : null}
           </div>
         ) : (
-          <div style={S.selectedEmpty}>Nenhum selecionado ainda. Adicione abaixo 👇</div>
+          <div style={S.selectedEmpty}>Nenhum selecionado ainda. Adicione abaixo</div>
         )}
 
         <div style={S.list}>
@@ -1287,36 +1222,25 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
             const isOn = selectedSet.has(item.name);
             return (
               <div key={item.name} style={S.row}>
-                <div style={{ minWidth: 0 }}>
+                <div>
                   <div style={S.rowName}>{item.name}</div>
                   <div style={S.rowSub}>{prettyKeyLabel(tab)}</div>
                 </div>
-
                 {!isOn ? (
-                  <button style={S.addBtn} onClick={() => add(item.name)}>
-                    + Adicionar
-                  </button>
+                  <button type="button" onClick={() => add(item.name)} style={S.addBtn}>+ Adicionar</button>
                 ) : (
-                  <button style={S.addBtnOn} onClick={() => remove(item.name)}>
-                    ✓ Adicionado
-                  </button>
+                  <button type="button" onClick={() => remove(item.name)} style={S.addBtnOn}>✓ Adicionado</button>
                 )}
               </div>
             );
           })}
-
           {list.length === 0 ? <div style={S.listEmpty}>Nada encontrado. Tente outro termo.</div> : null}
         </div>
 
         <div style={S.sheetActions}>
-          <button style={S.sheetGhost} onClick={onClose}>
-            Voltar
-          </button>
-          <button style={S.sheetMain} onClick={apply}>
-            Aplicar ao Dia {day?.letter || ""}
-          </button>
+          <button style={S.sheetGhost} onClick={onClose} type="button">Voltar</button>
+          <button style={S.sheetMain} onClick={apply} type="button">Aplicar ao Dia {day?.letter || ""}</button>
         </div>
-
         <div style={S.safeBottom} />
       </div>
     </div>
@@ -1325,475 +1249,104 @@ function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
 
 const S = {
   page: { padding: 18, paddingBottom: 120, background: BG, minHeight: "100vh", position: "relative", overflowX: "hidden" },
-
-  bgGlow: {
-    position: "absolute",
-    inset: -140,
-    pointerEvents: "none",
-    background:
-      "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.16), rgba(248,250,252,0) 60%), radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)",
-    opacity: 0.95,
-  },
-
-  head: {
-    borderRadius: 24,
-    padding: 16,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 16px 50px rgba(15,23,42,.08)",
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    position: "relative",
-    zIndex: 1,
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  },
-  back: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    border: "none",
-    background: "rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
-    fontSize: 16,
-    flexShrink: 0,
-  },
-  brandMark: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    background: "rgba(255,106,0,.10)",
-    border: "1px solid rgba(255,106,0,.14)",
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
-    overflow: "hidden",
-  },
-  brandLogo: {
-    width: 34,
-    height: 34,
-    objectFit: "contain",
-    padding: 6,
-    borderRadius: 10,
-    display: "block",
-  },
+  bgGlow: { position: "absolute", inset: -140, pointerEvents: "none", background: "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.16), rgba(248,250,252,0) 60%), radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)", opacity: 0.95 },
+  head: { borderRadius: 24, padding: 16, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 16px 50px rgba(15,23,42,.08)", display: "flex", gap: 12, alignItems: "center", position: "relative", zIndex: 1, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" },
+  back: { width: 44, height: 44, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, fontSize: 16, flexShrink: 0 },
+  brandMark: { width: 36, height: 36, borderRadius: 14, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.14)", display: "grid", placeItems: "center", flexShrink: 0, overflow: "hidden" },
+  brandLogo: { width: 34, height: 34, objectFit: "contain", padding: 6, borderRadius: 10, display: "block" },
   brandTop: { display: "flex", gap: 8, alignItems: "center" },
   brandName: { fontWeight: 950, letterSpacing: -0.4, color: TEXT, fontSize: 14 },
-  brandBadge: {
-    fontSize: 10,
-    fontWeight: 950,
-    padding: "4px 8px",
-    borderRadius: 999,
-    background: ORANGE_SOFT,
-    border: "1px solid rgba(255,106,0,.25)",
-    color: ORANGE,
-  },
-
+  brandBadge: { fontSize: 10, fontWeight: 950, padding: "4px 8px", borderRadius: 999, background: ORANGE_SOFT, border: "1px solid rgba(255,106,0,.25)", color: ORANGE },
   hTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
   hSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
-  card: {
-    marginTop: 12,
-    borderRadius: 24,
-    padding: 16,
-    background: "rgba(255,255,255,.92)",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
-    position: "relative",
-    zIndex: 1,
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  },
+  card: { marginTop: 12, borderRadius: 24, padding: 16, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 14px 40px rgba(15,23,42,.06)", position: "relative", zIndex: 1, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" },
   cardTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-
   splitRow: { marginTop: 12, display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  pill: {
-    border: "none",
-    padding: "10px 12px",
-    borderRadius: 999,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-    transition: "transform .12s ease",
-  },
+  pill: { border: "none", padding: "10px 12px", borderRadius: 999, fontWeight: 950, whiteSpace: "nowrap", transition: "transform .12s ease" },
   pillOn: { background: "rgba(255,106,0,.14)", border: "1px solid rgba(255,106,0,.35)", color: ORANGE },
   pillOff: { background: "rgba(15,23,42,.04)", border: "1px solid rgba(15,23,42,.06)", color: TEXT },
-
   smallNote: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
   daysRow: { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 },
   dayBtn: { padding: 12, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", fontWeight: 950 },
   dayOn: { background: ORANGE, color: "#111", border: "none", boxShadow: "0 14px 34px rgba(255,106,0,.22)" },
   dayOff: { background: "#fff", color: TEXT },
-
   daysGrid: { marginTop: 12, display: "grid", gap: 12 },
-  dayCard: {
-    borderRadius: 22,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,106,0,.06))",
-    border: "1px solid rgba(15,23,42,.06)",
-    boxShadow: "0 10px 30px rgba(15,23,42,.06)",
-  },
+  dayCard: { borderRadius: 22, padding: 16, background: "linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,106,0,.06))", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 10px 30px rgba(15,23,42,.06)" },
   dayTop: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" },
-  badge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(255,106,0,.95), rgba(255,106,0,.60))",
-    color: "#fff",
-    fontWeight: 950,
-    display: "grid",
-    placeItems: "center",
-  },
+  badge: { width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg, rgba(255,106,0,.95), rgba(255,106,0,.60))", color: "#fff", fontWeight: 950, display: "grid", placeItems: "center" },
   dayLabel: { fontSize: 14, fontWeight: 950, color: TEXT },
   daySub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED },
-
-  appleBtn: {
-    marginLeft: "auto",
-    padding: "10px 12px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,106,0,.25)",
-    background: "rgba(255,255,255,.70)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    fontWeight: 950,
-    color: TEXT,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    boxShadow: "0 12px 26px rgba(255,106,0,.12)",
-  },
-  appleBtnDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: ORANGE,
-    boxShadow: "0 10px 20px rgba(255,106,0,.25)",
-  },
-
-  select: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    outline: "none",
-    fontWeight: 900,
-    color: TEXT,
-    background: "#fff",
-  },
+  appleBtn: { marginLeft: "auto", padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(255,106,0,.25)", background: "rgba(255,255,255,.70)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", fontWeight: 950, color: TEXT, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 12px 26px rgba(255,106,0,.12)" },
+  appleBtnDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 10px 20px rgba(255,106,0,.25)" },
+  select: { marginTop: 12, width: "100%", padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontWeight: 900, color: TEXT, background: "#fff" },
   musclesLine: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
   presRow: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 },
   presBox: { borderRadius: 18, padding: 12, background: "#fff", border: "1px solid rgba(15,23,42,.06)" },
   presLabel: { fontSize: 11, fontWeight: 950, color: MUTED },
-  input: {
-    marginTop: 6,
-    width: "100%",
-    padding: "12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,.10)",
-    outline: "none",
-    fontWeight: 900,
-    color: TEXT,
-  },
-
-  pickPreview: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(255,106,0,.08)",
-    border: "1px solid rgba(255,106,0,.18)",
-  },
+  input: { marginTop: 6, width: "100%", padding: "12px 12px", borderRadius: 14, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontWeight: 900, color: TEXT },
+  pickPreview: { marginTop: 12, borderRadius: 18, padding: 14, background: "rgba(255,106,0,.08)", border: "1px solid rgba(255,106,0,.18)" },
   pickPreviewTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
   previewTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.9 },
   previewCount: { fontSize: 12, fontWeight: 950, color: ORANGE },
   previewEmpty: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
   previewChips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 },
-  chip: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,.75)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 900,
-    fontSize: 12,
-    color: TEXT,
-    maxWidth: "100%",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  moreChip: {
-    padding: "8px 10px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 950,
-    fontSize: 12,
-    color: TEXT,
-  },
-
-  previewBox: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(15,23,42,.03)",
-    border: "1px solid rgba(15,23,42,.06)",
-  },
+  chip: { padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,.75)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 900, fontSize: 12, color: TEXT, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  moreChip: { padding: "8px 10px", borderRadius: 999, background: "rgba(15,23,42,.06)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 950, fontSize: 12, color: TEXT },
+  previewBox: { marginTop: 12, borderRadius: 18, padding: 14, background: "rgba(15,23,42,.03)", border: "1px solid rgba(15,23,42,.06)" },
   previewList: { marginTop: 10, display: "grid", gap: 8 },
   previewItem: { display: "flex", gap: 10, alignItems: "flex-start" },
   dot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, marginTop: 4, flexShrink: 0 },
   previewName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
   previewSub: { marginTop: 2, fontSize: 11, fontWeight: 800, color: MUTED },
-
   volGrid: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   volCard: { borderRadius: 18, padding: 12, background: "#fff", border: "1px solid rgba(15,23,42,.06)" },
   volName: { fontSize: 12, fontWeight: 950, color: MUTED },
   volVal: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
   volEmpty: { fontSize: 12, fontWeight: 800, color: MUTED },
   volTip: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-
   actions: { marginTop: 12, display: "grid", gap: 10, position: "relative", zIndex: 1 },
-  save: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 18px 50px rgba(255,106,0,.22)",
-  },
-  reset: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    color: TEXT,
-    fontWeight: 950,
-  },
-
-  lockCard: {
-    marginTop: 12,
-    borderRadius: 24,
-    padding: 18,
-    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(15,23,42,.03))",
-    border: "1px solid rgba(255,106,0,.22)",
-    boxShadow: "0 18px 55px rgba(15,23,42,.12)",
-    textAlign: "center",
-  },
+  save: { width: "100%", padding: 14, borderRadius: 18, border: "none", background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 18px 50px rgba(255,106,0,.22)" },
+  reset: { width: "100%", padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
+  lockCard: { marginTop: 12, borderRadius: 24, padding: 18, background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(15,23,42,.03))", border: "1px solid rgba(255,106,0,.22)", boxShadow: "0 18px 55px rgba(15,23,42,.12)", textAlign: "center" },
   lockIcon: { fontSize: 34 },
   lockTitle: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT },
   lockText: { marginTop: 8, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.45 },
-  cta: {
-    marginTop: 14,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: ORANGE,
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 18px 45px rgba(255,106,0,.22)",
-  },
-  ghost: {
-    marginTop: 10,
-    width: "100%",
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "#fff",
-    color: TEXT,
-    fontWeight: 950,
-  },
-
-  sheetOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(2,6,23,.38)",
-    zIndex: 999,
-    display: "grid",
-    alignItems: "end",
-  },
-  sheet: {
-    width: "100%",
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    background: "rgba(255,255,255,.88)",
-    borderTop: "1px solid rgba(255,255,255,.55)",
-    boxShadow: "0 -26px 80px rgba(0,0,0,.28)",
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
-    padding: 14,
-    maxHeight: "88vh",
-    overflow: "hidden",
-  },
+  cta: { marginTop: 14, width: "100%", padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 18px 45px rgba(255,106,0,.22)" },
+  ghost: { marginTop: 10, width: "100%", padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
+  sheetOverlay: { position: "fixed", inset: 0, background: "rgba(2,6,23,.38)", zIndex: 999, display: "grid", alignItems: "end" },
+  sheet: { width: "100%", borderTopLeftRadius: 26, borderTopRightRadius: 26, background: "rgba(255,255,255,.88)", borderTop: "1px solid rgba(255,255,255,.55)", boxShadow: "0 -26px 80px rgba(0,0,0,.28)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: 14, maxHeight: "88vh", overflow: "hidden" },
   sheetTop: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" },
   sheetTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
   sheetSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  sheetClose: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.75)",
-    fontWeight: 950,
-    color: TEXT,
-  },
-
-  searchWrap: {
-    marginTop: 12,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.75)",
-    padding: 12,
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
+  sheetClose: { width: 40, height: 40, borderRadius: 14, border: "1px solid rgba(15,23,42,.08)", background: "rgba(255,255,255,.75)", fontWeight: 950, color: TEXT },
+  searchWrap: { marginTop: 12, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", background: "rgba(255,255,255,.75)", padding: 12, display: "flex", alignItems: "center", gap: 10 },
   searchIcon: { fontWeight: 950, color: MUTED },
-  search: {
-    border: "none",
-    outline: "none",
-    width: "100%",
-    background: "transparent",
-    fontWeight: 900,
-    color: TEXT,
-  },
-  searchClear: {
-    border: "none",
-    background: ORANGE_SOFT,
-    color: ORANGE,
-    fontWeight: 950,
-    padding: "8px 10px",
-    borderRadius: 999,
-  },
-
+  search: { border: "none", outline: "none", width: "100%", background: "transparent", fontWeight: 900, color: TEXT },
+  searchClear: { border: "none", background: ORANGE_SOFT, color: ORANGE, fontWeight: 950, padding: "8px 10px", borderRadius: 999 },
   tabsRow: { marginTop: 12, display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  tab: {
-    border: "none",
-    padding: "10px 12px",
-    borderRadius: 999,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-  },
+  tab: { border: "none", padding: "10px 12px", borderRadius: 999, fontWeight: 950, whiteSpace: "nowrap" },
   tabOn: { background: "rgba(255,106,0,.16)", border: "1px solid rgba(255,106,0,.30)", color: ORANGE },
   tabOff: { background: "rgba(15,23,42,.05)", border: "1px solid rgba(15,23,42,.06)", color: TEXT },
-
-  selectedBar: {
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(255,106,0,.08)",
-    border: "1px solid rgba(255,106,0,.18)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
+  selectedBar: { marginTop: 12, borderRadius: 18, padding: 12, background: "rgba(255,106,0,.08)", border: "1px solid rgba(255,106,0,.18)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 },
   selectedLeft: { display: "flex", flexDirection: "column" },
   selectedTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
   selectedCount: { marginTop: 4, fontSize: 12, fontWeight: 900, color: ORANGE },
-  clearBtn: {
-    border: "1px solid rgba(255,106,0,.22)",
-    background: "rgba(255,255,255,.70)",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 12px",
-    borderRadius: 16,
-    opacity: 1,
-  },
-
+  clearBtn: { border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,255,255,.70)", color: TEXT, fontWeight: 950, padding: "10px 12px", borderRadius: 16, opacity: 1 },
   selectedChips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 96, overflow: "auto" },
-  selChip: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.75)",
-    padding: "10px 12px",
-    fontWeight: 950,
-    color: TEXT,
-    maxWidth: "100%",
-  },
+  selChip: { display: "flex", alignItems: "center", gap: 8, borderRadius: 999, border: "1px solid rgba(15,23,42,.08)", background: "rgba(255,255,255,.75)", padding: "10px 12px", fontWeight: 950, color: TEXT, maxWidth: "100%" },
   selChipDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE },
   selChipX: { marginLeft: 2, color: MUTED, fontWeight: 950 },
-  moreSel: {
-    padding: "10px 12px",
-    borderRadius: 999,
-    background: "rgba(15,23,42,.06)",
-    border: "1px solid rgba(15,23,42,.06)",
-    fontWeight: 950,
-    color: TEXT,
-  },
+  moreSel: { padding: "10px 12px", borderRadius: 999, background: "rgba(15,23,42,.06)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 950, color: TEXT },
   selectedEmpty: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
-
-  list: {
-    marginTop: 12,
-    borderRadius: 20,
-    border: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(255,255,255,.70)",
-    overflow: "auto",
-    maxHeight: "36vh",
-  },
-  row: {
-    padding: 14,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    borderBottom: "1px solid rgba(15,23,42,.06)",
-  },
+  list: { marginTop: 12, borderRadius: 20, border: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.70)", overflow: "auto", maxHeight: "36vh" },
+  row: { padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(15,23,42,.06)" },
   rowName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
   rowSub: { marginTop: 4, fontSize: 11, fontWeight: 800, color: MUTED },
-
-  addBtn: {
-    border: "none",
-    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    color: "#111",
-    fontWeight: 950,
-    padding: "10px 12px",
-    borderRadius: 999,
-    boxShadow: "0 14px 30px rgba(255,106,0,.18)",
-    whiteSpace: "nowrap",
-  },
-  addBtnOn: {
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(15,23,42,.06)",
-    color: TEXT,
-    fontWeight: 950,
-    padding: "10px 12px",
-    borderRadius: 999,
-    whiteSpace: "nowrap",
-  },
-
+  addBtn: { border: "none", background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))", color: "#111", fontWeight: 950, padding: "10px 12px", borderRadius: 999, boxShadow: "0 14px 30px rgba(255,106,0,.18)", whiteSpace: "nowrap" },
+  addBtnOn: { border: "1px solid rgba(15,23,42,.10)", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, padding: "10px 12px", borderRadius: 999, whiteSpace: "nowrap" },
   listEmpty: { padding: 16, fontSize: 12, fontWeight: 800, color: MUTED },
-
-  sheetActions: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  sheetGhost: {
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.10)",
-    background: "rgba(255,255,255,.75)",
-    color: TEXT,
-    fontWeight: 950,
-  },
-  sheetMain: {
-    padding: 14,
-    borderRadius: 18,
-    border: "none",
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontWeight: 950,
-    boxShadow: "0 18px 50px rgba(255,106,0,.22)",
-  },
-
+  sheetActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  sheetGhost: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.75)", color: TEXT, fontWeight: 950 },
+  sheetMain: { padding: 14, borderRadius: 18, border: "none", background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 18px 50px rgba(255,106,0,.22)" },
   safeBottom: { height: "calc(10px + env(safe-area-inset-bottom))" },
 };
