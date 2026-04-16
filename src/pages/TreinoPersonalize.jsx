@@ -649,21 +649,16 @@ export default function TreinoPersonalize() {
       return out;
     });
 
-    setDayExercises((prev) => {
-      const out = { ...(prev || {}) };
-      for (let i = 0; i < n; i++) {
-        if (!out[i] || !Array.isArray(out[i])) {
-          const gid = (Array.isArray(dayGroups) && dayGroups[i]) || pickDefaultSplit(n)[i];
-          const g = MUSCLE_GROUPS.find((x) => x.id === gid);
-          const list = (g?.library || []).map((x) => x.name);
-          out[i] = uniq(list).slice(0, 8);
-        }
-      }
-      Object.keys(out).forEach((k) => {
-        const idx = Number(k);
-        if (idx >= n) delete out[k];
-      });
-      return out;
+setDayExercises((prev) => {
+  const out = { ...(prev || {}) };
+
+  const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
+  const list = (g?.library || []).map((x) => x.name);
+
+  out[dayIndex] = uniq(list).slice(0, 8);
+
+  return out;
+});
     });
   }
 
