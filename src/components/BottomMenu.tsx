@@ -70,49 +70,60 @@ function NutritionIcon({ active }: IconProps) {
 
 function DumbbellIcon({ active }: IconProps) {
   return (
-    <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6.2 8.4 15.6 17.8"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
-      <path
-        d="M3.9 10.7 8.5 6.1"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
-      <path
-        d="M15.5 17.9 20.1 13.3"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
-      <path
-        d="M3.1 8.7 5.3 6.5"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
-      <path
-        d="M18.7 17.5 20.9 15.3"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8.7 4.9 10.9 2.7"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
-      <path
-        d="M13.1 21.3 15.3 19.1"
-        stroke={active ? "#fff" : "#fff"}
-        strokeWidth="2.45"
-        strokeLinecap="round"
-      />
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <g transform="rotate(-35 32 32)">
+        <rect
+          x="8"
+          y="25"
+          width="7"
+          height="14"
+          rx="2.5"
+          fill="#fff"
+          opacity={active ? 1 : 0.96}
+        />
+        <rect
+          x="16"
+          y="21"
+          width="8"
+          height="22"
+          rx="3"
+          fill="#fff"
+          opacity={active ? 1 : 0.96}
+        />
+        <rect
+          x="25"
+          y="29"
+          width="14"
+          height="6"
+          rx="3"
+          fill="#fff"
+          opacity={active ? 1 : 0.98}
+        />
+        <rect
+          x="40"
+          y="21"
+          width="8"
+          height="22"
+          rx="3"
+          fill="#fff"
+          opacity={active ? 1 : 0.96}
+        />
+        <rect
+          x="49"
+          y="25"
+          width="7"
+          height="14"
+          rx="2.5"
+          fill="#fff"
+          opacity={active ? 1 : 0.96}
+        />
+        <path
+          d="M18 24.5C20.5 22 24.5 21 32 21C39.5 21 43.5 22 46 24.5"
+          stroke="rgba(255,255,255,.42)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   );
 }
@@ -213,6 +224,7 @@ export default function BottomMenu() {
             ...styles.activePill,
             width: `calc((100% - 12px) / ${items.length})`,
             transform: `translateX(${activeIndex * 100}%)`,
+            opacity: items[activeIndex]?.main ? 0 : 1,
           }}
         />
 
@@ -233,10 +245,10 @@ export default function BottomMenu() {
                   style={{
                     ...styles.mainIconCircle,
                     transform: active
-                      ? "translateY(-6px) scale(1.08)"
-                      : "translateY(-5px) scale(1)",
+                      ? "translateY(-7px) scale(1.08)"
+                      : "translateY(-6px) scale(1)",
                     boxShadow: active
-                      ? "0 20px 48px rgba(255,106,0,.40), 0 0 0 7px rgba(255,106,0,.12)"
+                      ? "0 22px 54px rgba(255,106,0,.40), 0 0 0 7px rgba(255,106,0,.12)"
                       : "0 18px 42px rgba(255,106,0,.32), 0 0 0 6px rgba(255,106,0,.10)",
                   }}
                 >
@@ -247,7 +259,7 @@ export default function BottomMenu() {
                   style={{
                     ...styles.mainLabel,
                     color: active ? ORANGE : TEXT,
-                    opacity: active ? 1 : 0.72,
+                    opacity: active ? 1 : 0.74,
                   }}
                 >
                   {item.label}
@@ -306,7 +318,7 @@ export default function BottomMenu() {
         }
 
         .fitdeal-main-item:active {
-          transform: scale(.94);
+          transform: scale(.95);
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -337,7 +349,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     width: "100%",
     maxWidth: 430,
-    minHeight: 68,
+    minHeight: 70,
     padding: 6,
     gap: 4,
     borderRadius: 34,
@@ -362,7 +374,7 @@ const styles: Record<string, React.CSSProperties> = {
       "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
     boxShadow:
       "0 16px 38px rgba(255,106,0,.30), 0 0 0 1px rgba(255,255,255,.22)",
-    transition: "transform .38s cubic-bezier(.22,1,.36,1)",
+    transition: "transform .38s cubic-bezier(.22,1,.36,1), opacity .22s ease",
     zIndex: 1,
   },
 
@@ -414,15 +426,17 @@ const styles: Record<string, React.CSSProperties> = {
 
   mainIconCircle: {
     position: "absolute",
-    top: -19,
-    width: 58,
-    height: 58,
+    top: -22,
+    width: 62,
+    height: 62,
     borderRadius: 999,
     display: "grid",
     placeItems: "center",
     background:
-      "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    border: "1px solid rgba(255,255,255,.55)",
+      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.34), rgba(255,255,255,0) 30%), linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
+    border: "1px solid rgba(255,255,255,.62)",
+    boxShadow:
+      "0 22px 54px rgba(255,106,0,.38), 0 0 0 7px rgba(255,106,0,.12), inset 0 1px 0 rgba(255,255,255,.42)",
     transition:
       "transform .34s cubic-bezier(.22,1,.36,1), box-shadow .28s ease",
   },
