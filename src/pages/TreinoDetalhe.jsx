@@ -473,11 +473,6 @@ export default function TreinoDetalhe() {
             .eq("user_id", userId)
             .maybeSingle(),
           supabase
-  .from("workout_plan_exercises")
-  .select("plan_day_id, exercise_order, name, group_name, reps, notes")
-  .in("plan_day_id", days.map((d) => d.id))
-  .order("exercise_order", { ascending: true }),
-          supabase
             .from("workout_plans")
             .select("id, title, split_label, split_len, source, created_at, updated_at")
             .eq("user_id", userId)
@@ -509,26 +504,44 @@ export default function TreinoDetalhe() {
         const activePlan = Array.isArray(planRes.data) ? planRes.data[0] : null;
 
         if (activePlan?.id) {
-          const [daysRes, exRes, loadRes, progRes] = await Promise.all([
-            supabase
-              .from("workout_plan_days")
-              .select("id, day_index, day_key, title, group_id, group_name")
-              .eq("plan_id", activePlan.id)
-              .order("day_index", { ascending: true }),
-            supabase
-              .from("workout_plan_exercises")
-              .select("plan_day_id, exercise_order, name, group_name, reps, notes, method, sets, rest")
-              .eq("plan_id", activePlan.id)
-              .order("exercise_order", { ascending: true }),
-            supabase
-              .from("workout_exercise_loads")
-              .select("day_index, exercise_name, load_value")
-              .eq("user_id", userId),
-            supabase
-              .from("workout_set_progress")
-              .select("day_index, exercise_name, done_sets")
-              .eq("user_id", userId),
-          ]);
+const [daysRes, loadRes, progRes] = await Promise.all([
+  supabase
+    .from("workout_plan_days")
+    .select("id, day_index, day_key, title, group_id, group_name")
+    .eq("plan_id", activePlan.id)
+    .order("day_index", { ascending: true }),
+
+  supabase
+    .from("workout_exercise_loads")
+    .select("day_index, exercise_name, load_value")
+    .eq("user_id", userId),
+
+  supabase
+    .from("workout_set_progress")
+    .select("day_index, exercise_name, done_sets")
+    .eq("user_id", userId),
+]);
+
+const days = daysRes.data || [];
+const dayIds = days.map((d) => d.id);
+
+let exercises = [];
+
+if (dayIds.length > 0) {
+  const { data: exData, error: exError } = await supabase
+    .from("workout_plan_exercises")
+    .select("plan_day_id, exercise_order, name, group_name, reps, notes")
+    .in("plan_day_id", dayIds)
+    .order("exercise_order", { ascending: true });
+
+  if (exError) {
+    console.error("TreinoDetalhe exercises error:", exError);
+  } else {
+    exercises = exData || [];
+  }
+}
+
+setPlanDays(days);
 
           const days = daysRes.data || [];
           const exercises = exRes.data || [];
