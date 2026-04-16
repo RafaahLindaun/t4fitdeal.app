@@ -548,20 +548,15 @@ setPlanDays(days);
               .filter((ex) => ex.plan_day_id === day.id)
               .sort((a, b) => Number(a.exercise_order || 0) - Number(b.exercise_order || 0))
               .map((ex) => {
-      const unpacked = parsePackedExerciseMeta(
-  ex.reps,
-  null,
-  ex.notes
-);
+                const unpacked = parsePackedExerciseMeta(ex.reps, null, ex.notes);
 
-return {
-  name: ex.name,
-  group: ex.group_name || day.group_name || "Exercício",
-  sets: unpacked.sets,
-  reps: unpacked.reps,
-  rest: unpacked.rest,
-  method: unpacked.method || activePlan.split_label || "Personalizado",
-};
+                return {
+                  name: ex.name,
+                  group: ex.group_name || day.group_name || "Exercicio",
+                  sets: unpacked.sets,
+                  reps: unpacked.reps,
+                  rest: unpacked.rest,
+                  method: unpacked.method || activePlan.split_label || "Personalizado",
                 };
               });
 
@@ -571,19 +566,19 @@ return {
 
             const groupFallback = (groupById(day.group_id)?.library || []).map((ex) => ({
               name: ex.name,
-              group: ex.group || day.group_name || "Exercício",
+              group: ex.group || day.group_name || "Exercicio",
               sets: 4,
-              reps: "6–12",
-              rest: "75–120s",
+              reps: "6-12",
+              rest: "75-120s",
               method: activePlan.split_label || "Personalizado",
             }));
 
             const fullbodyFallback = (groupById("fullbody")?.library || []).map((ex) => ({
               name: ex.name,
-              group: ex.group || day.group_name || "Exercício",
+              group: ex.group || day.group_name || "Exercicio",
               sets: 4,
-              reps: "6–12",
-              rest: "75–120s",
+              reps: "6-12",
+              rest: "75-120s",
               method: activePlan.split_label || "Personalizado",
             }));
 
