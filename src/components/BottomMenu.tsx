@@ -69,57 +69,19 @@ function NutritionIcon({ active }: IconProps) {
 }
 
 function DumbbellIcon({ active }: IconProps) {
+  const c = active ? ORANGE : ORANGE;
+
   return (
     <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
       <g transform="rotate(-35 32 32)">
-        <rect
-          x="8"
-          y="25"
-          width="7"
-          height="14"
-          rx="2.5"
-          fill="#fff"
-          opacity={active ? 1 : 0.96}
-        />
-        <rect
-          x="16"
-          y="21"
-          width="8"
-          height="22"
-          rx="3"
-          fill="#fff"
-          opacity={active ? 1 : 0.96}
-        />
-        <rect
-          x="25"
-          y="29"
-          width="14"
-          height="6"
-          rx="3"
-          fill="#fff"
-          opacity={active ? 1 : 0.98}
-        />
-        <rect
-          x="40"
-          y="21"
-          width="8"
-          height="22"
-          rx="3"
-          fill="#fff"
-          opacity={active ? 1 : 0.96}
-        />
-        <rect
-          x="49"
-          y="25"
-          width="7"
-          height="14"
-          rx="2.5"
-          fill="#fff"
-          opacity={active ? 1 : 0.96}
-        />
+        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={c} opacity="0.94" />
+        <rect x="16" y="21" width="8" height="22" rx="3" fill={c} />
+        <rect x="25" y="29" width="14" height="6" rx="3" fill={c} />
+        <rect x="40" y="21" width="8" height="22" rx="3" fill={c} />
+        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={c} opacity="0.94" />
         <path
           d="M18 24.5C20.5 22 24.5 21 32 21C39.5 21 43.5 22 46 24.5"
-          stroke="rgba(255,255,255,.42)"
+          stroke="rgba(255,255,255,.22)"
           strokeWidth="2"
           strokeLinecap="round"
         />
@@ -243,16 +205,28 @@ export default function BottomMenu() {
               >
                 <span
                   style={{
-                    ...styles.mainIconCircle,
+                    ...styles.mainIconWrap,
                     transform: active
-                      ? "translateY(-7px) scale(1.08)"
-                      : "translateY(-6px) scale(1)",
-                    boxShadow: active
-                      ? "0 22px 54px rgba(255,106,0,.40), 0 0 0 7px rgba(255,106,0,.12)"
-                      : "0 18px 42px rgba(255,106,0,.32), 0 0 0 6px rgba(255,106,0,.10)",
+                      ? "translateY(-8px) scale(1.05)"
+                      : "translateY(-7px) scale(1)",
                   }}
                 >
-                  <Icon active={active} />
+                  <span
+                    style={{
+                      ...styles.mainIconGlass,
+                      opacity: active ? 1 : 0.94,
+                    }}
+                  />
+                  <span
+                    style={{
+                      ...styles.mainIconInner,
+                      boxShadow: active
+                        ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
+                        : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
+                    }}
+                  >
+                    <Icon active={active} />
+                  </span>
                 </span>
 
                 <span
@@ -318,12 +292,33 @@ export default function BottomMenu() {
         }
 
         .fitdeal-main-item:active {
-          transform: scale(.95);
+          transform: scale(.96);
+        }
+
+        @keyframes fitdealFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-2px); }
+        }
+
+        @keyframes fitdealGlow {
+          0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
+          50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
+        }
+
+        .fitdeal-main-item > span:first-child {
+          animation: fitdealFloat 3.8s ease-in-out infinite;
+        }
+
+        .fitdeal-main-item > span:first-child > span:last-child {
+          animation: fitdealGlow 3.8s ease-in-out infinite;
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .fitdeal-bottom-item {
+          .fitdeal-bottom-item,
+          .fitdeal-main-item > span:first-child,
+          .fitdeal-main-item > span:first-child > span:last-child {
             transition: none !important;
+            animation: none !important;
           }
         }
       `}</style>
@@ -424,21 +419,37 @@ const styles: Record<string, React.CSSProperties> = {
       "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
-  mainIconCircle: {
+  mainIconWrap: {
     position: "absolute",
-    top: -22,
-    width: 62,
-    height: 62,
+    top: -24,
+    width: 68,
+    height: 68,
+    display: "grid",
+    placeItems: "center",
+    transition: "transform .34s cubic-bezier(.22,1,.36,1)",
+  },
+
+  mainIconGlass: {
+    position: "absolute",
+    inset: 0,
+    borderRadius: 999,
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54))",
+    border: "1px solid rgba(255,255,255,.72)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+  },
+
+  mainIconInner: {
+    position: "relative",
+    width: 58,
+    height: 58,
     borderRadius: 999,
     display: "grid",
     placeItems: "center",
     background:
-      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.34), rgba(255,255,255,0) 30%), linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    border: "1px solid rgba(255,255,255,.62)",
-    boxShadow:
-      "0 22px 54px rgba(255,106,0,.38), 0 0 0 7px rgba(255,106,0,.12), inset 0 1px 0 rgba(255,255,255,.42)",
-    transition:
-      "transform .34s cubic-bezier(.22,1,.36,1), box-shadow .28s ease",
+      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.58), rgba(255,255,255,0) 32%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82))",
+    border: "1px solid rgba(255,255,255,.88)",
   },
 
   label: {
