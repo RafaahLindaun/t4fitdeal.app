@@ -46,20 +46,48 @@ function HomeIcon({ active }: IconProps) {
 
 function NutritionIcon({ active }: IconProps) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M7.2 13.8c0-4.7 3-8 7.6-9.5.6-.2 1.2.4 1 1-1.4 4.6-4.8 7.6-9.5 7.6-.6 0-.9.4-.9.9 0 2.7 1.8 4.8 4.6 5.2 3.8.6 7-1.8 7.6-5.5"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10.2 17.6c.7-2.4 2.6-4.5 5.7-6.7"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-      />
+    <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <g>
+        <ellipse cx="32" cy="47.5" rx="11" ry="4.5" fill="rgba(255,106,0,.16)" />
+
+        <path
+          d="M31.5 44V28.5"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="3.2"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M31.5 33.5C31.5 28.2 35.2 24.1 41.8 22.2C43 21.9 43.9 23.1 43.3 24.1C40.5 29.1 36.8 32.2 31.5 33.5Z"
+          fill={active ? "#fff" : ORANGE}
+        />
+        <path
+          d="M31.2 34C30.4 29.1 26.8 25.5 21.2 23.8C20 23.4 19.1 24.8 19.8 25.8C22.7 30.2 26.4 33 31.2 34Z"
+          fill={active ? "#fff" : ORANGE}
+          opacity={0.92}
+        />
+
+        <path
+          d="M32 39.2C32.3 36.5 34.3 34.2 37.8 33"
+          stroke={active ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.32)"}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+        <path
+          d="M31.6 39.8C31.1 37.2 29.4 35.3 26.5 34.2"
+          stroke={active ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.32)"}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M23.5 44.8C24.6 42.7 27.6 41.2 31.5 41.2C35.4 41.2 38.4 42.7 39.5 44.8"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          opacity={0.9}
+        />
+      </g>
     </svg>
   );
 }
@@ -304,7 +332,9 @@ export default function BottomMenu() {
                       style={{
                         ...styles.mainRing,
                         opacity: trainHoldActive ? 1 : 0,
-                        transform: trainHoldActive ? "scale(1.06) rotate(180deg)" : "scale(.92) rotate(0deg)",
+                        transform: trainHoldActive
+                          ? "scale(1.06) rotate(180deg)"
+                          : "scale(.92) rotate(0deg)",
                       }}
                     />
                     <span style={styles.mainIconGlass} />
