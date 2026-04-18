@@ -46,46 +46,37 @@ function HomeIcon({ active }: IconProps) {
 
 function NutritionIcon({ active }: IconProps) {
   return (
-    <svg width="28" height="28" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
       <g transform="translate(0,-1)">
-        <ellipse cx="32" cy="49" rx="12.5" ry="4.8" fill="rgba(255,106,0,.16)" />
-
         <path
-          d="M31.7 45.5V27.2"
+          d="M31.9 44.8V24.8"
           stroke={active ? "#fff" : ORANGE}
-          strokeWidth="3.5"
+          strokeWidth="3.7"
           strokeLinecap="round"
         />
 
         <path
-          d="M31.8 33.6C31.8 27.8 35.9 23.4 43.1 21.3C44.4 20.9 45.4 22.2 44.7 23.4C41.7 28.8 37.6 32.2 31.8 33.6Z"
+          d="M32 33.8C32 27.6 36.3 22.9 43.8 20.7C45.2 20.3 46.3 21.8 45.5 23C42.3 28.9 38 32.5 32 33.8Z"
           fill={active ? "#fff" : ORANGE}
         />
+
         <path
-          d="M31.2 34.2C30.3 28.9 26.4 25 20.3 23.1C18.9 22.7 17.9 24.3 18.7 25.5C21.9 30.3 26 33.3 31.2 34.2Z"
+          d="M31.2 34.4C30.2 28.7 26 24.5 19.5 22.5C18 22 16.9 23.8 17.8 25.1C21.2 30.3 25.6 33.5 31.2 34.4Z"
           fill={active ? "#fff" : ORANGE}
           opacity={0.95}
         />
 
         <path
-          d="M32.2 40.2C32.5 37.3 34.7 34.8 38.5 33.5"
+          d="M32.2 40.2C32.7 37 35.1 34.3 39.1 32.9"
           stroke={active ? "rgba(255,255,255,.58)" : "rgba(255,255,255,.30)"}
           strokeWidth="2"
           strokeLinecap="round"
         />
         <path
-          d="M31.5 41C30.9 38.1 29 35.9 25.8 34.7"
+          d="M31.5 41C30.8 37.8 28.7 35.3 25.2 34"
           stroke={active ? "rgba(255,255,255,.58)" : "rgba(255,255,255,.30)"}
           strokeWidth="2"
           strokeLinecap="round"
-        />
-
-        <path
-          d="M22.8 45.9C24.1 43.5 27.4 41.8 31.7 41.8C36.1 41.8 39.4 43.5 40.7 45.9"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="2.35"
-          strokeLinecap="round"
-          opacity={0.95}
         />
       </g>
     </svg>
@@ -167,9 +158,11 @@ export default function BottomMenu() {
   const [trainHoldActive, setTrainHoldActive] = useState(false);
   const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
 
-  const holdTimerRef = useRef<number | null>(null);
-  const completeTimerRef = useRef<number | null>(null);
-  const didLongPressRef = useRef(false);
+  const holdStartTimerRef = useRef<number | null>(null);
+  const holdCompleteTimerRef = useRef<number | null>(null);
+  const holdCompletedRef = useRef(false);
+  const pressStartedRef = useRef(false);
+
   const accountTapRef = useRef<number>(0);
   const accountTapTimerRef = useRef<number | null>(null);
 
@@ -195,8 +188,8 @@ export default function BottomMenu() {
 
   useEffect(() => {
     return () => {
-      if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
-      if (completeTimerRef.current) window.clearTimeout(completeTimerRef.current);
+      if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current);
+      if (holdCompleteTimerRef.current) window.clearTimeout(holdCompleteTimerRef.current);
       if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
     };
   }, []);
@@ -205,50 +198,57 @@ export default function BottomMenu() {
     nav(to);
   }
 
+  function clearHoldTimers() {
+    if (holdStartTimerRef.current) {
+      window.clearTimeout(holdStartTimerRef.current);
+      holdStartTimerRef.current = null;
+    }
+    if (holdCompleteTimerRef.current) {
+      window.clearTimeout(holdCompleteTimerRef.current);
+      holdCompleteTimerRef.current = null;
+    }
+  }
+
   function startTrainHold() {
-    didLongPressRef.current = false;
+    clearHoldTimers();
+    holdCompletedRef.current = false;
+    pressStartedRef.current = true;
     setTrainHoldActive(false);
     setTrainHoldBlocked(false);
 
-    if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
-    if (completeTimerRef.current) window.clearTimeout(completeTimerRef.current);
+    holdStartTimerRef.current = window.setTimeout(() => {
+      if (!pressStartedRef.current) return;
 
-    holdTimerRef.current = window.setTimeout(() => {
       if (!isPaid) {
         setTrainHoldBlocked(true);
         window.setTimeout(() => setTrainHoldBlocked(false), 900);
+        pressStartedRef.current = false;
         return;
       }
 
-      didLongPressRef.current = true;
       setTrainHoldActive(true);
 
-      completeTimerRef.current = window.setTimeout(() => {
+      holdCompleteTimerRef.current = window.setTimeout(() => {
+        if (!pressStartedRef.current) return;
+        holdCompletedRef.current = true;
         setTrainHoldActive(false);
         nav("/treino-detalhe");
-      }, 1400);
-    }, 650);
+      }, 1650);
+    }, 550);
   }
 
   function endTrainHold() {
-    if (holdTimerRef.current) {
-      window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
+    pressStartedRef.current = false;
 
-    if (completeTimerRef.current && !didLongPressRef.current) {
-      window.clearTimeout(completeTimerRef.current);
-      completeTimerRef.current = null;
-    }
-
-    if (!didLongPressRef.current) {
+    if (!holdCompletedRef.current) {
+      clearHoldTimers();
       setTrainHoldActive(false);
     }
   }
 
   function onTrainClick() {
-    if (didLongPressRef.current) {
-      didLongPressRef.current = false;
+    if (holdCompletedRef.current) {
+      holdCompletedRef.current = false;
       return;
     }
     nav("/treino");
@@ -611,7 +611,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRightColor: "rgba(255,106,0,.98)",
     borderBottomColor: "rgba(255,106,0,.32)",
     borderLeftColor: "rgba(255,106,0,.78)",
-    transition: "transform 1.4s linear, opacity .22s ease",
+    transition: "transform 1.65s linear, opacity .22s ease",
     boxShadow: "0 0 0 4px rgba(255,106,0,.08)",
   },
 
