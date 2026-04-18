@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 type IconProps = {
@@ -14,6 +14,7 @@ type Item = {
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
+const MUTED = "#64748b";
 
 function HomeIcon({ active }: IconProps) {
   return (
@@ -47,38 +48,31 @@ function NutritionIcon({ active }: IconProps) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 21c-3.9-2.7-6.2-6.1-6.2-9.1A6.2 6.2 0 0 1 12 5.7a6.2 6.2 0 0 1 6.2 6.2c0 3-2.3 6.4-6.2 9.1Z"
+        d="M7.2 13.8c0-4.7 3-8 7.6-9.5.6-.2 1.2.4 1 1-1.4 4.6-4.8 7.6-9.5 7.6-.6 0-.9.4-.9.9 0 2.7 1.8 4.8 4.6 5.2 3.8.6 7-1.8 7.6-5.5"
         stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
+        strokeWidth="2.15"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M12 5.7V3.4"
+        d="M10.2 17.6c.7-2.4 2.6-4.5 5.7-6.7"
         stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-      <path
-        d="M9.2 12.1c1.7.4 3.8.2 5.6-1.3"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
+        strokeWidth="2.15"
         strokeLinecap="round"
       />
     </svg>
   );
 }
 
-function DumbbellIcon({ active }: IconProps) {
-  const c = active ? ORANGE : ORANGE;
-
+function DumbbellIcon() {
   return (
     <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
       <g transform="rotate(-35 32 32)">
-        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={c} opacity="0.94" />
-        <rect x="16" y="21" width="8" height="22" rx="3" fill={c} />
-        <rect x="25" y="29" width="14" height="6" rx="3" fill={c} />
-        <rect x="40" y="21" width="8" height="22" rx="3" fill={c} />
-        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={c} opacity="0.94" />
+        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
+        <rect x="16" y="21" width="8" height="22" rx="3" fill={ORANGE} />
+        <rect x="25" y="29" width="14" height="6" rx="3" fill={ORANGE} />
+        <rect x="40" y="21" width="8" height="22" rx="3" fill={ORANGE} />
+        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
         <path
           d="M18 24.5C20.5 22 24.5 21 32 21C39.5 21 43.5 22 46 24.5"
           stroke="rgba(255,255,255,.22)"
@@ -140,6 +134,14 @@ export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
 
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [trainHoldActive, setTrainHoldActive] = useState(false);
+
+  const holdTimerRef = useRef<number | null>(null);
+  const didLongPressRef = useRef(false);
+  const accountTapRef = useRef<number>(0);
+  const accountTapTimerRef = useRef<number | null>(null);
+
   const items: Item[] = [
     {
       to: "/dashboard",
@@ -154,7 +156,7 @@ export default function BottomMenu() {
     {
       to: "/treino",
       label: "Treino",
-      Icon: DumbbellIcon,
+      Icon: () => <DumbbellIcon />,
       main: true,
     },
     {
@@ -174,155 +176,282 @@ export default function BottomMenu() {
     items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
   );
 
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
+      if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
+    };
+  }, []);
+
   function go(to: string) {
     nav(to);
   }
 
+  function startTrainHold() {
+    didLongPressRef.current = false;
+    setTrainHoldActive(false);
+
+    if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
+
+    holdTimerRef.current = window.setTimeout(() => {
+      didLongPressRef.current = true;
+      setTrainHoldActive(true);
+
+      window.setTimeout(() => {
+        setTrainHoldActive(false);
+        nav("/treino-detalhe");
+      }, 520);
+    }, 420);
+  }
+
+  function endTrainHold() {
+    if (holdTimerRef.current) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  }
+
+  function onTrainClick() {
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false;
+      return;
+    }
+    nav("/treino");
+  }
+
+  function onAccountClick() {
+    accountTapRef.current += 1;
+
+    if (accountTapTimerRef.current) {
+      window.clearTimeout(accountTapTimerRef.current);
+    }
+
+    accountTapTimerRef.current = window.setTimeout(() => {
+      if (accountTapRef.current >= 2) {
+        setShowAccountMenu((v) => !v);
+      } else {
+        nav("/conta");
+      }
+      accountTapRef.current = 0;
+    }, 220);
+  }
+
+  function closeAccountMenu() {
+    setShowAccountMenu(false);
+  }
+
+  function goCloseAccount() {
+    setShowAccountMenu(false);
+    nav("/conta?modal=close-account");
+  }
+
   return (
-    <div style={styles.wrapper}>
-      <nav style={styles.nav}>
-        <div
-          style={{
-            ...styles.activePill,
-            width: `calc((100% - 12px) / ${items.length})`,
-            transform: `translateX(${activeIndex * 100}%)`,
-            opacity: items[activeIndex]?.main ? 0 : 1,
-          }}
-        />
+    <>
+      {showAccountMenu ? (
+        <div style={styles.sheetOverlay} onClick={closeAccountMenu}>
+          <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.sheetGrab} />
+            <div style={styles.sheetTitle}>Conta</div>
+            <button type="button" style={styles.sheetActionDanger} onClick={goCloseAccount}>
+              Fechar conta
+            </button>
+            <button type="button" style={styles.sheetActionSoft} onClick={closeAccountMenu}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
 
-        {items.map((item) => {
-          const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-          const Icon = item.Icon;
+      <div style={styles.wrapper}>
+        <nav style={styles.nav}>
+          <div
+            style={{
+              ...styles.activePill,
+              width: `calc((100% - 12px) / ${items.length})`,
+              transform: `translateX(${activeIndex * 100}%)`,
+              opacity: items[activeIndex]?.main ? 0 : 1,
+            }}
+          />
 
-          if (item.main) {
+          {items.map((item) => {
+            const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+            const Icon = item.Icon;
+
+            if (item.main) {
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  onMouseDown={startTrainHold}
+                  onMouseUp={endTrainHold}
+                  onMouseLeave={endTrainHold}
+                  onTouchStart={startTrainHold}
+                  onTouchEnd={endTrainHold}
+                  onTouchCancel={endTrainHold}
+                  onClick={onTrainClick}
+                  className="fitdeal-bottom-item fitdeal-main-item"
+                  style={styles.mainItem}
+                >
+                  <span
+                    style={{
+                      ...styles.mainIconWrap,
+                      transform: active
+                        ? "translateY(-8px) scale(1.05)"
+                        : "translateY(-7px) scale(1)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        ...styles.mainRing,
+                        opacity: trainHoldActive ? 1 : 0,
+                        transform: trainHoldActive ? "scale(1.06) rotate(180deg)" : "scale(.92) rotate(0deg)",
+                      }}
+                    />
+                    <span style={styles.mainIconGlass} />
+                    <span
+                      style={{
+                        ...styles.mainIconInner,
+                        boxShadow: active
+                          ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
+                          : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
+                      }}
+                    >
+                      <Icon active={active} />
+                    </span>
+                  </span>
+
+                  <span
+                    style={{
+                      ...styles.mainLabel,
+                      color: active ? ORANGE : TEXT,
+                      opacity: active ? 1 : 0.74,
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            if (item.to === "/conta") {
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  onClick={onAccountClick}
+                  className="fitdeal-bottom-item"
+                  style={styles.item}
+                >
+                  <span
+                    style={{
+                      ...styles.iconWrap,
+                      transform: active
+                        ? "translateY(-1px) scale(1.06)"
+                        : "translateY(0) scale(1)",
+                      filter: active
+                        ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
+                        : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
+                    }}
+                  >
+                    <Icon active={active} />
+                  </span>
+
+                  <span
+                    style={{
+                      ...styles.label,
+                      color: active ? "#fff" : TEXT,
+                      opacity: active ? 1 : 0.62,
+                      transform: active ? "translateY(-1px)" : "translateY(0)",
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
             return (
               <button
                 key={item.to}
                 type="button"
                 onClick={() => go(item.to)}
-                className="fitdeal-bottom-item fitdeal-main-item"
-                style={styles.mainItem}
+                className="fitdeal-bottom-item"
+                style={styles.item}
               >
                 <span
                   style={{
-                    ...styles.mainIconWrap,
+                    ...styles.iconWrap,
                     transform: active
-                      ? "translateY(-8px) scale(1.05)"
-                      : "translateY(-7px) scale(1)",
+                      ? "translateY(-1px) scale(1.06)"
+                      : "translateY(0) scale(1)",
+                    filter: active
+                      ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
+                      : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
                   }}
                 >
-                  <span
-                    style={{
-                      ...styles.mainIconGlass,
-                      opacity: active ? 1 : 0.94,
-                    }}
-                  />
-                  <span
-                    style={{
-                      ...styles.mainIconInner,
-                      boxShadow: active
-                        ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
-                        : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
-                    }}
-                  >
-                    <Icon active={active} />
-                  </span>
+                  <Icon active={active} />
                 </span>
 
                 <span
                   style={{
-                    ...styles.mainLabel,
-                    color: active ? ORANGE : TEXT,
-                    opacity: active ? 1 : 0.74,
+                    ...styles.label,
+                    color: active ? "#fff" : TEXT,
+                    opacity: active ? 1 : 0.62,
+                    transform: active ? "translateY(-1px)" : "translateY(0)",
                   }}
                 >
                   {item.label}
                 </span>
               </button>
             );
+          })}
+        </nav>
+
+        <style>{`
+          .fitdeal-bottom-item {
+            transition:
+              transform .16s cubic-bezier(.2,.9,.2,1),
+              filter .16s ease;
           }
 
-          return (
-            <button
-              key={item.to}
-              type="button"
-              onClick={() => go(item.to)}
-              className="fitdeal-bottom-item"
-              style={styles.item}
-            >
-              <span
-                style={{
-                  ...styles.iconWrap,
-                  transform: active
-                    ? "translateY(-1px) scale(1.06)"
-                    : "translateY(0) scale(1)",
-                  filter: active
-                    ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                    : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
-                }}
-              >
-                <Icon active={active} />
-              </span>
+          .fitdeal-bottom-item:active {
+            transform: scale(.91);
+            filter: brightness(.98);
+          }
 
-              <span
-                style={{
-                  ...styles.label,
-                  color: active ? "#fff" : TEXT,
-                  opacity: active ? 1 : 0.62,
-                  transform: active ? "translateY(-1px)" : "translateY(0)",
-                }}
-              >
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+          .fitdeal-main-item:active {
+            transform: scale(.96);
+          }
 
-      <style>{`
-        .fitdeal-bottom-item {
-          transition:
-            transform .16s cubic-bezier(.2,.9,.2,1),
-            filter .16s ease;
-        }
+          @keyframes fitdealFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+          }
 
-        .fitdeal-bottom-item:active {
-          transform: scale(.91);
-          filter: brightness(.98);
-        }
+          @keyframes fitdealGlow {
+            0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
+            50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
+          }
 
-        .fitdeal-main-item:active {
-          transform: scale(.96);
-        }
+          .fitdeal-main-item > span:first-child {
+            animation: fitdealFloat 3.8s ease-in-out infinite;
+          }
 
-        @keyframes fitdealFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-2px); }
-        }
-
-        @keyframes fitdealGlow {
-          0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
-          50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
-        }
-
-        .fitdeal-main-item > span:first-child {
-          animation: fitdealFloat 3.8s ease-in-out infinite;
-        }
-
-        .fitdeal-main-item > span:first-child > span:last-child {
-          animation: fitdealGlow 3.8s ease-in-out infinite;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .fitdeal-bottom-item,
-          .fitdeal-main-item > span:first-child,
           .fitdeal-main-item > span:first-child > span:last-child {
-            transition: none !important;
-            animation: none !important;
+            animation: fitdealGlow 3.8s ease-in-out infinite;
           }
-        }
-      `}</style>
-    </div>
+
+          @media (prefers-reduced-motion: reduce) {
+            .fitdeal-bottom-item,
+            .fitdeal-main-item > span:first-child,
+            .fitdeal-main-item > span:first-child > span:last-child {
+              transition: none !important;
+              animation: none !important;
+            }
+          }
+        `}</style>
+      </div>
+    </>
   );
 }
 
@@ -429,6 +558,19 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "transform .34s cubic-bezier(.22,1,.36,1)",
   },
 
+  mainRing: {
+    position: "absolute",
+    inset: 0,
+    borderRadius: 999,
+    border: "2px solid rgba(255,106,0,.92)",
+    borderTopColor: "rgba(255,106,0,.12)",
+    borderRightColor: "rgba(255,106,0,.98)",
+    borderBottomColor: "rgba(255,106,0,.32)",
+    borderLeftColor: "rgba(255,106,0,.78)",
+    transition: "transform .52s cubic-bezier(.22,1,.36,1), opacity .22s ease",
+    boxShadow: "0 0 0 4px rgba(255,106,0,.08)",
+  },
+
   mainIconGlass: {
     position: "absolute",
     inset: 0,
@@ -470,5 +612,71 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: "uppercase",
     transition:
       "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 11000,
+    background: "rgba(2,6,23,.22)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
+  },
+
+  sheet: {
+    width: "100%",
+    maxWidth: 430,
+    margin: "0 auto",
+    borderRadius: 26,
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
+    border: "1px solid rgba(255,255,255,.58)",
+    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
+    padding: 14,
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+  },
+
+  sheetGrab: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(100,116,139,.24)",
+    margin: "0 auto 10px",
+  },
+
+  sheetTitle: {
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+    marginBottom: 12,
+  },
+
+  sheetActionDanger: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(255,106,0,.18)",
+    background: "rgba(255,106,0,.10)",
+    color: ORANGE,
+    fontWeight: 950,
+    fontSize: 14,
+    marginBottom: 10,
+  },
+
+  sheetActionSoft: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    background: "rgba(255,255,255,.72)",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 14,
   },
 };
