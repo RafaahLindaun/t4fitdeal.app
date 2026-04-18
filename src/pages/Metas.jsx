@@ -1,727 +1,1124 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-type IconProps = {
-  active: boolean;
-};
-
-type Item = {
-  to: string;
-  label: string;
-  Icon: (p: IconProps) => JSX.Element;
-  main?: boolean;
-};
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
+const BG = "#f8fafc";
 const TEXT = "#0f172a";
+const MUTED = "#64748b";
+const BORDER = "rgba(15,23,42,.08)";
+const SOFT = "rgba(15,23,42,.04)";
 
-function HomeIcon({ active }: IconProps) {
+const ICONS = {
+  target: "/icons/goal-target-white.png",
+  calendar: "/icons/goal-calendar-white.png",
+  strength: "/icons/goal-strength-white.png",
+  scale: "/icons/goal-scale-white.png",
+  cardio: "/icons/goal-cardio-white.png",
+  spark: "/icons/goal-spark-white.png",
+};
+
+function SafeIcon({ src, alt = "", size = 18 }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <span style={{ fontSize: Math.max(16, size - 1), lineHeight: 1 }}>✓</span>;
+  }
+
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4.5 10.7 12 4.4l7.5 6.3"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 19.7v-5.1h4v5.1"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size, objectFit: "contain", display: "block" }}
+    />
   );
 }
 
-function NutritionIcon({ active }: IconProps) {
-  return (
-    <svg width="31" height="31" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <g transform="translate(0,-1)">
-        <path
-          d="M31.9 46V24.2"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="3.8"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M32.1 34.5C32.1 27.9 36.7 22.9 44.5 20.6C46 20.1 47.1 21.8 46.2 23.1C42.8 29.2 38.3 33 32.1 34.5Z"
-          fill={active ? "#fff" : ORANGE}
-        />
-
-        <path
-          d="M31.2 35.1C30.1 29 25.7 24.6 18.8 22.4C17.3 21.9 16.1 23.8 17.1 25.2C20.8 30.8 25.4 34.2 31.2 35.1Z"
-          fill={active ? "#fff" : ORANGE}
-          opacity={0.96}
-        />
-
-        <path
-          d="M32.2 40.6C32.7 37.2 35.3 34.2 39.6 32.7"
-          stroke={active ? "rgba(255,255,255,.58)" : "rgba(255,255,255,.30)"}
-          strokeWidth="2.05"
-          strokeLinecap="round"
-        />
-        <path
-          d="M31.5 41.4C30.7 38 28.4 35.4 24.7 34"
-          stroke={active ? "rgba(255,255,255,.58)" : "rgba(255,255,255,.30)"}
-          strokeWidth="2.05"
-          strokeLinecap="round"
-        />
-      </g>
-    </svg>
-  );
+function uid() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
 }
 
-function DumbbellIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <g transform="rotate(-35 32 32)">
-        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
-        <rect x="16" y="21" width="8" height="22" rx="3" fill={ORANGE} />
-        <rect x="25" y="29" width="14" height="6" rx="3" fill={ORANGE} />
-        <rect x="40" y="21" width="8" height="22" rx="3" fill={ORANGE} />
-        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
-        <path
-          d="M18 24.5C20.5 22 24.5 21 32 21C39.5 21 43.5 22 46 24.5"
-          stroke="rgba(255,255,255,.22)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </g>
-    </svg>
-  );
+function normalizeNumber(v) {
+  const n = Number(String(v || "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
 }
 
-function CardIcon({ active }: IconProps) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3.7"
-        y="6.4"
-        width="16.6"
-        height="11.2"
-        rx="2.6"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-      />
-      <path
-        d="M4.2 10h15.6"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.4 14.5h3.5"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+function yyyyMmDd(d = new Date()) {
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-function UserIcon({ active }: IconProps) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-      />
-      <path
-        d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+function startOfWeekISO(d = new Date()) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  dt.setDate(dt.getDate() + diff);
+  dt.setHours(0, 0, 0, 0);
+  return yyyyMmDd(dt);
 }
 
-export default function BottomMenu() {
-  const { pathname } = useLocation();
+function daysAgoKey(days) {
+  const dt = new Date();
+  dt.setDate(dt.getDate() - Number(days || 0));
+  return yyyyMmDd(dt);
+}
+
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
+}
+
+function uniqueDates(list) {
+  return Array.from(new Set((list || []).filter(Boolean))).sort();
+}
+
+function iconSrcFromGoal(g) {
+  if (!g) return ICONS.target;
+  if (g.type === "freq") return ICONS.calendar;
+  if (g.type === "pr") return ICONS.strength;
+  if (g.type === "peso") return ICONS.scale;
+  if (g.type === "cardio") return ICONS.cardio;
+  return ICONS.target;
+}
+
+function labelFromGoal(g) {
+  if (!g) return "";
+  if (g.type === "freq") return `${g.value} dias de frequência`;
+  if (g.type === "pr") return `${g.value} kg no ${g.exercise || "exercício"}`;
+  if (g.type === "peso") return `${g.value} kg de peso-alvo`;
+  if (g.type === "cardio") return `${g.value} sessões de cardio/sem`;
+  return g.title || "Meta";
+}
+
+function ensureGoalShape(g) {
+  const meta = g?.meta && typeof g.meta === "object" ? g.meta : {};
+
+  return {
+    id: g?.id || uid(),
+    catalogId: g?.catalogId ?? g?.catalog_id ?? meta.catalogId ?? null,
+    type: g?.type || meta.type || "freq",
+    value: Number(g?.value ?? meta.value ?? 0) || 0,
+    exercise: g?.exercise || meta.exercise || null,
+    title: g?.title || meta.title || null,
+    createdAt: g?.createdAt || g?.created_at || Date.now(),
+    status: g?.status || (g?.is_active === false ? "done" : "active"),
+    isActive: g?.is_active !== false && String(g?.status || "active") !== "done",
+    completedAt: g?.completedAt || g?.completed_at || null,
+    days: Array.isArray(g?.days) ? g.days : Array.isArray(meta.days) ? meta.days : [],
+    weekId: g?.weekId || g?.week_id || meta.weekId || startOfWeekISO(new Date()),
+    weekCount: Number(g?.weekCount ?? g?.week_count ?? meta.weekCount ?? 0) || 0,
+    cardioLog: Array.isArray(g?.cardioLog || g?.cardio_log)
+      ? g?.cardioLog || g?.cardio_log
+      : Array.isArray(meta.cardioLog)
+        ? meta.cardioLog
+        : [],
+    bestKg: Number(g?.bestKg ?? g?.best_kg ?? meta.bestKg ?? 0) || 0,
+    lastPrAt: g?.lastPrAt || g?.last_pr_at || meta.lastPrAt || null,
+    currentWeight: Number(g?.currentWeight ?? g?.current_weight ?? meta.currentWeight ?? 0) || 0,
+    startWeight: Number(g?.startWeight ?? g?.start_weight ?? meta.startWeight ?? 0) || 0,
+    lastWeightAt: g?.lastWeightAt || g?.last_weight_at || meta.lastWeightAt || null,
+    lastActionAt: g?.lastActionAt || g?.last_action_at || meta.lastActionAt || null,
+  };
+}
+
+function toDbGoal(goal, userId) {
+  const g = ensureGoalShape(goal);
+  return {
+    id: g.id,
+    user_id: userId,
+    catalog_id: g.catalogId,
+    type: g.type,
+    value: g.value,
+    exercise: g.exercise,
+    title: g.title,
+    status: g.status,
+    is_active: g.status !== "done",
+    completed_at: g.completedAt ? new Date(g.completedAt).toISOString() : null,
+    days: g.days || [],
+    week_id: g.weekId,
+    week_count: g.weekCount || 0,
+    cardio_log: g.cardioLog || [],
+    best_kg: g.bestKg || 0,
+    last_pr_at: g.lastPrAt ? new Date(g.lastPrAt).toISOString() : null,
+    current_weight: g.currentWeight || 0,
+    start_weight: g.startWeight || 0,
+    last_weight_at: g.lastWeightAt ? new Date(g.lastWeightAt).toISOString() : null,
+    last_action_at: g.lastActionAt ? new Date(g.lastActionAt).toISOString() : null,
+    meta: {
+      catalogId: g.catalogId,
+      type: g.type,
+      value: g.value,
+      exercise: g.exercise,
+      title: g.title,
+    },
+  };
+}
+
+function mergedGoalWithDbProgress(goal, workoutDates, cardioDates) {
+  const g = ensureGoalShape(goal);
+
+  if (g.type === "freq") {
+    const manual = Array.isArray(g.days) ? g.days : [];
+    g.days = uniqueDates([...manual, ...(workoutDates || [])]);
+  }
+
+  if (g.type === "cardio") {
+    const nowWeek = startOfWeekISO(new Date());
+    const logs = uniqueDates([...(g.cardioLog || []), ...(cardioDates || [])]);
+    g.cardioLog = logs.slice(-240).reverse();
+    g.weekId = nowWeek;
+    g.weekCount = logs.filter((d) => d >= nowWeek).length;
+  }
+
+  if (g.status !== "done" && isCompleted(g)) {
+    g.status = "done";
+    g.completedAt = g.completedAt || new Date().toISOString();
+  }
+
+  return g;
+}
+
+function progressOfGoal(g) {
+  const goal = ensureGoalShape(g);
+
+  if (goal.type === "freq") {
+    const uniq = new Set(goal.days || []);
+    return clamp(uniq.size, 0, goal.value || 0);
+  }
+
+  if (goal.type === "cardio") {
+    const nowWeek = startOfWeekISO(new Date());
+    if (goal.weekId !== nowWeek) return 0;
+    return clamp(goal.weekCount || 0, 0, goal.value || 0);
+  }
+
+  if (goal.type === "pr") {
+    const target = goal.value || 0;
+    const best = goal.bestKg || 0;
+    if (target <= 0) return 0;
+    return clamp(best, 0, target);
+  }
+
+  if (goal.type === "peso") {
+    const target = goal.value || 0;
+    const cur = goal.currentWeight || 0;
+    if (target <= 0 || cur <= 0) return 0;
+    const distStart = Math.abs((goal.startWeight || cur) - target);
+    const distNow = Math.abs(cur - target);
+    if (distStart <= 0) return clamp(target, 0, target);
+    const ratio = clamp(1 - distNow / distStart, 0, 1);
+    return ratio * target;
+  }
+
+  return 0;
+}
+
+function isCompleted(g) {
+  const goal = ensureGoalShape(g);
+  if (goal.status === "done") return true;
+
+  if (goal.type === "freq" || goal.type === "cardio") {
+    const p = progressOfGoal(goal);
+    return p >= (goal.value || 0);
+  }
+
+  if (goal.type === "pr") return (goal.bestKg || 0) >= (goal.value || 0);
+
+  if (goal.type === "peso") {
+    const target = goal.value || 0;
+    const cur = goal.currentWeight || 0;
+    if (target <= 0 || cur <= 0) return false;
+    return Math.abs(cur - target) <= 0.3;
+  }
+
+  return false;
+}
+
+function remainingText(g) {
+  const goal = ensureGoalShape(g);
+
+  if (goal.type === "freq") {
+    const done = progressOfGoal(goal);
+    const left = Math.max(0, (goal.value || 0) - done);
+    return left === 0 ? "Meta batida" : `Faltam ${left} dia${left === 1 ? "" : "s"}`;
+  }
+
+  if (goal.type === "cardio") {
+    const done = progressOfGoal(goal);
+    const left = Math.max(0, (goal.value || 0) - done);
+    return left === 0 ? "Semana completa" : `Faltam ${left} sessão${left === 1 ? "" : "s"} nesta semana`;
+  }
+
+  if (goal.type === "pr") {
+    const left = Math.max(0, (goal.value || 0) - (goal.bestKg || 0));
+    return left === 0 ? "Alvo atingido" : `Faltam ${left} kg`;
+  }
+
+  if (goal.type === "peso") {
+    const target = goal.value || 0;
+    const cur = goal.currentWeight || 0;
+    if (!cur) return "Registre seu peso para acompanhar";
+    const diff = Math.round(Math.abs(cur - target) * 10) / 10;
+    return diff <= 0.3 ? "Peso-alvo atingido" : `Distância: ${diff} kg`;
+  }
+
+  return "Progresso";
+}
+
+function whyThisMatters(g) {
+  const goal = ensureGoalShape(g);
+  if (goal.type === "freq") return "Frequência cria o hábito. Hábito vira resultado. Cada treino concluído no app entra nessa contagem.";
+  if (goal.type === "cardio") return "Cardio consistente melhora recuperação, disposição e saúde. As sessões salvas entram na semana automaticamente.";
+  if (goal.type === "pr") return "PR é prova concreta do seu avanço. Bater o alvo valida seu treino e orienta o próximo ciclo.";
+  if (goal.type === "peso") return "Acompanhar o peso com calma ajuda a ajustar o plano sem ansiedade.";
+  return "Concluir metas dá direção e clareza. Menos dúvida, mais execução.";
+}
+
+const GOALS_CATALOG = [
+  { id: "g_freq_7", type: "freq", title: "Frequência", subtitle: "Começo rápido", value: 7, accent: "orange" },
+  { id: "g_freq_30", type: "freq", title: "Frequência", subtitle: "Consistência", value: 30, accent: "soft" },
+  { id: "g_freq_60", type: "freq", title: "Frequência", subtitle: "Disciplina", value: 60, accent: "orange" },
+  { id: "g_freq_90", type: "freq", title: "Frequência", subtitle: "Transformação", value: 90, accent: "soft" },
+  { id: "g_pr_supino_50", type: "pr", title: "PR — Supino", subtitle: "Força no peito", exercise: "Supino", value: 50, accent: "orange" },
+  { id: "g_pr_supino_60", type: "pr", title: "PR — Supino", subtitle: "Meta forte", exercise: "Supino", value: 60, accent: "soft" },
+  { id: "g_pr_agacho_80", type: "pr", title: "PR — Agachamento", subtitle: "Base de pernas", exercise: "Agachamento", value: 80, accent: "soft" },
+  { id: "g_cardio_3", type: "cardio", title: "Cardio", subtitle: "Saúde e corte", value: 3, accent: "soft" },
+  { id: "g_cardio_5", type: "cardio", title: "Turbo no shape", subtitle: "Cardio forte", value: 5, accent: "orange" },
+];
+
+export default function Metas() {
   const nav = useNavigate();
-  const { user } = useAuth() as any;
+  const { user } = useAuth();
 
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [trainHoldActive, setTrainHoldActive] = useState(false);
-  const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
+  const [active, setActive] = useState([]);
+  const [workoutDates, setWorkoutDates] = useState([]);
+  const [cardioDates, setCardioDates] = useState([]);
+  const [customKg, setCustomKg] = useState("");
+  const [customEx, setCustomEx] = useState("Supino");
+  const [sheet, setSheet] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const holdStartTimerRef = useRef<number | null>(null);
-  const holdCompleteTimerRef = useRef<number | null>(null);
-  const holdCompletedRef = useRef(false);
-  const pressStartedRef = useRef(false);
+  async function loadWorkoutDates(userId) {
+    try {
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select("session_date, completed, created_at")
+        .eq("user_id", userId)
+        .eq("completed", true)
+        .order("session_date", { ascending: false });
 
-  const accountTapRef = useRef<number>(0);
-  const accountTapTimerRef = useRef<number | null>(null);
-
-  const items: Item[] = [
-    { to: "/dashboard", label: "Início", Icon: HomeIcon },
-    { to: "/nutricao", label: "Nutrição", Icon: NutritionIcon },
-    { to: "/treino", label: "Treino", Icon: () => <DumbbellIcon />, main: true },
-    { to: "/pagamentos", label: "Planos", Icon: CardIcon },
-    { to: "/conta", label: "Conta", Icon: UserIcon },
-  ];
-
-  const activeIndex = Math.max(
-    0,
-    items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
-  );
-
-  const isPaid =
-    user?.is_paid === true ||
-    user?.plan === "premium" ||
-    user?.plan === "basico" ||
-    user?.plan === "nutri" ||
-    user?.role === "premium";
-
-  useEffect(() => {
-    return () => {
-      if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current);
-      if (holdCompleteTimerRef.current) window.clearTimeout(holdCompleteTimerRef.current);
-      if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
-    };
-  }, []);
-
-  function go(to: string) {
-    nav(to);
-  }
-
-  function clearHoldTimers() {
-    if (holdStartTimerRef.current) {
-      window.clearTimeout(holdStartTimerRef.current);
-      holdStartTimerRef.current = null;
-    }
-    if (holdCompleteTimerRef.current) {
-      window.clearTimeout(holdCompleteTimerRef.current);
-      holdCompleteTimerRef.current = null;
-    }
-  }
-
-  function startTrainHold() {
-    clearHoldTimers();
-    holdCompletedRef.current = false;
-    pressStartedRef.current = true;
-    setTrainHoldActive(false);
-    setTrainHoldBlocked(false);
-
-    holdStartTimerRef.current = window.setTimeout(() => {
-      if (!pressStartedRef.current) return;
-
-      if (!isPaid) {
-        setTrainHoldBlocked(true);
-        window.setTimeout(() => setTrainHoldBlocked(false), 900);
-        pressStartedRef.current = false;
-        return;
+      if (error) {
+        console.error("loadWorkoutDates error:", error);
+        return [];
       }
 
-      setTrainHoldActive(true);
-
-      holdCompleteTimerRef.current = window.setTimeout(() => {
-        if (!pressStartedRef.current) return;
-        holdCompletedRef.current = true;
-        setTrainHoldActive(false);
-        nav("/treino-detalhe");
-      }, 1650);
-    }, 500);
-  }
-
-  function endTrainHold() {
-    const completed = holdCompletedRef.current;
-    pressStartedRef.current = false;
-
-    if (!completed) {
-      clearHoldTimers();
-      setTrainHoldActive(false);
+      return uniqueDates((data || []).map((row) => row.session_date || yyyyMmDd(row.created_at)));
+    } catch (err) {
+      console.error("loadWorkoutDates catch:", err);
+      return [];
     }
   }
 
-  function onTrainClick() {
-    if (holdCompletedRef.current) {
-      holdCompletedRef.current = false;
+  async function loadCardioDates(userId) {
+    try {
+      const { data, error } = await supabase
+        .from("cardio_sessions")
+        .select("date_key, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("loadCardioDates error:", error);
+        return [];
+      }
+
+      return uniqueDates((data || []).map((row) => row.date_key || yyyyMmDd(row.created_at)));
+    } catch (err) {
+      console.error("loadCardioDates catch:", err);
+      return [];
+    }
+  }
+
+  async function loadGoals() {
+    if (!user?.id) {
+      setActive([]);
+      setWorkoutDates([]);
+      setCardioDates([]);
+      setLoading(false);
       return;
     }
-    nav("/treino");
+
+    setLoading(true);
+
+    try {
+      const [goalsRes, workoutList, cardioList] = await Promise.all([
+        supabase
+          .from("user_goals")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        loadWorkoutDates(user.id),
+        loadCardioDates(user.id),
+      ]);
+
+      if (goalsRes.error) {
+        console.error("loadGoals error:", goalsRes.error);
+        setActive([]);
+      } else {
+        const shaped = (goalsRes.data || []).map((row) => mergedGoalWithDbProgress(row, workoutList, cardioList));
+        setActive(shaped);
+      }
+
+      setWorkoutDates(workoutList);
+      setCardioDates(cardioList);
+    } catch (err) {
+      console.error("loadGoals catch:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function onAccountClick() {
-    accountTapRef.current += 1;
+  useEffect(() => {
+    loadGoals();
+  }, [user?.id]);
 
-    if (accountTapTimerRef.current) {
-      window.clearTimeout(accountTapTimerRef.current);
+  async function persistAll(nextRaw) {
+    const next = (nextRaw || []).map((g) => mergedGoalWithDbProgress(g, workoutDates, cardioDates));
+    setActive(next);
+
+    if (!user?.id) return;
+
+    try {
+      const payload = next.map((goal) => toDbGoal(goal, user.id));
+      const nextIds = payload.map((x) => x.id);
+
+      if (payload.length > 0) {
+        const { error: upsertError } = await supabase
+          .from("user_goals")
+          .upsert(payload, { onConflict: "id" });
+
+        if (upsertError) {
+          console.error("persistAll upsert error:", upsertError);
+          showToast("Erro", "Não foi possível salvar a meta no banco.");
+          return;
+        }
+      }
+
+      const oldIds = active.map((x) => x.id);
+      const removedIds = oldIds.filter((id) => !nextIds.includes(id));
+
+      if (removedIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("user_goals")
+          .delete()
+          .eq("user_id", user.id)
+          .in("id", removedIds);
+
+        if (deleteError) console.error("persistAll delete error:", deleteError);
+      }
+    } catch (err) {
+      console.error("persistAll catch:", err);
+      showToast("Erro", "Falha ao salvar no Supabase.");
+    }
+  }
+
+  function showToast(title, sub) {
+    setToast({ title, sub });
+    window.setTimeout(() => setToast(null), 2200);
+  }
+
+  async function insertGoal(goal) {
+    const shaped = ensureGoalShape(goal);
+    const next = [shaped, ...active].slice(0, 12);
+    await persistAll(next);
+    showToast("Meta ativada", labelFromGoal(shaped));
+  }
+
+  async function updateGoal(goalId, updater, toastTitle, toastSub) {
+    const next = active.map((g) => {
+      if (g.id !== goalId) return g;
+      return ensureGoalShape(updater(ensureGoalShape(g)));
+    });
+
+    await persistAll(next);
+    if (toastTitle) showToast(toastTitle, toastSub);
+  }
+
+  async function deleteGoal(goalId) {
+    const next = active.filter((g) => g.id !== goalId);
+    await persistAll(next);
+    showToast("Removida", "Meta removida da lista");
+  }
+
+  function isActive(catalogId) {
+    return active.some((g) => g.catalogId === catalogId && ensureGoalShape(g).status !== "done");
+  }
+
+  async function toggleCatalogGoal(item) {
+    const on = isActive(item.id);
+
+    if (on) {
+      const next = active.filter((g) => g.catalogId !== item.id);
+      await persistAll(next);
+      return;
     }
 
-    accountTapTimerRef.current = window.setTimeout(() => {
-      if (accountTapRef.current >= 2) {
-        setShowAccountMenu((v) => !v);
-      } else {
-        nav("/conta");
+    const goal = ensureGoalShape({
+      id: uid(),
+      catalogId: item.id,
+      type: item.type,
+      value: item.value,
+      exercise: item.exercise,
+      title: item.title,
+      createdAt: new Date().toISOString(),
+      status: "active",
+    });
+
+    if (goal.type === "cardio") {
+      goal.weekId = startOfWeekISO(new Date());
+      goal.weekCount = 0;
+    }
+
+    if (goal.type === "freq") {
+      goal.days = uniqueDates(workoutDates);
+    }
+
+    await insertGoal(goal);
+  }
+
+  async function addCustomPR() {
+    const kg = normalizeNumber(customKg);
+    const ex = String(customEx || "").trim();
+    if (!ex || kg <= 0) return;
+
+    const goal = ensureGoalShape({
+      id: uid(),
+      catalogId: null,
+      type: "pr",
+      value: kg,
+      exercise: ex,
+      title: "PR",
+      createdAt: new Date().toISOString(),
+      status: "active",
+    });
+
+    await insertGoal(goal);
+    setCustomKg("");
+  }
+
+  async function softComplete(goalId) {
+    await updateGoal(
+      goalId,
+      (gg) => ({
+        ...gg,
+        status: "done",
+        isActive: false,
+        completedAt: new Date().toISOString(),
+        lastActionAt: new Date().toISOString(),
+      }),
+      "Concluída",
+      "Meta registrada como concluída"
+    );
+  }
+
+  async function reactivate(goalId) {
+    await updateGoal(
+      goalId,
+      (gg) => ({
+        ...gg,
+        status: "active",
+        isActive: true,
+        completedAt: null,
+        lastActionAt: new Date().toISOString(),
+        ...(gg.type === "cardio" ? { weekId: startOfWeekISO(new Date()), weekCount: 0 } : {}),
+      }),
+      "Reativada",
+      "Meta voltou para Ativas"
+    );
+  }
+
+  async function registerToday(goalId) {
+    const today = yyyyMmDd(new Date());
+    const next = active.map((g) => {
+      if (g.id !== goalId) return g;
+      const gg = ensureGoalShape(g);
+      if (gg.type !== "freq") return gg;
+      const set = new Set([...(gg.days || []), ...workoutDates]);
+      set.add(today);
+      gg.days = Array.from(set).sort().slice(-240);
+      gg.lastActionAt = new Date().toISOString();
+      if (isCompleted(gg)) {
+        gg.status = "done";
+        gg.completedAt = new Date().toISOString();
       }
-      accountTapRef.current = 0;
-    }, 220);
+      return gg;
+    });
+
+    await persistAll(next);
+    showToast("Registrado", remainingText(next.find((x) => x.id === goalId)));
   }
 
-  function closeAccountMenu() {
-    setShowAccountMenu(false);
+  async function registerCardioSession(goalId) {
+    const today = yyyyMmDd(new Date());
+    const nowWeek = startOfWeekISO(new Date());
+
+    const next = active.map((g) => {
+      if (g.id !== goalId) return g;
+      const gg = ensureGoalShape(g);
+      if (gg.type !== "cardio") return gg;
+
+      const log = uniqueDates([...(gg.cardioLog || []), ...cardioDates, today]);
+      gg.cardioLog = log.slice(-240).reverse();
+      gg.weekId = nowWeek;
+      gg.weekCount = log.filter((d) => d >= nowWeek).length;
+      gg.lastActionAt = new Date().toISOString();
+
+      if (isCompleted(gg)) {
+        gg.status = "done";
+        gg.completedAt = new Date().toISOString();
+      }
+
+      return gg;
+    });
+
+    await persistAll(next);
+    showToast("Sessão registrada", remainingText(next.find((x) => x.id === goalId)));
   }
 
-  function goCloseAccount() {
-    setShowAccountMenu(false);
-    nav("/conta?modal=close-account");
+  function openPRSheet(goalId) {
+    const g = active.find((x) => x.id === goalId);
+    const gg = ensureGoalShape(g);
+    setSheet({ goalId, kind: "pr", value: String(gg.bestKg || "") });
   }
+
+  async function savePR() {
+    const v = normalizeNumber(sheet?.value);
+    if (!sheet?.goalId || v <= 0) return;
+
+    const targetId = sheet.goalId;
+
+    const next = active.map((g) => {
+      if (g.id !== targetId) return g;
+      const gg = ensureGoalShape(g);
+      gg.bestKg = Math.max(Number(gg.bestKg || 0), v);
+      gg.lastPrAt = new Date().toISOString();
+      gg.lastActionAt = new Date().toISOString();
+      if (isCompleted(gg)) {
+        gg.status = "done";
+        gg.completedAt = new Date().toISOString();
+      }
+      return gg;
+    });
+
+    await persistAll(next);
+    setSheet(null);
+    showToast("PR registrado", remainingText(next.find((x) => x.id === targetId)));
+  }
+
+  const ranked = useMemo(() => {
+    const last7 = daysAgoKey(6);
+    const last30 = daysAgoKey(29);
+    const workout7 = workoutDates.filter((d) => d >= last7).length;
+    const workout30 = workoutDates.filter((d) => d >= last30).length;
+    const cardioWeek = cardioDates.filter((d) => d >= startOfWeekISO(new Date())).length;
+    const doneCount = active.filter((g) => ensureGoalShape(g).status === "done").length;
+    const prScore = active
+      .filter((g) => ensureGoalShape(g).type === "pr")
+      .reduce((acc, raw) => acc + Math.min(100, Math.round((progressOfGoal(raw) / Math.max(1, ensureGoalShape(raw).value)) * 100)), 0);
+
+    const score = workout7 * 12 + workout30 * 3 + cardioWeek * 8 + doneCount * 40 + Math.round(prScore / 10);
+
+    let level = "Bronze";
+    if (score >= 320) level = "Elite";
+    else if (score >= 220) level = "Ouro";
+    else if (score >= 130) level = "Prata";
+
+    return { score, level, workout7, workout30, cardioWeek, doneCount };
+  }, [active, workoutDates, cardioDates]);
+
+  const activeList = useMemo(() => active.filter((g) => ensureGoalShape(g).status !== "done"), [active]);
+  const doneList = useMemo(() => active.filter((g) => ensureGoalShape(g).status === "done"), [active]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "metas-apple-keyframes";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.innerHTML = `
+      @keyframes toastIn { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: translateY(0px); } }
+      @keyframes sheetIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0px); } }
+      @keyframes floatDash { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+      button:active { transform: scale(.99); }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   return (
-    <>
-      {showAccountMenu ? (
-        <div style={styles.sheetOverlay} onClick={closeAccountMenu}>
-          <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.sheetGrab} />
-            <div style={styles.sheetTitle}>Conta</div>
-            <button type="button" style={styles.sheetActionDanger} onClick={goCloseAccount}>
-              Fechar conta
-            </button>
-            <button type="button" style={styles.sheetActionSoft} onClick={closeAccountMenu}>
-              Cancelar
-            </button>
-          </div>
+    <div style={S.page}>
+      {toast ? (
+        <div style={S.toast}>
+          <div style={S.toastTitle}>{toast.title}</div>
+          <div style={S.toastSub}>{toast.sub}</div>
         </div>
       ) : null}
 
-      <div style={styles.wrapper}>
-        <nav style={styles.nav}>
-          <div
-            style={{
-              ...styles.activePill,
-              width: `calc((100% - 12px) / ${items.length})`,
-              transform: `translateX(${activeIndex * 100}%)`,
-              opacity: items[activeIndex]?.main ? 0 : 1,
-            }}
-          />
+      <button style={S.floatDashboard} onClick={() => nav("/dashboard")} type="button">
+        Dashboard
+      </button>
 
-          {items.map((item) => {
-            const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-            const Icon = item.Icon;
+      <section style={S.hero}>
+        <button style={S.backBtn} onClick={() => nav("/dashboard")} aria-label="Voltar" type="button">
+          ←
+        </button>
 
-            if (item.main) {
+        <div style={S.heroText}>
+          <div style={S.kicker}>Metas</div>
+          <div style={S.title}>Metas</div>
+          <div style={S.sub}>Ative, registre progresso e conclua. Tudo aparece no Dashboard.</div>
+        </div>
+      </section>
+
+      <section style={S.rankCard}>
+        <div style={S.rankTop}>
+          <div>
+            <div style={S.rankLabel}>Ranking FitDeal</div>
+            <div style={S.rankTitle}>{ranked.level}</div>
+            <div style={S.rankSub}>Pontuação baseada no banco do app.</div>
+          </div>
+          <div style={S.rankScore}>{ranked.score}</div>
+        </div>
+
+        <div style={S.rankGrid}>
+          <div style={S.rankMini}>
+            <b>{ranked.workout7}</b>
+            <span>treinos/7d</span>
+          </div>
+          <div style={S.rankMini}>
+            <b>{ranked.cardioWeek}</b>
+            <span>cardio/sem</span>
+          </div>
+          <div style={S.rankMini}>
+            <b>{ranked.doneCount}</b>
+            <span>concluídas</span>
+          </div>
+        </div>
+      </section>
+
+      <section style={S.whyCard}>
+        <div style={S.whyIcon}>
+          <SafeIcon src={ICONS.spark} size={20} />
+        </div>
+        <div>
+          <div style={S.whyTitle}>Por que concluir</div>
+          <div style={S.whySub}>Clareza + direção</div>
+          <div style={S.whyText}>Metas funcionam quando viram ação simples. Treinos concluídos e cardios salvos entram no progresso automaticamente.</div>
+        </div>
+      </section>
+
+      <section style={S.section}>
+        <div style={S.sectionHead}>
+          <div style={S.sectionTitle}>Ativas</div>
+          <button style={S.syncBtn} onClick={loadGoals} type="button">Atualizar</button>
+        </div>
+
+        {loading ? (
+          <div style={S.emptyCard}>Carregando metas...</div>
+        ) : activeList.length === 0 ? (
+          <div style={S.emptyCard}>
+            <div style={S.emptyTitle}>Sem metas ativas.</div>
+            <div style={S.emptySub}>Escolha uma meta abaixo. Depois, registre progresso aqui com 1 toque.</div>
+          </div>
+        ) : (
+          <div style={S.goalList}>
+            {activeList.map((raw) => {
+              const g = ensureGoalShape(mergedGoalWithDbProgress(raw, workoutDates, cardioDates));
+              const p = progressOfGoal(g);
+              const ratio = g.value > 0 ? clamp(p / g.value, 0, 1) : 0;
+              const canComplete = isCompleted(g);
+
               return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onMouseDown={startTrainHold}
-                  onMouseUp={endTrainHold}
-                  onMouseLeave={endTrainHold}
-                  onTouchStart={startTrainHold}
-                  onTouchEnd={endTrainHold}
-                  onTouchCancel={endTrainHold}
-                  onClick={onTrainClick}
-                  className="fitdeal-bottom-item fitdeal-main-item"
-                  style={styles.mainItem}
-                >
-                  <span
-                    style={{
-                      ...styles.mainIconWrap,
-                      transform: active
-                        ? "translateY(-8px) scale(1.05)"
-                        : "translateY(-7px) scale(1)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        ...styles.mainRing,
-                        opacity: trainHoldActive ? 1 : 0,
-                        transform: trainHoldActive
-                          ? "scale(1.08) rotate(360deg)"
-                          : "scale(.92) rotate(0deg)",
-                      }}
-                    />
-                    <span
-                      style={{
-                        ...styles.mainIconGlass,
-                        boxShadow: trainHoldBlocked
-                          ? "0 0 0 4px rgba(255,106,0,.10)"
-                          : undefined,
-                      }}
-                    />
-                    <span
-                      style={{
-                        ...styles.mainIconInner,
-                        boxShadow: active
-                          ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
-                          : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
-                      }}
-                    >
-                      <Icon active={active} />
+                <article key={g.id} style={S.goalCard}>
+                  <div style={S.goalTop}>
+                    <div style={S.goalIcon}>
+                      <SafeIcon src={iconSrcFromGoal(g)} size={18} />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={S.goalTitle}>{labelFromGoal(g)}</div>
+                      <div style={S.goalSub}>{remainingText(g)}</div>
+                    </div>
+                    <button style={S.deleteBtn} onClick={() => deleteGoal(g.id)} aria-label="Remover" type="button">✕</button>
+                  </div>
+
+                  <div style={S.progressMeta}>
+                    <span>
+                      {g.type === "pr"
+                        ? `Melhor: ${g.bestKg || 0} kg • Alvo: ${g.value} kg`
+                        : g.type === "cardio"
+                          ? `Semana: ${Math.min(p, g.value)}/${g.value}`
+                          : `Progresso: ${Math.min(Math.round(p), g.value)}/${g.value}`}
                     </span>
-                  </span>
+                    <b>{Math.round(ratio * 100)}%</b>
+                  </div>
 
-                  <span
-                    style={{
-                      ...styles.mainLabel,
-                      color: active ? ORANGE : TEXT,
-                      opacity: active ? 1 : 0.74,
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
+                  <div style={S.track}>
+                    <div style={{ ...S.fill, width: `${Math.round(ratio * 100)}%` }} />
+                  </div>
+
+                  <div style={S.reasonBox}>
+                    <div style={S.reasonTitle}>Motivo</div>
+                    <div style={S.reasonText}>{whyThisMatters(g)}</div>
+                  </div>
+
+                  <div style={S.actions}>
+                    {g.type === "freq" ? (
+                      <button style={S.primary} onClick={() => registerToday(g.id)} type="button">Registrar hoje</button>
+                    ) : g.type === "cardio" ? (
+                      <button style={S.primary} onClick={() => registerCardioSession(g.id)} type="button">Registrar sessão</button>
+                    ) : g.type === "pr" ? (
+                      <button style={S.primary} onClick={() => openPRSheet(g.id)} type="button">Registrar PR</button>
+                    ) : (
+                      <button style={S.primary} onClick={() => openPRSheet(g.id)} type="button">Registrar</button>
+                    )}
+
+                    {canComplete ? (
+                      <button style={S.ghost} onClick={() => softComplete(g.id)} type="button">Concluir</button>
+                    ) : (
+                      <button style={S.ghost} onClick={() => nav("/dashboard")} type="button">Ver no Dashboard</button>
+                    )}
+                  </div>
+                </article>
               );
-            }
+            })}
+          </div>
+        )}
+      </section>
 
-            if (item.to === "/conta") {
+      {doneList.length > 0 ? (
+        <section style={S.section}>
+          <div style={S.sectionTitle}>Concluídas</div>
+          <div style={S.doneList}>
+            {doneList.slice(0, 10).map((raw) => {
+              const g = ensureGoalShape(raw);
+              const when = g.completedAt ? new Date(g.completedAt).toLocaleDateString("pt-BR") : "—";
               return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={onAccountClick}
-                  className="fitdeal-bottom-item"
-                  style={styles.item}
-                >
-                  <span
-                    style={{
-                      ...styles.iconWrap,
-                      transform: active
-                        ? "translateY(-1px) scale(1.06)"
-                        : "translateY(0) scale(1)",
-                      filter: active
-                        ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                        : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
-                    }}
-                  >
-                    <Icon active={active} />
-                  </span>
-
-                  <span
-                    style={{
-                      ...styles.label,
-                      color: active ? "#fff" : TEXT,
-                      opacity: active ? 1 : 0.62,
-                      transform: active ? "translateY(-1px)" : "translateY(0)",
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
+                <div key={g.id} style={S.doneItem}>
+                  <div>
+                    <div style={S.doneTitle}>{labelFromGoal(g)}</div>
+                    <div style={S.doneSub}>Concluída em {when}</div>
+                  </div>
+                  <button style={S.doneBtn} onClick={() => reactivate(g.id)} type="button">Reativar</button>
+                </div>
               );
-            }
+            })}
+          </div>
+        </section>
+      ) : null}
 
+      <section style={S.section}>
+        <div style={S.sectionTitle}>Escolha rápida</div>
+        <div style={S.catalogGrid}>
+          {GOALS_CATALOG.map((item) => {
+            const on = isActive(item.id);
+            const isOrange = item.accent === "orange";
             return (
               <button
-                key={item.to}
+                key={item.id}
+                onClick={() => toggleCatalogGoal(item)}
                 type="button"
-                onClick={() => go(item.to)}
-                className="fitdeal-bottom-item"
-                style={styles.item}
+                style={{
+                  ...S.catalogCard,
+                  ...(isOrange ? S.catalogOrange : S.catalogSoft),
+                  ...(on ? S.catalogOn : null),
+                }}
               >
-                <span
-                  style={{
-                    ...styles.iconWrap,
-                    transform: active
-                      ? "translateY(-1px) scale(1.06)"
-                      : "translateY(0) scale(1)",
-                    filter: active
-                      ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                      : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
-                  }}
-                >
-                  <Icon active={active} />
-                </span>
-
-                <span
-                  style={{
-                    ...styles.label,
-                    color: active ? "#fff" : TEXT,
-                    opacity: active ? 1 : 0.62,
-                    transform: active ? "translateY(-1px)" : "translateY(0)",
-                  }}
-                >
-                  {item.label}
-                </span>
+                <div style={S.catalogTop}>
+                  <div style={S.catalogIcon}>{item.type === "freq" ? "📅" : item.type === "pr" ? "🏋️" : "🏃"}</div>
+                  <div style={S.catalogPill}>{on ? "Ativa" : "Ativar"}</div>
+                </div>
+                <div style={S.catalogTitle}>{item.title}</div>
+                <div style={S.catalogValue}>{item.type === "freq" ? `${item.value} dias` : item.type === "pr" ? `${item.value} kg` : `${item.value}x/sem`}</div>
+                <div style={S.catalogSub}>{item.type === "pr" ? item.exercise : item.subtitle}</div>
               </button>
             );
           })}
-        </nav>
+        </div>
+      </section>
 
-        <style>{`
-          .fitdeal-bottom-item {
-            transition:
-              transform .16s cubic-bezier(.2,.9,.2,1),
-              filter .16s ease;
-          }
+      <section style={S.customCard}>
+        <div>
+          <div style={S.customTitle}>Meta personalizada</div>
+          <div style={S.customSub}>PR (força)</div>
+          <div style={S.customText}>Ex: “50 kg no supino”. Depois use “Registrar PR” para marcar avanço.</div>
+        </div>
 
-          .fitdeal-bottom-item:active {
-            transform: scale(.91);
-            filter: brightness(.98);
-          }
+        <div style={S.customGrid}>
+          <label style={S.label}>
+            Exercício
+            <select value={customEx} onChange={(e) => setCustomEx(e.target.value)} style={S.input}>
+              <option>Supino</option>
+              <option>Agachamento</option>
+              <option>Levantamento terra</option>
+              <option>Remada</option>
+              <option>Desenvolvimento</option>
+              <option>Rosca direta</option>
+            </select>
+          </label>
 
-          .fitdeal-main-item:active {
-            transform: scale(.96);
-          }
+          <label style={S.label}>
+            Kg
+            <input value={customKg} onChange={(e) => setCustomKg(e.target.value)} inputMode="decimal" placeholder="50" style={S.input} />
+          </label>
+        </div>
 
-          @keyframes fitdealFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-2px); }
-          }
+        <button style={S.primaryWide} onClick={addCustomPR} type="button">Adicionar meta</button>
+      </section>
 
-          @keyframes fitdealGlow {
-            0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
-            50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
-          }
+      <button style={S.dashboardCard} onClick={() => nav("/dashboard")} type="button">
+        <div>
+          <div style={S.dashboardTitle}>Ver no Dashboard</div>
+          <div style={S.dashboardSub}>As metas, ranking e progresso aparecem lá também.</div>
+        </div>
+        <div style={S.dashboardArrow}>›</div>
+      </button>
 
-          .fitdeal-main-item > span:first-child {
-            animation: fitdealFloat 3.8s ease-in-out infinite;
-          }
+      {sheet ? (
+        <div style={S.sheetOverlay}>
+          <button style={S.sheetBackdrop} onClick={() => setSheet(null)} type="button" aria-label="Fechar" />
+          <div style={S.sheet}>
+            <div style={S.sheetTop}>
+              <div>
+                <div style={S.sheetTitle}>Registrar PR</div>
+                <div style={S.sheetSub}>Digite o maior peso que você atingiu (kg).</div>
+              </div>
+              <button style={S.sheetClose} onClick={() => setSheet(null)} aria-label="Fechar" type="button">✕</button>
+            </div>
 
-          .fitdeal-main-item > span:first-child > span:last-child {
-            animation: fitdealGlow 3.8s ease-in-out infinite;
-          }
+            <label style={S.label}>
+              Kg atingido
+              <input
+                value={sheet.value}
+                onChange={(e) => setSheet((s) => ({ ...s, value: e.target.value }))}
+                inputMode="decimal"
+                placeholder="Ex: 60"
+                style={S.input}
+                autoFocus
+              />
+            </label>
 
-          @media (prefers-reduced-motion: reduce) {
-            .fitdeal-bottom-item,
-            .fitdeal-main-item > span:first-child,
-            .fitdeal-main-item > span:first-child > span:last-child {
-              transition: none !important;
-              animation: none !important;
-            }
-          }
-        `}</style>
-      </div>
-    </>
+            <button style={S.primaryWide} onClick={savePR} type="button">Salvar</button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
+const S = {
+  page: {
+    minHeight: "100vh",
+    background: BG,
+    padding: 18,
+    paddingBottom: 130,
+  },
+  toast: {
     position: "fixed",
-    left: 0,
-    right: 0,
-    bottom: "calc(18px + env(safe-area-inset-bottom))",
-    display: "flex",
-    justifyContent: "center",
-    padding: "0 14px",
-    zIndex: 10001,
-    pointerEvents: "none",
-  },
-
-  nav: {
-    position: "relative",
-    display: "flex",
-    width: "100%",
-    maxWidth: 430,
-    minHeight: 70,
-    padding: 6,
-    gap: 4,
-    borderRadius: 34,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.66))",
-    border: "1px solid rgba(255,255,255,.52)",
-    boxShadow:
-      "0 28px 70px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55)",
-    backdropFilter: "blur(34px)",
-    WebkitBackdropFilter: "blur(34px)",
-    overflow: "visible",
-    pointerEvents: "auto",
-  },
-
-  activePill: {
-    position: "absolute",
-    top: 6,
-    bottom: 6,
-    left: 6,
-    borderRadius: 28,
-    background:
-      "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    boxShadow:
-      "0 16px 38px rgba(255,106,0,.30), 0 0 0 1px rgba(255,255,255,.22)",
-    transition: "transform .38s cubic-bezier(.22,1,.36,1), opacity .22s ease",
-    zIndex: 1,
-  },
-
-  item: {
-    position: "relative",
-    zIndex: 2,
-    flex: 1,
-    height: 56,
-    border: "none",
-    background: "transparent",
-    borderRadius: 28,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    padding: 0,
-    cursor: "pointer",
-    WebkitTapHighlightColor: "transparent",
-  },
-
-  mainItem: {
-    position: "relative",
-    zIndex: 3,
-    flex: 1,
-    height: 56,
-    border: "none",
-    background: "transparent",
-    borderRadius: 28,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 0,
-    padding: 0,
-    paddingBottom: 6,
-    cursor: "pointer",
-    WebkitTapHighlightColor: "transparent",
-  },
-
-  iconWrap: {
-    width: 24,
-    height: 24,
-    display: "grid",
-    placeItems: "center",
-    transition:
-      "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
-  },
-
-  mainIconWrap: {
-    position: "absolute",
-    top: -24,
-    width: 68,
-    height: 68,
-    display: "grid",
-    placeItems: "center",
-    transition: "transform .34s cubic-bezier(.22,1,.36,1)",
-  },
-
-  mainRing: {
-    position: "absolute",
-    inset: 0,
-    borderRadius: 999,
-    border: "2px solid rgba(255,106,0,.92)",
-    borderTopColor: "rgba(255,106,0,.12)",
-    borderRightColor: "rgba(255,106,0,.98)",
-    borderBottomColor: "rgba(255,106,0,.32)",
-    borderLeftColor: "rgba(255,106,0,.78)",
-    transition: "transform 1.65s linear, opacity .22s ease",
-    boxShadow: "0 0 0 4px rgba(255,106,0,.08)",
-  },
-
-  mainIconGlass: {
-    position: "absolute",
-    inset: 0,
-    borderRadius: 999,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54))",
-    border: "1px solid rgba(255,255,255,.72)",
-    backdropFilter: "blur(20px)",
-    WebkitBackdropFilter: "blur(20px)",
-  },
-
-  mainIconInner: {
-    position: "relative",
-    width: 58,
-    height: 58,
-    borderRadius: 999,
-    display: "grid",
-    placeItems: "center",
-    background:
-      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.58), rgba(255,255,255,0) 32%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82))",
-    border: "1px solid rgba(255,255,255,.88)",
-  },
-
-  label: {
-    fontSize: 8,
-    lineHeight: 1,
-    fontWeight: 950,
-    letterSpacing: 0.85,
-    textTransform: "uppercase",
-    transition:
-      "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
-  },
-
-  mainLabel: {
-    fontSize: 8,
-    lineHeight: 1,
-    fontWeight: 950,
-    letterSpacing: 0.85,
-    textTransform: "uppercase",
-    transition:
-      "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
-  },
-
-  sheetOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 11000,
-    background: "rgba(2,6,23,.22)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
-    display: "grid",
-    alignItems: "end",
-    padding: 12,
-    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
-  },
-
-  sheet: {
-    width: "100%",
-    maxWidth: 430,
+    top: 14,
+    left: 14,
+    right: 14,
+    zIndex: 80,
+    maxWidth: 520,
     margin: "0 auto",
-    borderRadius: 26,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
-    border: "1px solid rgba(255,255,255,.58)",
-    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
+    borderRadius: 20,
+    background: "rgba(15,23,42,.92)",
+    color: "#fff",
     padding: 14,
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
+    boxShadow: "0 18px 60px rgba(15,23,42,.24)",
+    animation: "toastIn .18s ease-out",
+    backdropFilter: "blur(14px)",
   },
-
-  sheetGrab: {
-    width: 44,
-    height: 5,
+  toastTitle: { fontSize: 14, fontWeight: 950 },
+  toastSub: { marginTop: 4, fontSize: 12, fontWeight: 750, opacity: 0.8 },
+  floatDashboard: {
+    position: "fixed",
+    right: 16,
+    bottom: "calc(94px + env(safe-area-inset-bottom))",
+    zIndex: 60,
+    border: "none",
     borderRadius: 999,
-    background: "rgba(100,116,139,.24)",
-    margin: "0 auto 10px",
-  },
-
-  sheetTitle: {
-    textAlign: "center",
-    fontSize: 15,
+    padding: "13px 16px",
+    background: "#0B0B0C",
+    color: "#fff",
     fontWeight: 950,
-    color: TEXT,
-    marginBottom: 12,
+    boxShadow: "0 20px 60px rgba(0,0,0,.22)",
+    animation: "floatDash 3s ease-in-out infinite",
   },
-
-  sheetActionDanger: {
-    width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.18)",
-    background: "rgba(255,106,0,.10)",
-    color: ORANGE,
-    fontWeight: 950,
-    fontSize: 14,
-    marginBottom: 10,
+  hero: {
+    display: "flex",
+    gap: 12,
+    alignItems: "flex-start",
+    borderRadius: 28,
+    padding: 16,
+    background: "linear-gradient(135deg, rgba(255,106,0,.14), rgba(255,255,255,.92))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
   },
-
-  sheetActionSoft: {
-    width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.72)",
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(255,255,255,.82)",
     color: TEXT,
     fontWeight: 950,
-    fontSize: 14,
+    flexShrink: 0,
   },
+  heroText: { minWidth: 0 },
+  kicker: { fontSize: 11, fontWeight: 950, color: ORANGE, textTransform: "uppercase", letterSpacing: 0.8 },
+  title: { marginTop: 5, fontSize: 30, fontWeight: 950, color: TEXT, letterSpacing: -1 },
+  sub: { marginTop: 7, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.45 },
+  rankCard: {
+    marginTop: 14,
+    borderRadius: 26,
+    padding: 16,
+    background: "#0B0B0C",
+    color: "#fff",
+    boxShadow: "0 22px 70px rgba(0,0,0,.20)",
+    overflow: "hidden",
+  },
+  rankTop: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" },
+  rankLabel: { fontSize: 11, fontWeight: 950, opacity: 0.68, textTransform: "uppercase", letterSpacing: 0.8 },
+  rankTitle: { marginTop: 4, fontSize: 26, fontWeight: 950, letterSpacing: -0.8 },
+  rankSub: { marginTop: 4, fontSize: 12, fontWeight: 750, opacity: 0.72 },
+  rankScore: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontSize: 24,
+    fontWeight: 950,
+    boxShadow: "0 20px 60px rgba(255,106,0,.24)",
+    flexShrink: 0,
+  },
+  rankGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 },
+  rankMini: {
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(255,255,255,.08)",
+    border: "1px solid rgba(255,255,255,.10)",
+    display: "grid",
+    gap: 4,
+  },
+  whyCard: {
+    marginTop: 14,
+    borderRadius: 24,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    display: "flex",
+    gap: 12,
+  },
+  whyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: ORANGE,
+    flexShrink: 0,
+  },
+  whyTitle: { fontSize: 15, fontWeight: 950, color: TEXT },
+  whySub: { marginTop: 3, fontSize: 12, fontWeight: 850, color: ORANGE },
+  whyText: { marginTop: 8, fontSize: 13, lineHeight: 1.45, fontWeight: 750, color: MUTED },
+  section: { marginTop: 18 },
+  sectionHead: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4, marginBottom: 10 },
+  syncBtn: {
+    border: `1px solid ${BORDER}`,
+    background: "#fff",
+    color: TEXT,
+    borderRadius: 999,
+    padding: "9px 12px",
+    fontSize: 12,
+    fontWeight: 950,
+  },
+  emptyCard: {
+    borderRadius: 22,
+    padding: 16,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.06)",
+    color: MUTED,
+    fontWeight: 800,
+  },
+  emptyTitle: { fontSize: 15, fontWeight: 950, color: TEXT },
+  emptySub: { marginTop: 6, fontSize: 13, lineHeight: 1.4 },
+  goalList: { display: "grid", gap: 12 },
+  goalCard: {
+    borderRadius: 26,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 16px 50px rgba(15,23,42,.07)",
+  },
+  goalTop: { display: "flex", alignItems: "center", gap: 12 },
+  goalIcon: { width: 44, height: 44, borderRadius: 16, display: "grid", placeItems: "center", background: ORANGE, flexShrink: 0 },
+  goalTitle: { fontSize: 15, fontWeight: 950, color: TEXT, letterSpacing: -0.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  goalSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
+  deleteBtn: { width: 36, height: 36, borderRadius: 14, border: `1px solid ${BORDER}`, background: SOFT, color: MUTED, fontWeight: 950 },
+  progressMeta: { marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, color: MUTED, fontWeight: 850 },
+  track: { marginTop: 9, height: 10, borderRadius: 999, background: "rgba(15,23,42,.08)", overflow: "hidden" },
+  fill: { height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #FF6A00, #FFB26B)", transition: "width .25s ease" },
+  reasonBox: { marginTop: 14, borderRadius: 18, padding: 12, background: "rgba(255,106,0,.08)", border: "1px solid rgba(255,106,0,.16)" },
+  reasonTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
+  reasonText: { marginTop: 6, fontSize: 12, lineHeight: 1.45, color: MUTED, fontWeight: 750 },
+  actions: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  primary: { border: "none", borderRadius: 18, padding: 13, background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950 },
+  ghost: { border: `1px solid ${BORDER}`, borderRadius: 18, padding: 13, background: "#fff", color: TEXT, fontWeight: 950 },
+  catalogGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 },
+  catalogCard: { border: `1px solid ${BORDER}`, borderRadius: 22, padding: 13, textAlign: "left", minHeight: 132, boxShadow: "0 14px 40px rgba(15,23,42,.06)" },
+  catalogOrange: { background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,255,255,.94))" },
+  catalogSoft: { background: "#fff" },
+  catalogOn: { border: "1px solid rgba(255,106,0,.34)", boxShadow: "0 18px 50px rgba(255,106,0,.12)" },
+  catalogTop: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" },
+  catalogIcon: { width: 38, height: 38, borderRadius: 15, display: "grid", placeItems: "center", background: "rgba(255,106,0,.12)" },
+  catalogPill: { padding: "6px 9px", borderRadius: 999, background: "rgba(15,23,42,.06)", color: TEXT, fontSize: 11, fontWeight: 950 },
+  catalogTitle: { marginTop: 12, fontSize: 14, fontWeight: 950, color: TEXT },
+  catalogValue: { marginTop: 4, fontSize: 20, fontWeight: 950, color: TEXT, letterSpacing: -0.5 },
+  catalogSub: { marginTop: 5, fontSize: 12, fontWeight: 800, color: MUTED },
+  customCard: { marginTop: 18, borderRadius: 26, padding: 16, background: "#fff", border: `1px solid ${BORDER}`, boxShadow: "0 16px 50px rgba(15,23,42,.07)" },
+  customTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
+  customSub: { marginTop: 5, fontSize: 13, fontWeight: 900, color: ORANGE },
+  customText: { marginTop: 8, fontSize: 13, lineHeight: 1.45, color: MUTED, fontWeight: 750 },
+  customGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 120px", gap: 10 },
+  label: { display: "grid", gap: 7, fontSize: 12, fontWeight: 950, color: MUTED },
+  input: { width: "100%", border: `1px solid ${BORDER}`, borderRadius: 16, background: "#fff", padding: "13px 12px", color: TEXT, fontWeight: 900, outline: "none" },
+  primaryWide: { marginTop: 14, width: "100%", border: "none", borderRadius: 18, padding: 14, background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 16px 44px rgba(255,106,0,.18)" },
+  dashboardCard: { marginTop: 14, width: "100%", border: "none", borderRadius: 24, padding: 16, background: "#0B0B0C", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, textAlign: "left", boxShadow: "0 20px 70px rgba(0,0,0,.18)" },
+  dashboardTitle: { fontSize: 15, fontWeight: 950 },
+  dashboardSub: { marginTop: 5, fontSize: 12, fontWeight: 750, opacity: 0.74, lineHeight: 1.35 },
+  dashboardArrow: { fontSize: 30, fontWeight: 900, opacity: 0.7 },
+  doneList: { display: "grid", gap: 10 },
+  doneItem: { borderRadius: 20, padding: 13, background: "#fff", border: `1px solid ${BORDER}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxShadow: "0 12px 34px rgba(15,23,42,.05)" },
+  doneTitle: { fontSize: 13, fontWeight: 950, color: TEXT },
+  doneSub: { marginTop: 4, fontSize: 12, fontWeight: 750, color: MUTED },
+  doneBtn: { border: `1px solid ${BORDER}`, borderRadius: 16, background: SOFT, color: TEXT, fontWeight: 950, padding: "10px 12px" },
+  sheetOverlay: { position: "fixed", inset: 0, zIndex: 90, display: "grid", alignItems: "end", padding: 14 },
+  sheetBackdrop: { position: "absolute", inset: 0, border: "none", background: "rgba(15,23,42,.36)", backdropFilter: "blur(8px)" },
+  sheet: { position: "relative", borderRadius: 28, padding: 16, background: "rgba(255,255,255,.96)", border: "1px solid rgba(255,255,255,.55)", boxShadow: "0 28px 90px rgba(15,23,42,.24)", animation: "sheetIn .18s ease-out" },
+  sheetTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 },
+  sheetTitle: { fontSize: 20, fontWeight: 950, color: TEXT, letterSpacing: -0.5 },
+  sheetSub: { marginTop: 5, fontSize: 13, color: MUTED, fontWeight: 750 },
+  sheetClose: { width: 38, height: 38, borderRadius: 14, border: `1px solid ${BORDER}`, background: SOFT, color: MUTED, fontWeight: 950 },
 };
