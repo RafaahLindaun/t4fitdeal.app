@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 type IconProps = {
   active: boolean;
@@ -14,7 +15,6 @@ type Item = {
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
-const MUTED = "#64748b";
 
 function HomeIcon({ active }: IconProps) {
   return (
@@ -46,46 +46,46 @@ function HomeIcon({ active }: IconProps) {
 
 function NutritionIcon({ active }: IconProps) {
   return (
-    <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <g>
-        <ellipse cx="32" cy="47.5" rx="11" ry="4.5" fill="rgba(255,106,0,.16)" />
+    <svg width="28" height="28" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <g transform="translate(0,-1)">
+        <ellipse cx="32" cy="49" rx="12.5" ry="4.8" fill="rgba(255,106,0,.16)" />
 
         <path
-          d="M31.5 44V28.5"
+          d="M31.7 45.5V27.2"
           stroke={active ? "#fff" : ORANGE}
-          strokeWidth="3.2"
+          strokeWidth="3.5"
           strokeLinecap="round"
         />
 
         <path
-          d="M31.5 33.5C31.5 28.2 35.2 24.1 41.8 22.2C43 21.9 43.9 23.1 43.3 24.1C40.5 29.1 36.8 32.2 31.5 33.5Z"
+          d="M31.8 33.6C31.8 27.8 35.9 23.4 43.1 21.3C44.4 20.9 45.4 22.2 44.7 23.4C41.7 28.8 37.6 32.2 31.8 33.6Z"
           fill={active ? "#fff" : ORANGE}
         />
         <path
-          d="M31.2 34C30.4 29.1 26.8 25.5 21.2 23.8C20 23.4 19.1 24.8 19.8 25.8C22.7 30.2 26.4 33 31.2 34Z"
+          d="M31.2 34.2C30.3 28.9 26.4 25 20.3 23.1C18.9 22.7 17.9 24.3 18.7 25.5C21.9 30.3 26 33.3 31.2 34.2Z"
           fill={active ? "#fff" : ORANGE}
-          opacity={0.92}
+          opacity={0.95}
         />
 
         <path
-          d="M32 39.2C32.3 36.5 34.3 34.2 37.8 33"
-          stroke={active ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.32)"}
-          strokeWidth="1.8"
+          d="M32.2 40.2C32.5 37.3 34.7 34.8 38.5 33.5"
+          stroke={active ? "rgba(255,255,255,.58)" : "rgba(255,255,255,.30)"}
+          strokeWidth="2"
           strokeLinecap="round"
         />
         <path
-          d="M31.6 39.8C31.1 37.2 29.4 35.3 26.5 34.2"
-          stroke={active ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.32)"}
-          strokeWidth="1.8"
+          d="M31.5 41C30.9 38.1 29 35.9 25.8 34.7"
+          stroke={active ? "rgba(255,255,255,.58)" : "rgba(255,255,255,.30)"}
+          strokeWidth="2"
           strokeLinecap="round"
         />
 
         <path
-          d="M23.5 44.8C24.6 42.7 27.6 41.2 31.5 41.2C35.4 41.2 38.4 42.7 39.5 44.8"
+          d="M22.8 45.9C24.1 43.5 27.4 41.8 31.7 41.8C36.1 41.8 39.4 43.5 40.7 45.9"
           stroke={active ? "#fff" : ORANGE}
-          strokeWidth="2.2"
+          strokeWidth="2.35"
           strokeLinecap="round"
-          opacity={0.9}
+          opacity={0.95}
         />
       </g>
     </svg>
@@ -161,42 +161,24 @@ function UserIcon({ active }: IconProps) {
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
+  const { user } = useAuth() as any;
 
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [trainHoldActive, setTrainHoldActive] = useState(false);
+  const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
 
   const holdTimerRef = useRef<number | null>(null);
+  const completeTimerRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
   const accountTapRef = useRef<number>(0);
   const accountTapTimerRef = useRef<number | null>(null);
 
   const items: Item[] = [
-    {
-      to: "/dashboard",
-      label: "Início",
-      Icon: HomeIcon,
-    },
-    {
-      to: "/nutricao",
-      label: "Nutrição",
-      Icon: NutritionIcon,
-    },
-    {
-      to: "/treino",
-      label: "Treino",
-      Icon: () => <DumbbellIcon />,
-      main: true,
-    },
-    {
-      to: "/pagamentos",
-      label: "Planos",
-      Icon: CardIcon,
-    },
-    {
-      to: "/conta",
-      label: "Conta",
-      Icon: UserIcon,
-    },
+    { to: "/dashboard", label: "Início", Icon: HomeIcon },
+    { to: "/nutricao", label: "Nutrição", Icon: NutritionIcon },
+    { to: "/treino", label: "Treino", Icon: () => <DumbbellIcon />, main: true },
+    { to: "/pagamentos", label: "Planos", Icon: CardIcon },
+    { to: "/conta", label: "Conta", Icon: UserIcon },
   ];
 
   const activeIndex = Math.max(
@@ -204,9 +186,17 @@ export default function BottomMenu() {
     items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
   );
 
+  const isPaid =
+    user?.is_paid === true ||
+    user?.plan === "premium" ||
+    user?.plan === "basico" ||
+    user?.plan === "nutri" ||
+    user?.role === "premium";
+
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
+      if (completeTimerRef.current) window.clearTimeout(completeTimerRef.current);
       if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
     };
   }, []);
@@ -218,24 +208,41 @@ export default function BottomMenu() {
   function startTrainHold() {
     didLongPressRef.current = false;
     setTrainHoldActive(false);
+    setTrainHoldBlocked(false);
 
     if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
+    if (completeTimerRef.current) window.clearTimeout(completeTimerRef.current);
 
     holdTimerRef.current = window.setTimeout(() => {
+      if (!isPaid) {
+        setTrainHoldBlocked(true);
+        window.setTimeout(() => setTrainHoldBlocked(false), 900);
+        return;
+      }
+
       didLongPressRef.current = true;
       setTrainHoldActive(true);
 
-      window.setTimeout(() => {
+      completeTimerRef.current = window.setTimeout(() => {
         setTrainHoldActive(false);
         nav("/treino-detalhe");
-      }, 520);
-    }, 420);
+      }, 1400);
+    }, 650);
   }
 
   function endTrainHold() {
     if (holdTimerRef.current) {
       window.clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
+    }
+
+    if (completeTimerRef.current && !didLongPressRef.current) {
+      window.clearTimeout(completeTimerRef.current);
+      completeTimerRef.current = null;
+    }
+
+    if (!didLongPressRef.current) {
+      setTrainHoldActive(false);
     }
   }
 
@@ -333,11 +340,18 @@ export default function BottomMenu() {
                         ...styles.mainRing,
                         opacity: trainHoldActive ? 1 : 0,
                         transform: trainHoldActive
-                          ? "scale(1.06) rotate(180deg)"
+                          ? "scale(1.08) rotate(360deg)"
                           : "scale(.92) rotate(0deg)",
                       }}
                     />
-                    <span style={styles.mainIconGlass} />
+                    <span
+                      style={{
+                        ...styles.mainIconGlass,
+                        boxShadow: trainHoldBlocked
+                          ? "0 0 0 4px rgba(255,106,0,.10)"
+                          : undefined,
+                      }}
+                    />
                     <span
                       style={{
                         ...styles.mainIconInner,
@@ -597,7 +611,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRightColor: "rgba(255,106,0,.98)",
     borderBottomColor: "rgba(255,106,0,.32)",
     borderLeftColor: "rgba(255,106,0,.78)",
-    transition: "transform .52s cubic-bezier(.22,1,.36,1), opacity .22s ease",
+    transition: "transform 1.4s linear, opacity .22s ease",
     boxShadow: "0 0 0 4px rgba(255,106,0,.08)",
   },
 
