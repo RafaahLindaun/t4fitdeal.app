@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 type IconProps = {
   active: boolean;
@@ -49,33 +50,47 @@ function NutritionIcon({ active }: IconProps) {
     <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
       <g transform="translate(0,0)">
         <path
-          d="M32 45.2V23.8"
+          d="M32 45.5V27"
           stroke={active ? "#fff" : ORANGE}
-          strokeWidth="3.8"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M32 34.2C32 27.8 36.7 22.9 44.1 20.8C45.5 20.4 46.6 22 45.8 23.2C42.6 29 38.4 32.8 32 34.2Z"
-          fill={active ? "#fff" : ORANGE}
-        />
-
-        <path
-          d="M32 34.2C30.9 28.6 26.7 24.4 20.2 22.3C18.8 21.8 17.7 23.5 18.6 24.8C22 30 26.1 33.3 32 34.2Z"
-          fill={active ? "#fff" : ORANGE}
-          opacity="0.96"
-        />
-
-        <path
-          d="M32.5 39.9C32.9 36.9 35.2 34.2 39.1 32.8"
-          stroke={active ? "rgba(255,255,255,.56)" : "rgba(255,255,255,.28)"}
-          strokeWidth="2"
+          strokeWidth="4.2"
           strokeLinecap="round"
         />
         <path
-          d="M31.5 40.6C30.8 37.7 28.7 35.3 25.2 34"
-          stroke={active ? "rgba(255,255,255,.56)" : "rgba(255,255,255,.28)"}
-          strokeWidth="2"
+          d="M31.8 33.8C31.8 28.1 35.9 23.8 42.9 21.8C44.2 21.4 45.3 22.9 44.6 24.1C41.6 29.4 37.7 32.7 31.8 33.8Z"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M32.2 34C31.1 28.8 27.2 25 20.9 23C19.5 22.6 18.4 24.2 19.2 25.4C22.2 30.1 26.2 33 32.2 34Z"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M36.7 26.8L41.2 24.1"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="2.1"
+          strokeLinecap="round"
+        />
+        <path
+          d="M38.1 29.6L42.7 28"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="2.1"
+          strokeLinecap="round"
+        />
+        <path
+          d="M26.8 27L22.3 24.8"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="2.1"
+          strokeLinecap="round"
+        />
+        <path
+          d="M25.5 29.9L21 28.7"
+          stroke={active ? "#fff" : ORANGE}
+          strokeWidth="2.1"
           strokeLinecap="round"
         />
       </g>
@@ -158,6 +173,7 @@ export default function BottomMenu() {
   const [trainHoldProgress, setTrainHoldProgress] = useState(0);
   const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
   const [trainPressing, setTrainPressing] = useState(false);
+  const [hasWorkoutDetailAccess, setHasWorkoutDetailAccess] = useState(false);
 
   const holdStartTimerRef = useRef<number | null>(null);
   const holdProgressRafRef = useRef<number | null>(null);
@@ -184,12 +200,51 @@ export default function BottomMenu() {
     items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
   );
 
-  const isPaid =
-    user?.is_paid === true ||
-    user?.plan === "premium" ||
-    user?.plan === "basico" ||
-    user?.plan === "nutri" ||
-    user?.role === "premium";
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPaidAccess() {
+      if (!user?.id) {
+        if (mounted) setHasWorkoutDetailAccess(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_subscriptions")
+          .select("plan_key, status")
+          .eq("user_id", user.id)
+          .in("status", ["active", "trialing"])
+          .order("updated_at", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          console.error("BottomMenu loadPaidAccess error:", error);
+          if (mounted) setHasWorkoutDetailAccess(false);
+          return;
+        }
+
+        const row = Array.isArray(data) ? data[0] : null;
+        const planKey = String(row?.plan_key || "").toLowerCase();
+        const status = String(row?.status || "").toLowerCase();
+
+        const allowed =
+          ["active", "trialing"].includes(status) &&
+          ["basico", "premium"].includes(planKey);
+
+        if (mounted) setHasWorkoutDetailAccess(allowed);
+      } catch (err) {
+        console.error("BottomMenu loadPaidAccess catch:", err);
+        if (mounted) setHasWorkoutDetailAccess(false);
+      }
+    }
+
+    loadPaidAccess();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     return () => {
@@ -254,7 +309,7 @@ export default function BottomMenu() {
     holdStartTimerRef.current = window.setTimeout(() => {
       if (!pressStartedRef.current) return;
 
-      if (!isPaid) {
+      if (!hasWorkoutDetailAccess) {
         setTrainHoldBlocked(true);
         setTrainPressing(false);
         pressStartedRef.current = false;
