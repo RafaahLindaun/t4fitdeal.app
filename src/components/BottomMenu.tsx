@@ -46,51 +46,57 @@ function HomeIcon({ active }: IconProps) {
 }
 
 function NutritionIcon({ active }: IconProps) {
+  const c = active ? "#fff" : ORANGE;
+
   return (
-    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <g transform="translate(0,0)">
+    <svg width="35" height="35" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <g transform="translate(0,-1)">
         <path
-          d="M32 45.5V27"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="4.2"
+          d="M32 47V27.4"
+          stroke={c}
+          strokeWidth="5.2"
           strokeLinecap="round"
         />
+
         <path
-          d="M31.8 33.8C31.8 28.1 35.9 23.8 42.9 21.8C44.2 21.4 45.3 22.9 44.6 24.1C41.6 29.4 37.7 32.7 31.8 33.8Z"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M32.2 34C31.1 28.8 27.2 25 20.9 23C19.5 22.6 18.4 24.2 19.2 25.4C22.2 30.1 26.2 33 32.2 34Z"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="3"
+          d="M32.2 35.1C32.2 29.3 36.5 24.8 43.8 22.7C45.4 22.2 46.5 24.1 45.5 25.5C42.4 30.9 38.4 34.2 32.2 35.1Z"
+          stroke={c}
+          strokeWidth="3.9"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
         <path
-          d="M36.7 26.8L41.2 24.1"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="2.1"
+          d="M31.8 35.1C30.7 29.8 26.5 25.6 20.2 23.6C18.6 23.1 17.5 25.1 18.5 26.5C21.6 31.4 25.8 34.3 31.8 35.1Z"
+          stroke={c}
+          strokeWidth="3.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M37.6 28.6L42.1 25.9"
+          stroke={c}
+          strokeWidth="2.8"
           strokeLinecap="round"
         />
         <path
-          d="M38.1 29.6L42.7 28"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="2.1"
+          d="M39.4 31.5L43.6 30"
+          stroke={c}
+          strokeWidth="2.8"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M26.5 28.7L22.2 26.5"
+          stroke={c}
+          strokeWidth="2.8"
           strokeLinecap="round"
         />
         <path
-          d="M26.8 27L22.3 24.8"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="2.1"
-          strokeLinecap="round"
-        />
-        <path
-          d="M25.5 29.9L21 28.7"
-          stroke={active ? "#fff" : ORANGE}
-          strokeWidth="2.1"
+          d="M24.7 31.5L20.6 30.2"
+          stroke={c}
+          strokeWidth="2.8"
           strokeLinecap="round"
         />
       </g>
@@ -215,8 +221,7 @@ export default function BottomMenu() {
           .select("plan_key, status")
           .eq("user_id", user.id)
           .in("status", ["active", "trialing"])
-          .order("updated_at", { ascending: false })
-          .limit(1);
+          .limit(5);
 
         if (error) {
           console.error("BottomMenu loadPaidAccess error:", error);
@@ -224,13 +229,12 @@ export default function BottomMenu() {
           return;
         }
 
-        const row = Array.isArray(data) ? data[0] : null;
-        const planKey = String(row?.plan_key || "").toLowerCase();
-        const status = String(row?.status || "").toLowerCase();
-
-        const allowed =
-          ["active", "trialing"].includes(status) &&
-          ["basico", "premium"].includes(planKey);
+        const rows = Array.isArray(data) ? data : [];
+        const allowed = rows.some((row) => {
+          const planKey = String(row?.plan_key || "").toLowerCase();
+          const status = String(row?.status || "").toLowerCase();
+          return ["active", "trialing"].includes(status) && ["basico", "premium"].includes(planKey);
+        });
 
         if (mounted) setHasWorkoutDetailAccess(allowed);
       } catch (err) {
@@ -509,9 +513,14 @@ export default function BottomMenu() {
                   <span
                     style={{
                       ...styles.iconWrap,
-                      transform: active
-                        ? "translateY(-1px) scale(1.06)"
-                        : "translateY(0) scale(1)",
+                      transform:
+                        active
+                          ? item.to === "/nutricao"
+                            ? "translateY(-2px) scale(1.12)"
+                            : "translateY(-1px) scale(1.06)"
+                          : item.to === "/nutricao"
+                            ? "translateY(-1px) scale(1.05)"
+                            : "translateY(0) scale(1)",
                       filter: active
                         ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
                         : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
@@ -545,9 +554,14 @@ export default function BottomMenu() {
                 <span
                   style={{
                     ...styles.iconWrap,
-                    transform: active
-                      ? "translateY(-1px) scale(1.06)"
-                      : "translateY(0) scale(1)",
+                    transform:
+                      active
+                        ? item.to === "/nutricao"
+                          ? "translateY(-2px) scale(1.12)"
+                          : "translateY(-1px) scale(1.06)"
+                        : item.to === "/nutricao"
+                          ? "translateY(-1px) scale(1.05)"
+                          : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
                       : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
@@ -704,8 +718,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   iconWrap: {
-    width: 24,
-    height: 24,
+    width: 30,
+    height: 30,
     display: "grid",
     placeItems: "center",
     transition:
