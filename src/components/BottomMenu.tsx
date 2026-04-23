@@ -42,26 +42,26 @@ function NutritionIcon({ active }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 3.9c3.85 0 6.2 2.48 6.2 6.42 0 5.27-3.28 8.47-6.2 9.68-2.92-1.21-6.2-4.41-6.2-9.68 0-3.94 2.35-6.42 6.2-6.42Z"
+        d="M12 3.8c3.9 0 6.3 2.57 6.3 6.6 0 5.46-3.38 8.74-6.3 9.92-2.92-1.18-6.3-4.46-6.3-9.92 0-4.03 2.4-6.6 6.3-6.6Z"
         stroke={c}
         strokeWidth="2.15"
         strokeLinejoin="round"
       />
       <path
-        d="M12.05 7.9v7.45"
+        d="M12.05 7.35v7.7"
         stroke={c}
         strokeWidth="2.15"
         strokeLinecap="round"
       />
       <path
-        d="M12 12.35c-1.95-.18-3.23-1.2-3.92-3.02 2.12.12 3.56.97 3.92 3.02Z"
+        d="M12 11.9c-1.95-.22-3.2-1.22-3.88-2.98 2.08.1 3.44.92 3.88 2.98Z"
         stroke={c}
         strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M12 13.15c.3-2.05 1.74-3.42 4-4.07-.38 2.48-1.92 3.76-4 4.07Z"
+        d="M11.95 12.7c.34-2.02 1.72-3.34 3.82-3.98-.27 2.32-1.6 3.64-3.82 3.98Z"
         stroke={c}
         strokeWidth="1.9"
         strokeLinecap="round"
@@ -96,7 +96,15 @@ function CardIcon({ active }) {
 
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3.7" y="6.4" width="16.6" height="11.2" rx="2.6" stroke={c} strokeWidth="2.25" />
+      <rect
+        x="3.7"
+        y="6.4"
+        width="16.6"
+        height="11.2"
+        rx="2.6"
+        stroke={c}
+        strokeWidth="2.25"
+      />
       <path d="M4.2 10h15.6" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
       <path d="M7.4 14.5h3.5" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
     </svg>
