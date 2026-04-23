@@ -42,30 +42,24 @@ function NutritionIcon({ active }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12 3.8c3.9 0 6.3 2.57 6.3 6.6 0 5.46-3.38 8.74-6.3 9.92-2.92-1.18-6.3-4.46-6.3-9.92 0-4.03 2.4-6.6 6.3-6.6Z"
-        stroke={c}
-        strokeWidth="2.15"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12.05 7.35v7.7"
+        d="M7.2 14.4c0-4 2.8-6.8 7.2-7.2.4 4-1.8 7.2-6.1 8.2"
         stroke={c}
         strokeWidth="2.15"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
       <path
-        d="M12 11.9c-1.95-.22-3.2-1.22-3.88-2.98 2.08.1 3.44.92 3.88 2.98Z"
+        d="M12.7 16.7c-3.4.2-5.8-1.5-7.1-5 .2 0 .5 0 .7 0 3.8 0 6.3 1.8 7.4 5"
         stroke={c}
-        strokeWidth="1.9"
+        strokeWidth="2.15"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M11.95 12.7c.34-2.02 1.72-3.34 3.82-3.98-.27 2.32-1.6 3.64-3.82 3.98Z"
+        d="M10.4 10.8c1.5 1.9 2.2 4.1 2.2 7"
         stroke={c}
-        strokeWidth="1.9"
+        strokeWidth="2.15"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );
