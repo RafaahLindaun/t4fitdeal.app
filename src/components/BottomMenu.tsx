@@ -1,854 +1,542 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
-
-type IconProps = {
-  active: boolean;
-};
 
 type Item = {
   to: string;
   label: string;
-  Icon: (p: IconProps) => JSX.Element;
-  main?: boolean;
+  Icon: (p: { active: boolean }) => JSX.Element;
+  activeBg: string;
+  activeFg: string;
 };
 
 const ORANGE = "#FF6A00";
-const TEXT = "#0f172a";
-
-function HomeIcon({ active }: IconProps) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4.5 10.7 12 4.4l7.5 6.3"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 19.7v-5.1h4v5.1"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function NutritionIcon({ active }: IconProps) {
-  const c = active ? "#fff" : ORANGE;
-
-  return (
-    <svg width="35" height="35" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <g transform="translate(0,-1)">
-        <path
-          d="M32 47V27.4"
-          stroke={c}
-          strokeWidth="5.2"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M32.2 35.1C32.2 29.3 36.5 24.8 43.8 22.7C45.4 22.2 46.5 24.1 45.5 25.5C42.4 30.9 38.4 34.2 32.2 35.1Z"
-          stroke={c}
-          strokeWidth="3.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        <path
-          d="M31.8 35.1C30.7 29.8 26.5 25.6 20.2 23.6C18.6 23.1 17.5 25.1 18.5 26.5C21.6 31.4 25.8 34.3 31.8 35.1Z"
-          stroke={c}
-          strokeWidth="3.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        <path
-          d="M37.6 28.6L42.1 25.9"
-          stroke={c}
-          strokeWidth="2.8"
-          strokeLinecap="round"
-        />
-        <path
-          d="M39.4 31.5L43.6 30"
-          stroke={c}
-          strokeWidth="2.8"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M26.5 28.7L22.2 26.5"
-          stroke={c}
-          strokeWidth="2.8"
-          strokeLinecap="round"
-        />
-        <path
-          d="M24.7 31.5L20.6 30.2"
-          stroke={c}
-          strokeWidth="2.8"
-          strokeLinecap="round"
-        />
-      </g>
-    </svg>
-  );
-}
-
-function DumbbellIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <g transform="rotate(-35 32 32)">
-        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
-        <rect x="16" y="21" width="8" height="22" rx="3" fill={ORANGE} />
-        <rect x="25" y="29" width="14" height="6" rx="3" fill={ORANGE} />
-        <rect x="40" y="21" width="8" height="22" rx="3" fill={ORANGE} />
-        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
-        <path
-          d="M18 24.5C20.5 22 24.5 21 32 21C39.5 21 43.5 22 46 24.5"
-          stroke="rgba(255,255,255,.22)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </g>
-    </svg>
-  );
-}
-
-function CardIcon({ active }: IconProps) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3.7"
-        y="6.4"
-        width="16.6"
-        height="11.2"
-        rx="2.6"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-      />
-      <path
-        d="M4.2 10h15.6"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.4 14.5h3.5"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function UserIcon({ active }: IconProps) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-      />
-      <path
-        d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5"
-        stroke={active ? "#fff" : ORANGE}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
-  const { user } = useAuth() as any;
 
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [trainHoldProgress, setTrainHoldProgress] = useState(0);
-  const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
-  const [trainPressing, setTrainPressing] = useState(false);
-  const [hasWorkoutDetailAccess, setHasWorkoutDetailAccess] = useState(false);
-
-  const holdStartTimerRef = useRef<number | null>(null);
-  const holdProgressRafRef = useRef<number | null>(null);
-  const holdStartAtRef = useRef<number>(0);
-  const holdCompletedRef = useRef(false);
-  const pressStartedRef = useRef(false);
-
-  const accountTapRef = useRef<number>(0);
-  const accountTapTimerRef = useRef<number | null>(null);
-
-  const HOLD_DELAY_MS = 180;
-  const HOLD_TOTAL_MS = 1050;
+  const auth = useAuth() as any;
+  const logoutFn = auth?.logout;
 
   const items: Item[] = [
-    { to: "/dashboard", label: "Início", Icon: HomeIcon },
-    { to: "/nutricao", label: "Nutrição", Icon: NutritionIcon },
-    { to: "/treino", label: "Treino", Icon: () => <DumbbellIcon />, main: true },
-    { to: "/pagamentos", label: "Planos", Icon: CardIcon },
-    { to: "/conta", label: "Conta", Icon: UserIcon },
+    {
+      to: "/dashboard",
+      label: "Início",
+      Icon: HomeIcon,
+      activeBg: "rgba(37, 99, 235, 0.12)",
+      activeFg: "#2563eb",
+    },
+    {
+      to: "/nutricao",
+      label: "Nutrição",
+      Icon: NutritionIcon,
+      activeBg: "rgba(34, 197, 94, 0.14)",
+      activeFg: "#16a34a",
+    },
+    {
+      to: "/pagamentos",
+      label: "Planos",
+      Icon: CardIcon,
+      activeBg: "rgba(245, 158, 11, 0.16)",
+      activeFg: "#d97706",
+    },
+    {
+      to: "/conta",
+      label: "Conta",
+      Icon: UserIcon,
+      activeBg: "rgba(124, 58, 237, 0.14)",
+      activeFg: "#7c3aed",
+    },
   ];
 
-  const activeIndex = Math.max(
-    0,
-    items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
-  );
+  const treinoActive = pathname.startsWith("/treino");
+  const contaActive = pathname.startsWith("/conta");
 
-  useEffect(() => {
-    let mounted = true;
+  // ✅ Long-press Apple-like: segura no botão central -> vai direto pro TreinoDetalhe
+  const pressTimerRef = useRef<number | null>(null);
+  const didLongPressRef = useRef(false);
 
-    async function loadPaidAccess() {
-      if (!user?.id) {
-        if (mounted) setHasWorkoutDetailAccess(false);
-        return;
+  // ✅ Double-click “Conta” -> action sheet
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  // ✅ IMPORTANTE: JSX não aceita <items[3].Icon />
+  const ContaIcon = items[3].Icon;
+
+  function vibrate(ms = 14) {
+    try {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        // @ts-ignore
+        navigator.vibrate(ms);
       }
+    } catch {}
+  }
 
-      try {
-        const { data, error } = await supabase
-          .from("user_subscriptions")
-          .select("plan_key, status")
-          .eq("user_id", user.id)
-          .in("status", ["active", "trialing"])
-          .limit(5);
-
-        if (error) {
-          console.error("BottomMenu loadPaidAccess error:", error);
-          if (mounted) setHasWorkoutDetailAccess(false);
-          return;
-        }
-
-        const rows = Array.isArray(data) ? data : [];
-        const allowed = rows.some((row) => {
-          const planKey = String(row?.plan_key || "").toLowerCase();
-          const status = String(row?.status || "").toLowerCase();
-          return ["active", "trialing"].includes(status) && ["basico", "premium"].includes(planKey);
-        });
-
-        if (mounted) setHasWorkoutDetailAccess(allowed);
-      } catch (err) {
-        console.error("BottomMenu loadPaidAccess catch:", err);
-        if (mounted) setHasWorkoutDetailAccess(false);
-      }
+  function clearPressTimer() {
+    if (pressTimerRef.current != null) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
     }
+  }
 
-    loadPaidAccess();
+  function startLongPress() {
+    didLongPressRef.current = false;
+    clearPressTimer();
+
+    pressTimerRef.current = window.setTimeout(() => {
+      didLongPressRef.current = true;
+      vibrate(18);
+      nav("/treino/detalhe", { state: { from: "/treino" } });
+    }, 420);
+  }
+
+  function endLongPress() {
+    clearPressTimer();
+  }
+
+  function cancelClickIfLongPress(e: any) {
+    if (didLongPressRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      didLongPressRef.current = false;
+    }
+  }
+
+  // trava scroll e fecha com ESC (web) quando sheet abre
+  useEffect(() => {
+    if (!logoutOpen) return;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLogoutOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
 
     return () => {
-      mounted = false;
+      document.body.style.overflow = prev || "";
+      window.removeEventListener("keydown", onKey);
     };
-  }, [user?.id]);
+  }, [logoutOpen]);
 
-  useEffect(() => {
-    return () => {
-      if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current);
-      if (holdProgressRafRef.current) window.cancelAnimationFrame(holdProgressRafRef.current);
-      if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
-    };
-  }, []);
-
-  function go(to: string) {
-    nav(to);
-  }
-
-  function clearHoldTimers() {
-    if (holdStartTimerRef.current) {
-      window.clearTimeout(holdStartTimerRef.current);
-      holdStartTimerRef.current = null;
+  function openLogoutSheet(e?: any) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-    if (holdProgressRafRef.current) {
-      window.cancelAnimationFrame(holdProgressRafRef.current);
-      holdProgressRafRef.current = null;
-    }
+    vibrate(10);
+    setLogoutOpen(true);
   }
 
-  function resetHoldState() {
-    clearHoldTimers();
-    pressStartedRef.current = false;
-    setTrainHoldProgress(0);
-    setTrainPressing(false);
-  }
+  function doLogout() {
+    setLogoutOpen(false);
 
-  function runHoldProgress() {
-    const tick = (now: number) => {
-      if (!pressStartedRef.current) return;
-
-      const elapsed = now - holdStartAtRef.current;
-      const pct = Math.min(1, elapsed / HOLD_TOTAL_MS);
-
-      setTrainHoldProgress(pct);
-
-      if (pct >= 1) {
-        holdCompletedRef.current = true;
-        pressStartedRef.current = false;
-        setTrainPressing(false);
-        nav("/treino-detalhe");
+    // 1) se existir logout no AuthContext, usa
+    try {
+      if (typeof logoutFn === "function") {
+        logoutFn();
         return;
       }
+    } catch {}
 
-      holdProgressRafRef.current = window.requestAnimationFrame(tick);
-    };
+    // 2) fallback: navega para login (ajuste se sua rota for diferente)
+    try {
+      localStorage.setItem("logged_in", "0");
+      localStorage.removeItem("token");
+      localStorage.removeItem("session");
+      localStorage.removeItem("auth");
+      localStorage.removeItem("user");
+    } catch {}
 
-    holdProgressRafRef.current = window.requestAnimationFrame(tick);
+    nav("/login", { replace: true });
   }
-
-  function startTrainHold() {
-    resetHoldState();
-    holdCompletedRef.current = false;
-    setTrainHoldBlocked(false);
-    pressStartedRef.current = true;
-    setTrainPressing(true);
-
-    holdStartTimerRef.current = window.setTimeout(() => {
-      if (!pressStartedRef.current) return;
-
-      if (!hasWorkoutDetailAccess) {
-        setTrainHoldBlocked(true);
-        setTrainPressing(false);
-        pressStartedRef.current = false;
-        window.setTimeout(() => setTrainHoldBlocked(false), 900);
-        return;
-      }
-
-      holdStartAtRef.current = performance.now();
-      runHoldProgress();
-    }, HOLD_DELAY_MS);
-  }
-
-  function endTrainHold() {
-    const completed = holdCompletedRef.current;
-
-    if (!completed) {
-      resetHoldState();
-    } else {
-      holdCompletedRef.current = false;
-      setTrainHoldProgress(0);
-      setTrainPressing(false);
-    }
-  }
-
-  function onTrainClick() {
-    if (holdCompletedRef.current) {
-      holdCompletedRef.current = false;
-      return;
-    }
-    nav("/treino");
-  }
-
-  function onAccountClick() {
-    accountTapRef.current += 1;
-
-    if (accountTapTimerRef.current) {
-      window.clearTimeout(accountTapTimerRef.current);
-    }
-
-    accountTapTimerRef.current = window.setTimeout(() => {
-      if (accountTapRef.current >= 2) {
-        setShowAccountMenu((v) => !v);
-      } else {
-        nav("/conta");
-      }
-      accountTapRef.current = 0;
-    }, 220);
-  }
-
-  function closeAccountMenu() {
-    setShowAccountMenu(false);
-  }
-
-  function goCloseAccount() {
-    setShowAccountMenu(false);
-    nav("/conta?modal=close-account");
-  }
-
-  const ringRadius = 31;
-  const ringCircumference = 2 * Math.PI * ringRadius;
-  const ringOffset = ringCircumference * (1 - trainHoldProgress);
 
   return (
     <>
-      {showAccountMenu ? (
-        <div style={styles.sheetOverlay} onClick={closeAccountMenu}>
-          <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.sheetGrab} />
-            <div style={styles.sheetTitle}>Conta</div>
-            <button type="button" style={styles.sheetActionDanger} onClick={goCloseAccount}>
-              Fechar conta
-            </button>
-            <button type="button" style={styles.sheetActionSoft} onClick={closeAccountMenu}>
-              Cancelar
-            </button>
+      <nav style={styles.nav}>
+        <div style={styles.inner}>
+          <MenuItem it={items[0]} active={pathname === items[0].to} />
+          <MenuItem it={items[1]} active={pathname === items[1].to} />
+
+          {/* SLOT CENTRAL */}
+          <div style={{ height: 1 }} />
+
+          <MenuItem it={items[2]} active={pathname === items[2].to} />
+
+          {/* ✅ CONTA (igual visual), double-click abre sheet */}
+          <Link
+            to={items[3].to}
+            style={{
+              ...styles.item,
+              background: contaActive ? items[3].activeBg : "transparent",
+            }}
+            onDoubleClick={openLogoutSheet}
+          >
+            <div
+              style={{
+                ...styles.square,
+                borderColor: "rgba(15,23,42,0.08)",
+                boxShadow: contaActive ? "0 10px 26px rgba(15,23,42,0.10)" : "none",
+                transform: contaActive ? "translateY(-1px)" : "translateY(0px)",
+              }}
+            >
+              <ContaIcon active={contaActive} />
+            </div>
+
+            <div
+              style={{
+                ...styles.label,
+                color: contaActive ? items[3].activeFg : "#64748b",
+                fontWeight: contaActive ? 800 : 700,
+              }}
+            >
+              {items[3].label}
+            </div>
+          </Link>
+        </div>
+
+        {/* BOTÃO CENTRAL “TREINO” */}
+        <Link
+          to="/treino"
+          aria-label="Treino"
+          style={{
+            ...styles.centerBtn,
+            ...(treinoActive ? styles.centerBtnActive : null),
+          }}
+          onMouseDown={startLongPress}
+          onMouseUp={endLongPress}
+          onMouseLeave={endLongPress}
+          onTouchStart={startLongPress}
+          onTouchEnd={endLongPress}
+          onTouchCancel={endLongPress}
+          onClick={cancelClickIfLongPress}
+        >
+          <div style={styles.centerIconWrap}>
+            <div style={styles.centerIconSvg}>
+              <DumbbellIcon active={treinoActive} />
+            </div>
+          </div>
+
+          <div style={styles.centerLabel}>Treino</div>
+        </Link>
+      </nav>
+
+      {/* ✅ Action Sheet (Apple-like) */}
+      {logoutOpen && (
+        <div style={styles.sheetOverlay} role="presentation" onClick={() => setLogoutOpen(false)}>
+          <div style={styles.sheetWrap} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div style={styles.sheetCard}>
+              <div style={styles.sheetTitle}>Deseja sair?</div>
+              <div style={styles.sheetSub}>Você pode entrar novamente quando quiser.</div>
+            </div>
+
+            <div style={styles.sheetBtns}>
+              <button type="button" style={styles.sheetBtnCancel} onClick={() => setLogoutOpen(false)}>
+                Cancelar
+              </button>
+              <button type="button" style={styles.sheetBtnDestructive} onClick={doLogout}>
+                Sair
+              </button>
+            </div>
           </div>
         </div>
-      ) : null}
-
-      <div style={styles.wrapper}>
-        <nav style={styles.nav}>
-          <div
-            style={{
-              ...styles.activePill,
-              width: `calc((100% - 12px) / ${items.length})`,
-              transform: `translateX(${activeIndex * 100}%)`,
-              opacity: items[activeIndex]?.main ? 0 : 1,
-            }}
-          />
-
-          {items.map((item) => {
-            const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-            const Icon = item.Icon;
-
-            if (item.main) {
-              return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onPointerDown={startTrainHold}
-                  onPointerUp={endTrainHold}
-                  onPointerLeave={endTrainHold}
-                  onPointerCancel={endTrainHold}
-                  onClick={onTrainClick}
-                  className="fitdeal-bottom-item fitdeal-main-item"
-                  style={styles.mainItem}
-                >
-                  <span
-                    style={{
-                      ...styles.mainIconWrap,
-                      transform:
-                        trainPressing || trainHoldProgress > 0
-                          ? "translateY(-8px) scale(1.045)"
-                          : active
-                            ? "translateY(-8px) scale(1.05)"
-                            : "translateY(-7px) scale(1)",
-                    }}
-                  >
-                    <svg
-                      width="72"
-                      height="72"
-                      viewBox="0 0 72 72"
-                      style={styles.progressSvg}
-                      aria-hidden="true"
-                    >
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r={ringRadius}
-                        fill="none"
-                        stroke="rgba(255,106,0,.10)"
-                        strokeWidth="2.5"
-                      />
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r={ringRadius}
-                        fill="none"
-                        stroke="rgba(255,106,0,.96)"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeDasharray={ringCircumference}
-                        strokeDashoffset={ringOffset}
-                        transform="rotate(-90 36 36)"
-                        style={{
-                          opacity: trainHoldProgress > 0 ? 1 : 0,
-                          transition: "opacity .14s ease",
-                        }}
-                      />
-                    </svg>
-
-                    <span
-                      style={{
-                        ...styles.mainIconGlass,
-                        boxShadow: trainHoldBlocked
-                          ? "0 0 0 4px rgba(255,106,0,.10)"
-                          : undefined,
-                      }}
-                    />
-                    <span
-                      style={{
-                        ...styles.mainIconInner,
-                        boxShadow:
-                          trainPressing || trainHoldProgress > 0
-                            ? "0 20px 48px rgba(255,106,0,.24), inset 0 1px 0 rgba(255,255,255,.7)"
-                            : active
-                              ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
-                              : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
-                      }}
-                    >
-                      <Icon active={active} />
-                    </span>
-                  </span>
-
-                  <span
-                    style={{
-                      ...styles.mainLabel,
-                      color: active ? ORANGE : TEXT,
-                      opacity: active ? 1 : 0.74,
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            }
-
-            if (item.to === "/conta") {
-              return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={onAccountClick}
-                  className="fitdeal-bottom-item"
-                  style={styles.item}
-                >
-                  <span
-                    style={{
-                      ...styles.iconWrap,
-                      transform:
-                        active
-                          ? item.to === "/nutricao"
-                            ? "translateY(-2px) scale(1.12)"
-                            : "translateY(-1px) scale(1.06)"
-                          : item.to === "/nutricao"
-                            ? "translateY(-1px) scale(1.05)"
-                            : "translateY(0) scale(1)",
-                      filter: active
-                        ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                        : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
-                    }}
-                  >
-                    <Icon active={active} />
-                  </span>
-
-                  <span
-                    style={{
-                      ...styles.label,
-                      color: active ? "#fff" : TEXT,
-                      opacity: active ? 1 : 0.62,
-                      transform: active ? "translateY(-1px)" : "translateY(0)",
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            }
-
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => go(item.to)}
-                className="fitdeal-bottom-item"
-                style={styles.item}
-              >
-                <span
-                  style={{
-                    ...styles.iconWrap,
-                    transform:
-                      active
-                        ? item.to === "/nutricao"
-                          ? "translateY(-2px) scale(1.12)"
-                          : "translateY(-1px) scale(1.06)"
-                        : item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.05)"
-                          : "translateY(0) scale(1)",
-                    filter: active
-                      ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                      : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
-                  }}
-                >
-                  <Icon active={active} />
-                </span>
-
-                <span
-                  style={{
-                    ...styles.label,
-                    color: active ? "#fff" : TEXT,
-                    opacity: active ? 1 : 0.62,
-                    transform: active ? "translateY(-1px)" : "translateY(0)",
-                  }}
-                >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <style>{`
-          .fitdeal-bottom-item {
-            transition:
-              transform .16s cubic-bezier(.2,.9,.2,1),
-              filter .16s ease;
-          }
-
-          .fitdeal-bottom-item:active {
-            transform: scale(.91);
-            filter: brightness(.98);
-          }
-
-          .fitdeal-main-item:active {
-            transform: scale(.97);
-          }
-
-          @keyframes fitdealFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-2px); }
-          }
-
-          @keyframes fitdealGlow {
-            0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
-            50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
-          }
-
-          .fitdeal-main-item > span:first-child {
-            animation: fitdealFloat 3.8s ease-in-out infinite;
-          }
-
-          .fitdeal-main-item > span:first-child > span:last-child {
-            animation: fitdealGlow 3.8s ease-in-out infinite;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .fitdeal-bottom-item,
-            .fitdeal-main-item > span:first-child,
-            .fitdeal-main-item > span:first-child > span:last-child {
-              transition: none !important;
-              animation: none !important;
-            }
-          }
-        `}</style>
-      </div>
+      )}
     </>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
+function MenuItem({ it, active }: { it: Item; active: boolean }) {
+  return (
+    <Link
+      to={it.to}
+      style={{
+        ...styles.item,
+        background: active ? it.activeBg : "transparent",
+      }}
+    >
+      <div
+        style={{
+          ...styles.square,
+          borderColor: "rgba(15,23,42,0.08)",
+          boxShadow: active ? "0 10px 26px rgba(15,23,42,0.10)" : "none",
+          transform: active ? "translateY(-1px)" : "translateY(0px)",
+        }}
+      >
+        <it.Icon active={active} />
+      </div>
+
+      <div
+        style={{
+          ...styles.label,
+          color: active ? it.activeFg : "#64748b",
+          fontWeight: active ? 800 : 700,
+        }}
+      >
+        {it.label}
+      </div>
+    </Link>
+  );
+}
+
+const styles: Record<string, any> = {
+  nav: {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: "calc(18px + env(safe-area-inset-bottom))",
-    display: "flex",
-    justifyContent: "center",
-    padding: "0 14px",
-    zIndex: 10001,
-    pointerEvents: "none",
+    bottom: 0,
+    padding: "10px 12px 14px",
+    background: "rgba(255,255,255,0.86)",
+    borderTop: "1px solid rgba(15,23,42,0.08)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+    zIndex: 200,
   },
-
-  nav: {
-    position: "relative",
-    display: "flex",
-    width: "100%",
-    maxWidth: 430,
-    minHeight: 70,
-    padding: 6,
-    gap: 4,
-    borderRadius: 34,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.66))",
-    border: "1px solid rgba(255,255,255,.52)",
-    boxShadow:
-      "0 28px 70px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55)",
-    backdropFilter: "blur(34px)",
-    WebkitBackdropFilter: "blur(34px)",
-    overflow: "visible",
-    pointerEvents: "auto",
+  inner: {
+    maxWidth: 420,
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: 10,
+    alignItems: "end",
   },
-
-  activePill: {
-    position: "absolute",
-    top: 6,
-    bottom: 6,
-    left: 6,
-    borderRadius: 28,
-    background:
-      "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
-    boxShadow:
-      "0 16px 38px rgba(255,106,0,.30), 0 0 0 1px rgba(255,255,255,.22)",
-    transition: "transform .38s cubic-bezier(.22,1,.36,1), opacity .22s ease",
-    zIndex: 1,
-  },
-
   item: {
-    position: "relative",
-    zIndex: 2,
-    flex: 1,
-    height: 56,
-    border: "none",
-    background: "transparent",
-    borderRadius: 28,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    padding: 0,
-    cursor: "pointer",
+    gap: 6,
+    padding: "10px 6px",
+    borderRadius: 16,
+    textDecoration: "none",
+    transition: "transform 0.14s ease, background 0.14s ease",
     WebkitTapHighlightColor: "transparent",
   },
-
-  mainItem: {
-    position: "relative",
-    zIndex: 3,
-    flex: 1,
-    height: 56,
-    border: "none",
-    background: "transparent",
-    borderRadius: 28,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 0,
-    padding: 0,
-    paddingBottom: 6,
-    cursor: "pointer",
-    WebkitTapHighlightColor: "transparent",
-  },
-
-  iconWrap: {
-    width: 30,
-    height: 30,
+  square: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    background: "#ffffff",
+    border: "1px solid rgba(15,23,42,0.08)",
     display: "grid",
     placeItems: "center",
-    transition:
-      "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
+    transition: "box-shadow 0.14s ease, transform 0.14s ease",
+  },
+  label: {
+    fontSize: 11,
+    letterSpacing: 0.1,
   },
 
-  mainIconWrap: {
+  // ✅ Botão central
+  centerBtn: {
     position: "absolute",
-    top: -24,
-    width: 72,
-    height: 72,
+    left: "50%",
+    transform: "translateX(-50%) translateY(-16px)",
+    bottom: 12,
+    width: 78,
+    height: 78,
+    borderRadius: 26,
+    textDecoration: "none",
     display: "grid",
     placeItems: "center",
-    transition: "transform .22s cubic-bezier(.22,1,.36,1)",
+    gap: 6,
+    background: `linear-gradient(180deg, ${ORANGE}, #FF8A3D)`,
+    boxShadow: "0 20px 50px rgba(255,106,0,.33), 0 12px 24px rgba(15,23,42,.12)",
+    border: "1px solid rgba(255,255,255,.35)",
+    transition: "transform .14s ease, filter .14s ease",
+    WebkitTapHighlightColor: "transparent",
+  },
+  centerBtnActive: {
+    filter: "saturate(1.05) brightness(1.02)",
   },
 
-  progressSvg: {
+  centerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
+    position: "relative",
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(255,255,255,.18)",
+    border: "1px solid rgba(255,255,255,.38)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.38)",
+    overflow: "hidden",
+  },
+  centerIconSvg: {
     position: "absolute",
     inset: 0,
-    overflow: "visible",
-    pointerEvents: "none",
-  },
-
-  mainIconGlass: {
-    position: "absolute",
-    inset: 2,
-    borderRadius: 999,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54))",
-    border: "1px solid rgba(255,255,255,.72)",
-    backdropFilter: "blur(20px)",
-    WebkitBackdropFilter: "blur(20px)",
-  },
-
-  mainIconInner: {
-    position: "relative",
-    width: 58,
-    height: 58,
-    borderRadius: 999,
     display: "grid",
     placeItems: "center",
-    background:
-      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.58), rgba(255,255,255,0) 32%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82))",
-    border: "1px solid rgba(255,255,255,.88)",
   },
 
-  label: {
-    fontSize: 8,
-    lineHeight: 1,
+  centerLabel: {
+    fontSize: 11,
     fontWeight: 950,
-    letterSpacing: 0.85,
-    textTransform: "uppercase",
-    transition:
-      "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+    color: "#111",
+    marginTop: -2,
+    letterSpacing: 0.1,
   },
 
-  mainLabel: {
-    fontSize: 8,
-    lineHeight: 1,
-    fontWeight: 950,
-    letterSpacing: 0.85,
-    textTransform: "uppercase",
-    transition:
-      "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
-  },
-
+  /* ✅ Action Sheet (Apple-like) */
   sheetOverlay: {
     position: "fixed",
     inset: 0,
-    zIndex: 11000,
-    background: "rgba(2,6,23,.22)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
+    zIndex: 9999,
+    background: "rgba(2,6,23,.42)",
     display: "grid",
     alignItems: "end",
-    padding: 12,
-    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
+    padding: "12px",
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+    paddingTop: "calc(12px + env(safe-area-inset-top))",
+    backdropFilter: "blur(6px)",
+    WebkitBackdropFilter: "blur(6px)",
   },
-
-  sheet: {
+  sheetWrap: {
     width: "100%",
-    maxWidth: 430,
+    maxWidth: 520,
     margin: "0 auto",
-    borderRadius: 26,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
-    border: "1px solid rgba(255,255,255,.58)",
-    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
+    display: "grid",
+    gap: 10,
+  },
+  sheetCard: {
+    borderRadius: 18,
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 28px 90px rgba(0,0,0,.28)",
     padding: 14,
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-  },
-
-  sheetGrab: {
-    width: 44,
-    height: 5,
-    borderRadius: 999,
-    background: "rgba(100,116,139,.24)",
-    margin: "0 auto 10px",
-  },
-
-  sheetTitle: {
     textAlign: "center",
-    fontSize: 15,
-    fontWeight: 950,
-    color: TEXT,
-    marginBottom: 12,
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
   },
+  sheetTitle: { fontSize: 14, fontWeight: 950, color: "#0f172a", letterSpacing: -0.2 },
+  sheetSub: { marginTop: 6, fontSize: 12, fontWeight: 800, color: "#64748b", lineHeight: 1.3 },
 
-  sheetActionDanger: {
-    width: "100%",
-    padding: 15,
+  sheetBtns: {
     borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.18)",
-    background: "rgba(255,106,0,.10)",
-    color: ORANGE,
-    fontWeight: 950,
-    fontSize: 14,
-    marginBottom: 10,
+    overflow: "hidden",
+    background: "rgba(255,255,255,.92)",
+    border: "1px solid rgba(255,255,255,.35)",
+    boxShadow: "0 18px 60px rgba(0,0,0,.22)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
   },
-
-  sheetActionSoft: {
+  sheetBtnCancel: {
     width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.72)",
-    color: TEXT,
+    padding: 14,
+    border: "none",
+    background: "transparent",
     fontWeight: 950,
-    fontSize: 14,
+    color: "#0f172a",
+    borderBottom: "1px solid rgba(15,23,42,.08)",
+  },
+  sheetBtnDestructive: {
+    width: "100%",
+    padding: 14,
+    border: "none",
+    background: "transparent",
+    fontWeight: 950,
+    color: "#ef4444",
   },
 };
+
+/* ÍCONES (SVG) — sem lib */
+function HomeIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 10.8 12 4l8 6.8V20a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 20v-9.2Z"
+        stroke={active ? "#2563eb" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 21.5v-6.2h5v6.2"
+        stroke={active ? "#2563eb" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function NutritionIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 20c4.5 0 10-6.2 10-12.2C17 5.1 15.7 4 14.2 4 12 4 11 6.2 11 6.2S10 4 7.8 4C6.3 4 5 5.1 5 7.8 5 13.8 2.5 20 7 20Z"
+        stroke={active ? "#16a34a" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 10c-1.2 2.2-3.1 4-5.5 5.2"
+        stroke={active ? "#16a34a" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CardIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 7.5A2.5 2.5 0 0 1 7 5h10a2.5 2.5 0 0 1 2.5 2.5v9A2.5 2.5 0 0 1 17 19H7a2.5 2.5 0 0 1-2.5-2.5v-9Z"
+        stroke={active ? "#d97706" : "#64748b"}
+        strokeWidth="1.8"
+      />
+      <path d="M4.5 9.3h15" stroke={active ? "#d97706" : "#64748b"} strokeWidth="1.8" />
+      <path
+        d="M7.5 15.5h5.2"
+        stroke={active ? "#d97706" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function UserIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 12.2c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4Z"
+        stroke={active ? "#7c3aed" : "#64748b"}
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4.8 20c1.6-3 4.1-4.6 7.2-4.6s5.6 1.6 7.2 4.6"
+        stroke={active ? "#7c3aed" : "#64748b"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/* ✅ Seu ícone de Treino (mantido) */
+function DumbbellIcon({ active }: { active: boolean }) {
+  const strokeMain = "rgba(255,255,255,.86)";
+  const strokeSoft = "rgba(255,255,255,.52)";
+  const plateFill = "rgba(255,255,255,.12)";
+  const plateFill2 = "rgba(255,255,255,.07)";
+
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <g transform="rotate(-32 12 12)">
+        <path d="M9.1 12h5.8" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8.55 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M15.45 10.35v3.3" stroke={strokeMain} strokeWidth="2.4" strokeLinecap="round" />
+
+        <rect x="4.35" y="8.55" width="2.95" height="6.9" rx="1.35" fill={plateFill} stroke={strokeMain} strokeWidth="2.1" />
+        <rect x="16.7" y="8.55" width="2.95" height="6.9" rx="1.35" fill={plateFill} stroke={strokeMain} strokeWidth="2.1" />
+
+        <rect x="7.4" y="9.75" width="1.65" height="4.5" rx="0.85" fill={plateFill2} stroke={strokeSoft} strokeWidth="1.7" />
+        <rect x="14.95" y="9.75" width="1.65" height="4.5" rx="0.85" fill={plateFill2} stroke={strokeSoft} strokeWidth="1.7" />
+
+        <path d="M3.85 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M20.15 10.05v3.9" stroke={strokeMain} strokeWidth="2.6" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
