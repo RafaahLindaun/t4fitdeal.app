@@ -31,24 +31,24 @@ function NutritionIcon({ active }) {
       style={{ display: "block", overflow: "visible" }}
     >
       {/* garfo */}
-      <path d="M5.9 4.9v3.2" stroke={c} strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M6.85 4.9v3.2" stroke={c} strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M7.8 4.9v3.2" stroke={c} strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M6.85 8.1v10.9" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
+      <path d="M5.7 5.8v2.55" stroke={c} strokeWidth="1.18" strokeLinecap="round" />
+      <path d="M6.75 5.8v2.55" stroke={c} strokeWidth="1.18" strokeLinecap="round" />
+      <path d="M7.8 5.8v2.55" stroke={c} strokeWidth="1.18" strokeLinecap="round" />
+      <path d="M6.75 8.35v10.05" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
 
       {/* prato */}
-      <circle cx="12.15" cy="12" r="4.65" stroke={c} strokeWidth="1.9" />
-      <circle cx="12.15" cy="12" r="2.75" stroke={c} strokeWidth="1.2" />
+      <circle cx="12.25" cy="12.1" r="4.55" stroke={c} strokeWidth="1.9" />
+      <circle cx="12.25" cy="12.1" r="2.72" stroke={c} strokeWidth="1.2" />
 
       {/* faca */}
       <path
-        d="M17.45 4.95c-.95.42-1.65 1.52-1.65 3.02v2.95"
+        d="M17.65 5.95c-1.02.44-1.78 1.55-1.78 3.16v2.9"
         stroke={c}
         strokeWidth="1.35"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M15.8 10.92v8.08" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
+      <path d="M15.87 12.01v6.39" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
     </svg>
   );
 }
@@ -619,4 +619,76 @@ const styles = {
   },
 
   mainLabel: {
-    fontSize
+    fontSize: 8,
+    lineHeight: 1,
+    fontWeight: 950,
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 11000,
+    background: "rgba(2,6,23,.22)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
+  },
+
+  sheet: {
+    width: "100%",
+    maxWidth: 430,
+    margin: "0 auto",
+    borderRadius: 26,
+    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
+    border: "1px solid rgba(255,255,255,.58)",
+    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
+    padding: 14,
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+  },
+
+  sheetGrab: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(100,116,139,.24)",
+    margin: "0 auto 10px",
+  },
+
+  sheetTitle: {
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+    marginBottom: 12,
+  },
+
+  sheetActionDanger: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(255,106,0,.18)",
+    background: "rgba(255,106,0,.10)",
+    color: ORANGE,
+    fontWeight: 950,
+    fontSize: 14,
+    marginBottom: 10,
+  },
+
+  sheetActionSoft: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    background: "rgba(255,255,255,.72)",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 14,
+  },
+};
