@@ -6,8 +6,6 @@ import { supabase } from "../lib/supabase";
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
 
-/* ---------------- icons ---------------- */
-
 function HomeIcon({ active }) {
   const c = active ? "#fff" : ORANGE;
 
@@ -48,87 +46,77 @@ function NutritionIcon({ active }) {
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
-      style={{
-        display: "block",
-        overflow: "visible",
-      }}
+      style={{ display: "block", overflow: "visible" }}
     >
       <g transform="rotate(-18 12 12)">
-        {/* contorno externo */}
+        {/* borda da folha */}
         <path
-          d="M7.55 19.1
-             C7.18 19.1 6.95 19.01 6.8 18.89
-             C6.53 18.69 6.52 18.34 6.78 17.88
-             L7.63 16.35
-             C6.52 14.84 5.98 13.04 5.98 10.95
-             C5.98 7.04 8.33 4.22 12.62 2.86
-             C12.79 2.8 12.94 2.77 13.08 2.77
-             C13.45 2.77 13.74 2.9 13.91 3.14
-             C14.08 3.38 14.11 3.71 14 4.09
-             C13.41 6.03 13.87 7.72 14.29 9.21
-             C14.49 9.92 14.68 10.58 14.78 11.23
-             C15.17 13.74 14.65 15.95 13.23 17.75
-             C11.78 19.56 9.77 20.76 7.73 20.76
-             L7.55 19.1Z"
+          d="M7.8 19.15
+             C7.45 19.15 7.18 19.08 7 18.93
+             C6.67 18.69 6.64 18.28 6.94 17.75
+             L7.86 16.1
+             C6.73 14.49 6.18 12.61 6.24 10.45
+             C6.35 6.71 8.58 4.01 12.5 2.82
+             C12.69 2.76 12.87 2.73 13.03 2.73
+             C13.45 2.73 13.76 2.88 13.95 3.17
+             C14.14 3.46 14.16 3.82 14.03 4.24
+             C13.45 6.16 13.92 7.82 14.36 9.3
+             C14.55 9.95 14.74 10.57 14.84 11.18
+             C15.25 13.7 14.72 15.92 13.26 17.75
+             C11.79 19.59 9.75 20.72 7.99 20.72
+             C7.92 20.72 7.86 20.72 7.8 20.71Z"
           stroke={c}
-          strokeWidth="1.9"
+          strokeWidth="1.98"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
         {/* nervura central */}
         <path
-          d="M8.0 18.05 L15.2 6.15"
+          d="M8.22 18.05 15.28 6.18"
           stroke={c}
-          strokeWidth="1.45"
+          strokeWidth="1.52"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
 
         {/* nervuras secundárias */}
         <path
-          d="M10.0 14.45 C9.1 13.92 8.32 13.02 7.95 11.95"
+          d="M10.05 14.42c-.98-.55-1.78-1.4-2.22-2.52"
           stroke={c}
-          strokeWidth="1.02"
+          strokeWidth="1.06"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
         <path
-          d="M11.45 12.05 C10.72 11.58 10.18 10.86 9.88 9.88"
+          d="M11.5 12.02c-.82-.49-1.43-1.18-1.79-2.11"
           stroke={c}
-          strokeWidth="0.98"
+          strokeWidth="1.0"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
         <path
-          d="M12.65 10.0 C12.17 9.17 12.02 8.18 12.16 7.02"
+          d="M12.66 10.04c-.42-.74-.56-1.67-.4-2.8"
           stroke={c}
           strokeWidth="0.96"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
         <path
-          d="M11.05 15.15 C12.45 15.05 13.78 14.62 15.15 13.78"
+          d="M11.12 15.1c1.39-.07 2.72-.5 4.03-1.32"
           stroke={c}
-          strokeWidth="1.02"
+          strokeWidth="1.06"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
         <path
-          d="M12.4 12.95 C13.52 12.84 14.55 12.45 15.72 11.78"
+          d="M12.44 12.95c1.11-.09 2.11-.45 3.12-1.08"
           stroke={c}
-          strokeWidth="0.98"
+          strokeWidth="1.0"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
 
         {/* pecíolo pequeno */}
         <path
-          d="M7.95 18.55 L7.18 19.42"
+          d="M8.03 18.56 7.22 19.42"
           stroke={c}
-          strokeWidth="1.02"
+          strokeWidth="1.08"
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
       </g>
     </svg>
@@ -154,15 +142,7 @@ function CardIcon({ active }) {
 
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3.7"
-        y="6.4"
-        width="16.6"
-        height="11.2"
-        rx="2.6"
-        stroke={c}
-        strokeWidth="2.25"
-      />
+      <rect x="3.7" y="6.4" width="16.6" height="11.2" rx="2.6" stroke={c} strokeWidth="2.25" />
       <path d="M4.2 10h15.6" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
       <path d="M7.4 14.5h3.5" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
     </svg>
@@ -184,8 +164,6 @@ function UserIcon({ active }) {
     </svg>
   );
 }
-
-/* ---------------- component ---------------- */
 
 export default function BottomMenu() {
   const { pathname } = useLocation();
@@ -261,7 +239,6 @@ export default function BottomMenu() {
     }
 
     loadPaidAccess();
-
     return () => {
       mounted = false;
     };
@@ -371,11 +348,8 @@ export default function BottomMenu() {
     }
 
     accountTapTimerRef.current = window.setTimeout(() => {
-      if (accountTapRef.current >= 2) {
-        setShowAccountMenu((v) => !v);
-      } else {
-        nav("/conta");
-      }
+      if (accountTapRef.current >= 2) setShowAccountMenu((v) => !v);
+      else nav("/conta");
       accountTapRef.current = 0;
     }, 220);
   }
@@ -400,11 +374,9 @@ export default function BottomMenu() {
           <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.sheetGrab} />
             <div style={styles.sheetTitle}>Conta</div>
-
             <button type="button" style={styles.sheetActionDanger} onClick={goCloseAccount}>
               Fechar conta
             </button>
-
             <button type="button" style={styles.sheetActionSoft} onClick={closeAccountMenu}>
               Cancelar
             </button>
@@ -426,6 +398,7 @@ export default function BottomMenu() {
           {items.map((item) => {
             const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
             const Icon = item.Icon;
+            const handleClick = item.to === "/conta" ? onAccountClick : () => go(item.to);
 
             if (item.main) {
               return (
@@ -451,13 +424,7 @@ export default function BottomMenu() {
                             : "translateY(-7px) scale(1)",
                     }}
                   >
-                    <svg
-                      width="72"
-                      height="72"
-                      viewBox="0 0 72 72"
-                      style={styles.progressSvg}
-                      aria-hidden="true"
-                    >
+                    <svg width="72" height="72" viewBox="0 0 72 72" style={styles.progressSvg} aria-hidden="true">
                       <circle
                         cx="36"
                         cy="36"
@@ -477,10 +444,7 @@ export default function BottomMenu() {
                         strokeDasharray={ringCircumference}
                         strokeDashoffset={ringOffset}
                         transform="rotate(-90 36 36)"
-                        style={{
-                          opacity: trainHoldProgress > 0 ? 1 : 0,
-                          transition: "opacity .14s ease",
-                        }}
+                        style={{ opacity: trainHoldProgress > 0 ? 1 : 0, transition: "opacity .14s ease" }}
                       />
                     </svg>
 
@@ -518,8 +482,6 @@ export default function BottomMenu() {
               );
             }
 
-            const handleClick = item.to === "/conta" ? onAccountClick : () => go(item.to);
-
             return (
               <button
                 key={item.to}
@@ -535,10 +497,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.08)"
+                          ? "translateY(-1px) scale(1.14)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.03)"
+                          ? "translateY(0px) scale(1.06)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -566,38 +528,29 @@ export default function BottomMenu() {
 
         <style>{`
           .fitdeal-bottom-item {
-            transition:
-              transform .16s cubic-bezier(.2,.9,.2,1),
-              filter .16s ease;
+            transition: transform .16s cubic-bezier(.2,.9,.2,1), filter .16s ease;
           }
-
           .fitdeal-bottom-item:active {
             transform: scale(.91);
             filter: brightness(.98);
           }
-
           .fitdeal-main-item:active {
             transform: scale(.97);
           }
-
           @keyframes fitdealFloat {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-2px); }
           }
-
           @keyframes fitdealGlow {
             0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
             50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
           }
-
           .fitdeal-main-item > span:first-child {
             animation: fitdealFloat 3.8s ease-in-out infinite;
           }
-
           .fitdeal-main-item > span:first-child > span:last-child {
             animation: fitdealGlow 3.8s ease-in-out infinite;
           }
-
           @media (prefers-reduced-motion: reduce) {
             .fitdeal-bottom-item,
             .fitdeal-main-item > span:first-child,
@@ -611,8 +564,6 @@ export default function BottomMenu() {
     </>
   );
 }
-
-/* ---------------- styles ---------------- */
 
 const styles = {
   wrapper: {
@@ -703,8 +654,8 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 34,
-    height: 34,
+    width: 35,
+    height: 35,
     marginBottom: -1,
   },
 
@@ -718,7 +669,7 @@ const styles = {
   },
 
   labelNutri: {
-    letterSpacing: 0.72,
+    letterSpacing: 0.7,
     fontSize: 7.7,
   },
 
