@@ -42,29 +42,29 @@ function NutritionIcon({ active }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M12.9 5.2c3.35.15 5.55 2.25 5.55 5.45 0 4.45-3.15 7.15-6.2 8.15-2.4-.8-4.9-2.7-5.8-5.85"
+        d="M12 19.4v-6.2"
+        stroke={c}
+        strokeWidth="2.15"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11.9 13.7c-3.25 0-5.55-1.9-6.45-5.2 3.45-.15 5.8 1.45 6.45 5.2Z"
         stroke={c}
         strokeWidth="2.05"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M12.3 7.2v9"
+        d="M12.1 13.2c.45-3.15 2.55-5.25 5.95-5.85.1 3.55-1.95 5.9-5.95 5.85Z"
         stroke={c}
         strokeWidth="2.05"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12.2 11.25c-1.7-.12-2.95-.95-3.75-2.55 1.95.02 3.25.72 3.75 2.55Z"
-        stroke={c}
-        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M12.35 12.35c.45-1.9 1.8-3.05 3.85-3.5-.45 2.15-1.75 3.3-3.85 3.5Z"
+        d="M12 11.8c-.2-2.15.7-3.85 2.55-5.2 1 2.25.7 4.15-1.3 5.65"
         stroke={c}
-        strokeWidth="1.8"
+        strokeWidth="2.05"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -475,10 +475,10 @@ export default function BottomMenu() {
                       transform:
                         active
                           ? item.to === "/nutricao"
-                            ? "translateY(-2px) scale(1.12)"
+                            ? "translateY(-1px) scale(1.08)"
                             : "translateY(-1px) scale(1.06)"
                           : item.to === "/nutricao"
-                            ? "translateY(-1px) scale(1.05)"
+                            ? "translateY(0px) scale(1.02)"
                             : "translateY(0) scale(1)",
                       filter: active
                         ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -518,10 +518,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-2px) scale(1.12)"
+                          ? "translateY(-1px) scale(1.08)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.05)"
+                          ? "translateY(0px) scale(1.02)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -684,8 +684,8 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 28,
-    height: 28,
+    width: 27,
+    height: 27,
   },
 
   label: {
@@ -698,7 +698,8 @@ const styles = {
   },
 
   labelNutri: {
-    letterSpacing: 0.78,
+    letterSpacing: 0.72,
+    fontSize: 7.7,
   },
 
   mainIconWrap: {
