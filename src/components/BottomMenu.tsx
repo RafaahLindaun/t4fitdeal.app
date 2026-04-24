@@ -42,24 +42,31 @@ function NutritionIcon({ active }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M7.2 14.4c0-4 2.8-6.8 7.2-7.2.4 4-1.8 7.2-6.1 8.2"
+        d="M12.9 5.2c3.35.15 5.55 2.25 5.55 5.45 0 4.45-3.15 7.15-6.2 8.15-2.4-.8-4.9-2.7-5.8-5.85"
         stroke={c}
-        strokeWidth="2.15"
+        strokeWidth="2.05"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M12.7 16.7c-3.4.2-5.8-1.5-7.1-5 .2 0 .5 0 .7 0 3.8 0 6.3 1.8 7.4 5"
+        d="M12.3 7.2v9"
         stroke={c}
-        strokeWidth="2.15"
+        strokeWidth="2.05"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12.2 11.25c-1.7-.12-2.95-.95-3.75-2.55 1.95.02 3.25.72 3.75 2.55Z"
+        stroke={c}
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M10.4 10.8c1.5 1.9 2.2 4.1 2.2 7"
+        d="M12.35 12.35c.45-1.9 1.8-3.05 3.85-3.5-.45 2.15-1.75 3.3-3.85 3.5Z"
         stroke={c}
-        strokeWidth="2.15"
+        strokeWidth="1.8"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -464,13 +471,14 @@ export default function BottomMenu() {
                   <span
                     style={{
                       ...styles.iconWrap,
+                      ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
                       transform:
                         active
                           ? item.to === "/nutricao"
-                            ? "translateY(-1px) scale(1.08)"
+                            ? "translateY(-2px) scale(1.12)"
                             : "translateY(-1px) scale(1.06)"
                           : item.to === "/nutricao"
-                            ? "translateY(0px) scale(1.02)"
+                            ? "translateY(-1px) scale(1.05)"
                             : "translateY(0) scale(1)",
                       filter: active
                         ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -483,6 +491,7 @@ export default function BottomMenu() {
                   <span
                     style={{
                       ...styles.label,
+                      ...(item.to === "/nutricao" ? styles.labelNutri : null),
                       color: active ? "#fff" : TEXT,
                       opacity: active ? 1 : 0.62,
                       transform: active ? "translateY(-1px)" : "translateY(0)",
@@ -505,13 +514,14 @@ export default function BottomMenu() {
                 <span
                   style={{
                     ...styles.iconWrap,
+                    ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.08)"
+                          ? "translateY(-2px) scale(1.12)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.02)"
+                          ? "translateY(-1px) scale(1.05)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -524,6 +534,7 @@ export default function BottomMenu() {
                 <span
                   style={{
                     ...styles.label,
+                    ...(item.to === "/nutricao" ? styles.labelNutri : null),
                     color: active ? "#fff" : TEXT,
                     opacity: active ? 1 : 0.62,
                     transform: active ? "translateY(-1px)" : "translateY(0)",
@@ -672,6 +683,24 @@ const styles = {
     transition: "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
+  iconWrapNutri: {
+    width: 28,
+    height: 28,
+  },
+
+  label: {
+    fontSize: 8,
+    lineHeight: 1,
+    fontWeight: 950,
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  labelNutri: {
+    letterSpacing: 0.78,
+  },
+
   mainIconWrap: {
     position: "absolute",
     top: -24,
@@ -709,15 +738,6 @@ const styles = {
     background:
       "radial-gradient(circle at 30% 20%, rgba(255,255,255,.58), rgba(255,255,255,0) 32%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82))",
     border: "1px solid rgba(255,255,255,.88)",
-  },
-
-  label: {
-    fontSize: 8,
-    lineHeight: 1,
-    fontWeight: 950,
-    letterSpacing: 0.85,
-    textTransform: "uppercase",
-    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
   },
 
   mainLabel: {
