@@ -41,49 +41,62 @@ function NutritionIcon({ active }) {
 
   return (
     <svg
-      width="26"
-      height="26"
+      width="30"
+      height="30"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
       style={{ display: "block" }}
     >
       <g transform="rotate(-18 12 12)">
+        {/* folha principal */}
         <path
-          d="M7.4 19.2c-.4 0-.7-.08-.95-.28-.5-.38-.58-1-.22-1.68l1.1-2.08c-1.18-1.82-1.74-3.92-1.62-6.2.22-4.1 2.65-6.98 6.95-8.28.22-.06.44-.1.64-.1.56 0 .98.2 1.22.58.24.36.28.82.14 1.38-.18.68-.24 1.46-.16 2.3.1 1.06.36 2.06.6 3 .18.7.36 1.36.48 2.02.46 2.74-.14 5.16-1.78 7.18-1.68 2.08-4.1 3.34-7.05 3.7Z"
+          d="M8.2 18.4c-1.15-3.1-.35-6.55 2.15-9.05 2.25-2.25 5.2-3.38 8.1-3.22.16 2.9-.95 5.86-3.2 8.1-2.52 2.52-5.98 3.34-9.05 2.2Z"
           stroke={c}
-          strokeWidth="1.95"
+          strokeWidth="1.85"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        {/* nervura central */}
         <path
-          d="M7.9 18.15 15.2 6.1"
-          stroke={c}
-          strokeWidth="1.9"
-          strokeLinecap="round"
-        />
-        <path
-          d="M10.15 14.3c-1.22-.72-2.22-1.86-2.72-3.38"
-          stroke={c}
-          strokeWidth="1.55"
-          strokeLinecap="round"
-        />
-        <path
-          d="M11.95 11.35c-1.1-.7-1.9-1.68-2.3-2.92"
+          d="M8.95 17.6 15.55 8.15"
           stroke={c}
           strokeWidth="1.45"
           strokeLinecap="round"
         />
+
+        {/* nervuras secundárias */}
         <path
-          d="M11.05 15.25c1.64-.08 3.24-.62 4.72-1.68"
+          d="M10.35 15.65c-.92-.48-1.63-1.18-2.08-2.1"
           stroke={c}
-          strokeWidth="1.55"
+          strokeWidth="1.08"
           strokeLinecap="round"
         />
         <path
-          d="M12.45 12.95c1.34-.12 2.54-.6 3.78-1.46"
+          d="M11.75 13.6c-.82-.42-1.4-1-1.8-1.8"
           stroke={c}
-          strokeWidth="1.45"
+          strokeWidth="1.02"
+          strokeLinecap="round"
+        />
+        <path
+          d="M11.95 15.1c1.28-.1 2.48-.55 3.62-1.38"
+          stroke={c}
+          strokeWidth="1.08"
+          strokeLinecap="round"
+        />
+        <path
+          d="M13.05 13.45c1-.08 1.92-.42 2.82-1.02"
+          stroke={c}
+          strokeWidth="1.02"
+          strokeLinecap="round"
+        />
+
+        {/* pecíolo pequeno */}
+        <path
+          d="M8.55 18.15 7.75 19.05"
+          stroke={c}
+          strokeWidth="1.3"
           strokeLinecap="round"
         />
       </g>
@@ -702,10 +715,12 @@ const styles = {
     transition: "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
-  iconWrapNutri: {
-    width: 28,
-    height: 28,
-  },
+ iconWrapNutri: {
+  width: 34,
+  height: 34,
+  display: "grid",
+  placeItems: "center",
+},
 
   label: {
     fontSize: 8,
