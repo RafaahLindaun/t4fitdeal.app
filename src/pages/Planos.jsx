@@ -323,7 +323,7 @@ export default function Planos() {
             />
             <Feature
               title="Liberação do app"
-              text="Ao ativar, o treino deixa o modo limitado e libera o fluxo completo."
+              text="Ao ativar, o treino deixa o modo limitado e libera o Aba mais completa."
             />
           </div>
 
@@ -382,7 +382,7 @@ export default function Planos() {
               text="Uma área mais completa para evolução guiada."
             />
             <FeaturePremium
-              title="Fluxo premium"
+              title="Visual premium"
               text="Inclui recursos extras de nutrição e acompanhamento."
             />
           </div>
@@ -392,7 +392,7 @@ export default function Planos() {
           </button>
 
           <div style={styles.microPremium}>
-            Inclui recursos de nutrição e acompanhamento no mesmo fluxo.
+            Inclui recursos de nutrição e acompanhamento, tudo garantido.
           </div>
         </div>
       </section>
