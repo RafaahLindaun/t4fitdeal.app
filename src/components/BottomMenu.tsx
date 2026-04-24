@@ -11,27 +11,9 @@ function HomeIcon({ active }) {
 
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4.5 10.7 12 4.4l7.5 6.3"
-        stroke={c}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1"
-        stroke={c}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 19.7v-5.1h4v5.1"
-        stroke={c}
-        strokeWidth="2.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M4.5 10.7 12 4.4l7.5 6.3" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 19.7v-5.1h4v5.1" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -49,73 +31,75 @@ function NutritionIcon({ active }) {
       style={{ display: "block", overflow: "visible" }}
     >
       <g transform="rotate(-18 12 12)">
-        {/* borda da folha */}
+        {/* contorno */}
         <path
-          d="M7.8 19.15
-             C7.45 19.15 7.18 19.08 7 18.93
-             C6.67 18.69 6.64 18.28 6.94 17.75
-             L7.86 16.1
-             C6.73 14.49 6.18 12.61 6.24 10.45
-             C6.35 6.71 8.58 4.01 12.5 2.82
-             C12.69 2.76 12.87 2.73 13.03 2.73
-             C13.45 2.73 13.76 2.88 13.95 3.17
-             C14.14 3.46 14.16 3.82 14.03 4.24
-             C13.45 6.16 13.92 7.82 14.36 9.3
-             C14.55 9.95 14.74 10.57 14.84 11.18
-             C15.25 13.7 14.72 15.92 13.26 17.75
-             C11.79 19.59 9.75 20.72 7.99 20.72
-             C7.92 20.72 7.86 20.72 7.8 20.71Z"
+          d="M7.95 19.15
+             C7.45 19.15 7.15 19.03 6.95 18.85
+             C6.62 18.55 6.63 18.11 6.98 17.53
+             L8.02 15.84
+             C6.98 14.3 6.42 12.48 6.42 10.36
+             C6.42 6.72 8.56 4.08 12.43 2.86
+             C12.65 2.79 12.85 2.75 13.03 2.75
+             C13.45 2.75 13.75 2.89 13.95 3.17
+             C14.14 3.44 14.18 3.79 14.06 4.2
+             C13.54 5.95 13.96 7.5 14.38 8.99
+             C14.59 9.73 14.79 10.43 14.89 11.13
+             C15.28 13.66 14.73 15.92 13.24 17.79
+             C11.71 19.72 9.53 20.85 8.16 20.85
+             C8.09 20.85 8.02 20.85 7.95 20.84Z"
           stroke={c}
-          strokeWidth="1.98"
+          strokeWidth="1.95"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
         {/* nervura central */}
         <path
-          d="M8.22 18.05 15.28 6.18"
+          d="M8.25 18.1 15.18 6.35"
           stroke={c}
           strokeWidth="1.52"
           strokeLinecap="round"
         />
 
-        {/* nervuras secundárias */}
+        {/* nervuras esquerdas */}
         <path
-          d="M10.05 14.42c-.98-.55-1.78-1.4-2.22-2.52"
+          d="M10.05 14.45c-.98-.6-1.73-1.43-2.12-2.5"
           stroke={c}
-          strokeWidth="1.06"
+          strokeWidth="1.02"
           strokeLinecap="round"
         />
         <path
-          d="M11.5 12.02c-.82-.49-1.43-1.18-1.79-2.11"
-          stroke={c}
-          strokeWidth="1.0"
-          strokeLinecap="round"
-        />
-        <path
-          d="M12.66 10.04c-.42-.74-.56-1.67-.4-2.8"
+          d="M11.4 12.15c-.76-.46-1.3-1.09-1.62-1.93"
           stroke={c}
           strokeWidth="0.96"
           strokeLinecap="round"
         />
         <path
-          d="M11.12 15.1c1.39-.07 2.72-.5 4.03-1.32"
+          d="M12.52 10.25c-.34-.67-.44-1.47-.28-2.42"
           stroke={c}
-          strokeWidth="1.06"
-          strokeLinecap="round"
-        />
-        <path
-          d="M12.44 12.95c1.11-.09 2.11-.45 3.12-1.08"
-          stroke={c}
-          strokeWidth="1.0"
+          strokeWidth="0.92"
           strokeLinecap="round"
         />
 
-        {/* pecíolo pequeno */}
+        {/* nervuras direitas */}
         <path
-          d="M8.03 18.56 7.22 19.42"
+          d="M11.15 15.02c1.34-.08 2.64-.5 3.95-1.28"
           stroke={c}
-          strokeWidth="1.08"
+          strokeWidth="1.02"
+          strokeLinecap="round"
+        />
+        <path
+          d="M12.42 12.95c1.08-.1 2.04-.44 3-1.02"
+          stroke={c}
+          strokeWidth="0.96"
+          strokeLinecap="round"
+        />
+
+        {/* pecíolo */}
+        <path
+          d="M8.04 18.55 7.28 19.33"
+          stroke={c}
+          strokeWidth="1.02"
           strokeLinecap="round"
         />
       </g>
@@ -155,12 +139,7 @@ function UserIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z" stroke={c} strokeWidth="2.25" />
-      <path
-        d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5"
-        stroke={c}
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
+      <path d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
     </svg>
   );
 }
@@ -277,10 +256,8 @@ export default function BottomMenu() {
   function runHoldProgress() {
     const tick = (now) => {
       if (!pressStartedRef.current) return;
-
       const elapsed = now - holdStartAtRef.current;
       const pct = Math.min(1, elapsed / HOLD_TOTAL_MS);
-
       setTrainHoldProgress(pct);
 
       if (pct >= 1) {
@@ -322,10 +299,8 @@ export default function BottomMenu() {
 
   function endTrainHold() {
     const completed = holdCompletedRef.current;
-
-    if (!completed) {
-      resetHoldState();
-    } else {
+    if (!completed) resetHoldState();
+    else {
       holdCompletedRef.current = false;
       setTrainHoldProgress(0);
       setTrainPressing(false);
@@ -343,9 +318,7 @@ export default function BottomMenu() {
   function onAccountClick() {
     accountTapRef.current += 1;
 
-    if (accountTapTimerRef.current) {
-      window.clearTimeout(accountTapTimerRef.current);
-    }
+    if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
 
     accountTapTimerRef.current = window.setTimeout(() => {
       if (accountTapRef.current >= 2) setShowAccountMenu((v) => !v);
@@ -425,14 +398,7 @@ export default function BottomMenu() {
                     }}
                   >
                     <svg width="72" height="72" viewBox="0 0 72 72" style={styles.progressSvg} aria-hidden="true">
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r={ringRadius}
-                        fill="none"
-                        stroke="rgba(255,106,0,.10)"
-                        strokeWidth="2.5"
-                      />
+                      <circle cx="36" cy="36" r={ringRadius} fill="none" stroke="rgba(255,106,0,.10)" strokeWidth="2.5" />
                       <circle
                         cx="36"
                         cy="36"
@@ -469,13 +435,7 @@ export default function BottomMenu() {
                     </span>
                   </span>
 
-                  <span
-                    style={{
-                      ...styles.mainLabel,
-                      color: active ? ORANGE : TEXT,
-                      opacity: active ? 1 : 0.74,
-                    }}
-                  >
+                  <span style={{ ...styles.mainLabel, color: active ? ORANGE : TEXT, opacity: active ? 1 : 0.74 }}>
                     {item.label}
                   </span>
                 </button>
@@ -497,10 +457,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.14)"
+                          ? "translateY(-1px) scale(1.16)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.06)"
+                          ? "translateY(0px) scale(1.08)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -654,8 +614,8 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 35,
-    height: 35,
+    width: 36,
+    height: 36,
     marginBottom: -1,
   },
 
@@ -669,8 +629,8 @@ const styles = {
   },
 
   labelNutri: {
-    letterSpacing: 0.7,
-    fontSize: 7.7,
+    letterSpacing: 0.66,
+    fontSize: 7.65,
   },
 
   mainIconWrap: {
