@@ -41,33 +41,54 @@ function NutritionIcon({ active }) {
 
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 19.4v-6.2"
-        stroke={c}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-      />
-      <path
-        d="M11.9 13.7c-3.25 0-5.55-1.9-6.45-5.2 3.45-.15 5.8 1.45 6.45 5.2Z"
-        stroke={c}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12.1 13.2c.45-3.15 2.55-5.25 5.95-5.85.1 3.55-1.95 5.9-5.95 5.85Z"
-        stroke={c}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 11.8c-.2-2.15.7-3.85 2.55-5.2 1 2.25.7 4.15-1.3 5.65"
-        stroke={c}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <g transform="rotate(-20 12 12)">
+        <path
+          d="M8.35 19.7c-.25 0-.47-.06-.63-.18-.42-.31-.44-.88-.08-1.48l1.28-2.03c-1.68-2.35-2.2-4.96-1.52-7.45.86-3.11 3.57-5.33 7.45-6.13.76-.15 1.26.29 1.22 1.04l-.18 3.71v.02c-.01 3.13-.62 5.72-1.87 7.92-1.22 2.14-3.07 3.67-5.65 4.67-.68.26-1.48-.02-1.98-.09Z"
+          stroke={c}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M8.7 19.2 14.8 8.15"
+          stroke={c}
+          strokeWidth="2.05"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M10.55 15.8c1.1-.75 2.38-1.17 4.1-1.38"
+          stroke={c}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <path
+          d="M11.85 13.4c1.06-.74 2.2-1.16 3.73-1.41"
+          stroke={c}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <path
+          d="M13.1 11.15c.76-.56 1.52-.89 2.52-1.09"
+          stroke={c}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M10.15 14.6c-.55-1.05-.8-2.01-.82-3.24"
+          stroke={c}
+          strokeWidth="1.65"
+          strokeLinecap="round"
+        />
+        <path
+          d="M11.25 12.55c-.53-.88-.76-1.65-.82-2.72"
+          stroke={c}
+          strokeWidth="1.65"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   );
 }
@@ -684,8 +705,8 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 27,
-    height: 27,
+    width: 28,
+    height: 28,
   },
 
   label: {
@@ -698,8 +719,8 @@ const styles = {
   },
 
   labelNutri: {
-    letterSpacing: 0.72,
-    fontSize: 7.7,
+    letterSpacing: 0.75,
+    fontSize: 7.75,
   },
 
   mainIconWrap: {
