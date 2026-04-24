@@ -41,62 +41,64 @@ function NutritionIcon({ active }) {
 
   return (
     <svg
-      width="30"
-      height="30"
+      width="28"
+      height="28"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
       style={{ display: "block" }}
     >
       <g transform="rotate(-18 12 12)">
-        {/* folha principal */}
+        {/* borda/lâmina */}
         <path
-          d="M8.2 18.4c-1.15-3.1-.35-6.55 2.15-9.05 2.25-2.25 5.2-3.38 8.1-3.22.16 2.9-.95 5.86-3.2 8.1-2.52 2.52-5.98 3.34-9.05 2.2Z"
+          d="M7.55 19.15c-.34 0-.62-.08-.82-.24-.43-.31-.47-.83-.15-1.4l.88-1.58c-1.13-1.76-1.63-3.8-1.46-5.98.31-3.86 2.58-6.58 6.45-7.83.2-.07.38-.1.56-.1.48 0 .84.18 1.05.5.22.32.25.73.11 1.22-.61 2.16-.02 4.1.46 5.76.18.63.35 1.22.45 1.8.44 2.57-.13 4.82-1.68 6.69-1.57 1.88-3.8 3.02-6.48 3.16h-.17Z"
           stroke={c}
-          strokeWidth="1.85"
+          strokeWidth="1.95"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
         {/* nervura central */}
         <path
-          d="M8.95 17.6 15.55 8.15"
+          d="M8.1 18.05 15.25 6.25"
           stroke={c}
-          strokeWidth="1.45"
+          strokeWidth="1.75"
           strokeLinecap="round"
         />
 
-        {/* nervuras secundárias */}
+        {/* nervuras secundárias esquerdas */}
         <path
-          d="M10.35 15.65c-.92-.48-1.63-1.18-2.08-2.1"
+          d="M10.15 14.45c-1.08-.58-1.92-1.44-2.38-2.62"
           stroke={c}
-          strokeWidth="1.08"
+          strokeWidth="1.12"
           strokeLinecap="round"
         />
         <path
-          d="M11.75 13.6c-.82-.42-1.4-1-1.8-1.8"
+          d="M11.65 11.95c-.9-.52-1.54-1.22-1.9-2.2"
           stroke={c}
-          strokeWidth="1.02"
+          strokeWidth="1.04"
+          strokeLinecap="round"
+        />
+
+        {/* nervuras secundárias direitas */}
+        <path
+          d="M11.15 15.2c1.45-.05 2.82-.5 4.1-1.36"
+          stroke={c}
+          strokeWidth="1.12"
           strokeLinecap="round"
         />
         <path
-          d="M11.95 15.1c1.28-.1 2.48-.55 3.62-1.38"
+          d="M12.45 13c1.15-.08 2.17-.46 3.18-1.12"
           stroke={c}
-          strokeWidth="1.08"
-          strokeLinecap="round"
-        />
-        <path
-          d="M13.05 13.45c1-.08 1.92-.42 2.82-1.02"
-          stroke={c}
-          strokeWidth="1.02"
+          strokeWidth="1.04"
           strokeLinecap="round"
         />
 
         {/* pecíolo pequeno */}
         <path
-          d="M8.55 18.15 7.75 19.05"
+          d="M7.95 18.55 7.18 19.38"
           stroke={c}
-          strokeWidth="1.3"
+          strokeWidth="1.22"
           strokeLinecap="round"
         />
       </g>
@@ -507,10 +509,10 @@ export default function BottomMenu() {
                       transform:
                         active
                           ? item.to === "/nutricao"
-                            ? "translateY(-1px) scale(1.08)"
+                            ? "translateY(-1px) scale(1.12)"
                             : "translateY(-1px) scale(1.06)"
                           : item.to === "/nutricao"
-                            ? "translateY(0px) scale(1.02)"
+                            ? "translateY(0px) scale(1.06)"
                             : "translateY(0) scale(1)",
                       filter: active
                         ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -550,10 +552,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.08)"
+                          ? "translateY(-1px) scale(1.12)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.02)"
+                          ? "translateY(0px) scale(1.06)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -715,12 +717,10 @@ const styles = {
     transition: "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
- iconWrapNutri: {
-  width: 34,
-  height: 34,
-  display: "grid",
-  placeItems: "center",
-},
+  iconWrapNutri: {
+    width: 32,
+    height: 32,
+  },
 
   label: {
     fontSize: 8,
