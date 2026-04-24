@@ -23,83 +23,74 @@ function NutritionIcon({ active }) {
 
   return (
     <svg
-      width="31"
-      height="31"
+      width="28"
+      height="28"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
       style={{ display: "block", overflow: "visible" }}
     >
-      <g transform="rotate(-18 12 12)">
-        {/* contorno */}
-        <path
-          d="M7.95 19.15
-             C7.45 19.15 7.15 19.03 6.95 18.85
-             C6.62 18.55 6.63 18.11 6.98 17.53
-             L8.02 15.84
-             C6.98 14.3 6.42 12.48 6.42 10.36
-             C6.42 6.72 8.56 4.08 12.43 2.86
-             C12.65 2.79 12.85 2.75 13.03 2.75
-             C13.45 2.75 13.75 2.89 13.95 3.17
-             C14.14 3.44 14.18 3.79 14.06 4.2
-             C13.54 5.95 13.96 7.5 14.38 8.99
-             C14.59 9.73 14.79 10.43 14.89 11.13
-             C15.28 13.66 14.73 15.92 13.24 17.79
-             C11.71 19.72 9.53 20.85 8.16 20.85
-             C8.09 20.85 8.02 20.85 7.95 20.84Z"
+      <g transform="translate(0.2 0)">
+        {/* prato */}
+        <circle
+          cx="12"
+          cy="12"
+          r="5.3"
           stroke={c}
-          strokeWidth="1.95"
+          strokeWidth="1.9"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="3.15"
+          stroke={c}
+          strokeWidth="1.35"
+        />
+
+        {/* garfo */}
+        <path
+          d="M6.15 6.25v4.15"
+          stroke={c}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M5.25 6.25v2.35"
+          stroke={c}
+          strokeWidth="1.15"
+          strokeLinecap="round"
+        />
+        <path
+          d="M6.15 6.25v2.35"
+          stroke={c}
+          strokeWidth="1.15"
+          strokeLinecap="round"
+        />
+        <path
+          d="M7.05 6.25v2.35"
+          stroke={c}
+          strokeWidth="1.15"
+          strokeLinecap="round"
+        />
+        <path
+          d="M6.15 10.35v7"
+          stroke={c}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+
+        {/* faca */}
+        <path
+          d="M17.95 6.2c-.9.35-1.55 1.35-1.55 2.75v3.15"
+          stroke={c}
+          strokeWidth="1.45"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-
-        {/* nervura central */}
         <path
-          d="M8.25 18.1 15.18 6.35"
+          d="M16.4 12.1v5.25"
           stroke={c}
-          strokeWidth="1.52"
-          strokeLinecap="round"
-        />
-
-        {/* nervuras esquerdas */}
-        <path
-          d="M10.05 14.45c-.98-.6-1.73-1.43-2.12-2.5"
-          stroke={c}
-          strokeWidth="1.02"
-          strokeLinecap="round"
-        />
-        <path
-          d="M11.4 12.15c-.76-.46-1.3-1.09-1.62-1.93"
-          stroke={c}
-          strokeWidth="0.96"
-          strokeLinecap="round"
-        />
-        <path
-          d="M12.52 10.25c-.34-.67-.44-1.47-.28-2.42"
-          stroke={c}
-          strokeWidth="0.92"
-          strokeLinecap="round"
-        />
-
-        {/* nervuras direitas */}
-        <path
-          d="M11.15 15.02c1.34-.08 2.64-.5 3.95-1.28"
-          stroke={c}
-          strokeWidth="1.02"
-          strokeLinecap="round"
-        />
-        <path
-          d="M12.42 12.95c1.08-.1 2.04-.44 3-1.02"
-          stroke={c}
-          strokeWidth="0.96"
-          strokeLinecap="round"
-        />
-
-        {/* pecíolo */}
-        <path
-          d="M8.04 18.55 7.28 19.33"
-          stroke={c}
-          strokeWidth="1.02"
+          strokeWidth="1.5"
           strokeLinecap="round"
         />
       </g>
@@ -457,10 +448,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.16)"
+                          ? "translateY(-1px) scale(1.1)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.08)"
+                          ? "translateY(0px) scale(1.04)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -614,8 +605,8 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 36,
-    height: 36,
+    width: 33,
+    height: 33,
     marginBottom: -1,
   },
 
@@ -629,8 +620,8 @@ const styles = {
   },
 
   labelNutri: {
-    letterSpacing: 0.66,
-    fontSize: 7.65,
+    letterSpacing: 0.72,
+    fontSize: 7.7,
   },
 
   mainIconWrap: {
