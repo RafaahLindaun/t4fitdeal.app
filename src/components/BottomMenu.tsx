@@ -28,27 +28,27 @@ function NutritionIcon({ active }) {
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
-      style={{ display: "block", overflow: "visible" }}
+      style={{ display: "block" }}
     >
       {/* garfo */}
-      <path d="M5.7 5.8v2.55" stroke={c} strokeWidth="1.18" strokeLinecap="round" />
-      <path d="M6.75 5.8v2.55" stroke={c} strokeWidth="1.18" strokeLinecap="round" />
-      <path d="M7.8 5.8v2.55" stroke={c} strokeWidth="1.18" strokeLinecap="round" />
-      <path d="M6.75 8.35v10.05" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
+      <path d="M5.9 5.6v2.7" stroke={c} strokeWidth="1.15" strokeLinecap="round" />
+      <path d="M6.85 5.6v2.7" stroke={c} strokeWidth="1.15" strokeLinecap="round" />
+      <path d="M7.8 5.6v2.7" stroke={c} strokeWidth="1.15" strokeLinecap="round" />
+      <path d="M6.85 8.3v9.9" stroke={c} strokeWidth="1.42" strokeLinecap="round" />
 
       {/* prato */}
-      <circle cx="12.25" cy="12.1" r="4.55" stroke={c} strokeWidth="1.9" />
-      <circle cx="12.25" cy="12.1" r="2.72" stroke={c} strokeWidth="1.2" />
+      <circle cx="12.2" cy="12" r="4.35" stroke={c} strokeWidth="1.9" />
+      <circle cx="12.2" cy="12" r="2.68" stroke={c} strokeWidth="1.16" />
 
       {/* faca */}
       <path
-        d="M17.65 5.95c-1.02.44-1.78 1.55-1.78 3.16v2.9"
+        d="M17.55 5.75c-.92.46-1.55 1.52-1.55 2.98v2.95"
         stroke={c}
-        strokeWidth="1.35"
+        strokeWidth="1.34"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M15.87 12.01v6.39" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
+      <path d="M16 11.68v6.52" stroke={c} strokeWidth="1.42" strokeLinecap="round" />
     </svg>
   );
 }
