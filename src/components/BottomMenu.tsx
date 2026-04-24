@@ -41,51 +41,43 @@ function NutritionIcon({ active }) {
 
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g transform="rotate(-20 12 12)">
+      <g transform="rotate(-18 12 12)">
         <path
-          d="M8.35 19.7c-.25 0-.47-.06-.63-.18-.42-.31-.44-.88-.08-1.48l1.28-2.03c-1.68-2.35-2.2-4.96-1.52-7.45.86-3.11 3.57-5.33 7.45-6.13.76-.15 1.26.29 1.22 1.04l-.18 3.71v.02c-.01 3.13-.62 5.72-1.87 7.92-1.22 2.14-3.07 3.67-5.65 4.67-.68.26-1.48-.02-1.98-.09Z"
+          d="M8.2 19.1c.2-1 .8-1.8 1.7-2.4.9-.6 2.1-.7 3.3-.9 1.7-.2 3.3-.8 4.6-2.1 1.6-1.6 2.5-4 2.3-8.1-4 .1-6.6 1.1-8.4 2.8-1.7 1.7-2.5 3.9-2.8 6-.2 1.5-.2 2.8-.7 4-.1.3-.2.5-.3.7l.3 0Z"
           stroke={c}
-          strokeWidth="2.2"
+          strokeWidth="2.15"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-
         <path
-          d="M8.7 19.2 14.8 8.15"
+          d="M8.55 19.05c.45-.75.9-1.56 1.45-2.42.83-1.28 1.88-2.77 3.17-4.45 1.26-1.64 2.82-3.43 4.72-5.36"
           stroke={c}
-          strokeWidth="2.05"
+          strokeWidth="1.95"
           strokeLinecap="round"
-        />
-
-        <path
-          d="M10.55 15.8c1.1-.75 2.38-1.17 4.1-1.38"
-          stroke={c}
-          strokeWidth="1.75"
-          strokeLinecap="round"
+          strokeLinejoin="round"
         />
         <path
-          d="M11.85 13.4c1.06-.74 2.2-1.16 3.73-1.41"
+          d="M12.45 13.25c1.18-.08 2.29-.37 3.45-.96"
           stroke={c}
-          strokeWidth="1.75"
+          strokeWidth="1.55"
           strokeLinecap="round"
         />
         <path
-          d="M13.1 11.15c.76-.56 1.52-.89 2.52-1.09"
+          d="M10.9 15.55c1.35-.08 2.83-.39 4.55-1.14"
           stroke={c}
-          strokeWidth="1.75"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M10.15 14.6c-.55-1.05-.8-2.01-.82-3.24"
-          stroke={c}
-          strokeWidth="1.65"
+          strokeWidth="1.55"
           strokeLinecap="round"
         />
         <path
-          d="M11.25 12.55c-.53-.88-.76-1.65-.82-2.72"
+          d="M11.95 11.65c-.32-.92-.41-1.8-.31-2.78"
           stroke={c}
-          strokeWidth="1.65"
+          strokeWidth="1.45"
+          strokeLinecap="round"
+        />
+        <path
+          d="M10.65 13.75c-.46-1.08-.71-2.17-.78-3.45"
+          stroke={c}
+          strokeWidth="1.45"
           strokeLinecap="round"
         />
       </g>
@@ -496,10 +488,10 @@ export default function BottomMenu() {
                       transform:
                         active
                           ? item.to === "/nutricao"
-                            ? "translateY(-1px) scale(1.08)"
+                            ? "translateY(-2px) scale(1.12)"
                             : "translateY(-1px) scale(1.06)"
                           : item.to === "/nutricao"
-                            ? "translateY(0px) scale(1.02)"
+                            ? "translateY(-1px) scale(1.05)"
                             : "translateY(0) scale(1)",
                       filter: active
                         ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -539,10 +531,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.08)"
+                          ? "translateY(-2px) scale(1.12)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.02)"
+                          ? "translateY(-1px) scale(1.05)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -719,7 +711,7 @@ const styles = {
   },
 
   labelNutri: {
-    letterSpacing: 0.75,
+    letterSpacing: 0.76,
     fontSize: 7.75,
   },
 
