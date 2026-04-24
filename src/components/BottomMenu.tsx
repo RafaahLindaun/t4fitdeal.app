@@ -6,6 +6,8 @@ import { supabase } from "../lib/supabase";
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
 
+/* ---------------- icons ---------------- */
+
 function HomeIcon({ active }) {
   const c = active ? "#fff" : ORANGE;
 
@@ -41,65 +43,92 @@ function NutritionIcon({ active }) {
 
   return (
     <svg
-      width="28"
-      height="28"
+      width="31"
+      height="31"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
-      style={{ display: "block" }}
+      style={{
+        display: "block",
+        overflow: "visible",
+      }}
     >
       <g transform="rotate(-18 12 12)">
-        {/* borda/lâmina */}
+        {/* contorno externo */}
         <path
-          d="M7.55 19.15c-.34 0-.62-.08-.82-.24-.43-.31-.47-.83-.15-1.4l.88-1.58c-1.13-1.76-1.63-3.8-1.46-5.98.31-3.86 2.58-6.58 6.45-7.83.2-.07.38-.1.56-.1.48 0 .84.18 1.05.5.22.32.25.73.11 1.22-.61 2.16-.02 4.1.46 5.76.18.63.35 1.22.45 1.8.44 2.57-.13 4.82-1.68 6.69-1.57 1.88-3.8 3.02-6.48 3.16h-.17Z"
+          d="M7.55 19.1
+             C7.18 19.1 6.95 19.01 6.8 18.89
+             C6.53 18.69 6.52 18.34 6.78 17.88
+             L7.63 16.35
+             C6.52 14.84 5.98 13.04 5.98 10.95
+             C5.98 7.04 8.33 4.22 12.62 2.86
+             C12.79 2.8 12.94 2.77 13.08 2.77
+             C13.45 2.77 13.74 2.9 13.91 3.14
+             C14.08 3.38 14.11 3.71 14 4.09
+             C13.41 6.03 13.87 7.72 14.29 9.21
+             C14.49 9.92 14.68 10.58 14.78 11.23
+             C15.17 13.74 14.65 15.95 13.23 17.75
+             C11.78 19.56 9.77 20.76 7.73 20.76
+             L7.55 19.1Z"
           stroke={c}
-          strokeWidth="1.95"
+          strokeWidth="1.9"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
         {/* nervura central */}
         <path
-          d="M8.1 18.05 15.25 6.25"
+          d="M8.0 18.05 L15.2 6.15"
           stroke={c}
-          strokeWidth="1.75"
+          strokeWidth="1.45"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
 
-        {/* nervuras secundárias esquerdas */}
+        {/* nervuras secundárias */}
         <path
-          d="M10.15 14.45c-1.08-.58-1.92-1.44-2.38-2.62"
+          d="M10.0 14.45 C9.1 13.92 8.32 13.02 7.95 11.95"
           stroke={c}
-          strokeWidth="1.12"
+          strokeWidth="1.02"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
         <path
-          d="M11.65 11.95c-.9-.52-1.54-1.22-1.9-2.2"
+          d="M11.45 12.05 C10.72 11.58 10.18 10.86 9.88 9.88"
           stroke={c}
-          strokeWidth="1.04"
+          strokeWidth="0.98"
           strokeLinecap="round"
-        />
-
-        {/* nervuras secundárias direitas */}
-        <path
-          d="M11.15 15.2c1.45-.05 2.82-.5 4.1-1.36"
-          stroke={c}
-          strokeWidth="1.12"
-          strokeLinecap="round"
+          strokeLinejoin="round"
         />
         <path
-          d="M12.45 13c1.15-.08 2.17-.46 3.18-1.12"
+          d="M12.65 10.0 C12.17 9.17 12.02 8.18 12.16 7.02"
           stroke={c}
-          strokeWidth="1.04"
+          strokeWidth="0.96"
           strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M11.05 15.15 C12.45 15.05 13.78 14.62 15.15 13.78"
+          stroke={c}
+          strokeWidth="1.02"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12.4 12.95 C13.52 12.84 14.55 12.45 15.72 11.78"
+          stroke={c}
+          strokeWidth="0.98"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
 
         {/* pecíolo pequeno */}
         <path
-          d="M7.95 18.55 7.18 19.38"
+          d="M7.95 18.55 L7.18 19.42"
           stroke={c}
-          strokeWidth="1.22"
+          strokeWidth="1.02"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </g>
     </svg>
@@ -115,12 +144,6 @@ function DumbbellIcon() {
         <rect x="25" y="29" width="14" height="6" rx="3" fill={ORANGE} />
         <rect x="40" y="21" width="8" height="22" rx="3" fill={ORANGE} />
         <rect x="49" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
-        <path
-          d="M18 24.5C20.5 22 24.5 21 32 21C39.5 21 43.5 22 46 24.5"
-          stroke="rgba(255,255,255,.22)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
       </g>
     </svg>
   );
@@ -162,6 +185,8 @@ function UserIcon({ active }) {
   );
 }
 
+/* ---------------- component ---------------- */
+
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
@@ -182,8 +207,8 @@ export default function BottomMenu() {
   const accountTapRef = useRef(0);
   const accountTapTimerRef = useRef(null);
 
-  const HOLD_DELAY_MS = 220;
-  const HOLD_TOTAL_MS = 1180;
+  const HOLD_DELAY_MS = 260;
+  const HOLD_TOTAL_MS = 1200;
 
   const items = [
     { to: "/dashboard", label: "Início", Icon: HomeIcon },
@@ -225,7 +250,7 @@ export default function BottomMenu() {
         const allowed = rows.some((row) => {
           const planKey = String(row?.plan_key || "").toLowerCase();
           const status = String(row?.status || "").toLowerCase();
-          return ["active", "trialing"].includes(status) && ["basico", "premium"].includes(planKey);
+          return ["active", "trialing"].includes(status) && ["basico", "premium", "nutri"].includes(planKey);
         });
 
         if (mounted) setHasWorkoutDetailAccess(allowed);
@@ -493,55 +518,13 @@ export default function BottomMenu() {
               );
             }
 
-            if (item.to === "/conta") {
-              return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={onAccountClick}
-                  className="fitdeal-bottom-item"
-                  style={styles.item}
-                >
-                  <span
-                    style={{
-                      ...styles.iconWrap,
-                      ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
-                      transform:
-                        active
-                          ? item.to === "/nutricao"
-                            ? "translateY(-1px) scale(1.12)"
-                            : "translateY(-1px) scale(1.06)"
-                          : item.to === "/nutricao"
-                            ? "translateY(0px) scale(1.06)"
-                            : "translateY(0) scale(1)",
-                      filter: active
-                        ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                        : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
-                    }}
-                  >
-                    <Icon active={active} />
-                  </span>
-
-                  <span
-                    style={{
-                      ...styles.label,
-                      ...(item.to === "/nutricao" ? styles.labelNutri : null),
-                      color: active ? "#fff" : TEXT,
-                      opacity: active ? 1 : 0.62,
-                      transform: active ? "translateY(-1px)" : "translateY(0)",
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            }
+            const handleClick = item.to === "/conta" ? onAccountClick : () => go(item.to);
 
             return (
               <button
                 key={item.to}
                 type="button"
-                onClick={() => go(item.to)}
+                onClick={handleClick}
                 className="fitdeal-bottom-item"
                 style={styles.item}
               >
@@ -552,14 +535,14 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.12)"
+                          ? "translateY(-1px) scale(1.08)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.06)"
+                          ? "translateY(0px) scale(1.03)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
-                      : "drop-shadow(0 8px 14px rgba(255,106,0,.12))",
+                      : "drop-shadow(0 8px 14px rgba(255,106,0,.10))",
                   }}
                 >
                   <Icon active={active} />
@@ -628,6 +611,8 @@ export default function BottomMenu() {
     </>
   );
 }
+
+/* ---------------- styles ---------------- */
 
 const styles = {
   wrapper: {
@@ -718,8 +703,9 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
+    marginBottom: -1,
   },
 
   label: {
