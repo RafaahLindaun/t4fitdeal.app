@@ -30,70 +30,25 @@ function NutritionIcon({ active }) {
       aria-hidden="true"
       style={{ display: "block", overflow: "visible" }}
     >
-      <g transform="translate(0.2 0)">
-        {/* prato */}
-        <circle
-          cx="12"
-          cy="12"
-          r="5.3"
-          stroke={c}
-          strokeWidth="1.9"
-        />
-        <circle
-          cx="12"
-          cy="12"
-          r="3.15"
-          stroke={c}
-          strokeWidth="1.35"
-        />
+      {/* garfo */}
+      <path d="M5.9 4.9v3.2" stroke={c} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M6.85 4.9v3.2" stroke={c} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M7.8 4.9v3.2" stroke={c} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M6.85 8.1v10.9" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
 
-        {/* garfo */}
-        <path
-          d="M6.15 6.25v4.15"
-          stroke={c}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M5.25 6.25v2.35"
-          stroke={c}
-          strokeWidth="1.15"
-          strokeLinecap="round"
-        />
-        <path
-          d="M6.15 6.25v2.35"
-          stroke={c}
-          strokeWidth="1.15"
-          strokeLinecap="round"
-        />
-        <path
-          d="M7.05 6.25v2.35"
-          stroke={c}
-          strokeWidth="1.15"
-          strokeLinecap="round"
-        />
-        <path
-          d="M6.15 10.35v7"
-          stroke={c}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
+      {/* prato */}
+      <circle cx="12.15" cy="12" r="4.65" stroke={c} strokeWidth="1.9" />
+      <circle cx="12.15" cy="12" r="2.75" stroke={c} strokeWidth="1.2" />
 
-        {/* faca */}
-        <path
-          d="M17.95 6.2c-.9.35-1.55 1.35-1.55 2.75v3.15"
-          stroke={c}
-          strokeWidth="1.45"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M16.4 12.1v5.25"
-          stroke={c}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </g>
+      {/* faca */}
+      <path
+        d="M17.45 4.95c-.95.42-1.65 1.52-1.65 3.02v2.95"
+        stroke={c}
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M15.8 10.92v8.08" stroke={c} strokeWidth="1.45" strokeLinecap="round" />
     </svg>
   );
 }
@@ -448,10 +403,10 @@ export default function BottomMenu() {
                     transform:
                       active
                         ? item.to === "/nutricao"
-                          ? "translateY(-1px) scale(1.1)"
+                          ? "translateY(-1px) scale(1.08)"
                           : "translateY(-1px) scale(1.06)"
                         : item.to === "/nutricao"
-                          ? "translateY(0px) scale(1.04)"
+                          ? "translateY(0px) scale(1.03)"
                           : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
@@ -605,8 +560,8 @@ const styles = {
   },
 
   iconWrapNutri: {
-    width: 33,
-    height: 33,
+    width: 34,
+    height: 34,
     marginBottom: -1,
   },
 
@@ -664,76 +619,4 @@ const styles = {
   },
 
   mainLabel: {
-    fontSize: 8,
-    lineHeight: 1,
-    fontWeight: 950,
-    letterSpacing: 0.85,
-    textTransform: "uppercase",
-    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
-  },
-
-  sheetOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 11000,
-    background: "rgba(2,6,23,.22)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
-    display: "grid",
-    alignItems: "end",
-    padding: 12,
-    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
-  },
-
-  sheet: {
-    width: "100%",
-    maxWidth: 430,
-    margin: "0 auto",
-    borderRadius: 26,
-    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
-    border: "1px solid rgba(255,255,255,.58)",
-    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
-    padding: 14,
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-  },
-
-  sheetGrab: {
-    width: 44,
-    height: 5,
-    borderRadius: 999,
-    background: "rgba(100,116,139,.24)",
-    margin: "0 auto 10px",
-  },
-
-  sheetTitle: {
-    textAlign: "center",
-    fontSize: 15,
-    fontWeight: 950,
-    color: TEXT,
-    marginBottom: 12,
-  },
-
-  sheetActionDanger: {
-    width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "1px solid rgba(255,106,0,.18)",
-    background: "rgba(255,106,0,.10)",
-    color: ORANGE,
-    fontWeight: 950,
-    fontSize: 14,
-    marginBottom: 10,
-  },
-
-  sheetActionSoft: {
-    width: "100%",
-    padding: 15,
-    borderRadius: 18,
-    border: "1px solid rgba(15,23,42,.08)",
-    background: "rgba(255,255,255,.72)",
-    color: TEXT,
-    fontWeight: 950,
-    fontSize: 14,
-  },
-};
+    fontSize
