@@ -1,575 +1,694 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
-const TEXT = "#5D6472";
-const DARK = "#111827";
-
-function isPathActive(pathname, key) {
-  const p = String(pathname || "").toLowerCase();
-
-  if (key === "home") {
-    return p === "/" || p.startsWith("/dashboard");
-  }
-  if (key === "nutricao") {
-    return p.startsWith("/nutricao");
-  }
-  if (key === "treino") {
-    return p.startsWith("/treino");
-  }
-  if (key === "planos") {
-    return p.startsWith("/pagamentos") || p.startsWith("/planos");
-  }
-  if (key === "conta") {
-    return p.startsWith("/conta");
-  }
-
-  return false;
-}
+const TEXT = "#0f172a";
 
 function HomeIcon({ active }) {
-  const color = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M4.75 10.4L12 4.75l7.25 5.65"
-        stroke={color}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.75 9.9v8.25c0 .69.56 1.25 1.25 1.25h2.2v-4.55c0-.55.45-1 1-1h1.6c.55 0 1 .45 1 1v4.55H16c.69 0 1.25-.56 1.25-1.25V9.9"
-        stroke={color}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M4.5 10.7 12 4.4l7.5 6.3" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 19.7v-5.1h4v5.1" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function NutritionIcon({ active }) {
-  const color = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
 
   return (
-    <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-      {/* Garfo */}
-      <path
-        d="M6.2 5.5v4.15"
-        stroke={color}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.55 5.5v4.15"
-        stroke={color}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8.9 5.5v4.15"
-        stroke={color}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.55 9.65v9"
-        stroke={color}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-      />
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 28 28"
+      fill="none"
+      aria-hidden="true"
+      style={{ display: "block" }}
+    >
+      {/* garfo */}
+      <path d="M5.9 6v4.2" stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M7.3 6v4.2" stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M8.7 6v4.2" stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M7.3 10.2v10.1" stroke={c} strokeWidth="1.95" strokeLinecap="round" />
 
-      {/* Prato */}
-      <circle
-        cx="14.2"
-        cy="13.8"
-        r="6.45"
-        stroke={color}
-        strokeWidth="2.05"
-      />
-      <circle
-        cx="14.2"
-        cy="13.8"
-        r="3.25"
-        stroke={color}
-        strokeWidth="1.75"
-      />
+      {/* prato */}
+      <circle cx="14.15" cy="14" r="4.95" stroke={c} strokeWidth="1.95" />
+      <circle cx="14.15" cy="14" r="2.78" stroke={c} strokeWidth="1.45" />
 
-      {/* Faca */}
+      {/* faca */}
       <path
-        d="M21.15 5.65c-1.5.45-2.45 1.95-2.45 3.9 0 1.45.54 2.55 1.5 3.2v5.9"
-        stroke={color}
-        strokeWidth="2.05"
+        d="M21.05 6.05c-1.1.58-1.8 1.82-1.8 3.45v2.2"
+        stroke={c}
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M20.2 18.65v1.15"
-        stroke={color}
-        strokeWidth="2.05"
-        strokeLinecap="round"
-      />
+      <path d="M19.25 11.7v8.6" stroke={c} strokeWidth="1.95" strokeLinecap="round" />
     </svg>
   );
 }
 
 function DumbbellIcon() {
   return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      style={{ display: "block" }}
-    >
-      <g
-        stroke={ORANGE}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M9 10.2l6 3.6" />
-        <path d="M10.2 9l3.6 6" />
-
-        <path d="M4.9 8.85l1.55-.95" />
-        <path d="M6.15 10.95l1.55-.95" />
-        <path d="M3.85 7.15l1.55-.95" />
-        <path d="M7.2 12.65l1.55-.95" />
-
-        <path d="M15.3 11.3l1.55-.95" />
-        <path d="M16.55 13.4l1.55-.95" />
-        <path d="M14.25 9.6l1.55-.95" />
-        <path d="M17.6 15.1l1.55-.95" />
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <g transform="rotate(-35 32 32)">
+        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
+        <rect x="16" y="21" width="8" height="22" rx="3" fill={ORANGE} />
+        <rect x="25" y="29" width="14" height="6" rx="3" fill={ORANGE} />
+        <rect x="40" y="21" width="8" height="22" rx="3" fill={ORANGE} />
+        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
       </g>
     </svg>
   );
 }
 
 function CardIcon({ active }) {
-  const color = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
+
   return (
-    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3.8"
-        y="6.2"
-        width="16.4"
-        height="11.6"
-        rx="3.2"
-        stroke={color}
-        strokeWidth="2.1"
-      />
-      <path
-        d="M3.8 10.3h16.4"
-        stroke={color}
-        strokeWidth="2.1"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.2 14.25h3.15"
-        stroke={color}
-        strokeWidth="2.1"
-        strokeLinecap="round"
-      />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3.7" y="6.4" width="16.6" height="11.2" rx="2.6" stroke={c} strokeWidth="2.25" />
+      <path d="M4.2 10h15.6" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
+      <path d="M7.4 14.5h3.5" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
     </svg>
   );
 }
 
 function UserIcon({ active }) {
-  const color = active ? "#fff" : ORANGE;
-  return (
-    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 12.1a3.85 3.85 0 1 0 0-7.7 3.85 3.85 0 0 0 0 7.7Z"
-        stroke={color}
-        strokeWidth="2.1"
-      />
-      <path
-        d="M5.1 19.2c1.35-2.75 3.8-4.15 6.9-4.15s5.55 1.4 6.9 4.15"
-        stroke={color}
-        strokeWidth="2.1"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+  const c = active ? "#fff" : ORANGE;
 
-function NavItem({ active, label, onClick, children }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        ...S.itemButton,
-        ...(active ? S.itemButtonActive : null),
-      }}
-      className="bm-press"
-    >
-      <div style={S.iconWrap}>{children}</div>
-      <div
-        style={{
-          ...S.itemLabel,
-          color: active ? "#fff" : TEXT,
-          opacity: active ? 1 : 0.98,
-        }}
-      >
-        {label}
-      </div>
-    </button>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z" stroke={c} strokeWidth="2.25" />
+      <path d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
+    </svg>
   );
 }
 
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
+  const { user } = useAuth() || {};
 
-  const [pressingTrain, setPressingTrain] = useState(false);
-  const [trainProgress, setTrainProgress] = useState(0);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [trainHoldProgress, setTrainHoldProgress] = useState(0);
+  const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
+  const [trainPressing, setTrainPressing] = useState(false);
+  const [hasWorkoutDetailAccess, setHasWorkoutDetailAccess] = useState(false);
 
-  const holdTimerRef = useRef(null);
-  const holdFrameRef = useRef(null);
-  const holdStartedAtRef = useRef(0);
-  const holdTriggeredRef = useRef(false);
+  const holdStartTimerRef = useRef(null);
+  const holdProgressRafRef = useRef(null);
+  const holdStartAtRef = useRef(0);
+  const holdCompletedRef = useRef(false);
+  const pressStartedRef = useRef(false);
 
-  const HOLD_MS = 860;
+  const accountTapRef = useRef(0);
+  const accountTapTimerRef = useRef(null);
 
-  const activeKey = useMemo(() => {
-    if (isPathActive(pathname, "treino")) return "treino";
-    if (isPathActive(pathname, "nutricao")) return "nutricao";
-    if (isPathActive(pathname, "planos")) return "planos";
-    if (isPathActive(pathname, "conta")) return "conta";
-    return "home";
-  }, [pathname]);
+  const HOLD_DELAY_MS = 260;
+  const HOLD_TOTAL_MS = 1200;
+
+  const items = [
+    { to: "/dashboard", label: "Início", Icon: HomeIcon },
+    { to: "/nutricao", label: "Nutrição", Icon: NutritionIcon },
+    { to: "/treino", label: "Treino", Icon: () => <DumbbellIcon />, main: true },
+    { to: "/pagamentos", label: "Planos", Icon: CardIcon },
+    { to: "/conta", label: "Conta", Icon: UserIcon },
+  ];
+
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPaidAccess() {
+      if (!user?.id) {
+        if (mounted) setHasWorkoutDetailAccess(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_subscriptions")
+          .select("plan_key, status")
+          .eq("user_id", user.id)
+          .in("status", ["active", "trialing"])
+          .limit(5);
+
+        if (error) {
+          console.error("BottomMenu loadPaidAccess error:", error);
+          if (mounted) setHasWorkoutDetailAccess(false);
+          return;
+        }
+
+        const rows = Array.isArray(data) ? data : [];
+        const allowed = rows.some((row) => {
+          const planKey = String(row?.plan_key || "").toLowerCase();
+          const status = String(row?.status || "").toLowerCase();
+          return ["active", "trialing"].includes(status) && ["basico", "premium", "nutri"].includes(planKey);
+        });
+
+        if (mounted) setHasWorkoutDetailAccess(allowed);
+      } catch (err) {
+        console.error("BottomMenu loadPaidAccess catch:", err);
+        if (mounted) setHasWorkoutDetailAccess(false);
+      }
+    }
+
+    loadPaidAccess();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     return () => {
-      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-      if (holdFrameRef.current) cancelAnimationFrame(holdFrameRef.current);
+      if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current);
+      if (holdProgressRafRef.current) window.cancelAnimationFrame(holdProgressRafRef.current);
+      if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
     };
   }, []);
 
-  function clearTrainHold() {
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    if (holdFrameRef.current) cancelAnimationFrame(holdFrameRef.current);
-    holdTimerRef.current = null;
-    holdFrameRef.current = null;
-    holdStartedAtRef.current = 0;
-    setPressingTrain(false);
-    setTrainProgress(0);
+  function go(to) {
+    nav(to);
   }
 
-  function startProgressLoop() {
-    const tick = () => {
-      if (!holdStartedAtRef.current) return;
-      const elapsed = performance.now() - holdStartedAtRef.current;
-      const p = Math.max(0, Math.min(1, elapsed / HOLD_MS));
-      setTrainProgress(p);
+  function clearHoldTimers() {
+    if (holdStartTimerRef.current) {
+      window.clearTimeout(holdStartTimerRef.current);
+      holdStartTimerRef.current = null;
+    }
+    if (holdProgressRafRef.current) {
+      window.cancelAnimationFrame(holdProgressRafRef.current);
+      holdProgressRafRef.current = null;
+    }
+  }
 
-      if (p < 1) {
-        holdFrameRef.current = requestAnimationFrame(tick);
+  function resetHoldState() {
+    clearHoldTimers();
+    pressStartedRef.current = false;
+    setTrainHoldProgress(0);
+    setTrainPressing(false);
+  }
+
+  function runHoldProgress() {
+    const tick = (now) => {
+      if (!pressStartedRef.current) return;
+      const elapsed = now - holdStartAtRef.current;
+      const pct = Math.min(1, elapsed / HOLD_TOTAL_MS);
+      setTrainHoldProgress(pct);
+
+      if (pct >= 1) {
+        holdCompletedRef.current = true;
+        pressStartedRef.current = false;
+        setTrainPressing(false);
+        nav("/treino-detalhe");
+        return;
       }
+
+      holdProgressRafRef.current = window.requestAnimationFrame(tick);
     };
 
-    holdFrameRef.current = requestAnimationFrame(tick);
+    holdProgressRafRef.current = window.requestAnimationFrame(tick);
   }
 
   function startTrainHold() {
-    clearTrainHold();
-    holdTriggeredRef.current = false;
-    setPressingTrain(true);
-    holdStartedAtRef.current = performance.now();
-    startProgressLoop();
+    resetHoldState();
+    holdCompletedRef.current = false;
+    setTrainHoldBlocked(false);
+    pressStartedRef.current = true;
+    setTrainPressing(true);
 
-    holdTimerRef.current = setTimeout(() => {
-      holdTriggeredRef.current = true;
-      setTrainProgress(1);
-      setPressingTrain(false);
-      nav("/treino-detalhe");
-    }, HOLD_MS);
+    holdStartTimerRef.current = window.setTimeout(() => {
+      if (!pressStartedRef.current) return;
+
+      if (!hasWorkoutDetailAccess) {
+        setTrainHoldBlocked(true);
+        setTrainPressing(false);
+        pressStartedRef.current = false;
+        window.setTimeout(() => setTrainHoldBlocked(false), 900);
+        return;
+      }
+
+      holdStartAtRef.current = performance.now();
+      runHoldProgress();
+    }, HOLD_DELAY_MS);
   }
 
-  function stopTrainHold() {
-    clearTrainHold();
+  function endTrainHold() {
+    const completed = holdCompletedRef.current;
+    if (!completed) resetHoldState();
+    else {
+      holdCompletedRef.current = false;
+      setTrainHoldProgress(0);
+      setTrainPressing(false);
+    }
   }
 
   function onTrainClick() {
-    if (holdTriggeredRef.current) {
-      holdTriggeredRef.current = false;
+    if (holdCompletedRef.current) {
+      holdCompletedRef.current = false;
       return;
     }
     nav("/treino");
   }
 
-  const ringRadius = 34;
-  const ringCirc = 2 * Math.PI * ringRadius;
-  const ringOffset = ringCirc * (1 - trainProgress);
+  function onAccountClick() {
+    accountTapRef.current += 1;
+
+    if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
+
+    accountTapTimerRef.current = window.setTimeout(() => {
+      if (accountTapRef.current >= 2) setShowAccountMenu((v) => !v);
+      else nav("/conta");
+      accountTapRef.current = 0;
+    }, 220);
+  }
+
+  function closeAccountMenu() {
+    setShowAccountMenu(false);
+  }
+
+  function goCloseAccount() {
+    setShowAccountMenu(false);
+    nav("/conta?modal=close-account");
+  }
+
+  const ringRadius = 31;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCircumference * (1 - trainHoldProgress);
 
   return (
     <>
-      <style>{`
-        @keyframes bmFloat {
-          0%,100% { transform: translateY(0px); }
-          50% { transform: translateY(-1.5px); }
-        }
-        @keyframes bmGlow {
-          0%,100% { box-shadow: 0 18px 44px rgba(255,106,0,.18), 0 1px 0 rgba(255,255,255,.9) inset; }
-          50% { box-shadow: 0 22px 54px rgba(255,106,0,.23), 0 1px 0 rgba(255,255,255,.95) inset; }
-        }
-        .bm-press {
-          transition: transform .16s ease, filter .16s ease, box-shadow .25s ease;
-        }
-        .bm-press:active {
-          transform: scale(.975);
-          filter: brightness(.985);
-        }
-      `}</style>
+      {showAccountMenu ? (
+        <div style={styles.sheetOverlay} onClick={closeAccountMenu}>
+          <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.sheetGrab} />
+            <div style={styles.sheetTitle}>Conta</div>
+            <button type="button" style={styles.sheetActionDanger} onClick={goCloseAccount}>
+              Fechar conta
+            </button>
+            <button type="button" style={styles.sheetActionSoft} onClick={closeAccountMenu}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
 
-      <div style={S.wrapper}>
-        <nav style={S.nav}>
-          <div style={S.glow} />
+      <div style={styles.wrapper}>
+        <nav style={styles.nav}>
+          <div
+            style={{
+              ...styles.activePill,
+              width: `calc((100% - 12px) / ${items.length})`,
+              transform: `translateX(${activeIndex * 100}%)`,
+              opacity: items[activeIndex]?.main ? 0 : 1,
+            }}
+          />
 
-          <div style={S.row}>
-            <NavItem
-              active={activeKey === "home"}
-              label="INÍCIO"
-              onClick={() => nav("/dashboard")}
-            >
-              <HomeIcon active={activeKey === "home"} />
-            </NavItem>
+          {items.map((item) => {
+            const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+            const Icon = item.Icon;
+            const handleClick = item.to === "/conta" ? onAccountClick : () => go(item.to);
 
-            <NavItem
-              active={activeKey === "nutricao"}
-              label="NUTRIÇÃO"
-              onClick={() => nav("/nutricao")}
-            >
-              <NutritionIcon active={activeKey === "nutricao"} />
-            </NavItem>
-
-            <div style={S.centerSlot}>
-              <button
-                type="button"
-                style={S.centerButton}
-                className="bm-press"
-                onMouseDown={startTrainHold}
-                onMouseUp={stopTrainHold}
-                onMouseLeave={stopTrainHold}
-                onTouchStart={startTrainHold}
-                onTouchEnd={stopTrainHold}
-                onTouchCancel={stopTrainHold}
-                onClick={onTrainClick}
-                aria-label="Treino"
-              >
-                {(pressingTrain || trainProgress > 0) && (
-                  <svg
-                    width="86"
-                    height="86"
-                    viewBox="0 0 86 86"
-                    style={S.progressRing}
-                    aria-hidden="true"
+            if (item.main) {
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  onPointerDown={startTrainHold}
+                  onPointerUp={endTrainHold}
+                  onPointerLeave={endTrainHold}
+                  onPointerCancel={endTrainHold}
+                  onClick={onTrainClick}
+                  className="fitdeal-bottom-item fitdeal-main-item"
+                  style={styles.mainItem}
+                >
+                  <span
+                    style={{
+                      ...styles.mainIconWrap,
+                      transform:
+                        trainPressing || trainHoldProgress > 0
+                          ? "translateY(-8px) scale(1.045)"
+                          : active
+                            ? "translateY(-8px) scale(1.05)"
+                            : "translateY(-7px) scale(1)",
+                    }}
                   >
-                    <circle
-                      cx="43"
-                      cy="43"
-                      r={ringRadius}
-                      stroke="rgba(255,106,0,.18)"
-                      strokeWidth="3.25"
-                      fill="none"
-                    />
-                    <circle
-                      cx="43"
-                      cy="43"
-                      r={ringRadius}
-                      stroke={ORANGE}
-                      strokeWidth="3.25"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeDasharray={ringCirc}
-                      strokeDashoffset={ringOffset}
-                      transform="rotate(-90 43 43)"
-                    />
-                  </svg>
-                )}
+                    <svg width="72" height="72" viewBox="0 0 72 72" style={styles.progressSvg} aria-hidden="true">
+                      <circle cx="36" cy="36" r={ringRadius} fill="none" stroke="rgba(255,106,0,.10)" strokeWidth="2.5" />
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r={ringRadius}
+                        fill="none"
+                        stroke="rgba(255,106,0,.96)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={ringCircumference}
+                        strokeDashoffset={ringOffset}
+                        transform="rotate(-90 36 36)"
+                        style={{ opacity: trainHoldProgress > 0 ? 1 : 0, transition: "opacity .14s ease" }}
+                      />
+                    </svg>
 
-                <div
+                    <span
+                      style={{
+                        ...styles.mainIconGlass,
+                        boxShadow: trainHoldBlocked ? "0 0 0 4px rgba(255,106,0,.10)" : undefined,
+                      }}
+                    />
+                    <span
+                      style={{
+                        ...styles.mainIconInner,
+                        boxShadow:
+                          trainPressing || trainHoldProgress > 0
+                            ? "0 20px 48px rgba(255,106,0,.24), inset 0 1px 0 rgba(255,255,255,.7)"
+                            : active
+                              ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
+                              : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
+                      }}
+                    >
+                      <Icon active={active} />
+                    </span>
+                  </span>
+
+                  <span style={{ ...styles.mainLabel, color: active ? ORANGE : TEXT, opacity: active ? 1 : 0.74 }}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={handleClick}
+                className="fitdeal-bottom-item"
+                style={styles.item}
+              >
+                <span
                   style={{
-                    ...S.centerInner,
-                    ...(activeKey === "treino" ? S.centerInnerActive : null),
-                    animation: pressingTrain ? "none" : "bmFloat 3.2s ease-in-out infinite, bmGlow 4.4s ease-in-out infinite",
+                    ...styles.iconWrap,
+                    ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
+                    transform:
+                      active
+                        ? item.to === "/nutricao"
+                          ? "translateY(-1px) scale(1.06)"
+                          : "translateY(-1px) scale(1.06)"
+                        : item.to === "/nutricao"
+                          ? "translateY(0px) scale(1.01)"
+                          : "translateY(0) scale(1)",
+                    filter: active
+                      ? "drop-shadow(0 8px 16px rgba(255,255,255,.14))"
+                      : "drop-shadow(0 8px 14px rgba(255,106,0,.10))",
                   }}
                 >
-                  <DumbbellIcon />
-                </div>
+                  <Icon active={active} />
+                </span>
+
+                <span
+                  style={{
+                    ...styles.label,
+                    ...(item.to === "/nutricao" ? styles.labelNutri : null),
+                    color: active ? "#fff" : TEXT,
+                    opacity: active ? 1 : 0.62,
+                    transform: active ? "translateY(-1px)" : "translateY(0)",
+                  }}
+                >
+                  {item.label}
+                </span>
               </button>
-
-              <div
-                style={{
-                  ...S.centerLabel,
-                  color: activeKey === "treino" ? DARK : TEXT,
-                }}
-              >
-                TREINO
-              </div>
-            </div>
-
-            <NavItem
-              active={activeKey === "planos"}
-              label="PLANOS"
-              onClick={() => nav("/pagamentos")}
-            >
-              <CardIcon active={activeKey === "planos"} />
-            </NavItem>
-
-            <NavItem
-              active={activeKey === "conta"}
-              label="CONTA"
-              onClick={() => nav("/conta")}
-            >
-              <UserIcon active={activeKey === "conta"} />
-            </NavItem>
-          </div>
+            );
+          })}
         </nav>
+
+        <style>{`
+          .fitdeal-bottom-item {
+            transition: transform .16s cubic-bezier(.2,.9,.2,1), filter .16s ease;
+          }
+          .fitdeal-bottom-item:active {
+            transform: scale(.91);
+            filter: brightness(.98);
+          }
+          .fitdeal-main-item:active {
+            transform: scale(.97);
+          }
+          @keyframes fitdealFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+          }
+          @keyframes fitdealGlow {
+            0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
+            50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
+          }
+          .fitdeal-main-item > span:first-child {
+            animation: fitdealFloat 3.8s ease-in-out infinite;
+          }
+          .fitdeal-main-item > span:first-child > span:last-child {
+            animation: fitdealGlow 3.8s ease-in-out infinite;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .fitdeal-bottom-item,
+            .fitdeal-main-item > span:first-child,
+            .fitdeal-main-item > span:first-child > span:last-child {
+              transition: none !important;
+              animation: none !important;
+            }
+          }
+        `}</style>
       </div>
     </>
   );
 }
 
-const S = {
+const styles = {
   wrapper: {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 0,
-    zIndex: 1000,
+    bottom: "calc(18px + env(safe-area-inset-bottom))",
     display: "flex",
     justifyContent: "center",
-    padding: "0 16px calc(16px + env(safe-area-inset-bottom))",
+    padding: "0 14px",
+    zIndex: 10001,
     pointerEvents: "none",
   },
 
   nav: {
-    pointerEvents: "auto",
     position: "relative",
+    display: "flex",
     width: "100%",
     maxWidth: 430,
-    borderRadius: 999,
-    padding: "12px 12px 14px",
-    background: "rgba(255,255,255,.72)",
-    border: "1px solid rgba(255,255,255,.56)",
-    boxShadow:
-      "0 24px 60px rgba(15,23,42,.14), 0 10px 30px rgba(255,106,0,.06), inset 0 1px 0 rgba(255,255,255,.85)",
-    backdropFilter: "blur(28px) saturate(1.15)",
-    WebkitBackdropFilter: "blur(28px) saturate(1.15)",
+    minHeight: 70,
+    padding: 6,
+    gap: 4,
+    borderRadius: 34,
+    background: "linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.66))",
+    border: "1px solid rgba(255,255,255,.52)",
+    boxShadow: "0 28px 70px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55)",
+    backdropFilter: "blur(34px)",
+    WebkitBackdropFilter: "blur(34px)",
     overflow: "visible",
+    pointerEvents: "auto",
   },
 
-  glow: {
+  activePill: {
     position: "absolute",
-    inset: -18,
-    borderRadius: 999,
-    background:
-      "radial-gradient(260px 90px at 50% 100%, rgba(255,106,0,.10), rgba(255,255,255,0) 65%)",
-    pointerEvents: "none",
+    top: 6,
+    bottom: 6,
+    left: 6,
+    borderRadius: 28,
+    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
+    boxShadow: "0 16px 38px rgba(255,106,0,.30), 0 0 0 1px rgba(255,255,255,.22)",
+    transition: "transform .38s cubic-bezier(.22,1,.36,1), opacity .22s ease",
+    zIndex: 1,
   },
 
-  row: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 1.04fr 1fr 1fr",
-    alignItems: "end",
-    gap: 6,
-    minHeight: 92,
-  },
-
-  itemButton: {
-    height: 78,
+  item: {
+    position: "relative",
+    zIndex: 2,
+    flex: 1,
+    height: 56,
     border: "none",
     background: "transparent",
-    borderRadius: 999,
+    borderRadius: 28,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: "8px 6px 9px",
+    gap: 2,
+    padding: 0,
     cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  },
+
+  mainItem: {
     position: "relative",
-    minWidth: 0,
-  },
-
-  itemButtonActive: {
-    background: "linear-gradient(135deg, #FF7A1A, #FF9A48)",
-    boxShadow:
-      "0 18px 44px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.20)",
-  },
-
-  iconWrap: {
-    height: 24,
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
-  },
-
-  itemLabel: {
-    fontSize: 11,
-    lineHeight: 1,
-    fontWeight: 950,
-    letterSpacing: 2.1,
-    whiteSpace: "nowrap",
-  },
-
-  centerSlot: {
-    position: "relative",
-    height: 86,
+    zIndex: 3,
+    flex: 1,
+    height: 56,
+    border: "none",
+    background: "transparent",
+    borderRadius: 28,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "flex-end",
-  },
-
-  centerButton: {
-    position: "absolute",
-    top: -27,
-    width: 86,
-    height: 86,
-    borderRadius: 999,
-    border: "none",
-    background: "transparent",
+    gap: 0,
     padding: 0,
+    paddingBottom: 6,
     cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  },
+
+  iconWrap: {
+    width: 30,
+    height: 30,
     display: "grid",
     placeItems: "center",
+    transition: "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
-  progressRing: {
-    position: "absolute",
-    inset: 0,
-    filter: "drop-shadow(0 8px 18px rgba(255,106,0,.16))",
+  iconWrapNutri: {
+    width: 34,
+    height: 34,
+    marginBottom: 1,
   },
 
-  centerInner: {
-    width: 76,
-    height: 76,
-    borderRadius: 999,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90))",
-    border: "1px solid rgba(255,255,255,.72)",
-    boxShadow:
-      "0 18px 44px rgba(15,23,42,.12), 0 6px 18px rgba(255,106,0,.08), inset 0 1px 0 rgba(255,255,255,.98)",
-    display: "grid",
-    placeItems: "center",
-  },
-
-  centerInnerActive: {
-    boxShadow:
-      "0 20px 50px rgba(255,106,0,.18), 0 8px 22px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.98)",
-  },
-
-  centerLabel: {
-    marginTop: 48,
-    fontSize: 11,
+  label: {
+    fontSize: 8,
     lineHeight: 1,
     fontWeight: 950,
-    letterSpacing: 2.1,
-    whiteSpace: "nowrap",
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  labelNutri: {
+    letterSpacing: 0.72,
+    fontSize: 7.7,
+  },
+
+  mainIconWrap: {
+    position: "absolute",
+    top: -24,
+    width: 72,
+    height: 72,
+    display: "grid",
+    placeItems: "center",
+    transition: "transform .22s cubic-bezier(.22,1,.36,1)",
+  },
+
+  progressSvg: {
+    position: "absolute",
+    inset: 0,
+    overflow: "visible",
+    pointerEvents: "none",
+  },
+
+  mainIconGlass: {
+    position: "absolute",
+    inset: 2,
+    borderRadius: 999,
+    background: "linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54))",
+    border: "1px solid rgba(255,255,255,.72)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+  },
+
+  mainIconInner: {
+    position: "relative",
+    width: 58,
+    height: 58,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background:
+      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.58), rgba(255,255,255,0) 32%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82))",
+    border: "1px solid rgba(255,255,255,.88)",
+  },
+
+  mainLabel: {
+    fontSize: 8,
+    lineHeight: 1,
+    fontWeight: 950,
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 11000,
+    background: "rgba(2,6,23,.22)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
+  },
+
+  sheet: {
+    width: "100%",
+    maxWidth: 430,
+    margin: "0 auto",
+    borderRadius: 26,
+    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
+    border: "1px solid rgba(255,255,255,.58)",
+    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
+    padding: 14,
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+  },
+
+  sheetGrab: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(100,116,139,.24)",
+    margin: "0 auto 10px",
+  },
+
+  sheetTitle: {
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+    marginBottom: 12,
+  },
+
+  sheetActionDanger: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(255,106,0,.18)",
+    background: "rgba(255,106,0,.10)",
+    color: ORANGE,
+    fontWeight: 950,
+    fontSize: 14,
+    marginBottom: 10,
+  },
+
+  sheetActionSoft: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    background: "rgba(255,255,255,.72)",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 14,
   },
 };
