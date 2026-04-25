@@ -10,8 +10,6 @@ const ORANGE = "#FF6A00";
 
 const TEXT = "#0f172a";
 
-/* ---------------- icons ---------------- */
-
 function HomeIcon({ active }) {
 
   const c = active ? "#fff" : ORANGE;
@@ -68,8 +66,6 @@ function HomeIcon({ active }) {
 
 }
 
-/* NUTRIÇÃO — prato + garfo + faca, centralizado e premium */
-
 function NutritionIcon({ active }) {
 
   const c = active ? "#fff" : ORANGE;
@@ -78,9 +74,9 @@ function NutritionIcon({ active }) {
 
     <svg
 
-      width="28"
+      width="24"
 
-      height="28"
+      height="24"
 
       viewBox="0 0 28 28"
 
@@ -92,31 +88,31 @@ function NutritionIcon({ active }) {
 
     >
 
-      {/* Fork */}
+      {/* garfo */}
 
-      <path d="M6.4 6.2v3.8" stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M5.6 6.2v3.2" stroke={c} strokeWidth="1.55" strokeLinecap="round" />
 
-      <path d="M7.7 6.2v3.8" stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M6.8 6.2v3.2" stroke={c} strokeWidth="1.55" strokeLinecap="round" />
 
-      <path d="M9.0 6.2v3.8" stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M8.0 6.2v3.2" stroke={c} strokeWidth="1.55" strokeLinecap="round" />
 
-      <path d="M7.7 10.1v10.1" stroke={c} strokeWidth="2" strokeLinecap="round" />
+      <path d="M6.8 9.4v8.9" stroke={c} strokeWidth="1.65" strokeLinecap="round" />
 
-      {/* Plate */}
+      {/* prato */}
 
-      <circle cx="14.2" cy="14.1" r="5.35" stroke={c} strokeWidth="1.95" />
+      <circle cx="14" cy="13.9" r="4.55" stroke={c} strokeWidth="1.7" />
 
-      <circle cx="14.2" cy="14.1" r="2.75" stroke={c} strokeWidth="1.45" />
+      <circle cx="14" cy="13.9" r="2.45" stroke={c} strokeWidth="1.2" />
 
-      {/* Knife */}
+      {/* faca */}
 
       <path
 
-        d="M20.4 6.5c1.1.95 1.7 2.05 1.7 3.35 0 1.2-.42 2.22-1.25 3.08"
+        d="M21 6.4c-.95.48-1.55 1.55-1.55 3v1.9"
 
         stroke={c}
 
-        strokeWidth="1.9"
+        strokeWidth="1.55"
 
         strokeLinecap="round"
 
@@ -124,7 +120,7 @@ function NutritionIcon({ active }) {
 
       />
 
-      <path d="M20.8 9.3v10.9" stroke={c} strokeWidth="2" strokeLinecap="round" />
+      <path d="M19.45 11.3v7" stroke={c} strokeWidth="1.65" strokeLinecap="round" />
 
     </svg>
 
@@ -206,8 +202,6 @@ function UserIcon({ active }) {
 
 }
 
-/* ---------------- component ---------------- */
-
 export default function BottomMenu() {
 
   const { pathname } = useLocation();
@@ -240,7 +234,7 @@ export default function BottomMenu() {
 
   const accountTapTimerRef = useRef(null);
 
-  const HOLD_DELAY_MS = 280;
+  const HOLD_DELAY_MS = 260;
 
   const HOLD_TOTAL_MS = 1200;
 
@@ -466,11 +460,9 @@ export default function BottomMenu() {
 
     const completed = holdCompletedRef.current;
 
-    if (!completed) {
+    if (!completed) resetHoldState();
 
-      resetHoldState();
-
-    } else {
+    else {
 
       holdCompletedRef.current = false;
 
@@ -500,23 +492,13 @@ export default function BottomMenu() {
 
     accountTapRef.current += 1;
 
-    if (accountTapTimerRef.current) {
-
-      window.clearTimeout(accountTapTimerRef.current);
-
-    }
+    if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
 
     accountTapTimerRef.current = window.setTimeout(() => {
 
-      if (accountTapRef.current >= 2) {
+      if (accountTapRef.current >= 2) setShowAccountMenu((v) => !v);
 
-        setShowAccountMenu((v) => !v);
-
-      } else {
-
-        nav("/conta");
-
-      }
+      else nav("/conta");
 
       accountTapRef.current = 0;
 
@@ -654,21 +636,7 @@ export default function BottomMenu() {
 
                     <svg width="72" height="72" viewBox="0 0 72 72" style={styles.progressSvg} aria-hidden="true">
 
-                      <circle
-
-                        cx="36"
-
-                        cy="36"
-
-                        r={ringRadius}
-
-                        fill="none"
-
-                        stroke="rgba(255,106,0,.10)"
-
-                        strokeWidth="2.5"
-
-                      />
+                      <circle cx="36" cy="36" r={ringRadius} fill="none" stroke="rgba(255,106,0,.10)" strokeWidth="2.5" />
 
                       <circle
 
@@ -738,19 +706,7 @@ export default function BottomMenu() {
 
                   </span>
 
-                  <span
-
-                    style={{
-
-                      ...styles.mainLabel,
-
-                      color: active ? ORANGE : TEXT,
-
-                      opacity: active ? 1 : 0.74,
-
-                    }}
-
-                  >
+                  <span style={{ ...styles.mainLabel, color: active ? ORANGE : TEXT, opacity: active ? 1 : 0.74 }}>
 
                     {item.label}
 
@@ -786,7 +742,7 @@ export default function BottomMenu() {
 
                     ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
 
-                    transform: active ? "translateY(-1px) scale(1.05)" : "translateY(0) scale(1)",
+                    transform: active ? "translateY(-1px) scale(1.03)" : "translateY(0) scale(1)",
 
                     filter: active
 
@@ -1012,7 +968,7 @@ const styles = {
 
     justifyContent: "center",
 
-    gap: 3,
+    gap: 5,
 
     padding: 0,
 
@@ -1074,11 +1030,11 @@ const styles = {
 
   iconWrapNutri: {
 
-    width: 32,
+    width: 30,
 
-    height: 32,
+    height: 30,
 
-    marginBottom: 1,
+    marginBottom: 2,
 
   },
 
@@ -1102,7 +1058,7 @@ const styles = {
 
     letterSpacing: 0.72,
 
-    fontSize: 7.7,
+    fontSize: 7.65,
 
   },
 
