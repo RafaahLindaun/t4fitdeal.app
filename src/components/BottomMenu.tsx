@@ -1,25 +1,34 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
-const TEXT = "#656B78";
-const DARK = "#0f172a";
-
-function isRouteActive(pathname, to) {
-  if (to === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-  if (to === "/treino") return pathname.startsWith("/treino");
-  return pathname === to || pathname.startsWith(`${to}/`);
-}
+const TEXT = "#0f172a";
 
 function HomeIcon({ active }) {
-  const stroke = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
+
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
-        d="M4.8 10.2L12 4.8l7.2 5.4v8.1a1.2 1.2 0 0 1-1.2 1.2h-3.9v-5.1a1.2 1.2 0 0 0-1.2-1.2h-1.8a1.2 1.2 0 0 0-1.2 1.2v5.1H6a1.2 1.2 0 0 1-1.2-1.2v-8.1Z"
-        stroke={stroke}
-        strokeWidth="2.2"
+        d="M4.5 10.7 12 4.4l7.5 6.3"
+        stroke={c}
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.7 10.2v8.1c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4v-8.1"
+        stroke={c}
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 19.7v-5.1h4v5.1"
+        stroke={c}
+        strokeWidth="2.3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -28,212 +37,531 @@ function HomeIcon({ active }) {
 }
 
 function NutritionIcon({ active }) {
-  const stroke = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
 
   return (
-    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      {/* fork */}
-      <path
-        d="M11 10v7"
-        stroke={stroke}
-        strokeWidth="2.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8.6 10v5.2"
-        stroke={stroke}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M13.4 10v5.2"
-        stroke={stroke}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M11 17v16"
-        stroke={stroke}
-        strokeWidth="2.6"
-        strokeLinecap="round"
-      />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 28 28"
+      fill="none"
+      aria-hidden="true"
+      style={{ display: "block" }}
+    >
+      {/* garfo */}
+      <path d="M5.1 6.2v2.9" stroke={c} strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M6.35 6.2v2.9" stroke={c} strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M7.6 6.2v2.9" stroke={c} strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M6.35 9.1v8.8" stroke={c} strokeWidth="1.65" strokeLinecap="round" />
 
-      {/* plate */}
-      <circle
-        cx="24"
-        cy="24"
-        r="9.8"
-        stroke={stroke}
-        strokeWidth="2.7"
-      />
-      <circle
-        cx="24"
-        cy="24"
-        r="5.5"
-        stroke={stroke}
-        strokeWidth="2.1"
-      />
+      {/* prato */}
+      <circle cx="14" cy="13.9" r="5.15" stroke={c} strokeWidth="1.85" />
+      <circle cx="14" cy="13.9" r="2.85" stroke={c} strokeWidth="1.22" />
 
-      {/* knife */}
+      {/* faca */}
       <path
-        d="M36.2 10.5c-2.1.9-3.8 2.9-3.8 5.7v5.6c0 2 .9 3.2 2.4 4.2v7"
-        stroke={stroke}
-        strokeWidth="2.6"
+        d="M21.15 6.35c-.95.5-1.6 1.58-1.6 3.02v1.85"
+        stroke={c}
+        strokeWidth="1.55"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      <path d="M19.55 11.22v6.68" stroke={c} strokeWidth="1.65" strokeLinecap="round" />
     </svg>
   );
 }
 
-function DumbbellIcon({ active }) {
-  const stroke = active ? ORANGE : ORANGE;
+function DumbbellIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <g transform="rotate(-22 24 24)">
-        <path d="M17 24h14" stroke={stroke} strokeWidth="2.8" strokeLinecap="round" />
-        <rect x="8.8" y="18.2" width="3.2" height="11.6" rx="1.2" stroke={stroke} strokeWidth="2.4" />
-        <rect x="13.1" y="16.4" width="2.8" height="15.2" rx="1.1" stroke={stroke} strokeWidth="2.4" />
-        <rect x="32.1" y="16.4" width="2.8" height="15.2" rx="1.1" stroke={stroke} strokeWidth="2.4" />
-        <rect x="36" y="18.2" width="3.2" height="11.6" rx="1.2" stroke={stroke} strokeWidth="2.4" />
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <g transform="rotate(-35 32 32)">
+        <rect x="8" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
+        <rect x="16" y="21" width="8" height="22" rx="3" fill={ORANGE} />
+        <rect x="25" y="29" width="14" height="6" rx="3" fill={ORANGE} />
+        <rect x="40" y="21" width="8" height="22" rx="3" fill={ORANGE} />
+        <rect x="49" y="25" width="7" height="14" rx="2.5" fill={ORANGE} opacity="0.94" />
       </g>
     </svg>
   );
 }
 
 function CardIcon({ active }) {
-  const stroke = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
+
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect
-        x="3.5"
-        y="5.5"
-        width="17"
-        height="13"
-        rx="3"
-        stroke={stroke}
-        strokeWidth="2.2"
+        x="3.7"
+        y="6.4"
+        width="16.6"
+        height="11.2"
+        rx="2.6"
+        stroke={c}
+        strokeWidth="2.25"
       />
-      <path
-        d="M3.5 10h17"
-        stroke={stroke}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7 15h3.2"
-        stroke={stroke}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+      <path d="M4.2 10h15.6" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
+      <path d="M7.4 14.5h3.5" stroke={c} strokeWidth="2.25" strokeLinecap="round" />
     </svg>
   );
 }
 
 function UserIcon({ active }) {
-  const stroke = active ? "#fff" : ORANGE;
+  const c = active ? "#fff" : ORANGE;
+
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z" stroke={c} strokeWidth="2.25" />
       <path
-        d="M12 12a3.7 3.7 0 1 0 0-7.4 3.7 3.7 0 0 0 0 7.4Z"
-        stroke={stroke}
-        strokeWidth="2.2"
-      />
-      <path
-        d="M5 19.2c1.8-2.7 4.1-4 7-4s5.2 1.3 7 4"
-        stroke={stroke}
-        strokeWidth="2.2"
+        d="M4.9 20.1c.8-3.6 3.3-5.5 7.1-5.5s6.3 1.9 7.1 5.5"
+        stroke={c}
+        strokeWidth="2.25"
         strokeLinecap="round"
       />
     </svg>
-  );
-}
-
-function MenuItem({ to, label, active, children, specialNutri = false }) {
-  return (
-    <Link to={to} style={styles.link}>
-      <motion.div whileTap={{ scale: 0.965 }} style={styles.item}>
-        {active && (
-          <motion.div
-            layoutId="fitdeal-bottom-pill"
-            transition={{ type: "spring", stiffness: 420, damping: 32 }}
-            style={styles.activeBg}
-          />
-        )}
-
-        <div style={specialNutri ? styles.iconWrapNutri : styles.iconWrap}>
-          {children}
-        </div>
-
-        <div
-          style={{
-            ...(specialNutri ? styles.labelNutri : styles.label),
-            color: active ? "#fff" : TEXT,
-            opacity: active ? 1 : 1,
-          }}
-        >
-          {label}
-        </div>
-      </motion.div>
-    </Link>
   );
 }
 
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
+  const { user } = useAuth() || {};
 
-  const homeActive = isRouteActive(pathname, "/dashboard");
-  const nutriActive = isRouteActive(pathname, "/nutricao");
-  const treinoActive = isRouteActive(pathname, "/treino");
-  const planosActive = isRouteActive(pathname, "/pagamentos");
-  const contaActive = isRouteActive(pathname, "/conta");
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [trainHoldProgress, setTrainHoldProgress] = useState(0);
+  const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
+  const [trainPressing, setTrainPressing] = useState(false);
+  const [hasWorkoutDetailAccess, setHasWorkoutDetailAccess] = useState(false);
+
+  const holdStartTimerRef = useRef(null);
+  const holdProgressRafRef = useRef(null);
+  const holdStartAtRef = useRef(0);
+  const holdCompletedRef = useRef(false);
+  const pressStartedRef = useRef(false);
+
+  const accountTapRef = useRef(0);
+  const accountTapTimerRef = useRef(null);
+
+  const HOLD_DELAY_MS = 260;
+  const HOLD_TOTAL_MS = 1200;
+
+  const items = [
+    { to: "/dashboard", label: "Início", Icon: HomeIcon },
+    { to: "/nutricao", label: "Nutrição", Icon: NutritionIcon },
+    { to: "/treino", label: "Treino", Icon: () => <DumbbellIcon />, main: true },
+    { to: "/pagamentos", label: "Planos", Icon: CardIcon },
+    { to: "/conta", label: "Conta", Icon: UserIcon },
+  ];
+
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((it) => pathname === it.to || pathname.startsWith(`${it.to}/`))
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPaidAccess() {
+      if (!user?.id) {
+        if (mounted) setHasWorkoutDetailAccess(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_subscriptions")
+          .select("plan_key, status")
+          .eq("user_id", user.id)
+          .in("status", ["active", "trialing"])
+          .limit(5);
+
+        if (error) {
+          console.error("BottomMenu loadPaidAccess error:", error);
+          if (mounted) setHasWorkoutDetailAccess(false);
+          return;
+        }
+
+        const rows = Array.isArray(data) ? data : [];
+        const allowed = rows.some((row) => {
+          const planKey = String(row?.plan_key || "").toLowerCase();
+          const status = String(row?.status || "").toLowerCase();
+          return ["active", "trialing"].includes(status) && ["basico", "premium", "nutri"].includes(planKey);
+        });
+
+        if (mounted) setHasWorkoutDetailAccess(allowed);
+      } catch (err) {
+        console.error("BottomMenu loadPaidAccess catch:", err);
+        if (mounted) setHasWorkoutDetailAccess(false);
+      }
+    }
+
+    loadPaidAccess();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current);
+      if (holdProgressRafRef.current) window.cancelAnimationFrame(holdProgressRafRef.current);
+      if (accountTapTimerRef.current) window.clearTimeout(accountTapTimerRef.current);
+    };
+  }, []);
+
+  function go(to) {
+    nav(to);
+  }
+
+  function clearHoldTimers() {
+    if (holdStartTimerRef.current) {
+      window.clearTimeout(holdStartTimerRef.current);
+      holdStartTimerRef.current = null;
+    }
+    if (holdProgressRafRef.current) {
+      window.cancelAnimationFrame(holdProgressRafRef.current);
+      holdProgressRafRef.current = null;
+    }
+  }
+
+  function resetHoldState() {
+    clearHoldTimers();
+    pressStartedRef.current = false;
+    setTrainHoldProgress(0);
+    setTrainPressing(false);
+  }
+
+  function runHoldProgress() {
+    const tick = (now) => {
+      if (!pressStartedRef.current) return;
+
+      const elapsed = now - holdStartAtRef.current;
+      const pct = Math.min(1, elapsed / HOLD_TOTAL_MS);
+      setTrainHoldProgress(pct);
+
+      if (pct >= 1) {
+        holdCompletedRef.current = true;
+        pressStartedRef.current = false;
+        setTrainPressing(false);
+        nav("/treino-detalhe");
+        return;
+      }
+
+      holdProgressRafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    holdProgressRafRef.current = window.requestAnimationFrame(tick);
+  }
+
+  function startTrainHold() {
+    resetHoldState();
+    holdCompletedRef.current = false;
+    setTrainHoldBlocked(false);
+    pressStartedRef.current = true;
+    setTrainPressing(true);
+
+    holdStartTimerRef.current = window.setTimeout(() => {
+      if (!pressStartedRef.current) return;
+
+      if (!hasWorkoutDetailAccess) {
+        setTrainHoldBlocked(true);
+        setTrainPressing(false);
+        pressStartedRef.current = false;
+        window.setTimeout(() => setTrainHoldBlocked(false), 900);
+        return;
+      }
+
+      holdStartAtRef.current = performance.now();
+      runHoldProgress();
+    }, HOLD_DELAY_MS);
+  }
+
+  function endTrainHold() {
+    const completed = holdCompletedRef.current;
+    if (!completed) {
+      resetHoldState();
+    } else {
+      holdCompletedRef.current = false;
+      setTrainHoldProgress(0);
+      setTrainPressing(false);
+    }
+  }
+
+  function onTrainClick(e) {
+    if (holdCompletedRef.current) {
+      holdCompletedRef.current = false;
+      e.preventDefault();
+      return;
+    }
+    go("/treino");
+  }
+
+  function onAccountClick(e) {
+    e.preventDefault();
+    accountTapRef.current += 1;
+
+    if (accountTapTimerRef.current) {
+      window.clearTimeout(accountTapTimerRef.current);
+    }
+
+    accountTapTimerRef.current = window.setTimeout(() => {
+      if (accountTapRef.current >= 2) {
+        setShowAccountMenu((v) => !v);
+      } else {
+        go("/conta");
+      }
+      accountTapRef.current = 0;
+    }, 220);
+  }
+
+  function closeAccountMenu() {
+    setShowAccountMenu(false);
+  }
+
+  function goCloseAccount() {
+    setShowAccountMenu(false);
+    go("/conta?modal=close-account");
+  }
+
+  const ringRadius = 31;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCircumference * (1 - trainHoldProgress);
 
   return (
-    <div style={styles.wrapper}>
-      <nav style={styles.nav}>
-        <div style={styles.sideGroup}>
-          <MenuItem to="/dashboard" label="INÍCIO" active={homeActive}>
-            <HomeIcon active={homeActive} />
-          </MenuItem>
+    <>
+      {showAccountMenu ? (
+        <div style={styles.sheetOverlay} onClick={closeAccountMenu}>
+          <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.sheetGrab} />
+            <div style={styles.sheetTitle}>Conta</div>
 
-          <MenuItem
-            to="/nutricao"
-            label="NUTRIÇÃO"
-            active={nutriActive}
-            specialNutri
-          >
-            <NutritionIcon active={nutriActive} />
-          </MenuItem>
+            <button type="button" style={styles.sheetActionDanger} onClick={goCloseAccount}>
+              Fechar conta
+            </button>
+
+            <button type="button" style={styles.sheetActionSoft} onClick={closeAccountMenu}>
+              Cancelar
+            </button>
+          </div>
         </div>
+      ) : null}
 
-        <div style={styles.centerSlot}>
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.96 }}
-            onClick={() => nav("/treino")}
-            style={styles.centerBtnWrap}
-          >
-            <div style={styles.centerBtn}>
-              <DumbbellIcon active={treinoActive} />
-            </div>
-            <div style={{ ...styles.centerLabel, color: treinoActive ? DARK : TEXT }}>
-              TREINO
-            </div>
-          </motion.button>
-        </div>
+      <div style={styles.wrapper}>
+        <nav style={styles.nav}>
+          <div
+            style={{
+              ...styles.activePill,
+              width: `calc((100% - 12px) / ${items.length})`,
+              transform: `translateX(${activeIndex * 100}%)`,
+              opacity: items[activeIndex]?.main ? 0 : 1,
+            }}
+          />
 
-        <div style={styles.sideGroup}>
-          <MenuItem to="/pagamentos" label="PLANOS" active={planosActive}>
-            <CardIcon active={planosActive} />
-          </MenuItem>
+          {items.map((item) => {
+            const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+            const Icon = item.Icon;
 
-          <MenuItem to="/conta" label="CONTA" active={contaActive}>
-            <UserIcon active={contaActive} />
-          </MenuItem>
-        </div>
-      </nav>
-    </div>
+            if (item.main) {
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  onPointerDown={startTrainHold}
+                  onPointerUp={endTrainHold}
+                  onPointerLeave={endTrainHold}
+                  onPointerCancel={endTrainHold}
+                  onClick={onTrainClick}
+                  className="fitdeal-bottom-item fitdeal-main-item"
+                  style={styles.mainItem}
+                >
+                  <span
+                    style={{
+                      ...styles.mainIconWrap,
+                      transform:
+                        trainPressing || trainHoldProgress > 0
+                          ? "translateY(-8px) scale(1.045)"
+                          : active
+                            ? "translateY(-8px) scale(1.05)"
+                            : "translateY(-7px) scale(1)",
+                    }}
+                  >
+                    <svg width="72" height="72" viewBox="0 0 72 72" style={styles.progressSvg} aria-hidden="true">
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r={ringRadius}
+                        fill="none"
+                        stroke="rgba(255,106,0,.10)"
+                        strokeWidth="2.5"
+                      />
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r={ringRadius}
+                        fill="none"
+                        stroke="rgba(255,106,0,.96)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={ringCircumference}
+                        strokeDashoffset={ringOffset}
+                        transform="rotate(-90 36 36)"
+                        style={{
+                          opacity: trainHoldProgress > 0 ? 1 : 0,
+                          transition: "opacity .14s ease",
+                        }}
+                      />
+                    </svg>
+
+                    <span
+                      style={{
+                        ...styles.mainIconGlass,
+                        boxShadow: trainHoldBlocked ? "0 0 0 4px rgba(255,106,0,.10)" : undefined,
+                      }}
+                    />
+                    <span
+                      style={{
+                        ...styles.mainIconInner,
+                        boxShadow:
+                          trainPressing || trainHoldProgress > 0
+                            ? "0 20px 48px rgba(255,106,0,.24), inset 0 1px 0 rgba(255,255,255,.7)"
+                            : active
+                              ? "0 18px 46px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68)"
+                              : "0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62)",
+                      }}
+                    >
+                      <Icon active={active} />
+                    </span>
+                  </span>
+
+                  <span
+                    style={{
+                      ...styles.mainLabel,
+                      color: active ? ORANGE : TEXT,
+                      opacity: active ? 1 : 0.74,
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            if (item.to === "/conta") {
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={onAccountClick}
+                  className="fitdeal-bottom-item"
+                  style={styles.item}
+                >
+                  <span
+                    style={{
+                      ...styles.iconWrap,
+                      ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
+                      transform: active ? "translateY(0px) scale(1.02)" : "translateY(0px) scale(1)",
+                      filter: active
+                        ? "drop-shadow(0 8px 16px rgba(255,255,255,.12))"
+                        : "drop-shadow(0 8px 14px rgba(255,106,0,.10))",
+                    }}
+                  >
+                    <Icon active={active} />
+                  </span>
+
+                  <span
+                    style={{
+                      ...styles.label,
+                      ...(item.to === "/nutricao" ? styles.labelNutri : null),
+                      color: active ? "#fff" : TEXT,
+                      opacity: active ? 1 : 0.62,
+                      transform: active ? "translateY(-1px)" : "translateY(0)",
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            }
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="fitdeal-bottom-item"
+                style={styles.item}
+              >
+                <span
+                  style={{
+                    ...styles.iconWrap,
+                    ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
+                    transform: active ? "translateY(0px) scale(1.02)" : "translateY(0px) scale(1)",
+                    filter: active
+                      ? "drop-shadow(0 8px 16px rgba(255,255,255,.12))"
+                      : "drop-shadow(0 8px 14px rgba(255,106,0,.10))",
+                  }}
+                >
+                  <Icon active={active} />
+                </span>
+
+                <span
+                  style={{
+                    ...styles.label,
+                    ...(item.to === "/nutricao" ? styles.labelNutri : null),
+                    color: active ? "#fff" : TEXT,
+                    opacity: active ? 1 : 0.62,
+                    transform: active ? "translateY(-1px)" : "translateY(0)",
+                  }}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <style>{`
+          .fitdeal-bottom-item {
+            transition: transform .16s cubic-bezier(.2,.9,.2,1), filter .16s ease;
+            text-decoration: none;
+          }
+
+          .fitdeal-bottom-item:active {
+            transform: scale(.91);
+            filter: brightness(.98);
+          }
+
+          .fitdeal-main-item:active {
+            transform: scale(.97);
+          }
+
+          @keyframes fitdealFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+          }
+
+          @keyframes fitdealGlow {
+            0%, 100% { box-shadow: 0 16px 38px rgba(255,106,0,.16), inset 0 1px 0 rgba(255,255,255,.62); }
+            50% { box-shadow: 0 18px 42px rgba(255,106,0,.22), inset 0 1px 0 rgba(255,255,255,.68); }
+          }
+
+          .fitdeal-main-item > span:first-child {
+            animation: fitdealFloat 3.8s ease-in-out infinite;
+          }
+
+          .fitdeal-main-item > span:first-child > span:last-child {
+            animation: fitdealGlow 3.8s ease-in-out infinite;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .fitdeal-bottom-item,
+            .fitdeal-main-item > span:first-child,
+            .fitdeal-main-item > span:first-child > span:last-child {
+              transition: none !important;
+              animation: none !important;
+            }
+          }
+        `}</style>
+      </div>
+    </>
   );
 }
 
@@ -242,154 +570,220 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 18,
+    bottom: "calc(18px + env(safe-area-inset-bottom))",
     display: "flex",
     justifyContent: "center",
-    zIndex: 10000,
     padding: "0 14px",
+    zIndex: 10001,
     pointerEvents: "none",
   },
 
   nav: {
+    position: "relative",
+    display: "flex",
     width: "100%",
-    maxWidth: 790,
-    minHeight: 108,
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "1fr auto 1fr",
-    alignItems: "end",
-    gap: 8,
-    padding: "14px 14px 12px",
-    borderRadius: 36,
-    background: "rgba(255,255,255,.74)",
-    backdropFilter: "blur(28px)",
-    WebkitBackdropFilter: "blur(28px)",
-    border: "1px solid rgba(255,255,255,.55)",
-    boxShadow:
-      "0 20px 60px rgba(15,23,42,.10), 0 10px 30px rgba(255,106,0,.06)",
-    pointerEvents: "auto",
+    maxWidth: 430,
+    minHeight: 70,
+    padding: 6,
+    gap: 4,
+    borderRadius: 34,
+    background: "linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.66))",
+    border: "1px solid rgba(255,255,255,.52)",
+    boxShadow: "0 28px 70px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55)",
+    backdropFilter: "blur(34px)",
+    WebkitBackdropFilter: "blur(34px)",
     overflow: "visible",
+    pointerEvents: "auto",
   },
 
-  sideGroup: {
-    display: "flex",
-    alignItems: "end",
-    justifyContent: "space-evenly",
-    gap: 6,
-  },
-
-  centerSlot: {
-    position: "relative",
-    width: 112,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "end",
-  },
-
-  centerBtnWrap: {
+  activePill: {
     position: "absolute",
-    top: -34,
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: 112,
-    background: "transparent",
-    border: "none",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: 0,
-    cursor: "pointer",
-  },
-
-  centerBtn: {
-    width: 86,
-    height: 86,
-    borderRadius: 999,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,242,239,.94))",
-    border: "1px solid rgba(255,255,255,.92)",
-    display: "grid",
-    placeItems: "center",
-    boxShadow:
-      "0 10px 35px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.95), 0 0 0 8px rgba(255,255,255,.28)",
-  },
-
-  centerLabel: {
-    marginTop: 8,
-    fontSize: 11,
-    lineHeight: 1,
-    letterSpacing: 2.1,
-    fontWeight: 900,
-  },
-
-  link: {
-    textDecoration: "none",
-    flex: 1,
-    minWidth: 0,
+    top: 6,
+    bottom: 6,
+    left: 6,
+    borderRadius: 28,
+    background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
+    boxShadow: "0 16px 38px rgba(255,106,0,.30), 0 0 0 1px rgba(255,255,255,.22)",
+    transition: "transform .38s cubic-bezier(.22,1,.36,1), opacity .22s ease",
+    zIndex: 1,
   },
 
   item: {
     position: "relative",
-    height: 78,
-    minWidth: 0,
-    borderRadius: 30,
+    zIndex: 2,
+    flex: 1,
+    height: 56,
+    border: "none",
+    background: "transparent",
+    borderRadius: 28,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    padding: "8px 10px 10px",
+    gap: 6,
+    padding: 0,
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
   },
 
-  activeBg: {
-    position: "absolute",
-    inset: 0,
-    borderRadius: 30,
-    background: "linear-gradient(180deg, #FF8A32 0%, #FF6A00 100%)",
-    boxShadow:
-      "0 18px 34px rgba(255,106,0,.30), inset 0 1px 0 rgba(255,255,255,.20)",
-    zIndex: 0,
+  mainItem: {
+    position: "relative",
+    zIndex: 3,
+    flex: 1,
+    height: 56,
+    border: "none",
+    background: "transparent",
+    borderRadius: 28,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 0,
+    padding: 0,
+    paddingBottom: 6,
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
   },
 
   iconWrap: {
-    position: "relative",
-    zIndex: 1,
     width: 30,
     height: 30,
     display: "grid",
     placeItems: "center",
-    marginBottom: 7,
+    transition: "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
   iconWrapNutri: {
-    position: "relative",
-    zIndex: 1,
-    width: 32,
-    height: 32,
-    display: "grid",
-    placeItems: "center",
-    marginBottom: 8,
-    transform: "translateY(1px)",
+    width: 31,
+    height: 31,
+    marginBottom: 3,
   },
 
   label: {
-    position: "relative",
-    zIndex: 1,
-    fontSize: 10.5,
+    fontSize: 8,
     lineHeight: 1,
-    letterSpacing: 2.1,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
+    fontWeight: 950,
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
   },
 
   labelNutri: {
-    position: "relative",
-    zIndex: 1,
-    fontSize: 10.4,
-    lineHeight: 1,
-    letterSpacing: 1.95,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
+    letterSpacing: 0.68,
+    fontSize: 7.65,
     transform: "translateY(1px)",
+  },
+
+  mainIconWrap: {
+    position: "absolute",
+    top: -24,
+    width: 72,
+    height: 72,
+    display: "grid",
+    placeItems: "center",
+    transition: "transform .22s cubic-bezier(.22,1,.36,1)",
+  },
+
+  progressSvg: {
+    position: "absolute",
+    inset: 0,
+    overflow: "visible",
+    pointerEvents: "none",
+  },
+
+  mainIconGlass: {
+    position: "absolute",
+    inset: 2,
+    borderRadius: 999,
+    background: "linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54))",
+    border: "1px solid rgba(255,255,255,.72)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+  },
+
+  mainIconInner: {
+    position: "relative",
+    width: 58,
+    height: 58,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background:
+      "radial-gradient(circle at 30% 20%, rgba(255,255,255,.58), rgba(255,255,255,0) 32%), linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82))",
+    border: "1px solid rgba(255,255,255,.88)",
+  },
+
+  mainLabel: {
+    fontSize: 8,
+    lineHeight: 1,
+    fontWeight: 950,
+    letterSpacing: 0.85,
+    textTransform: "uppercase",
+    transition: "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 11000,
+    background: "rgba(2,6,23,.22)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+    paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
+  },
+
+  sheet: {
+    width: "100%",
+    maxWidth: 430,
+    margin: "0 auto",
+    borderRadius: 26,
+    background: "linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86))",
+    border: "1px solid rgba(255,255,255,.58)",
+    boxShadow: "0 28px 80px rgba(15,23,42,.16)",
+    padding: 14,
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+  },
+
+  sheetGrab: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(100,116,139,.24)",
+    margin: "0 auto 10px",
+  },
+
+  sheetTitle: {
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+    marginBottom: 12,
+  },
+
+  sheetActionDanger: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(255,106,0,.18)",
+    background: "rgba(255,106,0,.10)",
+    color: ORANGE,
+    fontWeight: 950,
+    fontSize: 14,
+    marginBottom: 10,
+  },
+
+  sheetActionSoft: {
+    width: "100%",
+    padding: 15,
+    borderRadius: 18,
+    border: "1px solid rgba(15,23,42,.08)",
+    background: "rgba(255,255,255,.72)",
+    color: TEXT,
+    fontWeight: 950,
+    fontSize: 14,
   },
 };
