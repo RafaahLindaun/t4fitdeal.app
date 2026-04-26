@@ -38,68 +38,90 @@ function HomeIcon({ active }) {
 
 function NutritionIcon({ active }) {
   const c = active ? "#fff" : ORANGE;
+  const accent = active ? "#fff" : ORANGE;
 
   return (
     <svg
-      width="25"
-      height="25"
-      viewBox="0 0 28 28"
+      width="28"
+      height="28"
+      viewBox="0 0 64 64"
       fill="none"
       aria-hidden="true"
       style={{ display: "block" }}
     >
-      <circle
-        cx="14"
-        cy="14"
-        r="5.15"
-        stroke={c}
-        strokeWidth="2.25"
-      />
-      <circle
-        cx="14"
-        cy="14"
-        r="2.45"
-        stroke={c}
-        strokeWidth="1.75"
-        opacity="0.72"
-      />
-
+      {/* Garfo mais afastado */}
       <path
-        d="M6.9 6.6v5.15"
+        d="M13.2 12.5v14.1"
         stroke={c}
-        strokeWidth="2.15"
+        strokeWidth="4.1"
         strokeLinecap="round"
       />
       <path
-        d="M5.35 6.75v3.35"
+        d="M8.8 12.5v13.1c0 3.4 2 5.6 4.4 6.8"
         stroke={c}
-        strokeWidth="1.85"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8.45 6.75v3.35"
-        stroke={c}
-        strokeWidth="1.85"
-        strokeLinecap="round"
-      />
-      <path
-        d="M6.9 11.75v9.35"
-        stroke={c}
-        strokeWidth="2.15"
-        strokeLinecap="round"
-      />
-
-      <path
-        d="M21.15 6.75c-1.35.95-2.05 2.35-2.05 4.25v1.2"
-        stroke={c}
-        strokeWidth="2.05"
+        strokeWidth="4.1"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M19.1 12.2v8.9"
+        d="M17.6 12.5v13.1c0 3.4-2 5.6-4.4 6.8"
         stroke={c}
-        strokeWidth="2.15"
+        strokeWidth="4.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.2 32.4v19.1"
+        stroke={c}
+        strokeWidth="4.1"
+        strokeLinecap="round"
+      />
+
+      {/* Prato central */}
+      <circle
+        cx="32"
+        cy="32"
+        r="12.3"
+        stroke={c}
+        strokeWidth="4.2"
+      />
+      <circle
+        cx="32"
+        cy="32"
+        r="7.1"
+        stroke={c}
+        strokeWidth="2.9"
+        opacity={active ? "0.82" : "0.72"}
+      />
+
+      {/* Detalhe premium no prato */}
+      <path
+        d="M35.2 39.1c3.5-1.1 6.1-3.8 7.2-7.35"
+        stroke={accent}
+        strokeWidth="3.3"
+        strokeLinecap="round"
+        opacity={active ? "0.9" : "1"}
+      />
+      <circle
+        cx="31.7"
+        cy="40"
+        r="1.65"
+        fill={accent}
+        opacity={active ? "0.85" : "1"}
+      />
+
+      {/* Faca mais afastada */}
+      <path
+        d="M51.8 12.8c-3.4 2.7-5 6.65-5 11.8v5.3c0 2.5 1.2 4.1 3.3 5.1"
+        stroke={c}
+        strokeWidth="4.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M50.1 35v16.5"
+        stroke={c}
+        strokeWidth="4.1"
         strokeLinecap="round"
       />
     </svg>
@@ -518,6 +540,7 @@ export default function BottomMenu() {
                 <span
                   style={{
                     ...styles.iconWrap,
+                    ...(item.to === "/nutricao" ? styles.iconWrapNutri : null),
                     transform: active ? "translateY(-1px) scale(1.035)" : "translateY(0) scale(1)",
                     filter: active
                       ? "drop-shadow(0 8px 13px rgba(0,0,0,.08))"
@@ -530,6 +553,7 @@ export default function BottomMenu() {
                 <span
                   style={{
                     ...styles.label,
+                    ...(item.to === "/nutricao" ? styles.labelNutri : null),
                     color: active ? "#fff" : TEXT,
                     opacity: active ? 1 : 0.62,
                     transform: active ? "translateY(-1px)" : "translateY(0)",
@@ -688,6 +712,12 @@ const styles = {
     transition: "transform .32s cubic-bezier(.22,1,.36,1), filter .26s ease",
   },
 
+  iconWrapNutri: {
+    width: 34,
+    height: 34,
+    marginBottom: -1,
+  },
+
   label: {
     fontSize: 8,
     lineHeight: 1,
@@ -696,6 +726,10 @@ const styles = {
     textTransform: "uppercase",
     transition:
       "color .26s ease, opacity .26s ease, transform .32s cubic-bezier(.22,1,.36,1)",
+  },
+
+  labelNutri: {
+    letterSpacing: 0.64,
   },
 
   mainIconWrap: {
