@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
 const TEXT = "#0f172a";
@@ -154,13 +152,10 @@ function UserIcon({ active }) {
 export default function BottomMenu() {
   const { pathname } = useLocation();
   const nav = useNavigate();
-  const { user } = useAuth() || {};
 
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [trainHoldProgress, setTrainHoldProgress] = useState(0);
-  const [trainHoldBlocked, setTrainHoldBlocked] = useState(false);
   const [trainPressing, setTrainPressing] = useState(false);
-  const [hasWorkoutDetailAccess, setHasWorkoutDetailAccess] = useState(false);
 
   const holdStartTimerRef = useRef(null);
   const holdProgressRafRef = useRef(null);
@@ -172,8 +167,8 @@ export default function BottomMenu() {
   const accountTapRef = useRef(0);
   const accountTapTimerRef = useRef(null);
 
-  const HOLD_DELAY_MS = 260;
-  const HOLD_TOTAL_MS = 1200;
+  const HOLD_DELAY_MS = 220;
+  const HOLD_TOTAL_MS = 850;
 
   const items = [
     { to: "/dashboard", label: "Início", Icon: HomeIcon },
@@ -189,75 +184,6 @@ export default function BottomMenu() {
   );
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadPaidAccess() {
-  if (!user?.id) {
-    if (mounted) setHasWorkoutDetailAccess(false);
-    return;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("user_subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .limit(10);
-
-    if (error) {
-      console.error("BottomMenu loadPaidAccess error:", error);
-      if (mounted) setHasWorkoutDetailAccess(false);
-      return;
-    }
-
-    const rows = Array.isArray(data) ? data : [];
-
-    const allowed = rows.some((row) => {
-      const status = String(row?.status || "").trim().toLowerCase();
-
-      const planKey = String(
-        row?.plan_key ||
-          row?.plan ||
-          row?.plan_name ||
-          row?.price_key ||
-          row?.subscription_plan ||
-          ""
-      )
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      const hasActiveStatus = ["active", "trialing"].includes(status);
-
-      const hasAllowedPlan =
-        planKey.includes("basico") ||
-        planKey.includes("basic") ||
-        planKey.includes("premium") ||
-        planKey.includes("nutri");
-
-      return hasActiveStatus && (hasAllowedPlan || planKey.length > 0);
-    });
-
-    console.log("BottomMenu user:", user.id);
-    console.log("BottomMenu subscriptions:", rows);
-    console.log("BottomMenu workout access:", allowed);
-
-    if (mounted) setHasWorkoutDetailAccess(allowed);
-  } catch (err) {
-    console.error("BottomMenu loadPaidAccess catch:", err);
-    if (mounted) setHasWorkoutDetailAccess(false);
-  }
-}
-
-    loadPaidAccess();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]);
-
-  useEffect(() => {
     return () => {
       if (holdStartTimerRef.current) window.clearTimeout(holdStartTimerRef.current);
       if (holdProgressRafRef.current) window.cancelAnimationFrame(holdProgressRafRef.current);
@@ -265,7 +191,7 @@ export default function BottomMenu() {
     };
   }, []);
 
-  if (pathname.startsWith("/treino-detalhe")) return null;
+  if (pathname.startsWith("/treino/detalhe")) return null;
 
   function go(to) {
     nav(to);
@@ -308,7 +234,7 @@ export default function BottomMenu() {
         setTrainPressing(false);
         setTrainHoldProgress(0);
 
-        nav("/treino-detalhe");
+        nav("/treino/detalhe");
         return;
       }
 
@@ -323,25 +249,11 @@ export default function BottomMenu() {
 
     holdCompletedRef.current = false;
     suppressNextTrainClickRef.current = false;
-    setTrainHoldBlocked(false);
     pressStartedRef.current = true;
     setTrainPressing(true);
 
     holdStartTimerRef.current = window.setTimeout(() => {
       if (!pressStartedRef.current) return;
-
-      if (!hasWorkoutDetailAccess) {
-        setTrainHoldBlocked(true);
-        setTrainPressing(false);
-        pressStartedRef.current = false;
-        clearHoldTimers();
-
-        window.setTimeout(() => {
-          setTrainHoldBlocked(false);
-        }, 900);
-
-        return;
-      }
 
       holdStartAtRef.current = performance.now();
       runHoldProgress();
@@ -446,15 +358,23 @@ export default function BottomMenu() {
                   key={item.to}
                   type="button"
                   onPointerDown={(e) => {
+                    e.preventDefault();
                     e.currentTarget.setPointerCapture?.(e.pointerId);
                     startTrainHold();
                   }}
                   onPointerUp={(e) => {
+                    e.preventDefault();
                     e.currentTarget.releasePointerCapture?.(e.pointerId);
                     endTrainHold();
                   }}
-                  onPointerCancel={endTrainHold}
-                  onClick={onTrainClick}
+                  onPointerCancel={(e) => {
+                    e.preventDefault();
+                    endTrainHold();
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onTrainClick();
+                  }}
                   className="fitdeal-bottom-item fitdeal-main-item"
                   style={styles.mainItem}
                 >
@@ -502,14 +422,7 @@ export default function BottomMenu() {
                       />
                     </svg>
 
-                    <span
-                      style={{
-                        ...styles.mainIconGlass,
-                        boxShadow: trainHoldBlocked
-                          ? "0 0 0 4px rgba(255,106,0,.10)"
-                          : undefined,
-                      }}
-                    />
+                    <span style={styles.mainIconGlass} />
 
                     <span
                       style={{
