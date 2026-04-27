@@ -7,6 +7,7 @@ import Treino from "./pages/Treino.jsx";
 import TreinoDetalhe from "./pages/TreinoDetalhe.jsx";
 import TreinoCompartilhado from "./pages/TreinoCompartilhado";
 import FitdealTeaching from "./pages/fitdeal.teaching";
+import MontagemTreino from "./pages/MontagemTreino";
 import Cardio, { CardioMiniDock } from "./pages/Cardio.jsx";
 import Nutricao from "./pages/Nutricao";
 import NutricaoOpcao from "./pages/NutricaoOpcao";
@@ -86,6 +87,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+  path="/montagem-treino"
+  element={
+    <ProtectedRoute>
+      <MontagemTreino />
+    </ProtectedRoute>
+  }
+/>
 <Route path="/auth/callback" element={<AuthCallback />} />
         {/* ✅ Eu recomendo proteger também (igual as outras) */}
         <Route
