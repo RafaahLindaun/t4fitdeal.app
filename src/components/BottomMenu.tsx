@@ -192,47 +192,63 @@ export default function BottomMenu() {
     let mounted = true;
 
     async function loadPaidAccess() {
-      if (!user?.id) {
-        if (mounted) setHasWorkoutDetailAccess(false);
-        return;
-      }
+  if (!user?.id) {
+    if (mounted) setHasWorkoutDetailAccess(false);
+    return;
+  }
 
-      try {
-        const { data, error } = await supabase
-          .from("user_subscriptions")
-          .select("plan_key, status, user_id")
-          .eq("user_id", user.id)
-          .in("status", ["active", "trialing"])
-          .limit(5);
+  try {
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .limit(10);
 
-        if (error) {
-          console.error("BottomMenu loadPaidAccess error:", error);
-          if (mounted) setHasWorkoutDetailAccess(false);
-          return;
-        }
-
-        const rows = Array.isArray(data) ? data : [];
-
-        const allowed = rows.some((row) => {
-          const planKey = String(row?.plan_key || "").trim().toLowerCase();
-          const status = String(row?.status || "").trim().toLowerCase();
-
-          return (
-            ["active", "trialing"].includes(status) &&
-            ["basico", "premium", "nutri"].includes(planKey)
-          );
-        });
-
-        console.log("BottomMenu user:", user.id);
-        console.log("BottomMenu subscriptions:", rows);
-        console.log("BottomMenu workout access:", allowed);
-
-        if (mounted) setHasWorkoutDetailAccess(allowed);
-      } catch (err) {
-        console.error("BottomMenu loadPaidAccess catch:", err);
-        if (mounted) setHasWorkoutDetailAccess(false);
-      }
+    if (error) {
+      console.error("BottomMenu loadPaidAccess error:", error);
+      if (mounted) setHasWorkoutDetailAccess(false);
+      return;
     }
+
+    const rows = Array.isArray(data) ? data : [];
+
+    const allowed = rows.some((row) => {
+      const status = String(row?.status || "").trim().toLowerCase();
+
+      const planKey = String(
+        row?.plan_key ||
+          row?.plan ||
+          row?.plan_name ||
+          row?.price_key ||
+          row?.subscription_plan ||
+          ""
+      )
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      const hasActiveStatus = ["active", "trialing"].includes(status);
+
+      const hasAllowedPlan =
+        planKey.includes("basico") ||
+        planKey.includes("basic") ||
+        planKey.includes("premium") ||
+        planKey.includes("nutri");
+
+      return hasActiveStatus && (hasAllowedPlan || planKey.length > 0);
+    });
+
+    console.log("BottomMenu user:", user.id);
+    console.log("BottomMenu subscriptions:", rows);
+    console.log("BottomMenu workout access:", allowed);
+
+    if (mounted) setHasWorkoutDetailAccess(allowed);
+  } catch (err) {
+    console.error("BottomMenu loadPaidAccess catch:", err);
+    if (mounted) setHasWorkoutDetailAccess(false);
+  }
+}
 
     loadPaidAccess();
 
