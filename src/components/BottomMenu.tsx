@@ -49,13 +49,7 @@ function NutritionIcon({ active }) {
       aria-hidden="true"
       style={{ display: "block" }}
     >
-      {/* Garfo mais afastado */}
-      <path
-        d="M13.2 12.5v14.1"
-        stroke={c}
-        strokeWidth="4.1"
-        strokeLinecap="round"
-      />
+      <path d="M13.2 12.5v14.1" stroke={c} strokeWidth="4.1" strokeLinecap="round" />
       <path
         d="M8.8 12.5v13.1c0 3.4 2 5.6 4.4 6.8"
         stroke={c}
@@ -70,21 +64,9 @@ function NutritionIcon({ active }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M13.2 32.4v19.1"
-        stroke={c}
-        strokeWidth="4.1"
-        strokeLinecap="round"
-      />
+      <path d="M13.2 32.4v19.1" stroke={c} strokeWidth="4.1" strokeLinecap="round" />
 
-      {/* Prato central */}
-      <circle
-        cx="32"
-        cy="32"
-        r="12.3"
-        stroke={c}
-        strokeWidth="4.2"
-      />
+      <circle cx="32" cy="32" r="12.3" stroke={c} strokeWidth="4.2" />
       <circle
         cx="32"
         cy="32"
@@ -94,7 +76,6 @@ function NutritionIcon({ active }) {
         opacity={active ? "0.82" : "0.72"}
       />
 
-      {/* Detalhe premium no prato */}
       <path
         d="M35.2 39.1c3.5-1.1 6.1-3.8 7.2-7.35"
         stroke={accent}
@@ -102,15 +83,8 @@ function NutritionIcon({ active }) {
         strokeLinecap="round"
         opacity={active ? "0.9" : "1"}
       />
-      <circle
-        cx="31.7"
-        cy="40"
-        r="1.65"
-        fill={accent}
-        opacity={active ? "0.85" : "1"}
-      />
+      <circle cx="31.7" cy="40" r="1.65" fill={accent} opacity={active ? "0.85" : "1"} />
 
-      {/* Faca mais afastada */}
       <path
         d="M51.8 12.8c-3.4 2.7-5 6.65-5 11.8v5.3c0 2.5 1.2 4.1 3.3 5.1"
         stroke={c}
@@ -118,12 +92,7 @@ function NutritionIcon({ active }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M50.1 35v16.5"
-        stroke={c}
-        strokeWidth="4.1"
-        strokeLinecap="round"
-      />
+      <path d="M50.1 35v16.5" stroke={c} strokeWidth="4.1" strokeLinecap="round" />
     </svg>
   );
 }
@@ -198,6 +167,7 @@ export default function BottomMenu() {
   const holdStartAtRef = useRef(0);
   const holdCompletedRef = useRef(false);
   const pressStartedRef = useRef(false);
+  const suppressNextTrainClickRef = useRef(false);
 
   const accountTapRef = useRef(0);
   const accountTapTimerRef = useRef(null);
@@ -230,7 +200,7 @@ export default function BottomMenu() {
       try {
         const { data, error } = await supabase
           .from("user_subscriptions")
-          .select("plan_key, status")
+          .select("plan_key, status, user_id")
           .eq("user_id", user.id)
           .in("status", ["active", "trialing"])
           .limit(5);
@@ -244,14 +214,18 @@ export default function BottomMenu() {
         const rows = Array.isArray(data) ? data : [];
 
         const allowed = rows.some((row) => {
-          const planKey = String(row?.plan_key || "").toLowerCase();
-          const status = String(row?.status || "").toLowerCase();
+          const planKey = String(row?.plan_key || "").trim().toLowerCase();
+          const status = String(row?.status || "").trim().toLowerCase();
 
           return (
             ["active", "trialing"].includes(status) &&
             ["basico", "premium", "nutri"].includes(planKey)
           );
         });
+
+        console.log("BottomMenu user:", user.id);
+        console.log("BottomMenu subscriptions:", rows);
+        console.log("BottomMenu workout access:", allowed);
 
         if (mounted) setHasWorkoutDetailAccess(allowed);
       } catch (err) {
@@ -311,8 +285,13 @@ export default function BottomMenu() {
 
       if (pct >= 1) {
         holdCompletedRef.current = true;
+        suppressNextTrainClickRef.current = true;
         pressStartedRef.current = false;
+
+        clearHoldTimers();
         setTrainPressing(false);
+        setTrainHoldProgress(0);
+
         nav("/treino-detalhe");
         return;
       }
@@ -327,6 +306,7 @@ export default function BottomMenu() {
     resetHoldState();
 
     holdCompletedRef.current = false;
+    suppressNextTrainClickRef.current = false;
     setTrainHoldBlocked(false);
     pressStartedRef.current = true;
     setTrainPressing(true);
@@ -338,7 +318,12 @@ export default function BottomMenu() {
         setTrainHoldBlocked(true);
         setTrainPressing(false);
         pressStartedRef.current = false;
-        window.setTimeout(() => setTrainHoldBlocked(false), 900);
+        clearHoldTimers();
+
+        window.setTimeout(() => {
+          setTrainHoldBlocked(false);
+        }, 900);
+
         return;
       }
 
@@ -348,18 +333,24 @@ export default function BottomMenu() {
   }
 
   function endTrainHold() {
-    const completed = holdCompletedRef.current;
-
-    if (!completed) {
+    if (!holdCompletedRef.current) {
       resetHoldState();
-    } else {
-      holdCompletedRef.current = false;
-      setTrainHoldProgress(0);
-      setTrainPressing(false);
+      return;
     }
+
+    clearHoldTimers();
+    pressStartedRef.current = false;
+    setTrainHoldProgress(0);
+    setTrainPressing(false);
   }
 
   function onTrainClick() {
+    if (suppressNextTrainClickRef.current) {
+      suppressNextTrainClickRef.current = false;
+      holdCompletedRef.current = false;
+      return;
+    }
+
     if (holdCompletedRef.current) {
       holdCompletedRef.current = false;
       return;
@@ -438,9 +429,14 @@ export default function BottomMenu() {
                 <button
                   key={item.to}
                   type="button"
-                  onPointerDown={startTrainHold}
-                  onPointerUp={endTrainHold}
-                  onPointerLeave={endTrainHold}
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture?.(e.pointerId);
+                    startTrainHold();
+                  }}
+                  onPointerUp={(e) => {
+                    e.currentTarget.releasePointerCapture?.(e.pointerId);
+                    endTrainHold();
+                  }}
                   onPointerCancel={endTrainHold}
                   onClick={onTrainClick}
                   className="fitdeal-bottom-item fitdeal-main-item"
