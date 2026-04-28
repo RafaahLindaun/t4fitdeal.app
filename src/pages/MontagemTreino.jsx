@@ -8,145 +8,413 @@ const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
 const BORDER = "rgba(15,23,42,.08)";
-const SOFT = "rgba(15,23,42,.04)";
 const BLACK = "#0B0B0C";
 
-function stripAccents(s) {
-  return String(s || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
 }
 
-function slugifyExercise(name) {
-  return stripAccents(name)
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, " ")
+function normalizeText(v) {
+  return String(v || "")
     .trim()
-    .replace(/\s/g, "-");
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 }
 
-function gifCandidates(name) {
-  const slug = slugifyExercise(name);
-  return [`/gifs/${slug}.GIF`, `/gifs/${slug}.gif`, `/publicgifs/${slug}.GIF`, `/publicgifs/${slug}.gif`];
-}
-
-function SafeExerciseImage({ name, fallback = "linear-gradient(135deg, rgba(255,106,0,.18), rgba(255,255,255,.92))" }) {
-  const candidates = gifCandidates(name);
-  const [idx, setIdx] = useState(0);
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return (
-      <div style={{ ...S.exerciseImageFallback, background: fallback }}>
-        <div style={S.imageBadge}>FIT</div>
-      </div>
-    );
+function uid() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
   }
 
-  return (
-    <img
-      src={candidates[idx]}
-      alt={name}
-      style={S.exerciseImage}
-      onError={() => {
-        if (idx < candidates.length - 1) {
-          setIdx((v) => v + 1);
-        } else {
-          setFailed(true);
-        }
-      }}
-    />
-  );
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-const QUICK_FOCUSES = [
+function todayLabel() {
+  return new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function normalizePlanKey(row) {
+  return String(row?.plan_key || row?.plan || row?.name || "")
+    .trim()
+    .toLowerCase();
+}
+
+function hasActiveSubscription(row) {
+  const status = String(row?.status || "").trim().toLowerCase();
+  return ["active", "trialing"].includes(status);
+}
+
+function numberFrom(value, fallback = 0) {
+  const n = Number(String(value || "").replace(",", "."));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+const INTENTS = [
   {
     id: "gluteo",
-    title: "Foco em glúteo",
-    sub: "Mais ativação, posterior e estabilidade.",
-    tag: "Mais procurado",
-    image: "linear-gradient(135deg, rgba(255,106,0,.22), rgba(255,255,255,.92))",
+    chapter: "01",
+    title: "Glúteo hoje",
+    short: "Glúteo",
+    subtitle: "Mais ativação, posterior e controle.",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    gradient:
+      "radial-gradient(circle at 85% 8%, rgba(255,106,0,.40), rgba(255,106,0,0) 32%), linear-gradient(135deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Guia rápido para glúteo",
+    guideText:
+      "Use controle, pausa no topo e amplitude segura. A ideia é sentir o glúteo trabalhando sem jogar tudo para lombar.",
+    keywords: ["pausa no topo", "quadril", "amplitude", "controle"],
     exercises: [
-      { name: "Hip thrust", group: "Glúteos", sets: 4, reps: "8–12", rest: "90–120s", method: "Pausa de 1s no topo" },
-      { name: "Agachamento sumô", group: "Glúteos/Pernas", sets: 4, reps: "10–12", rest: "90s", method: "Amplitude controlada" },
-      { name: "Cadeira abdutora", group: "Glúteo médio", sets: 4, reps: "12–20", rest: "60s", method: "Controle total" },
-      { name: "Kickback no cabo", group: "Glúteos", sets: 3, reps: "12–15", rest: "60s", method: "Sem jogar lombar" },
-      { name: "Terra romeno", group: "Posterior/Glúteos", sets: 4, reps: "8–12", rest: "90–120s", method: "Quadril para trás" },
-      { name: "Elevação pélvica", group: "Glúteos", sets: 3, reps: "12–15", rest: "75s", method: "Finalizar queimando" },
+      {
+        name: "Hip thrust",
+        group: "Glúteos",
+        sets: 4,
+        reps: "8–12",
+        rest: "90–120s",
+        method: "Pausa de 1 segundo no topo. Não hiperestenda a lombar.",
+      },
+      {
+        name: "Terra romeno",
+        group: "Posterior/Glúteos",
+        sets: 4,
+        reps: "8–12",
+        rest: "90–120s",
+        method: "Desça com quadril para trás e coluna neutra.",
+      },
+      {
+        name: "Agachamento sumô",
+        group: "Glúteos/Pernas",
+        sets: 4,
+        reps: "10–12",
+        rest: "90s",
+        method: "Pés mais abertos, joelhos acompanhando a ponta dos pés.",
+      },
+      {
+        name: "Cadeira abdutora",
+        group: "Glúteo médio",
+        sets: 4,
+        reps: "12–20",
+        rest: "60s",
+        method: "Controle a volta. Não deixe o peso despencar.",
+      },
+      {
+        name: "Kickback no cabo",
+        group: "Glúteos",
+        sets: 3,
+        reps: "12–15",
+        rest: "60s",
+        method: "Movimento curto e limpo, sem girar o tronco.",
+      },
     ],
   },
   {
     id: "lombar",
-    title: "Foco em lombares",
-    sub: "Base, postura, core e posterior.",
-    tag: "Postura",
-    image: "linear-gradient(135deg, rgba(15,23,42,.10), rgba(255,255,255,.96))",
+    chapter: "02",
+    title: "Dor na lombar",
+    short: "Lombar",
+    subtitle: "Treino mais seguro, core e postura.",
+    color: "#34C759",
+    soft: "rgba(52,199,89,.13)",
+    gradient:
+      "radial-gradient(circle at 86% 8%, rgba(52,199,89,.32), rgba(52,199,89,0) 32%), linear-gradient(135deg, #F0FDF4, #FFFFFF)",
+    guideTitle: "Guia rápido para lombar",
+    guideText:
+      "A proposta aqui é reduzir agressão, fortalecer core e priorizar coluna neutra. Dor forte ou aguda precisa de avaliação profissional.",
+    keywords: ["coluna neutra", "core", "controle", "sem dor"],
     exercises: [
-      { name: "Hiperextensão lombar", group: "Lombar", sets: 3, reps: "12–15", rest: "60–75s", method: "Subida controlada" },
-      { name: "Terra romeno", group: "Posterior/Lombar", sets: 4, reps: "8–12", rest: "90–120s", method: "Coluna neutra" },
-      { name: "Good morning", group: "Lombar/Posterior", sets: 3, reps: "10–12", rest: "90s", method: "Carga leve/moderada" },
-      { name: "Prancha", group: "Core", sets: 4, reps: "30–45s", rest: "45s", method: "Abdômen travado" },
-      { name: "Dead bug", group: "Core", sets: 3, reps: "10–12", rest: "45s", method: "Controle respiratório" },
-      { name: "Remada baixa", group: "Costas/Postura", sets: 4, reps: "10–12", rest: "75–90s", method: "Escápulas firmes" },
+      {
+        name: "Dead bug",
+        group: "Core",
+        sets: 3,
+        reps: "10–12",
+        rest: "45–60s",
+        method: "Controle a respiração e mantenha lombar estável.",
+      },
+      {
+        name: "Prancha",
+        group: "Core",
+        sets: 4,
+        reps: "30–45s",
+        rest: "45–60s",
+        method: "Abdômen travado, sem deixar o quadril cair.",
+      },
+      {
+        name: "Hiperextensão lombar leve",
+        group: "Lombar",
+        sets: 3,
+        reps: "12–15",
+        rest: "60–75s",
+        method: "Suba só até alinhar o corpo. Sem jogar para trás.",
+      },
+      {
+        name: "Remada baixa",
+        group: "Costas/Postura",
+        sets: 4,
+        reps: "10–12",
+        rest: "75–90s",
+        method: "Peito aberto, escápulas firmes e tronco estável.",
+      },
+      {
+        name: "Alongamento de posterior",
+        group: "Mobilidade",
+        sets: 3,
+        reps: "30s",
+        rest: "30s",
+        method: "Alongue sem forçar dor. Respire devagar.",
+      },
     ],
   },
   {
-    id: "hipertrofia",
-    title: "Hipertrofia rápida",
-    sub: "Treino cheio, visual e simples de seguir.",
-    tag: "Massa",
-    image: "linear-gradient(135deg, rgba(255,106,0,.18), rgba(15,23,42,.06))",
+    id: "emagrecer",
+    chapter: "03",
+    title: "Emagrecer em dias",
+    short: "Emagrecer",
+    subtitle: "Musculação + cardio com plano simples.",
+    color: "#0A84FF",
+    soft: "rgba(10,132,255,.13)",
+    gradient:
+      "radial-gradient(circle at 86% 8%, rgba(10,132,255,.32), rgba(10,132,255,0) 32%), linear-gradient(135deg, #EFF6FF, #FFFFFF)",
+    guideTitle: "Guia rápido para emagrecer",
+    guideText:
+      "O segredo é constância. A montagem combina treino com ritmo controlado e um plano de cardio puxadinho, mas sustentável.",
+    keywords: ["cardio", "constância", "gasto calórico", "ritmo"],
     exercises: [
-      { name: "Supino reto", group: "Peito", sets: 4, reps: "6–12", rest: "90s", method: "Progressão de carga" },
-      { name: "Puxada frente", group: "Costas", sets: 4, reps: "8–12", rest: "90s", method: "Peito alto" },
-      { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "90–120s", method: "Amplitude segura" },
-      { name: "Desenvolvimento com halteres", group: "Ombros", sets: 3, reps: "8–12", rest: "75s", method: "Sem roubar" },
-      { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60s", method: "Cotovelo fixo" },
-      { name: "Tríceps corda", group: "Tríceps", sets: 3, reps: "10–15", rest: "60s", method: "Estender completo" },
+      {
+        name: "Agachamento livre",
+        group: "Pernas",
+        sets: 4,
+        reps: "12–15",
+        rest: "60–75s",
+        method: "Ritmo constante, sem descanso longo demais.",
+      },
+      {
+        name: "Remada baixa",
+        group: "Costas",
+        sets: 4,
+        reps: "10–12",
+        rest: "60–75s",
+        method: "Movimento firme e controlado.",
+      },
+      {
+        name: "Supino inclinado",
+        group: "Peito",
+        sets: 3,
+        reps: "10–12",
+        rest: "60s",
+        method: "Controle a descida e mantenha ritmo.",
+      },
+      {
+        name: "Cadeira extensora",
+        group: "Quadríceps",
+        sets: 3,
+        reps: "12–15",
+        rest: "45–60s",
+        method: "Queima controlada, sem roubar.",
+      },
+      {
+        name: "Cardio moderado",
+        group: "Cardio",
+        sets: 1,
+        reps: "25–35min",
+        rest: "—",
+        method: "Esteira, bike ou elíptico em ritmo que dê para sustentar.",
+      },
+    ],
+    cardioPlan: [
+      "Semana 1: 3 cardios moderados de 25 minutos.",
+      "Semana 2: 3 cardios de 30 minutos + 1 curto de 15 minutos.",
+      "Semana 3: 4 cardios de 30 minutos.",
+      "Semana 4: 3 cardios moderados + 1 intervalado leve.",
     ],
   },
   {
-    id: "emagrecimento",
-    title: "Emagrecimento",
-    sub: "Mais gasto, ritmo e treino sem enrolação.",
-    tag: "Queima",
-    image: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,178,107,.16))",
+    id: "trocar_hoje",
+    chapter: "04",
+    title: "Trocar treino de hoje",
+    short: "Trocar hoje",
+    subtitle: "Muda o dia sem bagunçar seu plano.",
+    color: "#AF52DE",
+    soft: "rgba(175,82,222,.13)",
+    gradient:
+      "radial-gradient(circle at 86% 8%, rgba(175,82,222,.30), rgba(175,82,222,0) 32%), linear-gradient(135deg, #FAF5FF, #FFFFFF)",
+    guideTitle: "Guia para trocar sem perder o plano",
+    guideText:
+      "Essa opção troca o estímulo do dia, mas mantém uma estrutura organizada para você não abandonar o treino por estar cansado ou sem tempo.",
+    keywords: ["troca rápida", "sem bagunçar", "adaptação", "praticidade"],
     exercises: [
-      { name: "Agachamento livre", group: "Pernas", sets: 4, reps: "12–15", rest: "60–75s", method: "Ritmo constante" },
-      { name: "Remada baixa", group: "Costas", sets: 4, reps: "10–12", rest: "60–75s", method: "Controle" },
-      { name: "Supino inclinado", group: "Peito", sets: 3, reps: "10–12", rest: "60s", method: "Sem pausa longa" },
-      { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "45–60s", method: "Queima controlada" },
-      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "12–15", rest: "45–60s", method: "Amplitude limpa" },
-      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45s", method: "Finalização" },
+      {
+        name: "Leg press",
+        group: "Pernas",
+        sets: 3,
+        reps: "12",
+        rest: "75s",
+        method: "Opção segura para substituir agachamento pesado.",
+      },
+      {
+        name: "Puxada frente",
+        group: "Costas",
+        sets: 3,
+        reps: "12",
+        rest: "75s",
+        method: "Boa base para manter treino completo.",
+      },
+      {
+        name: "Supino máquina",
+        group: "Peito",
+        sets: 3,
+        reps: "12",
+        rest: "75s",
+        method: "Mais simples que livre em dias corridos.",
+      },
+      {
+        name: "Elevação lateral",
+        group: "Ombros",
+        sets: 3,
+        reps: "12–15",
+        rest: "60s",
+        method: "Carga leve e execução limpa.",
+      },
+      {
+        name: "Prancha",
+        group: "Core",
+        sets: 3,
+        reps: "30–45s",
+        rest: "45s",
+        method: "Finalização rápida.",
+      },
     ],
   },
   {
-    id: "iniciante",
-    title: "Iniciante seguro",
-    sub: "Fácil de entender e difícil de errar.",
-    tag: "Começo",
-    image: "linear-gradient(135deg, rgba(15,23,42,.08), rgba(255,255,255,.96))",
+    id: "leve",
+    chapter: "05",
+    title: "Treino leve",
+    short: "Leve",
+    subtitle: "Dia cansado, recuperação ou volta ao ritmo.",
+    color: "#64D2FF",
+    soft: "rgba(100,210,255,.15)",
+    gradient:
+      "radial-gradient(circle at 86% 8%, rgba(100,210,255,.35), rgba(100,210,255,0) 32%), linear-gradient(135deg, #F0FDFF, #FFFFFF)",
+    guideTitle: "Guia para treino leve",
+    guideText:
+      "Melhor fazer um treino leve bem feito do que faltar. Use menos carga, mais controle e saia melhor do que entrou.",
+    keywords: ["controle", "leve", "recuperação", "constância"],
     exercises: [
-      { name: "Leg press", group: "Pernas", sets: 3, reps: "12", rest: "75s", method: "Aprender amplitude" },
-      { name: "Puxada frente", group: "Costas", sets: 3, reps: "12", rest: "75s", method: "Movimento controlado" },
-      { name: "Supino máquina", group: "Peito", sets: 3, reps: "12", rest: "75s", method: "Carga confortável" },
-      { name: "Cadeira flexora", group: "Posterior", sets: 3, reps: "12", rest: "60s", method: "Sem pressa" },
-      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "12", rest: "60s", method: "Carga leve" },
-      { name: "Abdominal crunch", group: "Core", sets: 3, reps: "12–15", rest: "45s", method: "Controle" },
+      {
+        name: "Bike leve",
+        group: "Cardio",
+        sets: 1,
+        reps: "8–10min",
+        rest: "—",
+        method: "Aquecimento sem cansar demais.",
+      },
+      {
+        name: "Agachamento goblet leve",
+        group: "Pernas",
+        sets: 3,
+        reps: "12",
+        rest: "60s",
+        method: "Carga confortável e amplitude segura.",
+      },
+      {
+        name: "Remada máquina",
+        group: "Costas",
+        sets: 3,
+        reps: "12",
+        rest: "60s",
+        method: "Controle total, sem roubar.",
+      },
+      {
+        name: "Supino máquina",
+        group: "Peito",
+        sets: 3,
+        reps: "12",
+        rest: "60s",
+        method: "Movimento limpo e carga moderada.",
+      },
+      {
+        name: "Alongamento curto",
+        group: "Mobilidade",
+        sets: 1,
+        reps: "5min",
+        rest: "—",
+        method: "Finalize soltando quadril, posterior e costas.",
+      },
+    ],
+  },
+  {
+    id: "forte",
+    chapter: "06",
+    title: "Treino forte",
+    short: "Forte",
+    subtitle: "Mais carga, foco e progressão.",
+    color: "#FF375F",
+    soft: "rgba(255,55,95,.13)",
+    gradient:
+      "radial-gradient(circle at 86% 8%, rgba(255,55,95,.32), rgba(255,55,95,0) 32%), linear-gradient(135deg, #FFF1F2, #FFFFFF)",
+    guideTitle: "Guia para treino forte",
+    guideText:
+      "Treino forte não é bagunçado. Use boa técnica, descanso correto e progressão real de carga.",
+    keywords: ["carga", "progressão", "descanso", "técnica"],
+    exercises: [
+      {
+        name: "Agachamento",
+        group: "Pernas",
+        sets: 5,
+        reps: "5–8",
+        rest: "120s",
+        method: "Priorize técnica e carga progressiva.",
+      },
+      {
+        name: "Supino reto",
+        group: "Peito",
+        sets: 5,
+        reps: "5–8",
+        rest: "120s",
+        method: "Controle a descida e suba com força.",
+      },
+      {
+        name: "Remada curvada",
+        group: "Costas",
+        sets: 4,
+        reps: "6–10",
+        rest: "90–120s",
+        method: "Tronco firme e puxada forte.",
+      },
+      {
+        name: "Terra romeno",
+        group: "Posterior",
+        sets: 4,
+        reps: "8–10",
+        rest: "120s",
+        method: "Quadril para trás e coluna neutra.",
+      },
+      {
+        name: "Desenvolvimento",
+        group: "Ombros",
+        sets: 4,
+        reps: "6–10",
+        rest: "90s",
+        method: "Sem roubar com lombar.",
+      },
     ],
   },
 ];
 
-function normalizePlanKey(plan) {
-  return String(plan?.plan_key || plan?.plan || plan?.name || "")
-    .toLowerCase()
-    .trim();
-}
-
-function hasActiveSubscription(subscription) {
-  const status = String(subscription?.status || "").toLowerCase();
-  return ["active", "trialing"].includes(status);
+function makeEditableExercise(ex) {
+  return {
+    id: uid(),
+    name: ex.name || "",
+    group: ex.group || "",
+    sets: ex.sets ?? 3,
+    reps: ex.reps || "10–12",
+    rest: ex.rest || "60s",
+    method: ex.method || "",
+  };
 }
 
 export default function MontagemTreino() {
@@ -155,15 +423,27 @@ export default function MontagemTreino() {
 
   const [profile, setProfile] = useState(null);
   const [subscription, setSubscription] = useState(null);
-  const [selectedFocus, setSelectedFocus] = useState("gluteo");
-  const [selectedLevel, setSelectedLevel] = useState("auto");
-  const [selectedDays, setSelectedDays] = useState("auto");
+  const [selectedIntentId, setSelectedIntentId] = useState("gluteo");
+  const [duration, setDuration] = useState("hoje");
+  const [targetDays, setTargetDays] = useState("30");
+  const [exercises, setExercises] = useState([]);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [openKeyword, setOpenKeyword] = useState(null);
+
+  const selectedIntent = useMemo(() => {
+    return INTENTS.find((item) => item.id === selectedIntentId) || INTENTS[0];
+  }, [selectedIntentId]);
+
+  useEffect(() => {
+    setExercises((selectedIntent.exercises || []).map(makeEditableExercise));
+    setOpenKeyword(null);
+  }, [selectedIntentId]);
 
   useEffect(() => {
     let alive = true;
 
-    async function loadData() {
+    async function loadUserData() {
       if (!user?.id) {
         setLoading(false);
         return;
@@ -171,121 +451,217 @@ export default function MontagemTreino() {
 
       setLoading(true);
 
-      const [profileRes, subRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-        supabase
-          .from("user_subscriptions")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      try {
+        const [profileRes, subRes] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle(),
 
-      if (!alive) return;
+          supabase
+            .from("user_subscriptions")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
 
-      if (profileRes.error) console.error("MontagemTreino profile error:", profileRes.error);
-      if (subRes.error) console.error("MontagemTreino subscription error:", subRes.error);
+        if (!alive) return;
 
-      setProfile(profileRes.data || null);
-      setSubscription(subRes.data || null);
-      setLoading(false);
+        if (profileRes.error) {
+          console.error("MontagemTreino profile error:", profileRes.error);
+        }
+
+        if (subRes.error) {
+          console.error("MontagemTreino subscription error:", subRes.error);
+        }
+
+        setProfile(profileRes.data || null);
+        setSubscription(subRes.data || null);
+      } catch (err) {
+        console.error("MontagemTreino load catch:", err);
+      } finally {
+        if (alive) setLoading(false);
+      }
     }
 
-    loadData();
+    loadUserData();
 
     return () => {
       alive = false;
     };
   }, [user?.id]);
 
-  const activePlan = hasActiveSubscription(subscription);
-  const planKey = normalizePlanKey(subscription);
+  useEffect(() => {
+    const objetivo = normalizeText(profile?.objetivo);
 
-  const suggestedFocus = useMemo(() => {
-    const objetivo = String(profile?.objetivo || "").toLowerCase();
+    if (objetivo.includes("emagrec") || objetivo.includes("perda")) {
+      setSelectedIntentId("emagrecer");
+      return;
+    }
 
-    if (objetivo.includes("emagrec")) return "emagrecimento";
-    if (objetivo.includes("performance")) return "hipertrofia";
-    if (objetivo.includes("hipertrofia")) return "hipertrofia";
+    if (objetivo.includes("forca") || objetivo.includes("performance")) {
+      setSelectedIntentId("forte");
+      return;
+    }
 
-    return "gluteo";
+    if (objetivo.includes("glute")) {
+      setSelectedIntentId("gluteo");
+    }
   }, [profile?.objetivo]);
 
-  useEffect(() => {
-    if (suggestedFocus) setSelectedFocus(suggestedFocus);
-  }, [suggestedFocus]);
+  const isPaid = hasActiveSubscription(subscription);
+  const planKey = normalizePlanKey(subscription);
 
-  const currentFocus = useMemo(() => {
-    return QUICK_FOCUSES.find((item) => item.id === selectedFocus) || QUICK_FOCUSES[0];
-  }, [selectedFocus]);
+  const guideKeywordText = useMemo(() => {
+    if (!openKeyword) return null;
 
-  const profileLevel = String(profile?.nivel || "").trim() || "Não informado";
-  const profileSplit = String(profile?.split || "").trim() || "Automático";
-  const profileFrequency = profile?.frequencia || "auto";
+    const map = {
+      "pausa no topo": "Segure a contração por 1 segundo no ponto mais forte do movimento.",
+      quadril: "Pense em mover o quadril, não a lombar. Isso ajuda a ativar glúteos e posterior.",
+      amplitude: "Use uma amplitude segura, sem perder postura ou sentir dor articular.",
+      controle: "Controle a ida e a volta do movimento. Evite jogar o peso.",
+      "coluna neutra": "Mantenha a coluna alinhada, sem arredondar ou hiperestender.",
+      core: "Trave abdômen e respire com controle. O core protege a lombar.",
+      "sem dor": "Dor forte, pontada ou irradiação não deve ser ignorada. Reduza carga ou pare.",
+      cardio: "Use cardio como ferramenta de constância, não punição.",
+      constância: "Resultado vem da repetição semanal, não de um treino perfeito isolado.",
+      "gasto calórico": "Musculação + cardio + alimentação bem organizada melhoram o déficit calórico.",
+      ritmo: "Descanse o suficiente para continuar bem, mas evite pausas longas demais.",
+      "troca rápida": "Troque o treino do dia sem perder a lógica da semana.",
+      "sem bagunçar": "A montagem altera o treino atual, mas mantém estrutura, volume e foco.",
+      adaptação: "Use quando está cansado, sem tempo ou sem acesso a alguns aparelhos.",
+      praticidade: "Menos configuração, mais execução.",
+      leve: "Reduza carga, mantenha técnica e use o treino para recuperar ritmo.",
+      recuperação: "Treino leve ajuda circulação, mobilidade e consistência.",
+      carga: "Carga boa é aquela que desafia sem destruir sua execução.",
+      progressão: "Tente melhorar pouco a pouco: mais carga, mais reps ou mais controle.",
+      descanso: "Descanso certo ajuda força, técnica e segurança.",
+      técnica: "Técnica vem antes de peso. Movimento bonito evolui mais.",
+    };
 
-  const finalLevel = selectedLevel === "auto" ? profileLevel : selectedLevel;
-  const finalDays = selectedDays === "auto" ? profileFrequency : selectedDays;
+    return map[openKeyword] || "Use essa palavra como guia para executar melhor o treino.";
+  }, [openKeyword]);
 
-  const generatedPlan = useMemo(() => {
-    const base = currentFocus.exercises.map((ex, index) => ({
-      ...ex,
-      id: `${currentFocus.id}_${index + 1}`,
-      order: index + 1,
-      focus: currentFocus.title,
-      level: finalLevel,
-      days: finalDays,
-    }));
-
+  const payload = useMemo(() => {
     return {
       source: "montagem",
-      createdAt: new Date().toISOString(),
-      focusId: currentFocus.id,
-      focusTitle: currentFocus.title,
-      focusSubtitle: currentFocus.sub,
-      userId: user?.id || null,
+      intent: selectedIntent.id,
+      duration,
+      targetDays: selectedIntent.id === "emagrecer" ? Number(targetDays || 30) : null,
+      focusId: selectedIntent.id,
+      focusTitle: selectedIntent.title,
+      focusSubtitle: selectedIntent.subtitle,
+      guide: {
+        chapter: selectedIntent.chapter,
+        title: selectedIntent.guideTitle,
+        text: selectedIntent.guideText,
+        keywords: selectedIntent.keywords,
+        color: selectedIntent.color,
+      },
       profile: {
         objetivo: profile?.objetivo || null,
         nivel: profile?.nivel || null,
         split: profile?.split || null,
+        intensidade: profile?.intensidade || null,
         frequencia: profile?.frequencia || null,
       },
       subscription: {
-        active: activePlan,
+        active: isPaid,
         planKey,
         status: subscription?.status || null,
       },
-      exercises: base,
+      cardioPlan: selectedIntent.cardioPlan || [],
+      exercises: exercises.map((ex, index) => ({
+        ...ex,
+        order: index + 1,
+        sets: numberFrom(ex.sets, 3),
+      })),
+      createdAt: new Date().toISOString(),
     };
-  }, [currentFocus, finalLevel, finalDays, user?.id, profile, activePlan, planKey, subscription?.status]);
+  }, [selectedIntent, duration, targetDays, profile, subscription, isPaid, planKey, exercises]);
 
-  function saveAndOpenDetail() {
-    try {
-      localStorage.setItem("fitdeal_quick_workout", JSON.stringify(generatedPlan));
-    } catch (err) {
-      console.error("save quick workout localStorage:", err);
-    }
-
-    nav("/treino/detalhe?source=montagem");
+  function updateExercise(exerciseId, patch) {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        return { ...ex, ...patch };
+      })
+    );
   }
 
-  async function saveAsCurrentWorkout() {
+  function removeExercise(exerciseId) {
+    setExercises((prev) => prev.filter((ex) => ex.id !== exerciseId));
+  }
+
+  function addExercise() {
+    setExercises((prev) => [
+      ...prev,
+      makeEditableExercise({
+        name: "Novo exercício",
+        group: "Grupo muscular",
+        sets: 3,
+        reps: "10–12",
+        rest: "60s",
+        method: "Descreva a execução.",
+      }),
+    ]);
+  }
+
+  function moveExercise(exerciseId, dir) {
+    setExercises((prev) => {
+      const index = prev.findIndex((ex) => ex.id === exerciseId);
+      if (index < 0) return prev;
+
+      const nextIndex = clamp(index + dir, 0, prev.length - 1);
+      if (nextIndex === index) return prev;
+
+      const copy = [...prev];
+      const [item] = copy.splice(index, 1);
+      copy.splice(nextIndex, 0, item);
+
+      return copy;
+    });
+  }
+
+  async function saveMontage() {
+    if (!user?.id || saving) return;
+
+    setSaving(true);
+
     try {
-      localStorage.setItem("fitdeal_quick_workout", JSON.stringify(generatedPlan));
+      localStorage.setItem("fitdeal_quick_workout", JSON.stringify(payload));
 
-      if (user?.id) {
-        await supabase.from("user_workout_montages").insert({
+      const { data, error } = await supabase
+        .from("user_workout_montages")
+        .insert({
           user_id: user.id,
-          focus_key: generatedPlan.focusId,
-          title: generatedPlan.focusTitle,
-          payload: generatedPlan,
-        });
-      }
-    } catch (err) {
-      console.error("save montage:", err);
-    }
+          focus_key: payload.focusId,
+          title: payload.focusTitle,
+          selected_level: String(profile?.nivel || ""),
+          selected_days: String(duration || ""),
+          payload,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
-    nav("/treino/detalhe?source=montagem");
+      if (error) {
+        console.error("saveMontage error:", error);
+        nav("/treino/detalhe?source=montagem");
+        return;
+      }
+
+      nav(`/treino/detalhe?source=montagem&id=${data.id}`);
+    } catch (err) {
+      console.error("saveMontage catch:", err);
+      nav("/treino/detalhe?source=montagem");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -296,156 +672,321 @@ export default function MontagemTreino() {
             ←
           </button>
 
-          <div style={S.heroBody}>
-            <div style={S.kicker}>Montagem rápida</div>
-            <h1 style={S.title}>Monte seu treino sem complicar.</h1>
-            <p style={S.sub}>
-              Escolha o foco, veja os exercícios com imagens e abra direto no treino detalhe.
+          <div style={S.heroMain}>
+            <div style={S.kicker}>Montagem inteligente</div>
+            <h1 style={S.heroTitle}>Vamos alterar seu foco hoje</h1>
+            <p style={S.heroSub}>
+              Escolha uma intenção. Depois ajuste séries, repetições, descanso e execução do seu jeito.
             </p>
 
-            <div style={S.profileStrip}>
+            <div style={S.profileRow}>
+              <div style={S.profilePill}>
+                <span>Hoje</span>
+                <b>{todayLabel()}</b>
+              </div>
+
               <div style={S.profilePill}>
                 <span>Objetivo</span>
                 <b>{loading ? "..." : profile?.objetivo || "Automático"}</b>
               </div>
 
               <div style={S.profilePill}>
-                <span>Nível</span>
-                <b>{loading ? "..." : profileLevel}</b>
-              </div>
-
-              <div style={S.profilePill}>
                 <span>Plano</span>
-                <b>{activePlan ? planKey || "Ativo" : "Livre"}</b>
+                <b>{isPaid ? planKey || "Ativo" : "Livre"}</b>
               </div>
             </div>
           </div>
         </section>
 
-        <section style={S.blackCta}>
-          <div>
-            <div style={S.blackKicker}>Novo jeito de treinar</div>
-            <div style={S.blackTitle}>Não sabe personalizar?</div>
-            <div style={S.blackText}>
-              Use a montagem rápida. Ela interpreta seu onboarding e sugere uma base pronta.
-            </div>
+        <section style={S.bookCard}>
+          <div style={S.bookLine}>
+            <span>01</span>
+            <b>Escolha o treino do dia</b>
           </div>
 
-          <button type="button" style={S.blackBtn} onClick={saveAndOpenDetail}>
-            Abrir treino
-          </button>
-        </section>
-
-        <section style={S.section}>
-          <div style={S.sectionTitle}>Escolha o foco</div>
-
-          <div style={S.focusGrid}>
-            {QUICK_FOCUSES.map((item) => {
-              const active = item.id === selectedFocus;
+          <div style={S.intentGrid}>
+            {INTENTS.map((item) => {
+              const active = item.id === selectedIntentId;
 
               return (
                 <button
-                  type="button"
                   key={item.id}
-                  onClick={() => setSelectedFocus(item.id)}
+                  type="button"
+                  onClick={() => setSelectedIntentId(item.id)}
                   style={{
-                    ...S.focusCard,
-                    ...(active ? S.focusCardActive : null),
-                    background: item.image,
+                    ...S.intentCard,
+                    ...(active ? S.intentCardOn : null),
+                    background: item.gradient,
+                    borderColor: active ? item.color : "rgba(15,23,42,.08)",
                   }}
                 >
-                  <div style={S.focusTop}>
-                    <span style={S.focusTag}>{item.tag}</span>
-                    <span style={{ ...S.focusDot, ...(active ? S.focusDotActive : null) }} />
+                  <div style={S.intentTop}>
+                    <div
+                      style={{
+                        ...S.intentDot,
+                        background: item.color,
+                        boxShadow: active ? `0 0 0 5px ${item.soft}` : "none",
+                      }}
+                    />
+                    <span>{item.chapter}</span>
                   </div>
 
-                  <div style={S.focusTitle}>{item.title}</div>
-                  <div style={S.focusSub}>{item.sub}</div>
+                  <div style={S.intentTitle}>{item.short}</div>
+                  <div style={S.intentSub}>{item.subtitle}</div>
                 </button>
               );
             })}
           </div>
         </section>
 
-        <section style={S.section}>
-          <div style={S.sectionHead}>
+        <section style={S.guideCard}>
+          <div style={S.bookLine}>
+            <span>02</span>
+            <b>Guia do foco escolhido</b>
+          </div>
+
+          <div style={S.guideInner}>
+            <div
+              style={{
+                ...S.guideIcon,
+                background: selectedIntent.color,
+                boxShadow: `0 18px 44px ${selectedIntent.soft}`,
+              }}
+            >
+              {selectedIntent.chapter}
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <div style={S.guideTitle}>{selectedIntent.guideTitle}</div>
+              <div style={S.guideText}>{selectedIntent.guideText}</div>
+            </div>
+          </div>
+
+          <div style={S.keywordRow}>
+            {selectedIntent.keywords.map((word) => {
+              const active = openKeyword === word;
+
+              return (
+                <button
+                  key={word}
+                  type="button"
+                  onClick={() => setOpenKeyword(active ? null : word)}
+                  style={{
+                    ...S.keyword,
+                    ...(active
+                      ? {
+                          background: selectedIntent.color,
+                          color: "#fff",
+                          borderColor: selectedIntent.color,
+                        }
+                      : null),
+                  }}
+                >
+                  {word}
+                </button>
+              );
+            })}
+          </div>
+
+          {guideKeywordText ? (
+            <div style={S.keywordBox}>{guideKeywordText}</div>
+          ) : null}
+
+          {selectedIntent.id === "emagrecer" ? (
+            <div style={S.targetDaysBox}>
+              <label style={S.label}>
+                Quero emagrecer em quantos dias?
+                <div style={S.daysInline}>
+                  <input
+                    value={targetDays}
+                    onChange={(e) => setTargetDays(e.target.value)}
+                    inputMode="numeric"
+                    style={S.daysInput}
+                  />
+                  <span>dias</span>
+                </div>
+              </label>
+            </div>
+          ) : null}
+        </section>
+
+        <section style={S.durationCard}>
+          <div style={S.bookLine}>
+            <span>03</span>
+            <b>Aplicar por quanto tempo?</b>
+          </div>
+
+          <div style={S.durationGrid}>
+            {[
+              { id: "hoje", label: "Só hoje", sub: "Troca rápida" },
+              { id: "semana", label: "Semana", sub: "7 dias" },
+              { id: "mes", label: "Mês", sub: "Ciclo maior" },
+            ].map((item) => {
+              const active = duration === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setDuration(item.id)}
+                  style={{
+                    ...S.durationBtn,
+                    ...(active
+                      ? {
+                          borderColor: selectedIntent.color,
+                          background: selectedIntent.soft,
+                        }
+                      : null),
+                  }}
+                >
+                  <b>{item.label}</b>
+                  <span>{item.sub}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {selectedIntent.cardioPlan?.length ? (
+          <section style={S.cardioPlan}>
+            <div style={S.bookLine}>
+              <span>+</span>
+              <b>Plano de cardio puxadinho</b>
+            </div>
+
+            <div style={S.cardioList}>
+              {selectedIntent.cardioPlan.map((line, index) => (
+                <div key={index} style={S.cardioItem}>
+                  <span>{index + 1}</span>
+                  <b>{line}</b>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section style={S.editorCard}>
+          <div style={S.editorHead}>
             <div>
-              <div style={S.sectionTitle}>Preview do treino</div>
-              <div style={S.sectionSub}>
-                {currentFocus.title} • {generatedPlan.exercises.length} exercícios
+              <div style={S.bookLine}>
+                <span>04</span>
+                <b>Edite seu treino</b>
+              </div>
+              <div style={S.editorSub}>
+                Toque nos campos e ajuste séries, repetições, descanso e execução.
               </div>
             </div>
 
-            <button type="button" style={S.smallBtn} onClick={saveAndOpenDetail}>
-              Ver detalhe
+            <button type="button" style={S.addBtn} onClick={addExercise}>
+              + Exercício
             </button>
           </div>
 
           <div style={S.exerciseList}>
-            {generatedPlan.exercises.map((ex) => (
+            {exercises.map((ex, index) => (
               <article key={ex.id} style={S.exerciseCard}>
-                <SafeExerciseImage name={ex.name} fallback={currentFocus.image} />
-
-                <div style={S.exerciseBody}>
-                  <div style={S.exerciseTop}>
-                    <div>
-                      <div style={S.exerciseName}>{ex.name}</div>
-                      <div style={S.exerciseGroup}>{ex.group}</div>
-                    </div>
-
-                    <div style={S.orderBadge}>{ex.order}</div>
+                <div style={S.exerciseTop}>
+                  <div
+                    style={{
+                      ...S.exerciseNumber,
+                      background: selectedIntent.color,
+                    }}
+                  >
+                    {index + 1}
                   </div>
 
-                  <div style={S.exerciseMeta}>
-                    <span>{ex.sets} séries</span>
-                    <span>{ex.reps}</span>
-                    <span>{ex.rest}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <input
+                      value={ex.name}
+                      onChange={(e) => updateExercise(ex.id, { name: e.target.value })}
+                      style={S.nameInput}
+                    />
+
+                    <input
+                      value={ex.group}
+                      onChange={(e) => updateExercise(ex.id, { group: e.target.value })}
+                      style={S.groupInput}
+                    />
                   </div>
 
-                  <div style={S.methodBox}>{ex.method}</div>
+                  <div style={S.moveBtns}>
+                    <button type="button" onClick={() => moveExercise(ex.id, -1)} style={S.moveBtn}>
+                      ↑
+                    </button>
+                    <button type="button" onClick={() => moveExercise(ex.id, 1)} style={S.moveBtn}>
+                      ↓
+                    </button>
+                  </div>
                 </div>
+
+                <div style={S.editGrid}>
+                  <label style={S.miniLabel}>
+                    Séries
+                    <input
+                      value={ex.sets}
+                      onChange={(e) => updateExercise(ex.id, { sets: e.target.value })}
+                      inputMode="numeric"
+                      style={S.miniInput}
+                    />
+                  </label>
+
+                  <label style={S.miniLabel}>
+                    Reps
+                    <input
+                      value={ex.reps}
+                      onChange={(e) => updateExercise(ex.id, { reps: e.target.value })}
+                      style={S.miniInput}
+                    />
+                  </label>
+
+                  <label style={S.miniLabel}>
+                    Descanso
+                    <input
+                      value={ex.rest}
+                      onChange={(e) => updateExercise(ex.id, { rest: e.target.value })}
+                      style={S.miniInput}
+                    />
+                  </label>
+                </div>
+
+                <label style={S.methodLabel}>
+                  Execução
+                  <textarea
+                    value={ex.method}
+                    onChange={(e) => updateExercise(ex.id, { method: e.target.value })}
+                    style={S.methodInput}
+                    rows={2}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  style={S.removeBtn}
+                  onClick={() => removeExercise(ex.id)}
+                >
+                  Remover exercício
+                </button>
               </article>
             ))}
           </div>
         </section>
 
-        <section style={S.section}>
-          <div style={S.sectionTitle}>Ajustes rápidos</div>
-
-          <div style={S.adjustGrid}>
-            <label style={S.label}>
-              Nível
-              <select value={selectedLevel} onChange={(e) => setSelectedLevel(e.target.value)} style={S.input}>
-                <option value="auto">Usar onboarding</option>
-                <option value="Iniciante">Iniciante</option>
-                <option value="Intermediário">Intermediário</option>
-                <option value="Avançado">Avançado</option>
-              </select>
-            </label>
-
-            <label style={S.label}>
-              Dias por semana
-              <select value={selectedDays} onChange={(e) => setSelectedDays(e.target.value)} style={S.input}>
-                <option value="auto">Usar onboarding</option>
-                <option value="2">2 dias</option>
-                <option value="3">3 dias</option>
-                <option value="4">4 dias</option>
-                <option value="5">5 dias</option>
-                <option value="6">6 dias</option>
-              </select>
-            </label>
+        <section style={S.previewCard}>
+          <div>
+            <div style={S.previewTitle}>Treino pronto para abrir</div>
+            <div style={S.previewSub}>
+              {selectedIntent.title} • {exercises.length} exercícios • {duration === "hoje" ? "só hoje" : duration}
+            </div>
           </div>
+
+          <button type="button" style={S.primaryBtn} onClick={saveMontage} disabled={saving}>
+            {saving ? "Salvando..." : "Usar este treino"}
+          </button>
+
+          <button type="button" style={S.secondaryBtn} onClick={() => nav("/treino")}>
+            Voltar sem salvar
+          </button>
         </section>
-
-        <div style={S.bottomActions}>
-          <button type="button" style={S.secondary} onClick={() => nav("/treino/personalizar")}>
-            Personalizar avançado
-          </button>
-
-          <button type="button" style={S.primary} onClick={saveAsCurrentWorkout}>
-            Usar este treino
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -455,7 +996,7 @@ const S = {
   page: {
     minHeight: "100vh",
     background: BG,
-    padding: 18,
+    padding: 16,
     paddingBottom: 130,
   },
 
@@ -468,384 +1009,524 @@ const S = {
     display: "flex",
     gap: 12,
     alignItems: "flex-start",
-    borderRadius: 30,
-    padding: 16,
-    background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,255,255,.96))",
+    borderRadius: 28,
+    padding: 15,
+    background:
+      "radial-gradient(circle at 92% 0%, rgba(255,106,0,.28), rgba(255,106,0,0) 30%), linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,247,237,.96))",
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 18px 60px rgba(15,23,42,.08)",
+    boxShadow: "0 16px 50px rgba(15,23,42,.08)",
   },
 
   backBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 18,
+    width: 42,
+    height: 42,
+    borderRadius: 16,
     border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.84)",
+    background: "rgba(255,255,255,.86)",
     color: TEXT,
     fontSize: 22,
     fontWeight: 950,
     flexShrink: 0,
   },
 
-  heroBody: {
+  heroMain: {
     minWidth: 0,
     flex: 1,
   },
 
   kicker: {
     color: ORANGE,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 950,
-    letterSpacing: 1.4,
+    letterSpacing: 1.3,
     textTransform: "uppercase",
   },
 
-  title: {
-    margin: "8px 0 0",
+  heroTitle: {
+    margin: "7px 0 0",
     color: TEXT,
-    fontSize: 33,
-    lineHeight: 0.98,
+    fontSize: 29,
+    lineHeight: 1,
     fontWeight: 980,
-    letterSpacing: -1.3,
+    letterSpacing: -1.1,
   },
 
-  sub: {
-    margin: "12px 0 0",
+  heroSub: {
+    margin: "10px 0 0",
     color: MUTED,
-    fontSize: 15,
-    lineHeight: 1.45,
+    fontSize: 14,
+    lineHeight: 1.42,
     fontWeight: 780,
   },
 
-  profileStrip: {
-    marginTop: 15,
+  profileRow: {
+    marginTop: 13,
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 8,
   },
 
   profilePill: {
-    borderRadius: 18,
-    background: "rgba(255,255,255,.72)",
+    borderRadius: 17,
+    background: "rgba(255,255,255,.78)",
     border: `1px solid ${BORDER}`,
-    padding: 10,
+    padding: 9,
     display: "grid",
-    gap: 5,
+    gap: 4,
+    minWidth: 0,
   },
 
-  blackCta: {
-    marginTop: 16,
-    borderRadius: 28,
-    padding: 18,
-    background:
-      "radial-gradient(circle at 86% 10%, rgba(255,106,0,.36), rgba(255,106,0,0) 34%), linear-gradient(135deg, #050506, #121214)",
-    color: "#fff",
-    boxShadow: "0 24px 70px rgba(0,0,0,.20)",
-    display: "grid",
-    gap: 16,
+  bookCard: {
+    marginTop: 14,
+    borderRadius: 25,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  blackKicker: {
-    fontSize: 12,
-    fontWeight: 950,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    color: "rgba(255,255,255,.58)",
-  },
-
-  blackTitle: {
-    marginTop: 8,
-    fontSize: 28,
-    lineHeight: 1,
-    fontWeight: 980,
-    letterSpacing: -0.8,
-  },
-
-  blackText: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 1.45,
-    color: "rgba(255,255,255,.68)",
-    fontWeight: 750,
-  },
-
-  blackBtn: {
-    height: 54,
-    border: "none",
-    borderRadius: 19,
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontSize: 15,
-    fontWeight: 950,
-    boxShadow: "0 18px 44px rgba(255,106,0,.28)",
-  },
-
-  section: {
-    marginTop: 22,
-  },
-
-  sectionHead: {
+  bookLine: {
     display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
     alignItems: "center",
-    marginBottom: 12,
-  },
-
-  sectionTitle: {
+    gap: 9,
     color: TEXT,
-    fontSize: 22,
-    lineHeight: 1,
+    fontSize: 15,
     fontWeight: 980,
-    letterSpacing: -0.7,
+    letterSpacing: -0.3,
   },
 
-  sectionSub: {
-    marginTop: 6,
-    color: MUTED,
-    fontSize: 13,
-    fontWeight: 800,
-  },
-
-  focusGrid: {
-    marginTop: 13,
+  intentGrid: {
+    marginTop: 12,
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 12,
-  },
-
-  focusCard: {
-    minHeight: 154,
-    borderRadius: 25,
-    border: `1px solid ${BORDER}`,
-    padding: 14,
-    textAlign: "left",
-    boxShadow: "0 16px 44px rgba(15,23,42,.07)",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-  },
-
-  focusCardActive: {
-    border: "1px solid rgba(255,106,0,.42)",
-    boxShadow: "0 18px 54px rgba(255,106,0,.16)",
-    transform: "translateY(-1px)",
-  },
-
-  focusTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
     gap: 10,
   },
 
-  focusTag: {
-    padding: "7px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,.78)",
-    color: TEXT,
+  intentCard: {
+    minHeight: 126,
+    borderRadius: 22,
+    border: `1px solid ${BORDER}`,
+    padding: 12,
+    textAlign: "left",
+    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
+    transition: "transform .14s ease, box-shadow .14s ease",
+  },
+
+  intentCardOn: {
+    transform: "translateY(-1px)",
+    boxShadow: "0 16px 44px rgba(15,23,42,.10)",
+  },
+
+  intentTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    color: MUTED,
     fontSize: 11,
     fontWeight: 950,
   },
 
-  focusDot: {
-    width: 22,
-    height: 22,
+  intentDot: {
+    width: 14,
+    height: 14,
     borderRadius: 999,
-    border: "2px solid rgba(15,23,42,.14)",
-    background: "#fff",
   },
 
-  focusDotActive: {
-    borderColor: ORANGE,
-    background: ORANGE,
-    boxShadow: "inset 0 0 0 5px #fff",
-  },
-
-  focusTitle: {
+  intentTitle: {
     marginTop: 22,
     color: TEXT,
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 1,
     fontWeight: 980,
     letterSpacing: -0.45,
   },
 
-  focusSub: {
+  intentSub: {
     marginTop: 7,
     color: MUTED,
-    fontSize: 13,
-    lineHeight: 1.35,
+    fontSize: 12,
+    lineHeight: 1.32,
     fontWeight: 800,
   },
 
-  smallBtn: {
-    border: "none",
-    borderRadius: 999,
-    padding: "11px 14px",
-    background: BLACK,
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-  },
-
-  exerciseList: {
-    display: "grid",
-    gap: 13,
-  },
-
-  exerciseCard: {
+  guideCard: {
+    marginTop: 14,
     borderRadius: 25,
+    padding: 14,
     background: "#fff",
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 16px 46px rgba(15,23,42,.07)",
-    overflow: "hidden",
+    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  exerciseImage: {
-    width: "100%",
-    height: 168,
-    objectFit: "cover",
-    display: "block",
-    background: SOFT,
-  },
-
-  exerciseImageFallback: {
-    width: "100%",
-    height: 168,
-    display: "grid",
-    placeItems: "center",
-  },
-
-  imageBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 28,
-    display: "grid",
-    placeItems: "center",
-    background: BLACK,
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: 980,
-    letterSpacing: -0.6,
-  },
-
-  exerciseBody: {
-    padding: 14,
-  },
-
-  exerciseTop: {
+  guideInner: {
+    marginTop: 13,
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
     gap: 12,
+    alignItems: "flex-start",
   },
 
-  exerciseName: {
-    color: TEXT,
-    fontSize: 18,
+  guideIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    display: "grid",
+    placeItems: "center",
+    color: "#fff",
+    fontSize: 15,
     fontWeight: 980,
-    letterSpacing: -0.45,
+    flexShrink: 0,
   },
 
-  exerciseGroup: {
-    marginTop: 5,
+  guideTitle: {
+    color: TEXT,
+    fontSize: 17,
+    fontWeight: 980,
+    letterSpacing: -0.4,
+  },
+
+  guideText: {
+    marginTop: 7,
     color: MUTED,
     fontSize: 13,
-    fontWeight: 850,
+    lineHeight: 1.42,
+    fontWeight: 780,
   },
 
-  orderBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 15,
-    background: "rgba(255,106,0,.12)",
-    color: TEXT,
-    display: "grid",
-    placeItems: "center",
-    fontWeight: 980,
-  },
-
-  exerciseMeta: {
+  keywordRow: {
     marginTop: 13,
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  keyword: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 999,
+    padding: "8px 10px",
+    background: "rgba(15,23,42,.03)",
+    color: TEXT,
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
+  keywordBox: {
+    marginTop: 10,
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(15,23,42,.04)",
+    border: `1px solid ${BORDER}`,
+    color: TEXT,
+    fontSize: 13,
+    lineHeight: 1.38,
+    fontWeight: 800,
+  },
+
+  targetDaysBox: {
+    marginTop: 13,
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(10,132,255,.08)",
+    border: "1px solid rgba(10,132,255,.14)",
+  },
+
+  label: {
+    display: "grid",
+    gap: 8,
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  daysInline: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    color: TEXT,
+    fontSize: 14,
+    fontWeight: 900,
+  },
+
+  daysInput: {
+    width: 82,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    background: "#fff",
+    padding: "12px 10px",
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: 950,
+    outline: "none",
+  },
+
+  durationCard: {
+    marginTop: 14,
+    borderRadius: 25,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
+  },
+
+  durationGrid: {
+    marginTop: 12,
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 8,
   },
 
-  methodBox: {
-    marginTop: 11,
-    borderRadius: 17,
-    background: "rgba(255,106,0,.08)",
-    border: "1px solid rgba(255,106,0,.14)",
-    padding: 12,
+  durationBtn: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 19,
+    background: "#fff",
+    padding: "11px 8px",
+    display: "grid",
+    gap: 4,
+    color: TEXT,
+    textAlign: "center",
+  },
+
+  cardioPlan: {
+    marginTop: 14,
+    borderRadius: 25,
+    padding: 14,
+    background: "linear-gradient(135deg, rgba(10,132,255,.10), rgba(255,255,255,.96))",
+    border: "1px solid rgba(10,132,255,.14)",
+    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
+  },
+
+  cardioList: {
+    marginTop: 12,
+    display: "grid",
+    gap: 9,
+  },
+
+  cardioItem: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+    borderRadius: 18,
+    padding: 11,
+    background: "rgba(255,255,255,.72)",
+    border: `1px solid ${BORDER}`,
     color: TEXT,
     fontSize: 13,
-    fontWeight: 850,
+    lineHeight: 1.35,
   },
 
-  adjustGrid: {
-    marginTop: 13,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
+  editorCard: {
+    marginTop: 14,
+    borderRadius: 25,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  label: {
-    display: "grid",
-    gap: 7,
+  editorHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+
+  editorSub: {
+    marginTop: 7,
     color: MUTED,
     fontSize: 12,
+    lineHeight: 1.35,
+    fontWeight: 800,
+  },
+
+  addBtn: {
+    border: "none",
+    borderRadius: 999,
+    padding: "10px 12px",
+    background: BLACK,
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
+  exerciseList: {
+    marginTop: 13,
+    display: "grid",
+    gap: 12,
+  },
+
+  exerciseCard: {
+    borderRadius: 22,
+    padding: 12,
+    background: "rgba(248,250,252,.82)",
+    border: `1px solid ${BORDER}`,
+  },
+
+  exerciseTop: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+
+  exerciseNumber: {
+    width: 38,
+    height: 38,
+    borderRadius: 15,
+    display: "grid",
+    placeItems: "center",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 980,
+    flexShrink: 0,
+  },
+
+  nameInput: {
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: 980,
+    letterSpacing: -0.35,
+    outline: "none",
+  },
+
+  groupInput: {
+    width: "100%",
+    marginTop: 3,
+    border: "none",
+    background: "transparent",
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 850,
+    outline: "none",
+  },
+
+  moveBtns: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 5,
+  },
+
+  moveBtn: {
+    width: 30,
+    height: 26,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 11,
+    background: "#fff",
+    color: TEXT,
     fontWeight: 950,
   },
 
-  input: {
+  editGrid: {
+    marginTop: 12,
+    display: "grid",
+    gridTemplateColumns: "80px 1fr 1fr",
+    gap: 8,
+  },
+
+  miniLabel: {
+    display: "grid",
+    gap: 6,
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: 950,
+  },
+
+  miniInput: {
     width: "100%",
+    boxSizing: "border-box",
     border: `1px solid ${BORDER}`,
-    borderRadius: 17,
+    borderRadius: 15,
     background: "#fff",
+    padding: "10px 9px",
     color: TEXT,
-    padding: "13px 12px",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 900,
     outline: "none",
   },
 
-  bottomActions: {
-    position: "sticky",
-    bottom: 14,
-    zIndex: 20,
-    marginTop: 22,
+  methodLabel: {
+    marginTop: 10,
     display: "grid",
-    gridTemplateColumns: "1fr 1.15fr",
-    gap: 10,
-    padding: 10,
-    borderRadius: 25,
-    background: "rgba(255,255,255,.78)",
-    border: "1px solid rgba(255,255,255,.58)",
-    boxShadow: "0 22px 70px rgba(15,23,42,.14)",
-    backdropFilter: "blur(22px)",
-    WebkitBackdropFilter: "blur(22px)",
-  },
-
-  secondary: {
-    height: 54,
-    borderRadius: 19,
-    border: `1px solid ${BORDER}`,
-    background: "#fff",
-    color: TEXT,
-    fontSize: 13,
+    gap: 6,
+    color: MUTED,
+    fontSize: 11,
     fontWeight: 950,
   },
 
-  primary: {
-    height: 54,
+  methodInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    background: "#fff",
+    padding: "11px 10px",
+    color: TEXT,
+    fontSize: 13,
+    lineHeight: 1.35,
+    fontWeight: 800,
+    resize: "vertical",
+    outline: "none",
+  },
+
+  removeBtn: {
+    marginTop: 10,
+    width: "100%",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.76)",
+    color: MUTED,
+    padding: 11,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  previewCard: {
+    marginTop: 14,
+    borderRadius: 26,
+    padding: 14,
+    background:
+      "radial-gradient(circle at 88% 10%, rgba(255,106,0,.34), rgba(255,106,0,0) 34%), linear-gradient(135deg, #050506, #121214)",
+    color: "#fff",
+    boxShadow: "0 22px 70px rgba(0,0,0,.20)",
+  },
+
+  previewTitle: {
+    fontSize: 20,
+    fontWeight: 980,
+    letterSpacing: -0.55,
+  },
+
+  previewSub: {
+    marginTop: 6,
+    color: "rgba(255,255,255,.68)",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  primaryBtn: {
+    marginTop: 13,
+    width: "100%",
+    height: 52,
     border: "none",
-    borderRadius: 19,
+    borderRadius: 18,
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
     color: "#111",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 980,
     boxShadow: "0 16px 42px rgba(255,106,0,.24)",
+  },
+
+  secondaryBtn: {
+    marginTop: 9,
+    width: "100%",
+    height: 48,
+    border: "1px solid rgba(255,255,255,.12)",
+    borderRadius: 18,
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 950,
   },
 };
