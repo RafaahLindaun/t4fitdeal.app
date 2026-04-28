@@ -4,12 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
 const ORANGE = "#FF6A00";
-const BG = "#f8fafc";
-const TEXT = "#0f172a";
-const MUTED = "#64748b";
+const BG = "#F7F8FA";
+const TEXT = "#0F172A";
+const MUTED = "#64748B";
 const BORDER = "rgba(15,23,42,.08)";
 const BLACK = "#0B0B0C";
 
+/* ---------------- helpers ---------------- */
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -484,9 +485,10 @@ const EMPHASES = [
     fullTitle: "Ênfase em glúteo",
     subtitle: "Ativação e posterior",
     why: "Boa para melhorar conexão mente-músculo, ativar glúteos e deixar o treino de pernas mais direcionado.",
-    color: "#FF6A00",
-    soft: "rgba(255,106,0,.12)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.34), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
+    color: "#F28B54",
+    soft: "#FCE5D8",
+    cardBg: "#FFF5EE",
+    iconBg: "#FDE6D8",
     guideTitle: "Por que fazer",
     guideText: "Use quando quiser sentir mais glúteo no treino sem desmontar seu plano. A prioridade é pausa, quadril e controle.",
     keywords: ["pausa no topo", "quadril", "amplitude", "controle"],
@@ -505,9 +507,10 @@ const EMPHASES = [
     fullTitle: "Ênfase em lombar",
     subtitle: "Controle e postura",
     why: "Boa para dias em que você quer proteger a coluna, fortalecer core e fazer uma sessão mais controlada.",
-    color: "#34C759",
-    soft: "rgba(52,199,89,.13)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(52,199,89,.30), rgba(52,199,89,0) 36%), linear-gradient(145deg, #F0FDF4, #FFFFFF)",
+    color: "#77B98D",
+    soft: "#DDEFE2",
+    cardBg: "#F4FBF6",
+    iconBg: "#E8F5EB",
     guideTitle: "Por que fazer",
     guideText: "Use quando quiser um treino mais seguro para lombar, com core, postura e menos agressão. Dor forte ou irradiando precisa avaliação profissional.",
     keywords: ["coluna neutra", "core", "controle", "sem dor"],
@@ -526,9 +529,10 @@ const EMPHASES = [
     fullTitle: "Ênfase em emagrecimento",
     subtitle: "Treino + cardio",
     why: "Boa para aumentar gasto calórico sem transformar o treino em bagunça. Combina musculação e cardio com constância.",
-    color: "#0A84FF",
-    soft: "rgba(10,132,255,.13)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(10,132,255,.30), rgba(10,132,255,0) 36%), linear-gradient(145deg, #EFF6FF, #FFFFFF)",
+    color: "#7FB3F5",
+    soft: "#DFECFD",
+    cardBg: "#F4F9FF",
+    iconBg: "#E7F1FE",
     guideTitle: "Por que fazer",
     guideText: "Combina musculação com cardio progressivo. O objetivo é constância, gasto calórico e treino sustentável.",
     keywords: ["cardio", "constância", "gasto calórico", "ritmo"],
@@ -553,9 +557,10 @@ const EMPHASES = [
     fullTitle: "Ênfase alternativa",
     subtitle: "Sem bagunçar o plano",
     why: "Boa para quando você está sem tempo, cansado ou sem aparelho. Troca o estímulo sem perder a lógica da semana.",
-    color: "#AF52DE",
-    soft: "rgba(175,82,222,.13)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(175,82,222,.30), rgba(175,82,222,0) 36%), linear-gradient(145deg, #FAF5FF, #FFFFFF)",
+    color: "#B593E6",
+    soft: "#EAE0F7",
+    cardBg: "#FAF7FE",
+    iconBg: "#F2EBFB",
     guideTitle: "Por que fazer",
     guideText: "Use quando estiver sem tempo, cansado ou sem aparelho. Mantém a estrutura da semana sem travar seu treino.",
     keywords: ["troca rápida", "sem bagunçar", "adaptação", "praticidade"],
@@ -574,9 +579,10 @@ const EMPHASES = [
     fullTitle: "Ênfase leve",
     subtitle: "Recuperar ritmo",
     why: "Boa para dias de cansaço. Mantém constância, reduz carga e ajuda você a não abandonar o plano.",
-    color: "#64D2FF",
-    soft: "rgba(100,210,255,.15)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(100,210,255,.32), rgba(100,210,255,0) 36%), linear-gradient(145deg, #F0FDFF, #FFFFFF)",
+    color: "#79C9C2",
+    soft: "#DDF4F1",
+    cardBg: "#F2FBF9",
+    iconBg: "#E6F8F5",
     guideTitle: "Por que fazer",
     guideText: "Melhor fazer um treino leve bem feito do que faltar. Reduza carga e mantenha controle.",
     keywords: ["controle", "leve", "recuperação", "constância"],
@@ -595,9 +601,10 @@ const EMPHASES = [
     fullTitle: "Ênfase forte",
     subtitle: "Carga e progressão",
     why: "Boa para dias em que você quer evoluir carga e intensidade, mantendo técnica e descanso bem definidos.",
-    color: "#FF375F",
-    soft: "rgba(255,55,95,.13)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(255,55,95,.32), rgba(255,55,95,0) 36%), linear-gradient(145deg, #FFF1F2, #FFFFFF)",
+    color: "#E38DA5",
+    soft: "#F9E0E7",
+    cardBg: "#FFF6F8",
+    iconBg: "#FBE8EE",
     guideTitle: "Por que fazer",
     guideText: "Mais carga, técnica e descanso. Treino forte não é fazer tudo até falhar.",
     keywords: ["carga", "progressão", "descanso", "técnica"],
@@ -611,72 +618,93 @@ const EMPHASES = [
   },
 ];
 
-/* ---------------- ÍCONES / GIF ---------------- */
+/* ---------------- ICONES ---------------- */
 
-function EmphasisIcon({ type, color = ORANGE }) {
+function EmphasisIcon({ type, color = ORANGE, bg = "#fff" }) {
+  const circle = (
+    <circle cx="52" cy="52" r="40" fill={bg} />
+  );
+
   if (type === "gluteo") {
     return (
-      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
-        <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M25 39c4-6 9-9 16-9s12 3 16 9" stroke={color} strokeWidth="5" strokeLinecap="round" />
+      <svg width="122" height="122" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+        {circle}
+        <path d="M52 24c-10 7-16 17-16 29 0 16 7 28 16 28s16-12 16-28c0-12-6-22-16-29Z" fill={color} opacity="0.18" />
+        <path d="M52 27c-6 6-9 14-9 23 0 11 4 21 9 27" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M52 27c6 6 9 14 9 23 0 11-4 21-9 27" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M42 48c3-5 6-7 10-7s7 2 10 7" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
       </svg>
     );
   }
 
   if (type === "lombar") {
     return (
-      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
-        <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
-        <path d="M29 41h24" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
-        <path d="M32 54h18" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+      <svg width="122" height="122" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+        {circle}
+        <path d="M52 22c11 7 18 17 18 30 0 15-7 25-18 31-11-6-18-16-18-31 0-13 7-23 18-30Z" fill={color} opacity="0.16" />
+        <path d="M52 30v43" stroke={color} strokeWidth="6" strokeLinecap="round" />
+        <path d="M44 40h16" stroke={color} strokeWidth="5.2" strokeLinecap="round" />
+        <path d="M43 51h18" stroke={color} strokeWidth="5.2" strokeLinecap="round" />
+        <path d="M45 62h14" stroke={color} strokeWidth="5.2" strokeLinecap="round" />
       </svg>
     );
   }
 
   if (type === "emagrecer") {
     return (
-      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
-        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
-        <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+      <svg width="122" height="122" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+        {circle}
+        <path d="M57 24c4 10 14 15 14 29 0 12-8 22-19 22S33 65 33 53c0-11 6-18 15-27 0 8 2 12 9 16 2-5 2-10 0-18Z" fill={color} opacity="0.18" />
+        <path d="M57 24c4 10 14 15 14 29 0 12-8 22-19 22S33 65 33 53c0-11 6-18 15-27 0 8 2 12 9 16 2-5 2-10 0-18Z" stroke={color} strokeWidth="5.5" strokeLinejoin="round" />
       </svg>
     );
   }
 
   if (type === "trocar_hoje") {
     return (
-      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
-        <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M24 51c4 8 12 13 21 11 6-1 11-5 14-10" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M59 62V52H49" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <svg width="122" height="122" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+        {circle}
+        <path d="M69 40c-4-7-11-10-18-9-5 1-9 4-12 8" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M39 31v10h10" stroke={color} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M35 63c4 7 11 10 18 9 5-1 9-4 12-8" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M65 72V62H55" stroke={color} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
   if (type === "leve") {
     return (
-      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
-        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+      <svg width="122" height="122" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+        {circle}
+        <path
+          d="M67 33c-3 2-6 3-10 3-12 0-21 9-21 21s9 21 21 21c8 0 15-4 19-11-3 1-7 2-11 2-12 0-21-9-21-21 0-6 2-11 6-15 4-3 10-5 17-5Z"
+          fill={color}
+          opacity="0.18"
+        />
+        <path
+          d="M67 33c-3 2-6 3-10 3-12 0-21 9-21 21s9 21 21 21c8 0 15-4 19-11-3 1-7 2-11 2-12 0-21-9-21-21 0-6 2-11 6-15 4-3 10-5 17-5Z"
+          stroke={color}
+          strokeWidth="5.5"
+          strokeLinejoin="round"
+        />
       </svg>
     );
   }
 
   return (
-    <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
-      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+    <svg width="122" height="122" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+      {circle}
+      <rect x="34" y="44" width="36" height="16" rx="8" fill={color} opacity="0.18" />
+      <path d="M38 44v-4a6 6 0 0 1 6-6h3" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M66 44v-4a6 6 0 0 0-6-6h-3" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M34 52h36" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M28 48v8" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M76 48v8" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
     </svg>
   );
 }
 
-function ExerciseMedia({ ex, color }) {
+function ExerciseMedia({ ex, color, softBg }) {
   const [failed, setFailed] = useState(false);
 
   if (!failed && ex.gif) {
@@ -688,12 +716,7 @@ function ExerciseMedia({ ex, color }) {
   }
 
   return (
-    <div
-      style={{
-        ...S.exerciseMedia,
-        background: `radial-gradient(circle at 70% 18%, ${color}33, transparent 36%), linear-gradient(135deg, #ffffff, #f8fafc)`,
-      }}
-    >
+    <div style={{ ...S.exerciseMedia, background: softBg || "#f8fafc" }}>
       <div style={{ ...S.exerciseFallbackIcon, background: color }}>
         {String(ex.name || "?").slice(0, 1).toUpperCase()}
       </div>
@@ -701,7 +724,7 @@ function ExerciseMedia({ ex, color }) {
   );
 }
 
-/* ---------------- PÁGINA ---------------- */
+/* ---------------- PAGE ---------------- */
 
 export default function MontagemTreino() {
   const nav = useNavigate();
@@ -739,7 +762,6 @@ export default function MontagemTreino() {
 
   useEffect(() => {
     document.body.classList.add("fitdeal-hide-bottom-menu");
-
     return () => {
       document.body.classList.remove("fitdeal-hide-bottom-menu");
     };
@@ -838,6 +860,8 @@ export default function MontagemTreino() {
   }
 
   function handleScroll() {
+    if (typeof window === "undefined") return;
+
     if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
 
     rafRef.current = window.requestAnimationFrame(() => {
@@ -845,7 +869,7 @@ export default function MontagemTreino() {
     });
 
     if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = window.setTimeout(selectNearestCard, 38);
+    scrollTimerRef.current = window.setTimeout(selectNearestCard, 34);
   }
 
   function jumpToCard(id, event) {
@@ -948,7 +972,6 @@ export default function MontagemTreino() {
 
   function addExerciseFromPicker(name, groupKey) {
     const next = makeExerciseFromCatalog(name, groupKey);
-
     setExercises((prev) => [...prev, next]);
     setExercisePickerOpen(false);
     setExpandedExerciseId(next.id);
@@ -1062,37 +1085,28 @@ export default function MontagemTreino() {
                   onClick={(event) => jumpToCard(item.id, event)}
                   style={{
                     ...S.bigCard,
-                    background: item.bg,
+                    background: item.cardBg,
                     borderColor: active ? item.color : "rgba(15,23,42,.08)",
-                    opacity: active ? 1 : 0.9,
                     boxShadow: active
-                      ? `0 24px 60px ${item.soft}, 0 12px 34px rgba(15,23,42,.08)`
-                      : "0 10px 24px rgba(15,23,42,.045)",
+                      ? `0 20px 44px ${item.soft}, 0 10px 30px rgba(15,23,42,.06)`
+                      : "0 8px 24px rgba(15,23,42,.04)",
                     transform: active
                       ? "perspective(900px) rotateY(0deg) translateY(-1px) scale(1)"
                       : index % 2 === 0
-                        ? "perspective(900px) rotateY(-2.5deg) scale(.965)"
-                        : "perspective(900px) rotateY(2.5deg) scale(.965)",
+                        ? "perspective(900px) rotateY(-2deg) scale(.972)"
+                        : "perspective(900px) rotateY(2deg) scale(.972)",
+                    opacity: active ? 1 : 0.94,
                   }}
                 >
-                  <div style={S.bigCardTop}>
-                    <span>Ênfase {item.chapter}</span>
-                    <i style={{ background: item.color }} />
-                  </div>
-
                   <div style={S.bigIconArea}>
-                    <EmphasisIcon type={item.id} color={item.color} />
+                    <div style={{ ...S.bigIconBubble, background: item.iconBg }}>
+                      <EmphasisIcon type={item.id} color={item.color} bg={item.iconBg} />
+                    </div>
                   </div>
 
                   <div style={S.bigCardBottom}>
                     <div style={S.bigCardTitle}>{item.fullTitle}</div>
                     <div style={S.bigCardSub}>{item.subtitle}</div>
-
-                    <div style={S.bigKeywords}>
-                      {item.keywords.slice(0, 3).map((word) => (
-                        <span key={word}>{word}</span>
-                      ))}
-                    </div>
                   </div>
                 </button>
               );
@@ -1102,8 +1116,8 @@ export default function MontagemTreino() {
 
         <section style={S.selectedContent}>
           <div style={S.selectedTop}>
-            <div style={{ ...S.selectedIcon, background: selected.soft }}>
-              <EmphasisIcon type={selected.id} color={selected.color} />
+            <div style={{ ...S.selectedIcon, background: selected.iconBg }}>
+              <EmphasisIcon type={selected.id} color={selected.color} bg={selected.iconBg} />
             </div>
 
             <div style={{ minWidth: 0 }}>
@@ -1290,7 +1304,7 @@ export default function MontagemTreino() {
 
                           {expanded ? (
                             <div style={S.moreBox}>
-                              <ExerciseMedia ex={ex} color={selected.color} />
+                              <ExerciseMedia ex={ex} color={selected.color} softBg={selected.soft} />
                               <div style={S.methodPreview}>{ex.method}</div>
                             </div>
                           ) : null}
@@ -1372,7 +1386,7 @@ export default function MontagemTreino() {
   );
 }
 
-/* ---------------- SHEET DE ADICIONAR ---------------- */
+/* ---------------- SHEET ---------------- */
 
 function ExercisePickerSheet({
   selected,
@@ -1414,10 +1428,8 @@ function ExercisePickerSheet({
 
     keys.forEach((key) => {
       const list = EXERCISE_CATALOG[key] || [];
-
       list.forEach((name) => {
         if (q && !normalizeText(name).includes(q)) return;
-
         rows.push({
           name,
           key,
@@ -1427,7 +1439,6 @@ function ExercisePickerSheet({
     });
 
     const seen = new Set();
-
     return rows.filter((item) => {
       const id = `${item.key}_${item.name}`;
       if (seen.has(id)) return false;
@@ -1544,7 +1555,7 @@ function ExercisePickerSheet({
   );
 }
 
-/* ---------------- ESTILOS ---------------- */
+/* ---------------- styles ---------------- */
 
 const S = {
   page: {
@@ -1566,10 +1577,9 @@ const S = {
     alignItems: "flex-start",
     borderRadius: 28,
     padding: 14,
-    background:
-      "radial-gradient(circle at 92% 0%, rgba(255,106,0,.24), rgba(255,106,0,0) 30%), linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,247,237,.96))",
+    background: "#FFF8F1",
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 16px 50px rgba(15,23,42,.08)",
+    boxShadow: "0 16px 50px rgba(15,23,42,.06)",
   },
 
   backBtn: {
@@ -1577,7 +1587,7 @@ const S = {
     height: 42,
     borderRadius: 16,
     border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.88)",
+    background: "rgba(255,255,255,.95)",
     color: TEXT,
     fontSize: 22,
     fontWeight: 950,
@@ -1625,7 +1635,7 @@ const S = {
     display: "flex",
     gap: 12,
     overflowX: "auto",
-    scrollSnapType: "x mandatory",
+    scrollSnapType: "x proximity",
     padding: "4px 2px 16px",
     WebkitOverflowScrolling: "touch",
     perspective: 900,
@@ -1634,13 +1644,12 @@ const S = {
   },
 
   bigCard: {
-    minWidth: "80%",
-    height: 390,
-    borderRadius: 31,
-    border: `1px solid ${BORDER}`,
+    minWidth: "82%",
+    height: 370,
+    borderRadius: 32,
+    border: `1.5px solid ${BORDER}`,
     padding: 16,
     scrollSnapAlign: "center",
-    scrollSnapStop: "normal",
     textAlign: "left",
     transition:
       "transform .14s cubic-bezier(.22,1,.36,1), box-shadow .14s ease, border-color .14s ease, opacity .14s ease",
@@ -1648,24 +1657,19 @@ const S = {
     flexDirection: "column",
     position: "relative",
     overflow: "hidden",
-    background: "#fff",
     flexShrink: 0,
-  },
-
-  bigCardTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    color: MUTED,
-    fontSize: 12,
-    fontWeight: 950,
-    textTransform: "uppercase",
-    letterSpacing: 1,
   },
 
   bigIconArea: {
     flex: 1,
-    minHeight: 120,
+    display: "grid",
+    placeItems: "center",
+  },
+
+  bigIconBubble: {
+    width: 170,
+    height: 170,
+    borderRadius: 999,
     display: "grid",
     placeItems: "center",
   },
@@ -1676,10 +1680,10 @@ const S = {
 
   bigCardTitle: {
     color: TEXT,
-    fontSize: 29,
-    lineHeight: 0.96,
+    fontSize: 30,
+    lineHeight: 0.98,
     fontWeight: 980,
-    letterSpacing: -1.15,
+    letterSpacing: -1.1,
   },
 
   bigCardSub: {
@@ -1690,19 +1694,12 @@ const S = {
     fontWeight: 850,
   },
 
-  bigKeywords: {
-    marginTop: 12,
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-
   selectedContent: {
     marginTop: 8,
     borderRadius: 28,
     background: "#fff",
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 16px 44px rgba(15,23,42,.06)",
+    boxShadow: "0 16px 44px rgba(15,23,42,.05)",
     padding: 14,
   },
 
@@ -1750,7 +1747,7 @@ const S = {
     marginTop: 14,
     borderRadius: 22,
     padding: 13,
-    background: "rgba(248,250,252,.9)",
+    background: "#FAFBFD",
     border: `1px solid ${BORDER}`,
   },
 
@@ -1854,7 +1851,7 @@ const S = {
     fontSize: 13,
     fontWeight: 950,
     whiteSpace: "nowrap",
-    boxShadow: "0 14px 34px rgba(0,0,0,.16)",
+    boxShadow: "0 10px 24px rgba(0,0,0,.14)",
   },
 
   exerciseList: {
@@ -1868,7 +1865,7 @@ const S = {
     overflow: "hidden",
     background: "#fff",
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
+    boxShadow: "0 10px 24px rgba(15,23,42,.04)",
   },
 
   exerciseBody: {
@@ -1922,7 +1919,7 @@ const S = {
     width: "100%",
     border: `1px solid ${BORDER}`,
     borderRadius: 18,
-    background: "rgba(15,23,42,.035)",
+    background: "#F9FAFB",
     color: TEXT,
     padding: "12px 12px",
     fontSize: 13,
@@ -1961,7 +1958,6 @@ const S = {
     color: "#fff",
     fontSize: 24,
     fontWeight: 980,
-    boxShadow: "0 16px 38px rgba(15,23,42,.12)",
   },
 
   nameInput: {
@@ -2058,8 +2054,8 @@ const S = {
   removeBtn: {
     border: `1px solid ${BORDER}`,
     borderRadius: 15,
-    background: "rgba(255,55,95,.08)",
-    color: "#FF375F",
+    background: "#FFF2F5",
+    color: "#E65780",
     padding: 10,
     fontSize: 12,
     fontWeight: 950,
@@ -2069,7 +2065,7 @@ const S = {
     margin: 10,
     borderRadius: 16,
     padding: 11,
-    background: "rgba(15,23,42,.035)",
+    background: "#F8FAFC",
     border: `1px solid ${BORDER}`,
     color: MUTED,
     fontSize: 13,
@@ -2081,10 +2077,9 @@ const S = {
     marginTop: 14,
     borderRadius: 28,
     padding: 15,
-    background:
-      "radial-gradient(circle at 88% 10%, rgba(255,106,0,.34), rgba(255,106,0,0) 34%), linear-gradient(135deg, #050506, #121214)",
+    background: "#111214",
     color: "#fff",
-    boxShadow: "0 22px 70px rgba(0,0,0,.20)",
+    boxShadow: "0 22px 70px rgba(0,0,0,.18)",
   },
 
   confirmKicker: {
@@ -2130,9 +2125,8 @@ const S = {
   },
 
   confirmOptionOn: {
-    background: "rgba(255,106,0,.20)",
-    border: "1px solid rgba(255,106,0,.48)",
-    boxShadow: "0 16px 42px rgba(255,106,0,.14)",
+    background: "rgba(255,106,0,.18)",
+    border: "1px solid rgba(255,106,0,.42)",
   },
 
   daysLabelDark: {
@@ -2175,7 +2169,7 @@ const S = {
     color: "#111",
     fontSize: 15,
     fontWeight: 980,
-    boxShadow: "0 16px 42px rgba(255,106,0,.24)",
+    boxShadow: "0 14px 34px rgba(255,106,0,.24)",
   },
 
   sheetOverlay: {
@@ -2205,7 +2199,7 @@ const S = {
     margin: "0 auto",
     borderRadius: 30,
     padding: 14,
-    background: "rgba(255,255,255,.98)",
+    background: "rgba(255,255,255,.99)",
     border: "1px solid rgba(255,255,255,.60)",
     boxShadow: "0 30px 90px rgba(15,23,42,.24)",
     overflow: "hidden",
@@ -2364,7 +2358,7 @@ if (typeof document !== "undefined") {
     style.id = id;
     style.innerHTML = `
       .montagem-card-press:active {
-        transform: scale(.985) !important;
+        transform: scale(.987) !important;
       }
 
       body.fitdeal-hide-bottom-menu nav:has(.fitdeal-bottom-item),
@@ -2373,7 +2367,11 @@ if (typeof document !== "undefined") {
       }
 
       body.fitdeal-hide-bottom-menu .fitdeal-bottom-item,
-      body.fitdeal-hide-bottom-menu .fitdeal-main-item {
+      body.fitdeal-hide-bottom-menu .fitdeal-main-item,
+      body.fitdeal-hide-bottom-menu .bottom-menu,
+      body.fitdeal-hide-bottom-menu .bottom-nav,
+      body.fitdeal-hide-bottom-menu .tabbar,
+      body.fitdeal-hide-bottom-menu .mobile-bottom-nav {
         display: none !important;
       }
 
