@@ -447,13 +447,15 @@ async function getOrCreateActivePlan(userId, fallback) {
         };
       });
 
-    return exs.length ? exs : ensureVolume(groupById("fullbody").library, 7).map((ex) => ({
-      ...ex,
-      sets: 4,
-      reps: "6–12",
-      rest: "75–120s",
-      method: activePlan.split_label || "",
-    }));
+    return exs.length
+      ? exs
+      : ensureVolume(groupById("fullbody").library, 7).map((ex) => ({
+          ...ex,
+          sets: 4,
+          reps: "6–12",
+          rest: "75–120s",
+          method: activePlan.split_label || "",
+        }));
   });
 
   return {
@@ -610,6 +612,7 @@ export default function Treino() {
   const [loads, setLoads] = useState({});
 
   const [todaySessionId, setTodaySessionId] = useState(null);
+  const [latestMontage, setLatestMontage] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -647,6 +650,47 @@ export default function Treino() {
     }
 
     loadPaid();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLatestMontage() {
+      if (!user?.id) {
+        if (active) setLatestMontage(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_workout_montages")
+          .select("id, focus_key, title, selected_level, selected_days, payload, created_at")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!active) return;
+
+        if (error) {
+          console.error("Treino latest montage error:", error);
+          setLatestMontage(null);
+          return;
+        }
+
+        setLatestMontage(data || null);
+      } catch (err) {
+        console.error("Treino latest montage catch:", err);
+        if (active) setLatestMontage(null);
+      }
+    }
+
+    loadLatestMontage();
+
     return () => {
       active = false;
     };
@@ -880,6 +924,21 @@ export default function Treino() {
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
   }
 
+  function openMontagemTreino() {
+    nav("/montagem-treino");
+  }
+
+  function openLatestMontageOrCreate() {
+    if (latestMontage?.id) {
+      nav(`/treino/detalhe?source=montagem&id=${latestMontage.id}`, {
+        state: { from: "/treino" },
+      });
+      return;
+    }
+
+    nav("/montagem-treino");
+  }
+
   const doneCount = Object.values(done).filter(Boolean).length;
   const progressPct = workout.length ? clamp(doneCount / workout.length, 0, 1) : 0;
 
@@ -973,6 +1032,43 @@ export default function Treino() {
           Progresso do dia: <b>{Math.round(progressPct * 100)}%</b>
         </div>
       </button>
+
+      {/* MONTAGEM DE TREINO */}
+      <section style={styles.quickMountCard}>
+        <div style={styles.quickMountTop}>
+          <div style={styles.quickMountBadge}>Novo</div>
+
+          {latestMontage?.title ? (
+            <div style={styles.quickMountStatus}>Última: {latestMontage.title}</div>
+          ) : (
+            <div style={styles.quickMountStatus}>Mais simples</div>
+          )}
+        </div>
+
+        <div style={styles.quickMountTitle}>Montagem de treino</div>
+
+        <div style={styles.quickMountSub}>
+          Escolha um foco, veja exercícios com mais clareza e abra um treino pronto sem configurar tudo manualmente.
+        </div>
+
+        <div style={styles.quickMountActions}>
+          <button
+            type="button"
+            style={styles.quickMountSecondary}
+            onClick={openMontagemTreino}
+          >
+            Montar novo
+          </button>
+
+          <button
+            type="button"
+            style={styles.quickMountPrimary}
+            onClick={openLatestMontageOrCreate}
+          >
+            {latestMontage?.id ? "Abrir montagem" : "Começar"}
+          </button>
+        </div>
+      </section>
 
       {/* CARD: METAS */}
       <div style={styles.card}>
@@ -1368,6 +1464,96 @@ const styles = {
     boxShadow: "0 10px 24px rgba(255,106,0,.18)",
   },
   progressHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
+
+  quickMountCard: {
+    marginTop: 14,
+    borderRadius: 26,
+    padding: 16,
+    background:
+      "radial-gradient(circle at 88% 8%, rgba(255,106,0,.36), rgba(255,106,0,0) 34%), linear-gradient(135deg, #050506, #121214)",
+    color: "#fff",
+    boxShadow: "0 22px 70px rgba(0,0,0,.20)",
+    display: "grid",
+    gap: 12,
+    overflow: "hidden",
+  },
+
+  quickMountTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+
+  quickMountBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "fit-content",
+    borderRadius: 999,
+    padding: "7px 10px",
+    background: "rgba(255,106,0,.16)",
+    color: "#FFB26B",
+    border: "1px solid rgba(255,106,0,.28)",
+    fontSize: 11,
+    fontWeight: 950,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+  },
+
+  quickMountStatus: {
+    minWidth: 0,
+    maxWidth: 160,
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    textOverflow: "ellipsis",
+    color: "rgba(255,255,255,.58)",
+    fontSize: 11,
+    fontWeight: 850,
+  },
+
+  quickMountTitle: {
+    marginTop: 2,
+    fontSize: 24,
+    lineHeight: 1,
+    fontWeight: 980,
+    letterSpacing: -0.8,
+  },
+
+  quickMountSub: {
+    color: "rgba(255,255,255,.70)",
+    fontSize: 13,
+    lineHeight: 1.45,
+    fontWeight: 750,
+  },
+
+  quickMountActions: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1.05fr",
+    gap: 10,
+    marginTop: 2,
+  },
+
+  quickMountSecondary: {
+    height: 50,
+    border: "1px solid rgba(255,255,255,.12)",
+    borderRadius: 18,
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+
+  quickMountPrimary: {
+    height: 50,
+    border: "none",
+    borderRadius: 18,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontSize: 14,
+    fontWeight: 980,
+    boxShadow: "0 16px 42px rgba(255,106,0,.24)",
+  },
 
   card: {
     marginTop: 14,
