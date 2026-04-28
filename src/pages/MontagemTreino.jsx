@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import EmphasisIcon from "../components/EmphasisIcon";
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
@@ -141,7 +142,7 @@ function makeEditableExercise(ex) {
     reps: ex.reps || "10–12",
     rest: ex.rest || "60s",
     method: ex.method || "",
-    gifSources: gifSourcesForExercise(ex.name || "exercicio"),
+    gifSources: ex.gifSources || gifSourcesForExercise(ex.name || "exercicio"),
     source: ex.source || "emphasis",
     catalogGroup: ex.catalogGroup || null,
   };
@@ -455,9 +456,19 @@ const STYLE_FILTERS = {
     label: "Da ênfase",
     getKeys: (selected) => {
       if (selected.id === "gluteo") return ["gluteo", "posterior"];
-      if (selected.id === "lombar") return ["core", "costas", "posterior"];
+      if (selected.id === "quadriceps") return ["quadriceps", "gluteo"];
+      if (selected.id === "panturrilha") return ["panturrilha", "quadriceps"];
+      if (selected.id === "posterior") return ["posterior", "gluteo"];
+      if (selected.id === "abdomen") return ["core", "costas"];
       if (selected.id === "emagrecer") return ["quadriceps", "costas", "peito", "core"];
-      if (selected.id === "trocar_hoje") return ["quadriceps", "costas", "peito", "ombro", "core"];
+      if (selected.id === "biceps") return ["biceps", "costas"];
+      if (selected.id === "ombro") return ["ombro", "triceps"];
+      if (selected.id === "triceps") return ["triceps", "peito"];
+      if (selected.id === "peitoral") return ["peito", "triceps"];
+      if (selected.id === "costas") return ["costas", "biceps"];
+      if (selected.id === "lombar") return ["core", "costas", "posterior"];
+      if (selected.id === "trapezio") return ["ombro", "costas"];
+      if (selected.id === "pescoco") return ["ombro", "costas"];
       if (selected.id === "leve") return ["core", "costas", "quadriceps", "ombro"];
       if (selected.id === "forte") return ["quadriceps", "peito", "costas", "posterior", "ombro"];
       return ["peito", "costas", "quadriceps", "core"];
@@ -546,12 +557,12 @@ function makeExerciseFromCatalog(name, groupKey) {
   };
 }
 
-/* ---------------- ÊNFASES ---------------- */
+/* ---------------- ÊNFASES COM LEITURA DOS ÍCONES ---------------- */
 
 const EMPHASES = [
   {
     id: "gluteo",
-    chapter: "01",
+    icon: "gluteo",
     title: "Glúteo",
     fullTitle: "Ênfase em glúteo",
     subtitle: "Ativação e posterior",
@@ -570,37 +581,105 @@ const EMPHASES = [
       { name: "Kickback no cabo", group: "Glúteos", sets: 3, reps: "12–15", rest: "60s", method: "Movimento curto e limpo, sem girar o tronco." },
     ],
   },
+
   {
-    id: "lombar",
-    chapter: "02",
-    title: "Lombar",
-    fullTitle: "Ênfase em lombar",
-    subtitle: "Controle e postura",
-    why: "Boa para dias em que você quer proteger a coluna, fortalecer core e fazer uma sessão mais controlada.",
-    color: "#34C759",
-    soft: "rgba(52,199,89,.13)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(52,199,89,.30), rgba(52,199,89,0) 36%), linear-gradient(145deg, #F0FDF4, #FFFFFF)",
+    id: "quadriceps",
+    icon: "quadriceps",
+    title: "Quadríceps",
+    fullTitle: "Ênfase em quadríceps",
+    subtitle: "Força na parte frontal da coxa",
+    why: "Boa para dar prioridade à parte frontal das pernas, melhorar base, estabilidade e força nos movimentos de agachar e empurrar.",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.28), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
     guideTitle: "Por que fazer",
-    guideText: "Use quando quiser um treino mais seguro para lombar, com core, postura e menos agressão. Dor forte ou irradiando precisa avaliação profissional.",
-    keywords: ["coluna neutra", "core", "controle", "sem dor"],
+    guideText: "Use quando quiser mais foco em quadríceps, controle de joelho e força em exercícios de perna.",
+    keywords: ["joelho alinhado", "amplitude", "controle", "força"],
     exercises: [
-      { name: "Dead bug", group: "Core", sets: 3, reps: "10–12", rest: "45–60s", method: "Controle a respiração e mantenha lombar estável." },
-      { name: "Prancha", group: "Core", sets: 4, reps: "30–45s", rest: "45–60s", method: "Abdômen travado, sem deixar o quadril cair." },
-      { name: "Hiperextensão lombar leve", group: "Lombar", sets: 3, reps: "12–15", rest: "60–75s", method: "Suba só até alinhar o corpo. Sem jogar para trás." },
-      { name: "Remada baixa", group: "Costas/Postura", sets: 4, reps: "10–12", rest: "75–90s", method: "Peito aberto, escápulas firmes e tronco estável." },
-      { name: "Alongamento de posterior", group: "Mobilidade", sets: 3, reps: "30s", rest: "30s", method: "Alongue sem forçar dor. Respire devagar." },
+      { name: "Agachamento livre", group: "Quadríceps/Pernas", sets: 4, reps: "8–12", rest: "90–120s", method: "Desça com controle, mantendo joelhos alinhados com os pés." },
+      { name: "Leg press", group: "Quadríceps", sets: 4, reps: "10–15", rest: "90s", method: "Pés em posição média/baixa para maior foco em quadríceps." },
+      { name: "Cadeira extensora", group: "Quadríceps", sets: 4, reps: "12–15", rest: "60s", method: "Segure 1 segundo no topo e controle a volta." },
+      { name: "Afundo com halteres", group: "Quadríceps/Glúteos", sets: 3, reps: "10–12", rest: "75s", method: "Passo controlado e tronco firme." },
+      { name: "Agachamento goblet", group: "Quadríceps", sets: 3, reps: "12", rest: "75s", method: "Boa opção para técnica, amplitude e controle." },
     ],
   },
+
+  {
+    id: "panturrilha",
+    icon: "panturrilha",
+    title: "Panturrilha",
+    fullTitle: "Ênfase em panturrilha",
+    subtitle: "Amplitude e contração",
+    why: "Boa para desenvolver panturrilhas com mais controle, amplitude e frequência, sem depender de cargas absurdas.",
+    color: "#FF9F0A",
+    soft: "rgba(255,159,10,.13)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,159,10,.30), rgba(255,159,10,0) 36%), linear-gradient(145deg, #FFFBEB, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Panturrilha responde bem com amplitude completa, pausa no pico e constância.",
+    keywords: ["amplitude", "pausa no pico", "controle", "frequência"],
+    exercises: [
+      { name: "Panturrilha em pé na máquina", group: "Panturrilha", sets: 5, reps: "10–15", rest: "60s", method: "Suba ao máximo, pause no pico e desça bem controlado." },
+      { name: "Panturrilha sentado", group: "Panturrilha", sets: 4, reps: "12–20", rest: "60s", method: "Foco em controle e contração completa." },
+      { name: "Panturrilha no leg press", group: "Panturrilha", sets: 4, reps: "12–20", rest: "60s", method: "Use amplitude total, sem quicar o peso." },
+      { name: "Panturrilha unilateral em pé", group: "Panturrilha", sets: 3, reps: "12–15", rest: "45s", method: "Corrige diferença entre lados." },
+      { name: "Panturrilha com pausa no pico", group: "Panturrilha", sets: 3, reps: "10–12", rest: "60s", method: "Segure 2 segundos no alto." },
+    ],
+  },
+
+  {
+    id: "posterior",
+    icon: "posterior",
+    title: "Posterior",
+    fullTitle: "Ênfase em posterior de coxa",
+    subtitle: "Força atrás da perna",
+    why: "Boa para melhorar posterior, proteger joelhos, fortalecer cadeia posterior e equilibrar o treino de pernas.",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.28), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser fortalecer a cadeia posterior com controle de quadril e coluna neutra.",
+    keywords: ["quadril para trás", "coluna neutra", "posterior", "controle"],
+    exercises: [
+      { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–120s", method: "Leve o quadril para trás e mantenha a coluna neutra." },
+      { name: "Mesa flexora", group: "Posterior", sets: 4, reps: "10–12", rest: "75s", method: "Controle a volta e evite subir o quadril." },
+      { name: "Stiff com halteres", group: "Posterior", sets: 4, reps: "8–12", rest: "90s", method: "Desça até sentir alongar, sem arredondar a lombar." },
+      { name: "Flexora sentada", group: "Posterior", sets: 3, reps: "12–15", rest: "60s", method: "Segure contração no final." },
+      { name: "Hiperextensão com foco glúteo/posterior", group: "Posterior/Glúteos", sets: 3, reps: "12–15", rest: "60s", method: "Suba alinhando o corpo, sem jogar lombar." },
+    ],
+  },
+
+  {
+    id: "abdomen",
+    icon: "abdomen",
+    title: "Abdômen",
+    fullTitle: "Modo abdômen trincado",
+    subtitle: "Core, controle e definição",
+    why: "Boa para fortalecer o core, melhorar postura e deixar o abdômen mais presente no treino.",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.26), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser um treino com foco em abdômen, estabilidade e controle corporal.",
+    keywords: ["core", "respiração", "controle", "estabilidade"],
+    exercises: [
+      { name: "Prancha", group: "Core", sets: 4, reps: "30–45s", rest: "45–60s", method: "Trave abdômen, sem deixar o quadril cair." },
+      { name: "Dead bug", group: "Core", sets: 3, reps: "10–12", rest: "45s", method: "Mantenha lombar estável e respiração controlada." },
+      { name: "Abdominal na polia", group: "Abdômen", sets: 4, reps: "12–15", rest: "60s", method: "Arredonde o tronco contraindo o abdômen." },
+      { name: "Prancha lateral", group: "Core", sets: 3, reps: "30s", rest: "45s", method: "Quadril alto e corpo alinhado." },
+      { name: "Pallof press", group: "Core", sets: 3, reps: "10–12", rest: "45s", method: "Resista à rotação do tronco." },
+    ],
+  },
+
   {
     id: "emagrecer",
-    chapter: "03",
+    icon: "perda_peso",
     title: "Emagrecer",
     fullTitle: "Ênfase em emagrecimento",
     subtitle: "Treino + cardio",
     why: "Boa para aumentar gasto calórico sem transformar o treino em bagunça. Combina musculação e cardio com constância.",
-    color: "#0A84FF",
-    soft: "rgba(10,132,255,.13)",
-    bg: "radial-gradient(circle at 72% 15%, rgba(10,132,255,.30), rgba(10,132,255,0) 36%), linear-gradient(145deg, #EFF6FF, #FFFFFF)",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.28), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
     guideTitle: "Por que fazer",
     guideText: "Combina musculação com cardio progressivo. O objetivo é constância, gasto calórico e treino sustentável.",
     keywords: ["cardio", "constância", "gasto calórico", "ritmo"],
@@ -618,32 +697,188 @@ const EMPHASES = [
       "Semana 4: 3 cardios moderados + 1 intervalado leve.",
     ],
   },
+
   {
-    id: "trocar_hoje",
-    chapter: "04",
-    title: "Trocar hoje",
-    fullTitle: "Ênfase alternativa",
-    subtitle: "Sem bagunçar o plano",
-    why: "Boa para quando você está sem tempo, cansado ou sem aparelho. Troca o estímulo sem perder a lógica da semana.",
+    id: "biceps",
+    icon: "biceps",
+    title: "Bíceps",
+    fullTitle: "Ênfase em bíceps",
+    subtitle: "Braço e contração",
+    why: "Boa para melhorar volume e controle do bíceps, usando variações de pegada e amplitude.",
     color: "#AF52DE",
     soft: "rgba(175,82,222,.13)",
     bg: "radial-gradient(circle at 72% 15%, rgba(175,82,222,.30), rgba(175,82,222,0) 36%), linear-gradient(145deg, #FAF5FF, #FFFFFF)",
     guideTitle: "Por que fazer",
-    guideText: "Use quando estiver sem tempo, cansado ou sem aparelho. Mantém a estrutura da semana sem travar seu treino.",
-    keywords: ["troca rápida", "sem bagunçar", "adaptação", "praticidade"],
+    guideText: "Use quando quiser destacar bíceps sem perder controle de cotovelo e execução.",
+    keywords: ["contração", "cotovelo fixo", "amplitude", "controle"],
     exercises: [
-      { name: "Leg press", group: "Pernas", sets: 3, reps: "12", rest: "75s", method: "Opção segura para substituir agachamento pesado." },
-      { name: "Puxada frente", group: "Costas", sets: 3, reps: "12", rest: "75s", method: "Boa base para manter treino completo." },
-      { name: "Supino máquina", group: "Peito", sets: 3, reps: "12", rest: "75s", method: "Mais simples que livre em dias corridos." },
-      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "12–15", rest: "60s", method: "Carga leve e execução limpa." },
-      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45s", method: "Finalização rápida." },
+      { name: "Rosca direta (barra)", group: "Bíceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Cotovelo fixo e sem balançar o tronco." },
+      { name: "Rosca martelo (halter)", group: "Bíceps/Braquial", sets: 4, reps: "10–12", rest: "60s", method: "Pegada neutra e controle total." },
+      { name: "Rosca Scott (máquina)", group: "Bíceps", sets: 3, reps: "10–12", rest: "60s", method: "Evite roubar no final." },
+      { name: "Rosca inclinada (halter)", group: "Bíceps", sets: 3, reps: "10–12", rest: "60s", method: "Alongue bem na descida." },
+      { name: "Rosca no cabo unilateral", group: "Bíceps", sets: 3, reps: "12–15", rest: "45–60s", method: "Finalização com contração limpa." },
     ],
   },
+
+  {
+    id: "ombro",
+    icon: "ombro",
+    title: "Ombro",
+    fullTitle: "Ênfase em ombro",
+    subtitle: "Deltoide e postura",
+    why: "Boa para construir ombros mais marcados, melhorar estabilidade e dar mais presença ao shape.",
+    color: "#FF9F0A",
+    soft: "rgba(255,159,10,.13)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,159,10,.30), rgba(255,159,10,0) 36%), linear-gradient(145deg, #FFFBEB, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser priorizar ombros sem roubar com trapézio e lombar.",
+    keywords: ["deltoide", "controle", "postura", "estabilidade"],
+    exercises: [
+      { name: "Desenvolvimento com halteres", group: "Ombros", sets: 4, reps: "8–12", rest: "75–90s", method: "Sem jogar lombar para trás." },
+      { name: "Elevação lateral", group: "Ombros", sets: 4, reps: "12–15", rest: "60s", method: "Cotovelos levemente flexionados e controle." },
+      { name: "Reverse fly (posterior)", group: "Ombro posterior", sets: 3, reps: "12–15", rest: "60s", method: "Abra com controle, sem balançar." },
+      { name: "Face pull", group: "Ombro/Postura", sets: 3, reps: "12–15", rest: "60s", method: "Puxe para a linha do rosto." },
+      { name: "Elevação frontal (halter)", group: "Ombros", sets: 3, reps: "10–12", rest: "60s", method: "Carga leve e execução limpa." },
+    ],
+  },
+
+  {
+    id: "triceps",
+    icon: "triceps",
+    title: "Tríceps",
+    fullTitle: "Ênfase em tríceps",
+    subtitle: "Braço posterior",
+    why: "Boa para melhorar volume do braço e força de empurrar em supinos e paralelas.",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.28), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser dar mais destaque ao braço sem sobrecarregar o cotovelo.",
+    keywords: ["cotovelo fixo", "extensão", "controle", "braço"],
+    exercises: [
+      { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "10–12", rest: "60s", method: "Abra a corda no final e controle a volta." },
+      { name: "Tríceps testa (barra W)", group: "Tríceps", sets: 4, reps: "8–12", rest: "75s", method: "Cotovelos firmes e descida controlada." },
+      { name: "Tríceps francês (halter)", group: "Tríceps", sets: 3, reps: "10–12", rest: "60s", method: "Não abra demais os cotovelos." },
+      { name: "Supino fechado (barra)", group: "Tríceps/Peito", sets: 3, reps: "8–10", rest: "90s", method: "Pegada fechada sem forçar punho." },
+      { name: "Tríceps banco (mergulho)", group: "Tríceps", sets: 3, reps: "10–12", rest: "60s", method: "Desça com controle e ombros seguros." },
+    ],
+  },
+
+  {
+    id: "peitoral",
+    icon: "peitoral",
+    title: "Peitoral",
+    fullTitle: "Ênfase em peitoral",
+    subtitle: "Força e volume no peito",
+    why: "Boa para priorizar peito com controle de escápulas, amplitude e variação de ângulos.",
+    color: "#FF6A00",
+    soft: "rgba(255,106,0,.12)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.28), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser melhorar peito sem transformar tudo em ombro e tríceps.",
+    keywords: ["escápulas", "amplitude", "controle", "peito"],
+    exercises: [
+      { name: "Supino reto com barra", group: "Peito", sets: 4, reps: "6–10", rest: "90–120s", method: "Escápulas encaixadas e descida controlada." },
+      { name: "Supino inclinado com halteres", group: "Peito superior", sets: 4, reps: "8–12", rest: "90s", method: "Amplitude boa sem perder controle." },
+      { name: "Peck-deck", group: "Peito", sets: 3, reps: "12–15", rest: "60s", method: "Contraia no centro." },
+      { name: "Crossover na polia (alto)", group: "Peito", sets: 3, reps: "12–15", rest: "60s", method: "Movimento em arco e controle." },
+      { name: "Flexão de braço tradicional", group: "Peito", sets: 3, reps: "até quase falhar", rest: "60s", method: "Corpo alinhado e peito até perto do chão." },
+    ],
+  },
+
+  {
+    id: "costas",
+    icon: "costas",
+    title: "Costas",
+    fullTitle: "Costas e dorsais",
+    subtitle: "Largura e postura",
+    why: "Boa para fortalecer dorsais, melhorar postura e dar mais largura ao tronco.",
+    color: "#34C759",
+    soft: "rgba(52,199,89,.13)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(52,199,89,.30), rgba(52,199,89,0) 36%), linear-gradient(145deg, #F0FDF4, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser priorizar costas com puxadas, remadas e controle de escápulas.",
+    keywords: ["cotovelos", "escápulas", "postura", "dorsais"],
+    exercises: [
+      { name: "Puxada frente (puxador)", group: "Costas", sets: 4, reps: "8–12", rest: "75–90s", method: "Puxe com cotovelos, sem jogar o corpo." },
+      { name: "Remada baixa no cabo", group: "Costas", sets: 4, reps: "8–12", rest: "75–90s", method: "Peito aberto e escápulas firmes." },
+      { name: "Remada unilateral com halter", group: "Costas", sets: 3, reps: "10–12", rest: "75s", method: "Controle a volta e não gire demais o tronco." },
+      { name: "Pulldown braço reto", group: "Dorsais", sets: 3, reps: "12–15", rest: "60s", method: "Braços quase estendidos e foco nas dorsais." },
+      { name: "Face pull", group: "Postura", sets: 3, reps: "12–15", rest: "60s", method: "Boa finalização para escápulas." },
+    ],
+  },
+
+  {
+    id: "lombar",
+    icon: "lombar",
+    title: "Lombar",
+    fullTitle: "Lombar e ciático",
+    subtitle: "Controle e postura",
+    why: "Boa para dias em que você quer proteger a coluna, fortalecer core e fazer uma sessão mais controlada.",
+    color: "#34C759",
+    soft: "rgba(52,199,89,.13)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(52,199,89,.30), rgba(52,199,89,0) 36%), linear-gradient(145deg, #F0FDF4, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser um treino mais seguro para lombar, com core, postura e menos agressão. Dor forte ou irradiando precisa avaliação profissional.",
+    keywords: ["coluna neutra", "core", "controle", "sem dor"],
+    exercises: [
+      { name: "Dead bug", group: "Core", sets: 3, reps: "10–12", rest: "45–60s", method: "Controle a respiração e mantenha lombar estável." },
+      { name: "Prancha", group: "Core", sets: 4, reps: "30–45s", rest: "45–60s", method: "Abdômen travado, sem deixar o quadril cair." },
+      { name: "Hiperextensão lombar leve", group: "Lombar", sets: 3, reps: "12–15", rest: "60–75s", method: "Suba só até alinhar o corpo. Sem jogar para trás." },
+      { name: "Remada baixa", group: "Costas/Postura", sets: 4, reps: "10–12", rest: "75–90s", method: "Peito aberto, escápulas firmes e tronco estável." },
+      { name: "Alongamento de posterior", group: "Mobilidade", sets: 3, reps: "30s", rest: "30s", method: "Alongue sem forçar dor. Respire devagar." },
+    ],
+  },
+
+  {
+    id: "trapezio",
+    icon: "trapezio",
+    title: "Trapézio",
+    fullTitle: "Ênfase em trapézio",
+    subtitle: "Pescoço, ombros e postura",
+    why: "Boa para fortalecer a região superior das costas e melhorar presença de ombros e postura.",
+    color: "#FF9F0A",
+    soft: "rgba(255,159,10,.13)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,159,10,.30), rgba(255,159,10,0) 36%), linear-gradient(145deg, #FFFBEB, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use quando quiser fortalecer trapézio sem tensionar demais o pescoço.",
+    keywords: ["postura", "escápulas", "controle", "ombros"],
+    exercises: [
+      { name: "Encolhimento (pegada aberta) para trapézio", group: "Trapézio", sets: 4, reps: "10–15", rest: "60s", method: "Suba os ombros e controle a descida." },
+      { name: "Face pull", group: "Trapézio/Postura", sets: 4, reps: "12–15", rest: "60s", method: "Puxe para o rosto com cotovelos altos." },
+      { name: "Remada alta no cabo", group: "Trapézio/Ombros", sets: 3, reps: "10–12", rest: "60s", method: "Sem puxar alto demais se incomodar ombro." },
+      { name: "Reverse fly na máquina", group: "Trapézio/Ombro posterior", sets: 3, reps: "12–15", rest: "60s", method: "Abra com controle e postura." },
+      { name: "Farmer carry (core)", group: "Trapézio/Core", sets: 4, reps: "30–40m", rest: "60s", method: "Caminhe firme, ombros baixos e postura alta." },
+    ],
+  },
+
+  {
+    id: "pescoco",
+    icon: "pescoco",
+    title: "Pescoço",
+    fullTitle: "Ênfase em pescoço",
+    subtitle: "Cervical e controle",
+    why: "Boa para consciência postural e controle cervical, sem exagerar em carga.",
+    color: "#64D2FF",
+    soft: "rgba(100,210,255,.15)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(100,210,255,.32), rgba(100,210,255,0) 36%), linear-gradient(145deg, #F0FDFF, #FFFFFF)",
+    guideTitle: "Por que fazer",
+    guideText: "Use com cuidado para melhorar controle cervical e postura. Evite carga pesada no pescoço.",
+    keywords: ["cervical", "leve", "postura", "controle"],
+    exercises: [
+      { name: "Face pull", group: "Postura/Cervical", sets: 3, reps: "12–15", rest: "60s", method: "Puxe com controle e mantenha pescoço neutro." },
+      { name: "W-raise (postura)", group: "Postura", sets: 3, reps: "12–15", rest: "45–60s", method: "Movimento leve, foco em escápulas." },
+      { name: "Trap 3 raise", group: "Postura", sets: 3, reps: "10–12", rest: "60s", method: "Carga baixa e controle." },
+      { name: "Prancha", group: "Core/Postura", sets: 3, reps: "30s", rest: "45s", method: "Pescoço alinhado com a coluna." },
+      { name: "Alongamento curto", group: "Mobilidade", sets: 1, reps: "5min", rest: "—", method: "Movimentos suaves, sem forçar dor." },
+    ],
+  },
+
   {
     id: "leve",
-    chapter: "05",
+    icon: "leve",
     title: "Leve",
-    fullTitle: "Ênfase leve",
+    fullTitle: "Modo leve",
     subtitle: "Recuperar ritmo",
     why: "Boa para dias de cansaço. Mantém constância, reduz carga e ajuda você a não abandonar o plano.",
     color: "#64D2FF",
@@ -660,11 +895,12 @@ const EMPHASES = [
       { name: "Alongamento curto", group: "Mobilidade", sets: 1, reps: "5min", rest: "—", method: "Finalize soltando quadril, posterior e costas." },
     ],
   },
+
   {
     id: "forte",
-    chapter: "06",
-    title: "Forte",
-    fullTitle: "Ênfase forte",
+    icon: "turbo",
+    title: "Turbo",
+    fullTitle: "Modo turbo",
     subtitle: "Carga e progressão",
     why: "Boa para dias em que você quer evoluir carga e intensidade, mantendo técnica e descanso bem definidos.",
     color: "#FF375F",
@@ -683,131 +919,7 @@ const EMPHASES = [
   },
 ];
 
-/* ---------------- ÍCONES ---------------- */
-
-function EmphasisIcon({ type, color = ORANGE }) {
-  if (type === "gluteo") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 118 118" fill="none" aria-hidden="true">
-        <circle cx="59" cy="59" r="45" fill={color} opacity="0.12" />
-        <path
-          d="M59 19c8.5 0 15.5 6.9 15.5 15.5S67.5 50 59 50s-15.5-6.9-15.5-15.5S50.5 19 59 19Z"
-          fill={color}
-          opacity="0.18"
-        />
-        <path
-          d="M43 50c-7 6-10 15-10 25 0 14 8 24 19 24 4.5 0 7.5-1.8 9.5-4.6 2 2.8 5 4.6 9.5 4.6 11 0 19-10 19-24 0-10-3-19-10-25"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M61.5 55v39"
-          stroke={color}
-          strokeWidth="5.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M42 76c5-7 11-10.5 19.5-10.5S76 69 81 76"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-
-  if (type === "emagrecer") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 118 118" fill="none" aria-hidden="true">
-        <circle cx="59" cy="59" r="45" fill={color} opacity="0.12" />
-        <path
-          d="M59 18c8 0 14.5 6.5 14.5 14.5S67 47 59 47s-14.5-6.5-14.5-14.5S51 18 59 18Z"
-          fill={color}
-          opacity="0.18"
-        />
-        <path
-          d="M43 52c-6 9-9 20-7 31 2.2 13.8 11 22 23 22s20.8-8.2 23-22c2-11-1-22-7-31"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M47 70c8 5 16 5 24 0"
-          stroke={color}
-          strokeWidth="5.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M86 37c7 5 11 12 12 21"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M98 58l5-7"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-
-  if (type === "lombar") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 118 118" fill="none" aria-hidden="true">
-        <circle cx="59" cy="59" r="45" fill={color} opacity="0.12" />
-        <path
-          d="M59 20c11 9 18 22 18 39 0 18-7 31-18 39-11-8-18-21-18-39 0-17 7-30 18-39Z"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinejoin="round"
-        />
-        <path d="M59 31v56" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
-        <path d="M48 45h22" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M47 59h24" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M50 73h18" stroke={color} strokeWidth="5" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (type === "trocar_hoje") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 118 118" fill="none" aria-hidden="true">
-        <circle cx="59" cy="59" r="45" fill={color} opacity="0.12" />
-        <path d="M82 46c-6-11-17-17-30-14-8 1.7-14 6.6-18 13" stroke={color} strokeWidth="6" strokeLinecap="round" />
-        <path d="M34 31v14h14" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M36 74c6 11 17 17 30 14 8-1.7 14-6.6 18-13" stroke={color} strokeWidth="6" strokeLinecap="round" />
-        <path d="M84 89V75H70" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (type === "leve") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 118 118" fill="none" aria-hidden="true">
-        <circle cx="59" cy="59" r="45" fill={color} opacity="0.12" />
-        <path
-          d="M78 30c-5 4-10 5-16 5-17 0-31 14-31 31s14 31 31 31c13 0 24-8 29-19-5 3-10 4-16 4-17 0-31-14-31-31 0-9 4-17 10-23 7-6 15-8 24-8Z"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg width="118" height="118" viewBox="0 0 118 118" fill="none" aria-hidden="true">
-      <circle cx="59" cy="59" r="45" fill={color} opacity="0.12" />
-      <path d="M61 17 27 65h29l-6 39 41-55H62l9-32Z" fill={color} opacity="0.16" />
-      <path d="M61 17 27 65h29l-6 39 41-55H62l9-32Z" stroke={color} strokeWidth="6" strokeLinejoin="round" />
-    </svg>
-  );
-}
+/* ---------------- GIF PREVIEW ---------------- */
 
 function ExerciseMedia({ ex, color }) {
   const sources = Array.isArray(ex.gifSources) && ex.gifSources.length
@@ -1034,10 +1146,25 @@ export default function MontagemTreino() {
       constância: "Resultado vem da repetição semanal, não de um treino perfeito isolado.",
       "gasto calórico": "Musculação + cardio + alimentação organizada melhoram o déficit calórico.",
       ritmo: "Descanse o suficiente para continuar bem, mas evite pausas longas demais.",
-      "troca rápida": "Troque o treino do dia sem perder a lógica da semana.",
-      "sem bagunçar": "A montagem altera o treino atual, mas mantém estrutura, volume e foco.",
-      adaptação: "Use quando está cansado, sem tempo ou sem acesso a alguns aparelhos.",
-      praticidade: "Menos configuração, mais execução.",
+      "joelho alinhado": "Mantenha joelho acompanhando a direção dos pés.",
+      força: "Carga boa é aquela que desafia sem destruir sua execução.",
+      "pausa no pico": "Segure a contração no ponto mais forte do exercício.",
+      frequência: "Alguns músculos respondem melhor quando treinados mais vezes na semana.",
+      "quadril para trás": "Pense em levar o quadril para trás, não em curvar a lombar.",
+      posterior: "Foco na parte de trás da coxa e cadeia posterior.",
+      respiração: "Respire controlado, sem perder a pressão abdominal.",
+      estabilidade: "Trave o corpo para executar com mais segurança.",
+      contração: "Sinta o músculo trabalhar antes de aumentar carga.",
+      "cotovelo fixo": "Evite balançar o cotovelo para roubar no movimento.",
+      deltoide: "Foco no músculo do ombro, sem jogar tudo para o trapézio.",
+      postura: "Mantenha tronco firme, pescoço neutro e escápulas organizadas.",
+      extensão: "Complete a extensão sem perder o controle da articulação.",
+      braço: "Foco em volume e controle do braço.",
+      escápulas: "Organize as escápulas para proteger ombros e melhorar força.",
+      peito: "Controle o movimento para o peito trabalhar mais que ombro/tríceps.",
+      cotovelos: "Puxe ou empurre guiando com os cotovelos, conforme o exercício.",
+      dorsais: "Pense em puxar com as costas, não só com os braços.",
+      cervical: "Mantenha o pescoço neutro, sem tensão exagerada.",
       leve: "Reduza carga, mantenha técnica e use o treino para recuperar ritmo.",
       recuperação: "Treino leve ajuda circulação, mobilidade e consistência.",
       carga: "Carga boa é aquela que desafia sem destruir sua execução.",
@@ -1054,6 +1181,7 @@ export default function MontagemTreino() {
       source: "montagem",
       intent: selected.id,
       emphasisId: selected.id,
+      icon: selected.icon || selected.id,
       focusId: selected.id,
       focusTitle: selected.fullTitle,
       focusSubtitle: selected.subtitle,
@@ -1061,12 +1189,12 @@ export default function MontagemTreino() {
       duration: scope,
       targetDays: selected.id === "emagrecer" ? Number(targetDays || 30) : null,
       guide: {
-        chapter: selected.chapter,
         title: selected.guideTitle,
         text: selected.guideText,
         why: selected.why,
         keywords: selected.keywords,
         color: selected.color,
+        icon: selected.icon || selected.id,
       },
       profile: {
         objetivo: profile?.objetivo || null,
@@ -1231,7 +1359,7 @@ export default function MontagemTreino() {
                   }}
                 >
                   <div style={S.bigIconArea}>
-                    <EmphasisIcon type={item.id} color={item.color} />
+                    <EmphasisIcon type={item.icon || item.id} color={item.color} size={118} />
                   </div>
 
                   <div style={S.bigCardBottom}>
@@ -1247,7 +1375,7 @@ export default function MontagemTreino() {
         <section style={S.selectedContent}>
           <div style={S.selectedTop}>
             <div style={{ ...S.selectedIcon, background: selected.soft }}>
-              <EmphasisIcon type={selected.id} color={selected.color} />
+              <EmphasisIcon type={selected.icon || selected.id} color={selected.color} size={82} />
             </div>
 
             <div style={{ minWidth: 0 }}>
@@ -1820,7 +1948,7 @@ const S = {
     lineHeight: 1,
     fontWeight: 980,
     letterSpacing: -1.1,
-    maxWidth: 300,
+    maxWidth: 315,
   },
 
   bigCardSub: {
