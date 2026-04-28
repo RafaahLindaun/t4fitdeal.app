@@ -27,10 +27,6 @@ function uid() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
@@ -92,11 +88,10 @@ function getApplyWindow(scope) {
   };
 }
 
-/* ---------- ÍCONES GRANDES ---------- */
 function EmphasisIcon({ type, color = ORANGE }) {
   if (type === "gluteo") {
     return (
-      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
         <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
@@ -107,7 +102,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "lombar") {
     return (
-      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
         <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -119,7 +114,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "emagrecer") {
     return (
-      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
         <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
         <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -129,7 +124,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "trocar_hoje") {
     return (
-      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
         <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
@@ -141,7 +136,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "leve") {
     return (
-      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
         <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
       </svg>
@@ -149,7 +144,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
   }
 
   return (
-    <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+    <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
       <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
       <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
     </svg>
@@ -585,14 +580,24 @@ export default function MontagemTreino() {
           </button>
 
           <div style={S.bookBody}>
-            <div style={S.kicker}>Montagem inteligente</div>
             <h1 style={S.title}>Vamos alterar seu foco hoje</h1>
-            <p style={S.sub}>Arraste as ênfases, escolha uma e monte um treino mais fácil de seguir.</p>
+            <p style={S.sub}>Escolha uma ênfase e monte um treino mais fácil de seguir.</p>
 
-            <div style={S.miniStatus}>
-              <span>{todayLabel()}</span>
-              <span>{loading ? "Lendo perfil..." : profile?.objetivo || "Objetivo automático"}</span>
-              <span>{isPaid ? planKey || "Plano ativo" : "Livre"}</span>
+            <div style={S.statusGrid}>
+              <div style={S.statusChip}>
+                <span>Hoje</span>
+                <b>{todayLabel()}</b>
+              </div>
+
+              <div style={S.statusChip}>
+                <span>Objetivo</span>
+                <b>{loading ? "..." : profile?.objetivo || "Automático"}</b>
+              </div>
+
+              <div style={S.statusChip}>
+                <span>Plano</span>
+                <b>{isPaid ? planKey || "Ativo" : "Livre"}</b>
+              </div>
             </div>
           </div>
         </section>
@@ -947,8 +952,8 @@ const S = {
   page: {
     minHeight: "100vh",
     background: BG,
-    padding: 16,
-    paddingBottom: 130,
+    padding: 14,
+    paddingBottom: 180,
   },
 
   wrap: {
@@ -961,9 +966,9 @@ const S = {
     gap: 12,
     alignItems: "flex-start",
     borderRadius: 28,
-    padding: 15,
+    padding: 14,
     background:
-      "radial-gradient(circle at 92% 0%, rgba(255,106,0,.28), rgba(255,106,0,0) 30%), linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,247,237,.96))",
+      "radial-gradient(circle at 92% 0%, rgba(255,106,0,.24), rgba(255,106,0,0) 30%), linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,247,237,.96))",
     border: `1px solid ${BORDER}`,
     boxShadow: "0 16px 50px rgba(15,23,42,.08)",
   },
@@ -973,49 +978,53 @@ const S = {
     height: 42,
     borderRadius: 16,
     border: `1px solid ${BORDER}`,
-    background: "rgba(255,255,255,.86)",
+    background: "rgba(255,255,255,.88)",
     color: TEXT,
     fontSize: 22,
     fontWeight: 950,
     flexShrink: 0,
+    display: "grid",
+    placeItems: "center",
   },
 
   bookBody: {
     minWidth: 0,
     flex: 1,
-  },
-
-  kicker: {
-    color: ORANGE,
-    fontSize: 11,
-    fontWeight: 950,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
+    paddingTop: 2,
   },
 
   title: {
-    margin: "7px 0 0",
+    margin: 0,
     color: TEXT,
-    fontSize: 29,
-    lineHeight: 1,
+    fontSize: 28,
+    lineHeight: 0.98,
     fontWeight: 980,
-    letterSpacing: -1.1,
+    letterSpacing: -1.15,
   },
 
   sub: {
     margin: "10px 0 0",
     color: MUTED,
     fontSize: 14,
-    lineHeight: 1.42,
+    lineHeight: 1.38,
     fontWeight: 780,
   },
 
-  miniStatus: {
-    marginTop: 12,
-    display: "flex",
-    gap: 8,
-    overflowX: "auto",
-    paddingBottom: 2,
+  statusGrid: {
+    marginTop: 13,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 7,
+  },
+
+  statusChip: {
+    minWidth: 0,
+    borderRadius: 17,
+    background: "rgba(255,255,255,.78)",
+    border: `1px solid ${BORDER}`,
+    padding: "8px 9px",
+    display: "grid",
+    gap: 4,
   },
 
   emphasisShelf: {
@@ -1025,6 +1034,7 @@ const S = {
     background: "#fff",
     border: `1px solid ${BORDER}`,
     boxShadow: "0 14px 44px rgba(15,23,42,.06)",
+    overflow: "hidden",
   },
 
   shelfHead: {
@@ -1036,16 +1046,16 @@ const S = {
 
   shelfTitle: {
     color: TEXT,
-    fontSize: 20,
+    fontSize: 22,
     lineHeight: 1,
     fontWeight: 980,
-    letterSpacing: -0.65,
+    letterSpacing: -0.75,
   },
 
   shelfSub: {
     marginTop: 6,
     color: MUTED,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 800,
   },
 
@@ -1053,8 +1063,8 @@ const S = {
     border: "none",
     borderRadius: 999,
     color: "#fff",
-    padding: "11px 14px",
-    fontSize: 13,
+    padding: "12px 16px",
+    fontSize: 14,
     fontWeight: 950,
     boxShadow: "0 12px 30px rgba(15,23,42,.10)",
   },
@@ -1069,11 +1079,11 @@ const S = {
   },
 
   bookCard: {
-    minWidth: 216,
-    height: 262,
-    borderRadius: 28,
+    minWidth: 194,
+    height: 236,
+    borderRadius: 26,
     border: `1px solid ${BORDER}`,
-    padding: 14,
+    padding: 13,
     scrollSnapAlign: "center",
     textAlign: "left",
     transition: "transform .16s ease, box-shadow .16s ease, border-color .16s ease",
@@ -1098,22 +1108,22 @@ const S = {
 
   bookTitle: {
     color: TEXT,
-    fontSize: 24,
+    fontSize: 23,
     lineHeight: 1,
     fontWeight: 980,
-    letterSpacing: -0.8,
+    letterSpacing: -0.85,
   },
 
   bookSub: {
     marginTop: 7,
     color: MUTED,
     fontSize: 13,
-    lineHeight: 1.3,
+    lineHeight: 1.28,
     fontWeight: 830,
   },
 
   selectedPreview: {
-    marginTop: 2,
+    marginTop: 1,
     borderRadius: 21,
     background: "rgba(15,23,42,.035)",
     border: `1px solid ${BORDER}`,
@@ -1152,8 +1162,8 @@ const S = {
   },
 
   detailIcon: {
-    width: 84,
-    height: 84,
+    width: 82,
+    height: 82,
     borderRadius: 28,
     display: "grid",
     placeItems: "center",
