@@ -59,16 +59,22 @@ function numberFrom(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function gifPathForExercise(name) {
+  return `/gifs/exercises/${slugify(name)}.gif`;
+}
+
 function makeEditableExercise(ex) {
   return {
-    id: uid(),
+    id: ex.id || uid(),
     name: ex.name || "",
     group: ex.group || "",
     sets: ex.sets ?? 3,
     reps: ex.reps || "10–12",
     rest: ex.rest || "60s",
     method: ex.method || "",
-    gif: ex.gif || `/gifs/exercises/${slugify(ex.name || "exercicio")}.gif`,
+    gif: ex.gif || gifPathForExercise(ex.name || "exercicio"),
+    source: ex.source || "emphasis",
+    catalogGroup: ex.catalogGroup || null,
   };
 }
 
@@ -86,98 +92,388 @@ function getApplyWindow(scope) {
   };
 }
 
-function EmphasisIcon({ type, color = ORANGE }) {
-  if (type === "gluteo") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
-        <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M25 39c4-6 9-9 16-9s12 3 16 9" stroke={color} strokeWidth="5" strokeLinecap="round" />
-      </svg>
-    );
-  }
+/* ---------------- BANCO DE EXERCÍCIOS ---------------- */
 
-  if (type === "lombar") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
-        <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
-        <path d="M29 41h24" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
-        <path d="M32 54h18" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
-      </svg>
-    );
-  }
+const EXERCISE_CATALOG = {
+  peito: [
+    "Supino reto com barra",
+    "Supino reto com halteres",
+    "Supino inclinado com barra",
+    "Supino inclinado com halteres",
+    "Supino declinado",
+    "Supino máquina",
+    "Supino inclinado máquina",
+    "Crucifixo reto com halteres",
+    "Crucifixo inclinado com halteres",
+    "Peck-deck",
+    "Crossover na polia (alto)",
+    "Crossover na polia (médio)",
+    "Crossover na polia (baixo)",
+    "Flexão de braço tradicional",
+    "Flexão inclinada (banco)",
+    "Flexão declinada (pé elevado)",
+    "Flexão com pegada fechada",
+    "Pullover com halter",
+    "Pullover na polia",
+    "Squeeze press (halter)",
+    "Supino com pausa (controle)",
+    "Chest press unilateral",
+    "Crossover unilateral",
+    "Isometria de peitoral na polia",
+  ],
 
-  if (type === "emagrecer") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
-        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
-        <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  triceps: [
+    "Tríceps corda",
+    "Tríceps barra reta",
+    "Tríceps barra V",
+    "Tríceps francês (halter)",
+    "Tríceps francês unilateral",
+    "Tríceps testa (barra W)",
+    "Tríceps testa (halter)",
+    "Tríceps banco (mergulho)",
+    "Mergulho nas paralelas (assistido)",
+    "Mergulho nas paralelas (livre)",
+    "Tríceps coice (halter)",
+    "Tríceps na polia acima da cabeça (corda)",
+    "Tríceps na polia acima da cabeça (barra)",
+    "Skull crusher no banco inclinado",
+    "Supino fechado (barra)",
+    "Supino fechado (halter)",
+    "Tríceps no cross unilateral",
+    "Extensão de tríceps no cabo sentado",
+    "Extensão de tríceps com elástico",
+    "Kickback no cabo",
+    "Diamond push-up (flexão diamante)",
+    "Tríceps máquina (press)",
+    "Tríceps com pegada reversa no cabo",
+    "Extensão de tríceps na polia deitado",
+  ],
 
-  if (type === "trocar_hoje") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
-        <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M24 51c4 8 12 13 21 11 6-1 11-5 14-10" stroke={color} strokeWidth="5" strokeLinecap="round" />
-        <path d="M59 62V52H49" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
+  costas: [
+    "Puxada frente (puxador)",
+    "Puxada neutra (triângulo)",
+    "Puxada supinada",
+    "Puxada unilateral no cabo",
+    "Barra fixa pronada",
+    "Barra fixa supinada",
+    "Remada baixa no cabo",
+    "Remada baixa neutra",
+    "Remada unilateral com halter",
+    "Remada curvada com barra",
+    "Remada curvada com halteres",
+    "Remada máquina (hammer)",
+    "Remada articulada (serrote máquina)",
+    "Remada cavalinho (T-bar)",
+    "Pulldown braço reto",
+    "Pullover na polia (costas)",
+    "Remada alta no cabo",
+    "Encolhimento (pegada aberta) para trapézio",
+    "Face pull (escápulas/postura)",
+    "Remada no smith",
+    "Remada no banco inclinado (halter)",
+    "Good morning leve (técnica/postura)",
+    "Hiperextensão lombar",
+    "Pull-up assistido",
+  ],
 
-  if (type === "leve") {
-    return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
-        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
-      </svg>
-    );
-  }
+  biceps: [
+    "Rosca direta (barra)",
+    "Rosca direta (barra W)",
+    "Rosca alternada (halter)",
+    "Rosca martelo (halter)",
+    "Rosca martelo cruzada",
+    "Rosca concentrada",
+    "Rosca Scott (barra)",
+    "Rosca Scott (halter)",
+    "Rosca Scott (máquina)",
+    "Rosca na polia (barra)",
+    "Rosca na polia (corda)",
+    "Rosca 21",
+    "Rosca inclinada (halter)",
+    "Rosca spider",
+    "Rosca reversa (barra)",
+    "Rosca reversa (halter)",
+    "Rosca Zottman",
+    "Rosca no cabo unilateral",
+    "Rosca bayesian (cabo atrás)",
+    "Rosca em pé com elástico",
+    "Chin-up (barra supinada)",
+    "Rosca no banco inclinado unilateral",
+    "Rosca martelo no cabo",
+    "Isometria de bíceps (90 graus)",
+  ],
 
-  return (
-    <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
-      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
-    </svg>
-  );
+  quadriceps: [
+    "Agachamento livre",
+    "Agachamento no smith",
+    "Agachamento frontal",
+    "Agachamento goblet",
+    "Leg press 45°",
+    "Leg press horizontal",
+    "Hack squat",
+    "Cadeira extensora",
+    "Passada caminhando",
+    "Afundo no smith",
+    "Afundo com halteres",
+    "Bulgarian split squat",
+    "Step-up (banco)",
+    "Agachamento sumô leve",
+    "Sissy squat (controle)",
+    "Agachamento com pausa",
+    "Leg press (pés baixos)",
+    "Agachamento na caixa",
+    "Cadeira abdutora (apoio de quadril)",
+    "Cadeira adutora",
+    "Lunge reverso",
+    "Agachamento no TRX (iniciante)",
+    "Wall sit (isometria)",
+    "Extensora unilateral",
+  ],
+
+  posterior: [
+    "Terra romeno (barra)",
+    "Stiff com halteres",
+    "Mesa flexora",
+    "Cadeira flexora",
+    "Flexora unilateral",
+    "Levantamento terra (técnica)",
+    "Good morning (leve)",
+    "Hiperextensão",
+    "Nordic curl (assistido)",
+    "Ponte de posterior no solo",
+    "Pull-through no cabo",
+    "Deadlift romeno unilateral",
+    "Swing com kettlebell (leve)",
+    "Flexão de joelho no cabo (unilateral)",
+    "Glute ham raise (assistido)",
+    "Stiff no smith",
+    "Terra romeno no cabo",
+    "Hiperextensão com foco glúteo/posterior",
+    "Flexora sentada",
+    "Curl de posterior com elástico",
+    "Isometria de posterior (ponte)",
+    "RDL com pausa",
+    "Mesa flexora com drop-set (avançado)",
+    "Flexora 1.5 reps",
+  ],
+
+  gluteo: [
+    "Hip thrust",
+    "Hip thrust (barra)",
+    "Hip thrust (máquina)",
+    "Glute bridge",
+    "Glute bridge unilateral",
+    "Abdução na máquina",
+    "Abdução no cabo (unilateral)",
+    "Passada (foco glúteo)",
+    "Bulgarian (foco glúteo)",
+    "Agachamento sumô",
+    "Pull-through no cabo",
+    "Kickback no cabo",
+    "Kickback na máquina",
+    "Step-up alto (glúteo)",
+    "Extensão de quadril no banco",
+    "Levantamento terra romeno (ênfase glúteo)",
+    "Agachamento no smith (pés à frente)",
+    "Elevação pélvica com pausa",
+    "Lunge reverso longo",
+    "Abdução com elástico",
+    "Caminhada lateral com elástico",
+    "Frog pumps",
+    "Hip thrust unilateral (halter)",
+    "Kickback com elástico",
+    "Isometria glúteo (ponte 30–60s)",
+  ],
+
+  panturrilha: [
+    "Panturrilha em pé na máquina",
+    "Panturrilha sentado",
+    "Panturrilha no leg press",
+    "Panturrilha unilateral em pé",
+    "Panturrilha unilateral sentado",
+    "Panturrilha no smith",
+    "Panturrilha com halter (em degrau)",
+    "Panturrilha no hack squat",
+    "Panturrilha no step (peso corpo)",
+    "Panturrilha com pausa em alongamento",
+    "Panturrilha com pausa no pico",
+    "Panturrilha isométrica (pico)",
+    "Panturrilha no leg press unilateral",
+    "Panturrilha no banco (improvisado)",
+    "Panturrilha com elástico",
+    "Panturrilha em pé com barra",
+    "Panturrilha 1.5 reps",
+    "Panturrilha sentado 1.5 reps",
+    "Panturrilha dropset (avançado)",
+    "Panturrilha em tempo (3-1-2)",
+    "Panturrilha com amplitude máxima",
+    "Panturrilha na máquina inclinada",
+    "Panturrilha no step com carga",
+    "Panturrilha no smith unilateral",
+  ],
+
+  ombro: [
+    "Desenvolvimento com halteres",
+    "Desenvolvimento com barra",
+    "Desenvolvimento máquina",
+    "Arnold press",
+    "Elevação lateral",
+    "Elevação lateral no cabo",
+    "Elevação lateral sentado",
+    "Elevação frontal (halter)",
+    "Elevação frontal (barra)",
+    "Elevação frontal no cabo",
+    "Reverse fly (posterior)",
+    "Reverse fly na máquina",
+    "Face pull",
+    "Remada alta (barra leve)",
+    "Remada alta no cabo",
+    "Crucifixo inverso no cabo",
+    "Landmine press",
+    "Desenvolvimento unilateral no cabo",
+    "Y-raise (leve)",
+    "W-raise (postura)",
+    "Trap 3 raise",
+    "Isometria lateral (30s)",
+    "Desenvolvimento com pausa",
+    "Elevação lateral 1.5 reps",
+  ],
+
+  core: [
+    "Prancha",
+    "Prancha lateral",
+    "Dead bug",
+    "Hollow hold",
+    "Abdominal infra (elevação de pernas)",
+    "Abdominal infra (banco)",
+    "Abdominal na polia",
+    "Crunch",
+    "Crunch na bola",
+    "Bicicleta no solo",
+    "Russian twist",
+    "Pallof press",
+    "Woodchopper (cabo)",
+    "Mountain climber (controlado)",
+    "Bird dog",
+    "Plank com toque no ombro",
+    "Prancha com elevação de perna",
+    "Farmer carry (core)",
+    "Suitcase carry (core)",
+    "V-up (avançado)",
+    "Toe touches",
+    "Rollout (ab wheel)",
+    "Abdominal máquina",
+    "Isometria anti-rotação (cabo)",
+  ],
+};
+
+const GROUP_LABEL = {
+  peito: "Peito",
+  triceps: "Tríceps",
+  costas: "Costas",
+  biceps: "Bíceps",
+  quadriceps: "Quadríceps",
+  posterior: "Posterior",
+  gluteo: "Glúteo",
+  panturrilha: "Panturrilha",
+  ombro: "Ombro",
+  core: "Core",
+};
+
+const STYLE_FILTERS = {
+  atual: {
+    label: "Da ênfase",
+    getKeys: (selected) => {
+      if (selected.id === "gluteo") return ["gluteo", "posterior"];
+      if (selected.id === "lombar") return ["core", "costas", "posterior"];
+      if (selected.id === "emagrecer") return ["quadriceps", "costas", "peito", "core"];
+      if (selected.id === "trocar_hoje") return ["quadriceps", "costas", "peito", "ombro", "core"];
+      if (selected.id === "leve") return ["core", "costas", "quadriceps", "ombro"];
+      if (selected.id === "forte") return ["quadriceps", "peito", "costas", "posterior", "ombro"];
+      return ["peito", "costas", "quadriceps", "core"];
+    },
+  },
+  superior: {
+    label: "Superior",
+    keys: ["peito", "costas", "ombro", "biceps", "triceps"],
+  },
+  inferior: {
+    label: "Inferior",
+    keys: ["quadriceps", "posterior", "gluteo", "panturrilha"],
+  },
+  seguro: {
+    label: "Seguro",
+    keys: ["core", "costas", "posterior", "gluteo"],
+  },
+  completo: {
+    label: "Completo",
+    keys: ["peito", "costas", "quadriceps", "posterior", "gluteo", "ombro", "core"],
+  },
+};
+
+function groupLabelFromKey(key) {
+  return GROUP_LABEL[key] || key;
 }
 
-function ExerciseMedia({ ex, color }) {
-  const [failed, setFailed] = useState(false);
+function guessGroupKeyByName(name) {
+  const n = normalizeText(name);
 
-  if (!failed && ex.gif) {
-    return (
-      <div style={S.exerciseMedia}>
-        <img
-          src={ex.gif}
-          alt={ex.name}
-          onError={() => setFailed(true)}
-          style={S.exerciseGif}
-        />
-      </div>
-    );
-  }
+  if (n.includes("supino") || n.includes("crucifixo") || n.includes("crossover") || n.includes("peck")) return "peito";
+  if (n.includes("triceps") || n.includes("mergulho") || n.includes("skull") || n.includes("diamante")) return "triceps";
+  if (n.includes("puxada") || n.includes("remada") || n.includes("barra fixa") || n.includes("pulldown")) return "costas";
+  if (n.includes("rosca") || n.includes("biceps") || n.includes("chin-up")) return "biceps";
+  if (n.includes("agachamento") || n.includes("leg press") || n.includes("extensora") || n.includes("afundo")) return "quadriceps";
+  if (n.includes("terra") || n.includes("stiff") || n.includes("flexora") || n.includes("posterior")) return "posterior";
+  if (n.includes("glute") || n.includes("thrust") || n.includes("abducao") || n.includes("kickback") || n.includes("frog")) return "gluteo";
+  if (n.includes("panturrilha")) return "panturrilha";
+  if (n.includes("desenvolvimento") || n.includes("elevacao") || n.includes("face pull") || n.includes("reverse")) return "ombro";
+  if (n.includes("prancha") || n.includes("dead bug") || n.includes("abdominal") || n.includes("pallof")) return "core";
 
-  return (
-    <div
-      style={{
-        ...S.exerciseMedia,
-        background: `radial-gradient(circle at 70% 18%, ${color}33, transparent 36%), linear-gradient(135deg, #ffffff, #f8fafc)`,
-      }}
-    >
-      <div style={{ ...S.exerciseFallbackIcon, background: color }}>
-        {String(ex.name || "?").slice(0, 1).toUpperCase()}
-      </div>
-    </div>
-  );
+  return "core";
 }
+
+function defaultPrescriptionByGroup(key) {
+  if (key === "core") return { sets: 3, reps: "30–45s", rest: "45–60s" };
+  if (key === "panturrilha") return { sets: 4, reps: "12–20", rest: "45–75s" };
+  if (key === "quadriceps" || key === "posterior" || key === "gluteo") {
+    return { sets: 4, reps: "8–12", rest: "75–120s" };
+  }
+  return { sets: 4, reps: "8–12", rest: "60–90s" };
+}
+
+function executionTextByGroup(key) {
+  if (key === "peito") return "Controle a descida, mantenha escápulas firmes e empurre sem perder postura.";
+  if (key === "costas") return "Puxe com cotovelos, mantenha tronco firme e controle a volta.";
+  if (key === "gluteo") return "Priorize quadril, pausa no pico e controle para não jogar na lombar.";
+  if (key === "posterior") return "Leve o quadril para trás e mantenha coluna neutra durante o movimento.";
+  if (key === "quadriceps") return "Desça com controle, joelhos acompanhando os pés e amplitude segura.";
+  if (key === "ombro") return "Use carga limpa, sem roubar com lombar ou trapézio demais.";
+  if (key === "core") return "Trave abdômen, respire controlado e não deixe a lombar perder posição.";
+  if (key === "panturrilha") return "Use amplitude completa, pause no pico e controle a descida.";
+  if (key === "biceps") return "Mantenha cotovelos estáveis e evite balanço do tronco.";
+  if (key === "triceps") return "Fixe os cotovelos e estenda o braço sem perder controle.";
+  return "Execute com controle, amplitude segura e carga compatível.";
+}
+
+function makeExerciseFromCatalog(name, groupKey) {
+  const finalKey = groupKey || guessGroupKeyByName(name);
+  const p = defaultPrescriptionByGroup(finalKey);
+
+  return {
+    id: uid(),
+    name,
+    group: groupLabelFromKey(finalKey),
+    sets: p.sets,
+    reps: p.reps,
+    rest: p.rest,
+    method: executionTextByGroup(finalKey),
+    gif: gifPathForExercise(name),
+    source: "catalog",
+    catalogGroup: finalKey,
+  };
+}
+
+/* ---------------- ÊNFASES ---------------- */
 
 const EMPHASES = [
   {
@@ -314,6 +610,98 @@ const EMPHASES = [
   },
 ];
 
+/* ---------------- ÍCONES / GIF ---------------- */
+
+function EmphasisIcon({ type, color = ORANGE }) {
+  if (type === "gluteo") {
+    return (
+      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
+        <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M25 39c4-6 9-9 16-9s12 3 16 9" stroke={color} strokeWidth="5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "lombar") {
+    return (
+      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
+        <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+        <path d="M29 41h24" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+        <path d="M32 54h18" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "emagrecer") {
+    return (
+      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
+        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+        <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "trocar_hoje") {
+    return (
+      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
+        <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M24 51c4 8 12 13 21 11 6-1 11-5 14-10" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M59 62V52H49" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (type === "leve") {
+    return (
+      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
+        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
+      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ExerciseMedia({ ex, color }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!failed && ex.gif) {
+    return (
+      <div style={S.exerciseMedia}>
+        <img src={ex.gif} alt={ex.name} onError={() => setFailed(true)} style={S.exerciseGif} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        ...S.exerciseMedia,
+        background: `radial-gradient(circle at 70% 18%, ${color}33, transparent 36%), linear-gradient(135deg, #ffffff, #f8fafc)`,
+      }}
+    >
+      <div style={{ ...S.exerciseFallbackIcon, background: color }}>
+        {String(ex.name || "?").slice(0, 1).toUpperCase()}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- PÁGINA ---------------- */
+
 export default function MontagemTreino() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -330,6 +718,12 @@ export default function MontagemTreino() {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [openKeyword, setOpenKeyword] = useState(null);
+  const [expandedExerciseId, setExpandedExerciseId] = useState(null);
+
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState("estilos");
+  const [pickerFilter, setPickerFilter] = useState("atual");
+  const [pickerSearch, setPickerSearch] = useState("");
 
   const selected = useMemo(() => EMPHASES.find((x) => x.id === selectedId) || EMPHASES[0], [selectedId]);
   const applyWindow = useMemo(() => getApplyWindow(scope), [scope]);
@@ -338,7 +732,16 @@ export default function MontagemTreino() {
     setExercises((selected.exercises || []).map(makeEditableExercise));
     setEditingId(null);
     setOpenKeyword(null);
+    setExpandedExerciseId(null);
   }, [selectedId]);
+
+  useEffect(() => {
+    document.body.classList.add("fitdeal-hide-bottom-menu");
+
+    return () => {
+      document.body.classList.remove("fitdeal-hide-bottom-menu");
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -423,7 +826,7 @@ export default function MontagemTreino() {
 
   function handleScroll() {
     if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = window.setTimeout(selectNearestCard, 80);
+    scrollTimerRef.current = window.setTimeout(selectNearestCard, 70);
   }
 
   const isPaid = hasActiveSubscription(subscription);
@@ -505,17 +908,18 @@ export default function MontagemTreino() {
   }
 
   function addExercise() {
-    const ex = makeEditableExercise({
-      name: "Novo exercício",
-      group: "Grupo muscular",
-      sets: 3,
-      reps: "10–12",
-      rest: "60s",
-      method: "Descreva a execução.",
-    });
+    setExercisePickerOpen(true);
+    setPickerMode("estilos");
+    setPickerFilter("atual");
+    setPickerSearch("");
+  }
 
-    setExercises((prev) => [...prev, ex]);
-    setEditingId(ex.id);
+  function addExerciseFromPicker(name, groupKey) {
+    const next = makeExerciseFromCatalog(name, groupKey);
+
+    setExercises((prev) => [...prev, next]);
+    setExercisePickerOpen(false);
+    setExpandedExerciseId(next.id);
   }
 
   function removeExercise(id) {
@@ -723,7 +1127,7 @@ export default function MontagemTreino() {
             <div style={S.exerciseHead}>
               <div>
                 <div style={S.blockTitle}>Exercícios indicados</div>
-                <div style={S.blockSub}>GIF, séries, reps, descanso e execução.</div>
+                <div style={S.blockSub}>Séries, reps e descanso. Toque em “Ver execução” para abrir GIF e detalhes.</div>
               </div>
 
               <button type="button" onClick={addExercise} style={S.addBtn}>
@@ -734,11 +1138,10 @@ export default function MontagemTreino() {
             <div style={S.exerciseList}>
               {exercises.map((ex, index) => {
                 const editing = editingId === ex.id;
+                const expanded = expandedExerciseId === ex.id;
 
                 return (
                   <article key={ex.id} style={S.exerciseCard}>
-                    <ExerciseMedia ex={ex} color={selected.color} />
-
                     <div style={S.exerciseBody}>
                       <div style={S.exerciseTop}>
                         <div style={{ ...S.exerciseNumber, background: selected.color }}>{index + 1}</div>
@@ -835,7 +1238,26 @@ export default function MontagemTreino() {
                           </div>
                         </>
                       ) : (
-                        <div style={S.methodPreview}>{ex.method}</div>
+                        <>
+                          <button
+                            type="button"
+                            style={{
+                              ...S.moreBtn,
+                              borderColor: expanded ? selected.color : BORDER,
+                              color: expanded ? selected.color : TEXT,
+                            }}
+                            onClick={() => setExpandedExerciseId(expanded ? null : ex.id)}
+                          >
+                            {expanded ? "Ocultar execução" : "Ver execução"}
+                          </button>
+
+                          {expanded ? (
+                            <div style={S.moreBox}>
+                              <ExerciseMedia ex={ex} color={selected.color} />
+                              <div style={S.methodPreview}>{ex.method}</div>
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   </article>
@@ -848,27 +1270,13 @@ export default function MontagemTreino() {
         <section style={S.confirmCard}>
           <div style={S.confirmKicker}>Confirmar aplicação</div>
           <div style={S.confirmTitle}>Como você quer usar essa ênfase?</div>
-          <div style={S.confirmSub}>
-            O FitDeal salva essa montagem e abre o treino com essa configuração.
-          </div>
+          <div style={S.confirmSub}>O FitDeal salva essa montagem e abre o treino com essa configuração.</div>
 
           <div style={S.confirmGrid}>
             {[
-              {
-                id: "hoje",
-                title: "Fazer hoje",
-                sub: "Aplica só no treino atual.",
-              },
-              {
-                id: "semana",
-                title: "Usar 1 semana",
-                sub: "Mantém por 7 dias.",
-              },
-              {
-                id: "mes",
-                title: "Usar 1 mês",
-                sub: "Mantém por 30 dias.",
-              },
+              { id: "hoje", title: "Fazer hoje", sub: "Aplica só no treino atual." },
+              { id: "semana", title: "Usar 1 semana", sub: "Mantém por 7 dias." },
+              { id: "mes", title: "Usar 1 mês", sub: "Mantém por 30 dias." },
             ].map((item) => {
               const active = scope === item.id;
 
@@ -908,17 +1316,198 @@ export default function MontagemTreino() {
             {saving ? "Salvando..." : `Confirmar • ${applyWindow.label}`}
           </button>
         </section>
+
+        {exercisePickerOpen ? (
+          <ExercisePickerSheet
+            selected={selected}
+            pickerMode={pickerMode}
+            setPickerMode={setPickerMode}
+            pickerFilter={pickerFilter}
+            setPickerFilter={setPickerFilter}
+            pickerSearch={pickerSearch}
+            setPickerSearch={setPickerSearch}
+            onClose={() => setExercisePickerOpen(false)}
+            onAdd={addExerciseFromPicker}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
+
+/* ---------------- SHEET DE ADICIONAR ---------------- */
+
+function ExercisePickerSheet({
+  selected,
+  pickerMode,
+  setPickerMode,
+  pickerFilter,
+  setPickerFilter,
+  pickerSearch,
+  setPickerSearch,
+  onClose,
+  onAdd,
+}) {
+  const memberFilters = Object.keys(EXERCISE_CATALOG).map((key) => ({
+    id: key,
+    label: groupLabelFromKey(key),
+  }));
+
+  const styleFilters = Object.entries(STYLE_FILTERS).map(([id, data]) => ({
+    id,
+    label: data.label,
+  }));
+
+  const activeFilters = pickerMode === "estilos" ? styleFilters : memberFilters;
+
+  const keys = useMemo(() => {
+    if (pickerMode === "membros") return [pickerFilter];
+
+    const style = STYLE_FILTERS[pickerFilter] || STYLE_FILTERS.atual;
+    if (typeof style.getKeys === "function") return style.getKeys(selected);
+
+    return style.keys || [];
+  }, [pickerMode, pickerFilter, selected]);
+
+  const exercises = useMemo(() => {
+    const q = normalizeText(pickerSearch);
+    const rows = [];
+
+    keys.forEach((key) => {
+      const list = EXERCISE_CATALOG[key] || [];
+
+      list.forEach((name) => {
+        if (q && !normalizeText(name).includes(q)) return;
+
+        rows.push({
+          name,
+          key,
+          group: groupLabelFromKey(key),
+        });
+      });
+    });
+
+    const seen = new Set();
+
+    return rows.filter((item) => {
+      const id = `${item.key}_${item.name}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [keys, pickerSearch]);
+
+  return (
+    <div style={S.sheetOverlay}>
+      <button type="button" style={S.sheetBackdrop} onClick={onClose} aria-label="Fechar" />
+
+      <div style={S.pickerSheet}>
+        <div style={S.sheetGrab} />
+
+        <div style={S.pickerTop}>
+          <div>
+            <div style={S.pickerTitle}>Adicionar exercício</div>
+            <div style={S.pickerSub}>Escolha por estilo ou por membro. A lista mostra só o nome.</div>
+          </div>
+
+          <button type="button" style={S.sheetCloseBtn} onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div style={S.modeTabs}>
+          <button
+            type="button"
+            onClick={() => {
+              setPickerMode("estilos");
+              setPickerFilter("atual");
+            }}
+            style={{
+              ...S.modeTab,
+              ...(pickerMode === "estilos" ? S.modeTabOn : null),
+            }}
+          >
+            Estilos
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPickerMode("membros");
+              setPickerFilter("peito");
+            }}
+            style={{
+              ...S.modeTab,
+              ...(pickerMode === "membros" ? S.modeTabOn : null),
+            }}
+          >
+            Membros
+          </button>
+        </div>
+
+        <div style={S.filterRow}>
+          {activeFilters.map((item) => {
+            const active = pickerFilter === item.id;
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setPickerFilter(item.id)}
+                style={{
+                  ...S.filterChip,
+                  ...(active
+                    ? {
+                        background: selected.color,
+                        borderColor: selected.color,
+                        color: "#fff",
+                      }
+                    : null),
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <input
+          value={pickerSearch}
+          onChange={(e) => setPickerSearch(e.target.value)}
+          placeholder="Buscar exercício..."
+          style={S.searchInput}
+        />
+
+        <div style={S.exercisePickerList}>
+          {exercises.length === 0 ? (
+            <div style={S.emptyPicker}>Nenhum exercício encontrado.</div>
+          ) : (
+            exercises.map((item) => (
+              <button
+                key={`${item.key}_${item.name}`}
+                type="button"
+                style={S.exercisePickerItem}
+                onClick={() => onAdd(item.name, item.key)}
+              >
+                <span>{item.name}</span>
+                <b>{item.group}</b>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- ESTILOS ---------------- */
 
 const S = {
   page: {
     minHeight: "100vh",
     background: BG,
     padding: 14,
-    paddingBottom: 190,
+    paddingBottom: 42,
     overflowX: "hidden",
   },
 
@@ -1007,7 +1596,8 @@ const S = {
     padding: 17,
     scrollSnapAlign: "center",
     textAlign: "left",
-    transition: "transform .24s cubic-bezier(.22,1,.36,1), box-shadow .24s ease, border-color .24s ease, opacity .24s ease",
+    transition:
+      "transform .24s cubic-bezier(.22,1,.36,1), box-shadow .24s ease, border-color .24s ease, opacity .24s ease",
     display: "flex",
     flexDirection: "column",
     position: "relative",
@@ -1211,12 +1801,13 @@ const S = {
   addBtn: {
     border: "none",
     borderRadius: 999,
-    padding: "10px 12px",
+    padding: "13px 15px",
     background: BLACK,
     color: "#fff",
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 950,
     whiteSpace: "nowrap",
+    boxShadow: "0 14px 34px rgba(0,0,0,.16)",
   },
 
   exerciseList: {
@@ -1226,11 +1817,77 @@ const S = {
   },
 
   exerciseCard: {
-    borderRadius: 22,
+    borderRadius: 24,
     overflow: "hidden",
     background: "#fff",
     border: `1px solid ${BORDER}`,
     boxShadow: "0 12px 34px rgba(15,23,42,.05)",
+  },
+
+  exerciseBody: {
+    padding: 13,
+  },
+
+  exerciseTop: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
+
+  exerciseNumber: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: 980,
+    flexShrink: 0,
+  },
+
+  exerciseName: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: 980,
+    letterSpacing: -0.3,
+  },
+
+  exerciseMeta: {
+    marginTop: 5,
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 1.25,
+    fontWeight: 850,
+  },
+
+  editBtn: {
+    border: "none",
+    borderRadius: 999,
+    padding: "11px 13px",
+    fontSize: 13,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
+  moreBtn: {
+    marginTop: 12,
+    width: "100%",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "rgba(15,23,42,.035)",
+    color: TEXT,
+    padding: "12px 12px",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+
+  moreBox: {
+    marginTop: 10,
+    borderRadius: 20,
+    overflow: "hidden",
+    border: `1px solid ${BORDER}`,
+    background: "#fff",
   },
 
   exerciseMedia: {
@@ -1260,57 +1917,12 @@ const S = {
     boxShadow: "0 16px 38px rgba(15,23,42,.12)",
   },
 
-  exerciseBody: {
-    padding: 12,
-  },
-
-  exerciseTop: {
-    display: "flex",
-    gap: 10,
-    alignItems: "flex-start",
-  },
-
-  exerciseNumber: {
-    width: 38,
-    height: 38,
-    borderRadius: 15,
-    display: "grid",
-    placeItems: "center",
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: 980,
-    flexShrink: 0,
-  },
-
-  exerciseName: {
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: 980,
-    letterSpacing: -0.3,
-  },
-
-  exerciseMeta: {
-    marginTop: 5,
-    color: MUTED,
-    fontSize: 12,
-    fontWeight: 830,
-  },
-
-  editBtn: {
-    border: "none",
-    borderRadius: 999,
-    padding: "9px 11px",
-    fontSize: 12,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-  },
-
   nameInput: {
     width: "100%",
     border: "none",
     background: "transparent",
     color: TEXT,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 980,
     letterSpacing: -0.3,
     outline: "none",
@@ -1322,7 +1934,7 @@ const S = {
     border: "none",
     background: "transparent",
     color: MUTED,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 850,
     outline: "none",
   },
@@ -1407,15 +2019,15 @@ const S = {
   },
 
   methodPreview: {
-    marginTop: 10,
+    margin: 10,
     borderRadius: 16,
-    padding: 10,
+    padding: 11,
     background: "rgba(15,23,42,.035)",
     border: `1px solid ${BORDER}`,
     color: MUTED,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 1.35,
-    fontWeight: 780,
+    fontWeight: 800,
   },
 
   confirmCard: {
@@ -1518,6 +2130,174 @@ const S = {
     fontWeight: 980,
     boxShadow: "0 16px 42px rgba(255,106,0,.24)",
   },
+
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 20000,
+    display: "grid",
+    alignItems: "end",
+    padding: 12,
+    paddingBottom: "calc(18px + env(safe-area-inset-bottom))",
+  },
+
+  sheetBackdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(2,6,23,.34)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+  },
+
+  pickerSheet: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 520,
+    maxHeight: "82vh",
+    margin: "0 auto",
+    borderRadius: 30,
+    padding: 14,
+    background: "rgba(255,255,255,.96)",
+    border: "1px solid rgba(255,255,255,.60)",
+    boxShadow: "0 30px 90px rgba(15,23,42,.24)",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  sheetGrab: {
+    width: 46,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(100,116,139,.24)",
+    margin: "0 auto 12px",
+  },
+
+  pickerTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+
+  pickerTitle: {
+    color: TEXT,
+    fontSize: 21,
+    lineHeight: 1,
+    fontWeight: 980,
+    letterSpacing: -0.7,
+  },
+
+  pickerSub: {
+    marginTop: 7,
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 1.35,
+    fontWeight: 800,
+  },
+
+  sheetCloseBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(15,23,42,.04)",
+    color: TEXT,
+    fontSize: 22,
+    fontWeight: 950,
+  },
+
+  modeTabs: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 8,
+    padding: 5,
+    borderRadius: 18,
+    background: "rgba(15,23,42,.04)",
+  },
+
+  modeTab: {
+    border: "none",
+    borderRadius: 14,
+    background: "transparent",
+    color: MUTED,
+    padding: 11,
+    fontSize: 13,
+    fontWeight: 950,
+  },
+
+  modeTabOn: {
+    background: "#fff",
+    color: TEXT,
+    boxShadow: "0 8px 22px rgba(15,23,42,.08)",
+  },
+
+  filterRow: {
+    marginTop: 12,
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    paddingBottom: 4,
+  },
+
+  filterChip: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 999,
+    background: "#fff",
+    color: TEXT,
+    padding: "9px 11px",
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
+  searchInput: {
+    marginTop: 10,
+    width: "100%",
+    boxSizing: "border-box",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "#fff",
+    color: TEXT,
+    padding: "13px 13px",
+    fontSize: 14,
+    fontWeight: 850,
+    outline: "none",
+  },
+
+  exercisePickerList: {
+    marginTop: 12,
+    overflowY: "auto",
+    display: "grid",
+    gap: 8,
+    paddingBottom: 8,
+  },
+
+  exercisePickerItem: {
+    width: "100%",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 17,
+    background: "#fff",
+    color: TEXT,
+    padding: "13px 12px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    textAlign: "left",
+  },
+
+  emptyPicker: {
+    borderRadius: 18,
+    background: "rgba(15,23,42,.04)",
+    border: `1px solid ${BORDER}`,
+    padding: 14,
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: 850,
+  },
 };
 
 if (typeof document !== "undefined") {
@@ -1528,6 +2308,11 @@ if (typeof document !== "undefined") {
     style.innerHTML = `
       .montagem-card-press:active {
         transform: scale(.985) !important;
+      }
+
+      body.fitdeal-hide-bottom-menu nav:has(.fitdeal-bottom-item),
+      body.fitdeal-hide-bottom-menu div:has(> nav .fitdeal-bottom-item) {
+        display: none !important;
       }
 
       button {
