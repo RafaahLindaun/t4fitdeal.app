@@ -91,7 +91,7 @@ function getApplyWindow(scope) {
 function EmphasisIcon({ type, color = ORANGE }) {
   if (type === "gluteo") {
     return (
-      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="132" height="132" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
         <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
@@ -102,7 +102,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "lombar") {
     return (
-      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="132" height="132" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
         <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -114,7 +114,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "emagrecer") {
     return (
-      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="132" height="132" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
         <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
         <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -124,7 +124,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "trocar_hoje") {
     return (
-      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="132" height="132" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
         <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
@@ -136,7 +136,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "leve") {
     return (
-      <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="132" height="132" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
         <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
       </svg>
@@ -144,7 +144,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
   }
 
   return (
-    <svg width="78" height="78" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+    <svg width="132" height="132" viewBox="0 0 82 82" fill="none" aria-hidden="true">
       <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
       <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
     </svg>
@@ -175,7 +175,7 @@ const EMPHASES = [
     subtitle: "Ativação e posterior",
     color: "#FF6A00",
     soft: "rgba(255,106,0,.12)",
-    bg: "radial-gradient(circle at 80% 10%, rgba(255,106,0,.28), rgba(255,106,0,0) 34%), linear-gradient(135deg, #FFF7ED, #FFFFFF)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,106,0,.36), rgba(255,106,0,0) 36%), linear-gradient(145deg, #FFF7ED, #FFFFFF)",
     guideTitle: "Para que serve",
     guideText: "Use quando quiser sentir mais glúteo no treino sem desmontar seu plano. A prioridade é pausa, quadril e controle.",
     keywords: ["pausa no topo", "quadril", "amplitude", "controle"],
@@ -195,7 +195,7 @@ const EMPHASES = [
     subtitle: "Controle e postura",
     color: "#34C759",
     soft: "rgba(52,199,89,.13)",
-    bg: "radial-gradient(circle at 80% 10%, rgba(52,199,89,.25), rgba(52,199,89,0) 34%), linear-gradient(135deg, #F0FDF4, #FFFFFF)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(52,199,89,.32), rgba(52,199,89,0) 36%), linear-gradient(145deg, #F0FDF4, #FFFFFF)",
     guideTitle: "Quando usar",
     guideText: "Use quando quiser um treino mais seguro para lombar, com core, postura e menos agressão. Dor forte ou irradiando precisa avaliação profissional.",
     keywords: ["coluna neutra", "core", "controle", "sem dor"],
@@ -215,7 +215,7 @@ const EMPHASES = [
     subtitle: "Treino + cardio",
     color: "#0A84FF",
     soft: "rgba(10,132,255,.13)",
-    bg: "radial-gradient(circle at 80% 10%, rgba(10,132,255,.25), rgba(10,132,255,0) 34%), linear-gradient(135deg, #EFF6FF, #FFFFFF)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(10,132,255,.32), rgba(10,132,255,0) 36%), linear-gradient(145deg, #EFF6FF, #FFFFFF)",
     guideTitle: "Como funciona",
     guideText: "Combina musculação com cardio progressivo. O objetivo é constância, gasto calórico e treino sustentável.",
     keywords: ["cardio", "constância", "gasto calórico", "ritmo"],
@@ -241,7 +241,7 @@ const EMPHASES = [
     subtitle: "Sem bagunçar o plano",
     color: "#AF52DE",
     soft: "rgba(175,82,222,.13)",
-    bg: "radial-gradient(circle at 80% 10%, rgba(175,82,222,.24), rgba(175,82,222,0) 34%), linear-gradient(135deg, #FAF5FF, #FFFFFF)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(175,82,222,.32), rgba(175,82,222,0) 36%), linear-gradient(145deg, #FAF5FF, #FFFFFF)",
     guideTitle: "Troca inteligente",
     guideText: "Use quando estiver sem tempo, cansado ou sem aparelho. Mantém a estrutura da semana sem travar seu treino.",
     keywords: ["troca rápida", "sem bagunçar", "adaptação", "praticidade"],
@@ -261,7 +261,7 @@ const EMPHASES = [
     subtitle: "Recuperar ritmo",
     color: "#64D2FF",
     soft: "rgba(100,210,255,.15)",
-    bg: "radial-gradient(circle at 80% 10%, rgba(100,210,255,.28), rgba(100,210,255,0) 34%), linear-gradient(135deg, #F0FDFF, #FFFFFF)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(100,210,255,.34), rgba(100,210,255,0) 36%), linear-gradient(145deg, #F0FDFF, #FFFFFF)",
     guideTitle: "Leve, mas útil",
     guideText: "Melhor fazer um treino leve bem feito do que faltar. Reduza carga e mantenha controle.",
     keywords: ["controle", "leve", "recuperação", "constância"],
@@ -281,7 +281,7 @@ const EMPHASES = [
     subtitle: "Carga e progressão",
     color: "#FF375F",
     soft: "rgba(255,55,95,.13)",
-    bg: "radial-gradient(circle at 80% 10%, rgba(255,55,95,.24), rgba(255,55,95,0) 34%), linear-gradient(135deg, #FFF1F2, #FFFFFF)",
+    bg: "radial-gradient(circle at 72% 15%, rgba(255,55,95,.34), rgba(255,55,95,0) 36%), linear-gradient(145deg, #FFF1F2, #FFFFFF)",
     guideTitle: "Forte sem bagunçar",
     guideText: "Mais carga, técnica e descanso. Treino forte não é fazer tudo até falhar.",
     keywords: ["carga", "progressão", "descanso", "técnica"],
@@ -574,52 +574,47 @@ export default function MontagemTreino() {
   return (
     <div style={S.page}>
       <div style={S.wrap}>
-        <section style={S.bookHero}>
+        <section style={S.topBar}>
           <button type="button" style={S.backBtn} onClick={() => nav("/treino")}>
             ←
           </button>
 
-          <div style={S.bookBody}>
+          <div style={S.topText}>
             <h1 style={S.title}>Vamos alterar seu foco hoje</h1>
-            <p style={S.sub}>Escolha uma ênfase e monte um treino mais fácil de seguir.</p>
-
-            <div style={S.statusGrid}>
-              <div style={S.statusChip}>
-                <span>Hoje</span>
-                <b>{todayLabel()}</b>
-              </div>
-
-              <div style={S.statusChip}>
-                <span>Objetivo</span>
-                <b>{loading ? "..." : profile?.objetivo || "Automático"}</b>
-              </div>
-
-              <div style={S.statusChip}>
-                <span>Plano</span>
-                <b>{isPaid ? planKey || "Ativo" : "Livre"}</b>
-              </div>
-            </div>
+            <p style={S.sub}>Passe para o lado e escolha uma ênfase.</p>
           </div>
         </section>
 
-        <section style={S.emphasisShelf}>
-          <div style={S.shelfHead}>
-            <div>
-              <div style={S.shelfTitle}>Ênfases</div>
-              <div style={S.shelfSub}>Escolha o foco do treino.</div>
-            </div>
+        <section style={S.statusRow}>
+          <div style={S.statusChip}>
+            <span>Hoje</span>
+            <b>{todayLabel()}</b>
+          </div>
 
-            <button
-              type="button"
-              style={{ ...S.openSelectedBtn, background: selected.color }}
-              onClick={() => setExpanded(true)}
-            >
+          <div style={S.statusChip}>
+            <span>Objetivo</span>
+            <b>{loading ? "..." : profile?.objetivo || "Automático"}</b>
+          </div>
+
+          <div style={S.statusChip}>
+            <span>Plano</span>
+            <b>{isPaid ? planKey || "Ativo" : "Livre"}</b>
+          </div>
+        </section>
+
+        <section style={S.deckSection}>
+          <div style={S.deckHead}>
+            <div>
+              <div style={S.deckTitle}>Ênfases</div>
+              <div style={S.deckSub}>Cards grandes, passe para o lado.</div>
+            </div>
+            <button type="button" style={{ ...S.openSelectedBtn, background: selected.color }} onClick={() => setExpanded(true)}>
               Abrir
             </button>
           </div>
 
-          <div style={S.bookScroller}>
-            {EMPHASES.map((item) => {
+          <div style={S.deckScroller}>
+            {EMPHASES.map((item, index) => {
               const active = item.id === selectedId;
 
               return (
@@ -628,42 +623,67 @@ export default function MontagemTreino() {
                   type="button"
                   onClick={() => selectEmphasis(item.id)}
                   style={{
-                    ...S.bookCard,
+                    ...S.bigCard,
                     background: item.bg,
                     borderColor: active ? item.color : "rgba(15,23,42,.08)",
-                    boxShadow: active ? `0 24px 60px ${item.soft}` : "0 16px 44px rgba(15,23,42,.07)",
-                    transform: active ? "translateY(-2px)" : "translateY(0)",
+                    boxShadow: active
+                      ? `0 34px 90px ${item.soft}, 0 18px 50px rgba(15,23,42,.10)`
+                      : "0 20px 50px rgba(15,23,42,.08)",
+                    transform: active
+                      ? "perspective(900px) rotateY(0deg) translateY(-2px) scale(1)"
+                      : index % 2 === 0
+                        ? "perspective(900px) rotateY(-5deg) scale(.965)"
+                        : "perspective(900px) rotateY(5deg) scale(.965)",
                   }}
                 >
-                  <div style={S.bookTop}>
-                    <span>{item.chapter}</span>
+                  <div style={S.bigCardTop}>
+                    <span>Ênfase {item.chapter}</span>
                     <i style={{ background: item.color }} />
                   </div>
 
-                  <div style={S.iconCenter}>
+                  <div style={S.bigIconArea}>
                     <EmphasisIcon type={item.id} color={item.color} />
                   </div>
 
-                  <div style={S.bookTitle}>{item.title}</div>
-                  <div style={S.bookSub}>{item.subtitle}</div>
+                  <div style={S.bigCardBottom}>
+                    <div style={S.bigCardTitle}>{item.fullTitle}</div>
+                    <div style={S.bigCardSub}>{item.subtitle}</div>
+
+                    <div style={S.bigInfoGrid}>
+                      <div>
+                        <span>Exercícios</span>
+                        <b>{item.exercises.length}</b>
+                      </div>
+                      <div>
+                        <span>Aplicação</span>
+                        <b>Hoje/Sem/Mês</b>
+                      </div>
+                      <div>
+                        <span>Edição</span>
+                        <b>Completa</b>
+                      </div>
+                    </div>
+
+                    <div style={S.bigKeywords}>
+                      {item.keywords.slice(0, 3).map((word) => (
+                        <span key={word}>{word}</span>
+                      ))}
+                    </div>
+                  </div>
                 </button>
               );
             })}
           </div>
 
           {!expanded ? (
-            <div style={S.selectedPreview}>
+            <div style={S.quickSelected}>
               <div>
                 <b>{selected.fullTitle}</b>
-                <span>{selected.subtitle}</span>
+                <span>{selected.guideText}</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setExpanded(true)}
-                style={{ ...S.previewBtn, background: selected.color }}
-              >
-                Ver treino
+              <button type="button" onClick={() => setExpanded(true)} style={{ ...S.previewBtn, background: selected.color }}>
+                Abrir detalhes
               </button>
             </div>
           ) : null}
@@ -741,7 +761,7 @@ export default function MontagemTreino() {
               </div>
 
               <div style={S.panelStack}>
-                {panelButton("guide", "Guia rápido", "Entenda como usar")}
+                {panelButton("guide", "Guia rápido", "Informações básicas e palavras-chave")}
                 {openInfo === "guide" ? (
                   <div style={S.panelContent}>
                     <div style={S.guideTitle}>{selected.guideTitle}</div>
@@ -795,13 +815,13 @@ export default function MontagemTreino() {
                   </>
                 ) : null}
 
-                {panelButton("exercises", "Exercícios indicados", "Com imagem e edição")}
+                {panelButton("exercises", "Exercícios indicados", "Com imagem e edição avançada")}
                 {openInfo === "exercises" ? (
                   <div style={S.panelContent}>
                     <div style={S.exerciseHead}>
                       <div>
                         <b>{exercises.length} exercícios</b>
-                        <span>Toque em editar para mexer em séries, reps, descanso e execução.</span>
+                        <span>Edição escondida: séries, reps, descanso e execução.</span>
                       </div>
 
                       <button type="button" onClick={addExercise} style={S.addBtn}>
@@ -953,7 +973,8 @@ const S = {
     minHeight: "100vh",
     background: BG,
     padding: 14,
-    paddingBottom: 180,
+    paddingBottom: 190,
+    overflowX: "hidden",
   },
 
   wrap: {
@@ -961,7 +982,7 @@ const S = {
     margin: "0 auto",
   },
 
-  bookHero: {
+  topBar: {
     display: "flex",
     gap: 12,
     alignItems: "flex-start",
@@ -987,7 +1008,7 @@ const S = {
     placeItems: "center",
   },
 
-  bookBody: {
+  topText: {
     minWidth: 0,
     flex: 1,
     paddingTop: 2,
@@ -996,10 +1017,10 @@ const S = {
   title: {
     margin: 0,
     color: TEXT,
-    fontSize: 28,
+    fontSize: 29,
     lineHeight: 0.98,
     fontWeight: 980,
-    letterSpacing: -1.15,
+    letterSpacing: -1.2,
   },
 
   sub: {
@@ -1007,127 +1028,153 @@ const S = {
     color: MUTED,
     fontSize: 14,
     lineHeight: 1.38,
-    fontWeight: 780,
+    fontWeight: 800,
   },
 
-  statusGrid: {
-    marginTop: 13,
+  statusRow: {
+    marginTop: 12,
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 7,
+    gap: 8,
   },
 
   statusChip: {
     minWidth: 0,
-    borderRadius: 17,
-    background: "rgba(255,255,255,.78)",
+    borderRadius: 18,
+    background: "#fff",
     border: `1px solid ${BORDER}`,
-    padding: "8px 9px",
+    padding: "9px 10px",
     display: "grid",
     gap: 4,
+    boxShadow: "0 10px 30px rgba(15,23,42,.04)",
   },
 
-  emphasisShelf: {
+  deckSection: {
     marginTop: 14,
-    borderRadius: 25,
+    borderRadius: 28,
     padding: 14,
     background: "#fff",
     border: `1px solid ${BORDER}`,
-    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
+    boxShadow: "0 18px 55px rgba(15,23,42,.07)",
     overflow: "hidden",
   },
 
-  shelfHead: {
+  deckHead: {
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     alignItems: "center",
   },
 
-  shelfTitle: {
+  deckTitle: {
     color: TEXT,
-    fontSize: 22,
+    fontSize: 24,
     lineHeight: 1,
     fontWeight: 980,
-    letterSpacing: -0.75,
+    letterSpacing: -0.9,
   },
 
-  shelfSub: {
+  deckSub: {
     marginTop: 6,
     color: MUTED,
     fontSize: 13,
-    fontWeight: 800,
+    fontWeight: 820,
   },
 
   openSelectedBtn: {
     border: "none",
     borderRadius: 999,
     color: "#fff",
-    padding: "12px 16px",
+    padding: "12px 17px",
     fontSize: 14,
     fontWeight: 950,
-    boxShadow: "0 12px 30px rgba(15,23,42,.10)",
+    boxShadow: "0 12px 30px rgba(15,23,42,.12)",
   },
 
-  bookScroller: {
-    marginTop: 14,
+  deckScroller: {
+    marginTop: 16,
     display: "flex",
-    gap: 12,
+    gap: 18,
     overflowX: "auto",
     scrollSnapType: "x mandatory",
-    padding: "2px 2px 12px",
+    padding: "6px 4px 24px",
+    WebkitOverflowScrolling: "touch",
+    perspective: 900,
   },
 
-  bookCard: {
-    minWidth: 194,
-    height: 236,
-    borderRadius: 26,
+  bigCard: {
+    minWidth: "86%",
+    height: 500,
+    borderRadius: 34,
     border: `1px solid ${BORDER}`,
-    padding: 13,
+    padding: 18,
     scrollSnapAlign: "center",
     textAlign: "left",
-    transition: "transform .16s ease, box-shadow .16s ease, border-color .16s ease",
+    transition: "transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s ease, border-color .22s ease",
     display: "flex",
     flexDirection: "column",
+    position: "relative",
+    overflow: "hidden",
   },
 
-  bookTop: {
+  bigCardTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     color: MUTED,
     fontSize: 12,
     fontWeight: 950,
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
 
-  iconCenter: {
+  bigIconArea: {
     flex: 1,
+    minHeight: 150,
     display: "grid",
     placeItems: "center",
   },
 
-  bookTitle: {
+  bigCardBottom: {
+    marginTop: "auto",
+  },
+
+  bigCardTitle: {
     color: TEXT,
-    fontSize: 23,
-    lineHeight: 1,
+    fontSize: 34,
+    lineHeight: 0.95,
     fontWeight: 980,
-    letterSpacing: -0.85,
+    letterSpacing: -1.4,
   },
 
-  bookSub: {
-    marginTop: 7,
+  bigCardSub: {
+    marginTop: 9,
     color: MUTED,
-    fontSize: 13,
-    lineHeight: 1.28,
-    fontWeight: 830,
+    fontSize: 16,
+    lineHeight: 1.25,
+    fontWeight: 850,
   },
 
-  selectedPreview: {
-    marginTop: 1,
-    borderRadius: 21,
+  bigInfoGrid: {
+    marginTop: 18,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 9,
+  },
+
+  bigKeywords: {
+    marginTop: 14,
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  quickSelected: {
+    marginTop: 0,
+    borderRadius: 22,
     background: "rgba(15,23,42,.035)",
     border: `1px solid ${BORDER}`,
-    padding: 12,
+    padding: 13,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -1138,7 +1185,7 @@ const S = {
     border: "none",
     borderRadius: 999,
     color: "#fff",
-    padding: "11px 14px",
+    padding: "12px 15px",
     fontSize: 13,
     fontWeight: 950,
     whiteSpace: "nowrap",
@@ -1168,6 +1215,7 @@ const S = {
     display: "grid",
     placeItems: "center",
     flexShrink: 0,
+    overflow: "hidden",
   },
 
   detailKicker: {
