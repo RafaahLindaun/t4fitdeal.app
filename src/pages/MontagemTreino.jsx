@@ -54,20 +54,161 @@ function numberFrom(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-const INTENTS = [
+function makeEditableExercise(ex) {
+  return {
+    id: uid(),
+    name: ex.name || "",
+    group: ex.group || "",
+    sets: ex.sets ?? 3,
+    reps: ex.reps || "10–12",
+    rest: ex.rest || "60s",
+    method: ex.method || "",
+  };
+}
+
+/* ---------- ÍCONES SVG GRANDES ---------- */
+function ModuleIcon({ type, color = ORANGE }) {
+  if (type === "gluteo") {
+    return (
+      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path
+          d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z"
+          fill={color}
+          opacity="0.16"
+        />
+        <path
+          d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M25 39c4-6 9-9 16-9s12 3 16 9"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (type === "lombar") {
+    return (
+      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path
+          d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z"
+          fill={color}
+          opacity="0.14"
+        />
+        <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+        <path d="M29 41h24" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+        <path d="M32 54h18" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "emagrecer") {
+    return (
+      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path
+          d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z"
+          fill={color}
+          opacity="0.16"
+        />
+        <path
+          d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M41 58c6-3 9-8 9-14"
+          stroke={color}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (type === "trocar_hoje") {
+    return (
+      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
+        <path
+          d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+        <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M24 51c4 8 12 13 21 11 6-1 11-5 14-10"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+        <path d="M59 62V52H49" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (type === "leve") {
+    return (
+      <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+        <path
+          d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z"
+          fill={color}
+          opacity="0.16"
+        />
+        <path
+          d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <path
+        d="M43 8 18 45h21l-4 29 29-40H43l7-26Z"
+        fill={color}
+        opacity="0.16"
+      />
+      <path
+        d="M43 8 18 45h21l-4 29 29-40H43l7-26Z"
+        stroke={color}
+        strokeWidth="5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+const MODULES = [
   {
     id: "gluteo",
     chapter: "01",
-    title: "Glúteo hoje",
-    short: "Glúteo",
-    subtitle: "Mais ativação, posterior e controle.",
+    title: "Glúteo",
+    fullTitle: "Glúteo hoje",
+    subtitle: "Ativação e posterior",
     color: "#FF6A00",
     soft: "rgba(255,106,0,.12)",
-    gradient:
-      "radial-gradient(circle at 85% 8%, rgba(255,106,0,.40), rgba(255,106,0,0) 32%), linear-gradient(135deg, #FFF7ED, #FFFFFF)",
-    guideTitle: "Guia rápido para glúteo",
+    bg:
+      "radial-gradient(circle at 80% 10%, rgba(255,106,0,.28), rgba(255,106,0,0) 34%), linear-gradient(135deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Como usar esse módulo",
     guideText:
-      "Use controle, pausa no topo e amplitude segura. A ideia é sentir o glúteo trabalhando sem jogar tudo para lombar.",
+      "Ideal para dar foco no glúteo sem bagunçar o plano todo. Use controle, pausa no topo e amplitude segura.",
     keywords: ["pausa no topo", "quadril", "amplitude", "controle"],
     exercises: [
       {
@@ -115,16 +256,16 @@ const INTENTS = [
   {
     id: "lombar",
     chapter: "02",
-    title: "Dor na lombar",
-    short: "Lombar",
-    subtitle: "Treino mais seguro, core e postura.",
+    title: "Lombar",
+    fullTitle: "Dor na lombar",
+    subtitle: "Controle e postura",
     color: "#34C759",
     soft: "rgba(52,199,89,.13)",
-    gradient:
-      "radial-gradient(circle at 86% 8%, rgba(52,199,89,.32), rgba(52,199,89,0) 32%), linear-gradient(135deg, #F0FDF4, #FFFFFF)",
-    guideTitle: "Guia rápido para lombar",
+    bg:
+      "radial-gradient(circle at 80% 10%, rgba(52,199,89,.25), rgba(52,199,89,0) 34%), linear-gradient(135deg, #F0FDF4, #FFFFFF)",
+    guideTitle: "Treino mais seguro para lombar",
     guideText:
-      "A proposta aqui é reduzir agressão, fortalecer core e priorizar coluna neutra. Dor forte ou aguda precisa de avaliação profissional.",
+      "A ideia é fortalecer core e postura, reduzindo movimentos agressivos. Dor forte, aguda ou irradiando precisa de avaliação profissional.",
     keywords: ["coluna neutra", "core", "controle", "sem dor"],
     exercises: [
       {
@@ -172,16 +313,16 @@ const INTENTS = [
   {
     id: "emagrecer",
     chapter: "03",
-    title: "Emagrecer em dias",
-    short: "Emagrecer",
-    subtitle: "Musculação + cardio com plano simples.",
+    title: "Emagrecer",
+    fullTitle: "Emagrecer em dias",
+    subtitle: "Treino + cardio",
     color: "#0A84FF",
     soft: "rgba(10,132,255,.13)",
-    gradient:
-      "radial-gradient(circle at 86% 8%, rgba(10,132,255,.32), rgba(10,132,255,0) 32%), linear-gradient(135deg, #EFF6FF, #FFFFFF)",
-    guideTitle: "Guia rápido para emagrecer",
+    bg:
+      "radial-gradient(circle at 80% 10%, rgba(10,132,255,.25), rgba(10,132,255,0) 34%), linear-gradient(135deg, #EFF6FF, #FFFFFF)",
+    guideTitle: "Plano simples para emagrecer",
     guideText:
-      "O segredo é constância. A montagem combina treino com ritmo controlado e um plano de cardio puxadinho, mas sustentável.",
+      "Combina musculação com cardio progressivo. O objetivo é consistência, não sofrimento. Você pode ajustar os dias abaixo.",
     keywords: ["cardio", "constância", "gasto calórico", "ritmo"],
     exercises: [
       {
@@ -235,16 +376,16 @@ const INTENTS = [
   {
     id: "trocar_hoje",
     chapter: "04",
-    title: "Trocar treino de hoje",
-    short: "Trocar hoje",
-    subtitle: "Muda o dia sem bagunçar seu plano.",
+    title: "Trocar hoje",
+    fullTitle: "Trocar treino de hoje",
+    subtitle: "Sem bagunçar o plano",
     color: "#AF52DE",
     soft: "rgba(175,82,222,.13)",
-    gradient:
-      "radial-gradient(circle at 86% 8%, rgba(175,82,222,.30), rgba(175,82,222,0) 32%), linear-gradient(135deg, #FAF5FF, #FFFFFF)",
-    guideTitle: "Guia para trocar sem perder o plano",
+    bg:
+      "radial-gradient(circle at 80% 10%, rgba(175,82,222,.24), rgba(175,82,222,0) 34%), linear-gradient(135deg, #FAF5FF, #FFFFFF)",
+    guideTitle: "Troque só o necessário",
     guideText:
-      "Essa opção troca o estímulo do dia, mas mantém uma estrutura organizada para você não abandonar o treino por estar cansado ou sem tempo.",
+      "Use quando está cansado, sem tempo ou sem aparelho. Mantém estrutura sem destruir a semana.",
     keywords: ["troca rápida", "sem bagunçar", "adaptação", "praticidade"],
     exercises: [
       {
@@ -292,16 +433,16 @@ const INTENTS = [
   {
     id: "leve",
     chapter: "05",
-    title: "Treino leve",
-    short: "Leve",
-    subtitle: "Dia cansado, recuperação ou volta ao ritmo.",
+    title: "Leve",
+    fullTitle: "Treino leve",
+    subtitle: "Recuperar ritmo",
     color: "#64D2FF",
     soft: "rgba(100,210,255,.15)",
-    gradient:
-      "radial-gradient(circle at 86% 8%, rgba(100,210,255,.35), rgba(100,210,255,0) 32%), linear-gradient(135deg, #F0FDFF, #FFFFFF)",
-    guideTitle: "Guia para treino leve",
+    bg:
+      "radial-gradient(circle at 80% 10%, rgba(100,210,255,.28), rgba(100,210,255,0) 34%), linear-gradient(135deg, #F0FDFF, #FFFFFF)",
+    guideTitle: "Leve, mas útil",
     guideText:
-      "Melhor fazer um treino leve bem feito do que faltar. Use menos carga, mais controle e saia melhor do que entrou.",
+      "Melhor fazer um treino leve bem feito do que faltar. Use menos carga e foque em controle.",
     keywords: ["controle", "leve", "recuperação", "constância"],
     exercises: [
       {
@@ -349,16 +490,16 @@ const INTENTS = [
   {
     id: "forte",
     chapter: "06",
-    title: "Treino forte",
-    short: "Forte",
-    subtitle: "Mais carga, foco e progressão.",
+    title: "Forte",
+    fullTitle: "Treino forte",
+    subtitle: "Carga e progressão",
     color: "#FF375F",
     soft: "rgba(255,55,95,.13)",
-    gradient:
-      "radial-gradient(circle at 86% 8%, rgba(255,55,95,.32), rgba(255,55,95,0) 32%), linear-gradient(135deg, #FFF1F2, #FFFFFF)",
-    guideTitle: "Guia para treino forte",
+    bg:
+      "radial-gradient(circle at 80% 10%, rgba(255,55,95,.24), rgba(255,55,95,0) 34%), linear-gradient(135deg, #FFF1F2, #FFFFFF)",
+    guideTitle: "Forte sem bagunçar",
     guideText:
-      "Treino forte não é bagunçado. Use boa técnica, descanso correto e progressão real de carga.",
+      "Treino forte precisa de técnica e descanso. Não é sobre fazer tudo até falhar.",
     keywords: ["carga", "progressão", "descanso", "técnica"],
     exercises: [
       {
@@ -405,40 +546,33 @@ const INTENTS = [
   },
 ];
 
-function makeEditableExercise(ex) {
-  return {
-    id: uid(),
-    name: ex.name || "",
-    group: ex.group || "",
-    sets: ex.sets ?? 3,
-    reps: ex.reps || "10–12",
-    rest: ex.rest || "60s",
-    method: ex.method || "",
-  };
-}
-
 export default function MontagemTreino() {
   const nav = useNavigate();
   const { user } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [subscription, setSubscription] = useState(null);
-  const [selectedIntentId, setSelectedIntentId] = useState("gluteo");
+  const [selectedModuleId, setSelectedModuleId] = useState("gluteo");
+  const [exploring, setExploring] = useState(false);
+  const [openPanel, setOpenPanel] = useState("guide");
   const [duration, setDuration] = useState("hoje");
   const [targetDays, setTargetDays] = useState("30");
   const [exercises, setExercises] = useState([]);
+  const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [openKeyword, setOpenKeyword] = useState(null);
 
-  const selectedIntent = useMemo(() => {
-    return INTENTS.find((item) => item.id === selectedIntentId) || INTENTS[0];
-  }, [selectedIntentId]);
+  const selectedModule = useMemo(() => {
+    return MODULES.find((item) => item.id === selectedModuleId) || MODULES[0];
+  }, [selectedModuleId]);
 
   useEffect(() => {
-    setExercises((selectedIntent.exercises || []).map(makeEditableExercise));
+    setExercises((selectedModule.exercises || []).map(makeEditableExercise));
+    setEditingId(null);
     setOpenKeyword(null);
-  }, [selectedIntentId]);
+    setOpenPanel("guide");
+  }, [selectedModuleId]);
 
   useEffect(() => {
     let alive = true;
@@ -453,12 +587,7 @@ export default function MontagemTreino() {
 
       try {
         const [profileRes, subRes] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .maybeSingle(),
-
+          supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
           supabase
             .from("user_subscriptions")
             .select("*")
@@ -470,13 +599,8 @@ export default function MontagemTreino() {
 
         if (!alive) return;
 
-        if (profileRes.error) {
-          console.error("MontagemTreino profile error:", profileRes.error);
-        }
-
-        if (subRes.error) {
-          console.error("MontagemTreino subscription error:", subRes.error);
-        }
+        if (profileRes.error) console.error("MontagemTreino profile error:", profileRes.error);
+        if (subRes.error) console.error("MontagemTreino subscription error:", subRes.error);
 
         setProfile(profileRes.data || null);
         setSubscription(subRes.data || null);
@@ -498,24 +622,24 @@ export default function MontagemTreino() {
     const objetivo = normalizeText(profile?.objetivo);
 
     if (objetivo.includes("emagrec") || objetivo.includes("perda")) {
-      setSelectedIntentId("emagrecer");
+      setSelectedModuleId("emagrecer");
       return;
     }
 
     if (objetivo.includes("forca") || objetivo.includes("performance")) {
-      setSelectedIntentId("forte");
+      setSelectedModuleId("forte");
       return;
     }
 
     if (objetivo.includes("glute")) {
-      setSelectedIntentId("gluteo");
+      setSelectedModuleId("gluteo");
     }
   }, [profile?.objetivo]);
 
   const isPaid = hasActiveSubscription(subscription);
   const planKey = normalizePlanKey(subscription);
 
-  const guideKeywordText = useMemo(() => {
+  const keywordHelp = useMemo(() => {
     if (!openKeyword) return null;
 
     const map = {
@@ -528,7 +652,7 @@ export default function MontagemTreino() {
       "sem dor": "Dor forte, pontada ou irradiação não deve ser ignorada. Reduza carga ou pare.",
       cardio: "Use cardio como ferramenta de constância, não punição.",
       constância: "Resultado vem da repetição semanal, não de um treino perfeito isolado.",
-      "gasto calórico": "Musculação + cardio + alimentação bem organizada melhoram o déficit calórico.",
+      "gasto calórico": "Musculação + cardio + alimentação organizada melhoram o déficit calórico.",
       ritmo: "Descanse o suficiente para continuar bem, mas evite pausas longas demais.",
       "troca rápida": "Troque o treino do dia sem perder a lógica da semana.",
       "sem bagunçar": "A montagem altera o treino atual, mas mantém estrutura, volume e foco.",
@@ -548,18 +672,18 @@ export default function MontagemTreino() {
   const payload = useMemo(() => {
     return {
       source: "montagem",
-      intent: selectedIntent.id,
+      intent: selectedModule.id,
       duration,
-      targetDays: selectedIntent.id === "emagrecer" ? Number(targetDays || 30) : null,
-      focusId: selectedIntent.id,
-      focusTitle: selectedIntent.title,
-      focusSubtitle: selectedIntent.subtitle,
+      targetDays: selectedModule.id === "emagrecer" ? Number(targetDays || 30) : null,
+      focusId: selectedModule.id,
+      focusTitle: selectedModule.fullTitle,
+      focusSubtitle: selectedModule.subtitle,
       guide: {
-        chapter: selectedIntent.chapter,
-        title: selectedIntent.guideTitle,
-        text: selectedIntent.guideText,
-        keywords: selectedIntent.keywords,
-        color: selectedIntent.color,
+        chapter: selectedModule.chapter,
+        title: selectedModule.guideTitle,
+        text: selectedModule.guideText,
+        keywords: selectedModule.keywords,
+        color: selectedModule.color,
       },
       profile: {
         objetivo: profile?.objetivo || null,
@@ -573,7 +697,7 @@ export default function MontagemTreino() {
         planKey,
         status: subscription?.status || null,
       },
-      cardioPlan: selectedIntent.cardioPlan || [],
+      cardioPlan: selectedModule.cardioPlan || [],
       exercises: exercises.map((ex, index) => ({
         ...ex,
         order: index + 1,
@@ -581,7 +705,7 @@ export default function MontagemTreino() {
       })),
       createdAt: new Date().toISOString(),
     };
-  }, [selectedIntent, duration, targetDays, profile, subscription, isPaid, planKey, exercises]);
+  }, [selectedModule, duration, targetDays, profile, subscription, isPaid, planKey, exercises]);
 
   function updateExercise(exerciseId, patch) {
     setExercises((prev) =>
@@ -597,17 +721,18 @@ export default function MontagemTreino() {
   }
 
   function addExercise() {
-    setExercises((prev) => [
-      ...prev,
-      makeEditableExercise({
-        name: "Novo exercício",
-        group: "Grupo muscular",
-        sets: 3,
-        reps: "10–12",
-        rest: "60s",
-        method: "Descreva a execução.",
-      }),
-    ]);
+    const newExercise = makeEditableExercise({
+      name: "Novo exercício",
+      group: "Grupo muscular",
+      sets: 3,
+      reps: "10–12",
+      rest: "60s",
+      method: "Descreva a execução.",
+    });
+
+    setExercises((prev) => [...prev, newExercise]);
+    setEditingId(newExercise.id);
+    setOpenPanel("exercises");
   }
 
   function moveExercise(exerciseId, dir) {
@@ -664,6 +789,33 @@ export default function MontagemTreino() {
     }
   }
 
+  function selectModule(id) {
+    setSelectedModuleId(id);
+    setExploring(false);
+  }
+
+  const panelButton = (id, title, sub) => (
+    <button
+      type="button"
+      onClick={() => setOpenPanel(openPanel === id ? null : id)}
+      style={{
+        ...S.panelBtn,
+        ...(openPanel === id
+          ? {
+              borderColor: selectedModule.color,
+              background: selectedModule.soft,
+            }
+          : null),
+      }}
+    >
+      <div>
+        <b>{title}</b>
+        <span>{sub}</span>
+      </div>
+      <strong>{openPanel === id ? "−" : "+"}</strong>
+    </button>
+  );
+
   return (
     <div style={S.page}>
       <div style={S.wrap}>
@@ -676,317 +828,369 @@ export default function MontagemTreino() {
             <div style={S.kicker}>Montagem inteligente</div>
             <h1 style={S.heroTitle}>Vamos alterar seu foco hoje</h1>
             <p style={S.heroSub}>
-              Escolha uma intenção. Depois ajuste séries, repetições, descanso e execução do seu jeito.
+              Arraste os módulos, escolha um foco e monte um treino leve de entender.
             </p>
 
-            <div style={S.profileRow}>
-              <div style={S.profilePill}>
-                <span>Hoje</span>
-                <b>{todayLabel()}</b>
-              </div>
-
-              <div style={S.profilePill}>
-                <span>Objetivo</span>
-                <b>{loading ? "..." : profile?.objetivo || "Automático"}</b>
-              </div>
-
-              <div style={S.profilePill}>
-                <span>Plano</span>
-                <b>{isPaid ? planKey || "Ativo" : "Livre"}</b>
-              </div>
+            <div style={S.miniProfile}>
+              <span>{todayLabel()}</span>
+              <span>{loading ? "Lendo perfil..." : profile?.objetivo || "Objetivo automático"}</span>
+              <span>{isPaid ? planKey || "Plano ativo" : "Livre"}</span>
             </div>
           </div>
         </section>
 
-        <section style={S.bookCard}>
-          <div style={S.bookLine}>
-            <span>01</span>
-            <b>Escolha o treino do dia</b>
-          </div>
-
-          <div style={S.intentGrid}>
-            {INTENTS.map((item) => {
-              const active = item.id === selectedIntentId;
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedIntentId(item.id)}
-                  style={{
-                    ...S.intentCard,
-                    ...(active ? S.intentCardOn : null),
-                    background: item.gradient,
-                    borderColor: active ? item.color : "rgba(15,23,42,.08)",
-                  }}
-                >
-                  <div style={S.intentTop}>
-                    <div
-                      style={{
-                        ...S.intentDot,
-                        background: item.color,
-                        boxShadow: active ? `0 0 0 5px ${item.soft}` : "none",
-                      }}
-                    />
-                    <span>{item.chapter}</span>
-                  </div>
-
-                  <div style={S.intentTitle}>{item.short}</div>
-                  <div style={S.intentSub}>{item.subtitle}</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section style={S.guideCard}>
-          <div style={S.bookLine}>
-            <span>02</span>
-            <b>Guia do foco escolhido</b>
-          </div>
-
-          <div style={S.guideInner}>
-            <div
-              style={{
-                ...S.guideIcon,
-                background: selectedIntent.color,
-                boxShadow: `0 18px 44px ${selectedIntent.soft}`,
-              }}
-            >
-              {selectedIntent.chapter}
-            </div>
-
-            <div style={{ minWidth: 0 }}>
-              <div style={S.guideTitle}>{selectedIntent.guideTitle}</div>
-              <div style={S.guideText}>{selectedIntent.guideText}</div>
-            </div>
-          </div>
-
-          <div style={S.keywordRow}>
-            {selectedIntent.keywords.map((word) => {
-              const active = openKeyword === word;
-
-              return (
-                <button
-                  key={word}
-                  type="button"
-                  onClick={() => setOpenKeyword(active ? null : word)}
-                  style={{
-                    ...S.keyword,
-                    ...(active
-                      ? {
-                          background: selectedIntent.color,
-                          color: "#fff",
-                          borderColor: selectedIntent.color,
-                        }
-                      : null),
-                  }}
-                >
-                  {word}
-                </button>
-              );
-            })}
-          </div>
-
-          {guideKeywordText ? (
-            <div style={S.keywordBox}>{guideKeywordText}</div>
-          ) : null}
-
-          {selectedIntent.id === "emagrecer" ? (
-            <div style={S.targetDaysBox}>
-              <label style={S.label}>
-                Quero emagrecer em quantos dias?
-                <div style={S.daysInline}>
-                  <input
-                    value={targetDays}
-                    onChange={(e) => setTargetDays(e.target.value)}
-                    inputMode="numeric"
-                    style={S.daysInput}
-                  />
-                  <span>dias</span>
-                </div>
-              </label>
-            </div>
-          ) : null}
-        </section>
-
-        <section style={S.durationCard}>
-          <div style={S.bookLine}>
-            <span>03</span>
-            <b>Aplicar por quanto tempo?</b>
-          </div>
-
-          <div style={S.durationGrid}>
-            {[
-              { id: "hoje", label: "Só hoje", sub: "Troca rápida" },
-              { id: "semana", label: "Semana", sub: "7 dias" },
-              { id: "mes", label: "Mês", sub: "Ciclo maior" },
-            ].map((item) => {
-              const active = duration === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setDuration(item.id)}
-                  style={{
-                    ...S.durationBtn,
-                    ...(active
-                      ? {
-                          borderColor: selectedIntent.color,
-                          background: selectedIntent.soft,
-                        }
-                      : null),
-                  }}
-                >
-                  <b>{item.label}</b>
-                  <span>{item.sub}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {selectedIntent.cardioPlan?.length ? (
-          <section style={S.cardioPlan}>
-            <div style={S.bookLine}>
-              <span>+</span>
-              <b>Plano de cardio puxadinho</b>
-            </div>
-
-            <div style={S.cardioList}>
-              {selectedIntent.cardioPlan.map((line, index) => (
-                <div key={index} style={S.cardioItem}>
-                  <span>{index + 1}</span>
-                  <b>{line}</b>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <section style={S.editorCard}>
-          <div style={S.editorHead}>
+        <section style={S.modulesSection}>
+          <div style={S.sectionHead}>
             <div>
-              <div style={S.bookLine}>
-                <span>04</span>
-                <b>Edite seu treino</b>
-              </div>
-              <div style={S.editorSub}>
-                Toque nos campos e ajuste séries, repetições, descanso e execução.
-              </div>
+              <div style={S.sectionTitle}>Módulos de treino</div>
+              <div style={S.sectionSub}>Arraste para o lado e toque no módulo.</div>
             </div>
 
-            <button type="button" style={S.addBtn} onClick={addExercise}>
-              + Exercício
+            <button
+              type="button"
+              style={{
+                ...S.exploreSmall,
+                background: selectedModule.color,
+              }}
+              onClick={() => setExploring(true)}
+            >
+              Explorar
             </button>
           </div>
 
-          <div style={S.exerciseList}>
-            {exercises.map((ex, index) => (
-              <article key={ex.id} style={S.exerciseCard}>
-                <div style={S.exerciseTop}>
-                  <div
-                    style={{
-                      ...S.exerciseNumber,
-                      background: selectedIntent.color,
-                    }}
-                  >
-                    {index + 1}
-                  </div>
+          <div style={S.modulesScroller}>
+            {MODULES.map((item) => {
+              const active = item.id === selectedModuleId;
 
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <input
-                      value={ex.name}
-                      onChange={(e) => updateExercise(ex.id, { name: e.target.value })}
-                      style={S.nameInput}
-                    />
-
-                    <input
-                      value={ex.group}
-                      onChange={(e) => updateExercise(ex.id, { group: e.target.value })}
-                      style={S.groupInput}
-                    />
-                  </div>
-
-                  <div style={S.moveBtns}>
-                    <button type="button" onClick={() => moveExercise(ex.id, -1)} style={S.moveBtn}>
-                      ↑
-                    </button>
-                    <button type="button" onClick={() => moveExercise(ex.id, 1)} style={S.moveBtn}>
-                      ↓
-                    </button>
-                  </div>
-                </div>
-
-                <div style={S.editGrid}>
-                  <label style={S.miniLabel}>
-                    Séries
-                    <input
-                      value={ex.sets}
-                      onChange={(e) => updateExercise(ex.id, { sets: e.target.value })}
-                      inputMode="numeric"
-                      style={S.miniInput}
-                    />
-                  </label>
-
-                  <label style={S.miniLabel}>
-                    Reps
-                    <input
-                      value={ex.reps}
-                      onChange={(e) => updateExercise(ex.id, { reps: e.target.value })}
-                      style={S.miniInput}
-                    />
-                  </label>
-
-                  <label style={S.miniLabel}>
-                    Descanso
-                    <input
-                      value={ex.rest}
-                      onChange={(e) => updateExercise(ex.id, { rest: e.target.value })}
-                      style={S.miniInput}
-                    />
-                  </label>
-                </div>
-
-                <label style={S.methodLabel}>
-                  Execução
-                  <textarea
-                    value={ex.method}
-                    onChange={(e) => updateExercise(ex.id, { method: e.target.value })}
-                    style={S.methodInput}
-                    rows={2}
-                  />
-                </label>
-
+              return (
                 <button
+                  key={item.id}
                   type="button"
-                  style={S.removeBtn}
-                  onClick={() => removeExercise(ex.id)}
+                  onClick={() => selectModule(item.id)}
+                  style={{
+                    ...S.moduleCard,
+                    background: item.bg,
+                    borderColor: active ? item.color : "rgba(15,23,42,.08)",
+                    boxShadow: active
+                      ? `0 24px 60px ${item.soft}`
+                      : "0 16px 44px rgba(15,23,42,.07)",
+                    transform: active ? "translateY(-2px)" : "translateY(0)",
+                  }}
                 >
-                  Remover exercício
+                  <div style={S.moduleTop}>
+                    <span>{item.chapter}</span>
+                    <i style={{ background: item.color }} />
+                  </div>
+
+                  <div style={S.moduleIconWrap}>
+                    <ModuleIcon type={item.id} color={item.color} />
+                  </div>
+
+                  <div style={S.moduleTitle}>{item.title}</div>
+                  <div style={S.moduleSub}>{item.subtitle}</div>
                 </button>
-              </article>
-            ))}
+              );
+            })}
           </div>
-        </section>
 
-        <section style={S.previewCard}>
-          <div>
-            <div style={S.previewTitle}>Treino pronto para abrir</div>
-            <div style={S.previewSub}>
-              {selectedIntent.title} • {exercises.length} exercícios • {duration === "hoje" ? "só hoje" : duration}
+          {!exploring ? (
+            <div style={S.selectedStrip}>
+              <div>
+                <b>{selectedModule.fullTitle}</b>
+                <span>{selectedModule.subtitle}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setExploring(true)}
+                style={{
+                  ...S.primaryMini,
+                  background: selectedModule.color,
+                }}
+              >
+                Abrir módulo
+              </button>
             </div>
-          </div>
-
-          <button type="button" style={S.primaryBtn} onClick={saveMontage} disabled={saving}>
-            {saving ? "Salvando..." : "Usar este treino"}
-          </button>
-
-          <button type="button" style={S.secondaryBtn} onClick={() => nav("/treino")}>
-            Voltar sem salvar
-          </button>
+          ) : null}
         </section>
+
+        {exploring ? (
+          <>
+            <section style={S.moduleDetail}>
+              <div style={S.detailHero}>
+                <div
+                  style={{
+                    ...S.detailIcon,
+                    background: selectedModule.soft,
+                  }}
+                >
+                  <ModuleIcon type={selectedModule.id} color={selectedModule.color} />
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <div style={S.detailKicker}>Módulo {selectedModule.chapter}</div>
+                  <div style={S.detailTitle}>{selectedModule.fullTitle}</div>
+                  <div style={S.detailSub}>{selectedModule.subtitle}</div>
+                </div>
+              </div>
+
+              <div style={S.panelList}>
+                {panelButton("guide", "Explicação rápida", "Entenda quando usar")}
+                {openPanel === "guide" ? (
+                  <div style={S.panelContent}>
+                    <div style={S.guideTitle}>{selectedModule.guideTitle}</div>
+                    <div style={S.guideText}>{selectedModule.guideText}</div>
+
+                    <div style={S.keywordRow}>
+                      {selectedModule.keywords.map((word) => {
+                        const active = openKeyword === word;
+
+                        return (
+                          <button
+                            key={word}
+                            type="button"
+                            onClick={() => setOpenKeyword(active ? null : word)}
+                            style={{
+                              ...S.keyword,
+                              ...(active
+                                ? {
+                                    background: selectedModule.color,
+                                    color: "#fff",
+                                    borderColor: selectedModule.color,
+                                  }
+                                : null),
+                            }}
+                          >
+                            {word}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {keywordHelp ? <div style={S.keywordBox}>{keywordHelp}</div> : null}
+                  </div>
+                ) : null}
+
+                {panelButton("duration", "Aplicar por quanto tempo?", "Hoje, semana ou mês")}
+                {openPanel === "duration" ? (
+                  <div style={S.panelContent}>
+                    <div style={S.durationGrid}>
+                      {[
+                        { id: "hoje", label: "Só hoje", sub: "Troca rápida" },
+                        { id: "semana", label: "Semana", sub: "7 dias" },
+                        { id: "mes", label: "Mês", sub: "Ciclo maior" },
+                      ].map((item) => {
+                        const active = duration === item.id;
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setDuration(item.id)}
+                            style={{
+                              ...S.durationBtn,
+                              ...(active
+                                ? {
+                                    borderColor: selectedModule.color,
+                                    background: selectedModule.soft,
+                                  }
+                                : null),
+                            }}
+                          >
+                            <b>{item.label}</b>
+                            <span>{item.sub}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {selectedModule.id === "emagrecer" ? (
+                      <label style={S.daysLabel}>
+                        Quero emagrecer em quantos dias?
+                        <div style={S.daysInline}>
+                          <input
+                            value={targetDays}
+                            onChange={(e) => setTargetDays(e.target.value)}
+                            inputMode="numeric"
+                            style={S.daysInput}
+                          />
+                          <span>dias</span>
+                        </div>
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {selectedModule.cardioPlan?.length ? (
+                  <>
+                    {panelButton("cardio", "Plano de cardio", "Sugestão por semanas")}
+                    {openPanel === "cardio" ? (
+                      <div style={S.panelContent}>
+                        <div style={S.cardioList}>
+                          {selectedModule.cardioPlan.map((line, index) => (
+                            <div key={index} style={S.cardioItem}>
+                              <span>{index + 1}</span>
+                              <b>{line}</b>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {panelButton("exercises", "Exercícios recomendados", "Edite só se quiser")}
+                {openPanel === "exercises" ? (
+                  <div style={S.panelContent}>
+                    <div style={S.exerciseHead}>
+                      <div>
+                        <b>{exercises.length} exercícios</b>
+                        <span>Séries, reps e descanso ficam editáveis.</span>
+                      </div>
+
+                      <button type="button" onClick={addExercise} style={S.addBtn}>
+                        + Exercício
+                      </button>
+                    </div>
+
+                    <div style={S.exerciseList}>
+                      {exercises.map((ex, index) => {
+                        const editing = editingId === ex.id;
+
+                        return (
+                          <article key={ex.id} style={S.exerciseCard}>
+                            <div style={S.exerciseTop}>
+                              <div
+                                style={{
+                                  ...S.exerciseNumber,
+                                  background: selectedModule.color,
+                                }}
+                              >
+                                {index + 1}
+                              </div>
+
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                {editing ? (
+                                  <>
+                                    <input
+                                      value={ex.name}
+                                      onChange={(e) => updateExercise(ex.id, { name: e.target.value })}
+                                      style={S.nameInput}
+                                    />
+                                    <input
+                                      value={ex.group}
+                                      onChange={(e) => updateExercise(ex.id, { group: e.target.value })}
+                                      style={S.groupInput}
+                                    />
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={S.exerciseName}>{ex.name}</div>
+                                    <div style={S.exerciseMeta}>
+                                      {ex.group} • {ex.sets}x • {ex.reps} • {ex.rest}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setEditingId(editing ? null : ex.id)}
+                                style={{
+                                  ...S.editBtn,
+                                  background: editing ? selectedModule.color : "rgba(15,23,42,.05)",
+                                  color: editing ? "#fff" : TEXT,
+                                }}
+                              >
+                                {editing ? "Ok" : "Editar"}
+                              </button>
+                            </div>
+
+                            {editing ? (
+                              <>
+                                <div style={S.editGrid}>
+                                  <label style={S.miniLabel}>
+                                    Séries
+                                    <input
+                                      value={ex.sets}
+                                      onChange={(e) => updateExercise(ex.id, { sets: e.target.value })}
+                                      inputMode="numeric"
+                                      style={S.miniInput}
+                                    />
+                                  </label>
+
+                                  <label style={S.miniLabel}>
+                                    Reps
+                                    <input
+                                      value={ex.reps}
+                                      onChange={(e) => updateExercise(ex.id, { reps: e.target.value })}
+                                      style={S.miniInput}
+                                    />
+                                  </label>
+
+                                  <label style={S.miniLabel}>
+                                    Descanso
+                                    <input
+                                      value={ex.rest}
+                                      onChange={(e) => updateExercise(ex.id, { rest: e.target.value })}
+                                      style={S.miniInput}
+                                    />
+                                  </label>
+                                </div>
+
+                                <label style={S.methodLabel}>
+                                  Execução
+                                  <textarea
+                                    value={ex.method}
+                                    onChange={(e) => updateExercise(ex.id, { method: e.target.value })}
+                                    style={S.methodInput}
+                                    rows={2}
+                                  />
+                                </label>
+
+                                <div style={S.exerciseTools}>
+                                  <button type="button" onClick={() => moveExercise(ex.id, -1)} style={S.toolBtn}>
+                                    Subir
+                                  </button>
+                                  <button type="button" onClick={() => moveExercise(ex.id, 1)} style={S.toolBtn}>
+                                    Descer
+                                  </button>
+                                  <button type="button" onClick={() => removeExercise(ex.id)} style={S.removeBtn}>
+                                    Remover
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <div style={S.methodPreview}>{ex.method}</div>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section style={S.finalCard}>
+              <div>
+                <div style={S.finalTitle}>Treino pronto</div>
+                <div style={S.finalSub}>
+                  {selectedModule.fullTitle} • {exercises.length} exercícios •{" "}
+                  {duration === "hoje" ? "só hoje" : duration}
+                </div>
+              </div>
+
+              <button type="button" style={S.saveBtn} onClick={saveMontage} disabled={saving}>
+                {saving ? "Salvando..." : "Usar este treino"}
+              </button>
+
+              <button type="button" style={S.backPlain} onClick={() => setExploring(false)}>
+                Voltar aos módulos
+              </button>
+            </section>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -1059,24 +1263,15 @@ const S = {
     fontWeight: 780,
   },
 
-  profileRow: {
-    marginTop: 13,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  miniProfile: {
+    marginTop: 12,
+    display: "flex",
     gap: 8,
+    overflowX: "auto",
+    paddingBottom: 2,
   },
 
-  profilePill: {
-    borderRadius: 17,
-    background: "rgba(255,255,255,.78)",
-    border: `1px solid ${BORDER}`,
-    padding: 9,
-    display: "grid",
-    gap: 4,
-    minWidth: 0,
-  },
-
-  bookCard: {
+  modulesSection: {
     marginTop: 14,
     borderRadius: 25,
     padding: 14,
@@ -1085,104 +1280,194 @@ const S = {
     boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  bookLine: {
-    display: "flex",
-    alignItems: "center",
-    gap: 9,
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: 980,
-    letterSpacing: -0.3,
-  },
-
-  intentGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 10,
-  },
-
-  intentCard: {
-    minHeight: 126,
-    borderRadius: 22,
-    border: `1px solid ${BORDER}`,
-    padding: 12,
-    textAlign: "left",
-    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
-    transition: "transform .14s ease, box-shadow .14s ease",
-  },
-
-  intentCardOn: {
-    transform: "translateY(-1px)",
-    boxShadow: "0 16px 44px rgba(15,23,42,.10)",
-  },
-
-  intentTop: {
+  sectionHead: {
     display: "flex",
     justifyContent: "space-between",
+    gap: 12,
     alignItems: "center",
-    gap: 8,
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: 950,
   },
 
-  intentDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 999,
-  },
-
-  intentTitle: {
-    marginTop: 22,
+  sectionTitle: {
     color: TEXT,
-    fontSize: 17,
+    fontSize: 20,
     lineHeight: 1,
     fontWeight: 980,
-    letterSpacing: -0.45,
+    letterSpacing: -0.65,
   },
 
-  intentSub: {
-    marginTop: 7,
+  sectionSub: {
+    marginTop: 6,
     color: MUTED,
     fontSize: 12,
-    lineHeight: 1.32,
     fontWeight: 800,
   },
 
-  guideCard: {
+  exploreSmall: {
+    border: "none",
+    borderRadius: 999,
+    color: "#fff",
+    padding: "11px 14px",
+    fontSize: 13,
+    fontWeight: 950,
+    boxShadow: "0 12px 30px rgba(15,23,42,.10)",
+  },
+
+  modulesScroller: {
     marginTop: 14,
-    borderRadius: 25,
+    display: "flex",
+    gap: 12,
+    overflowX: "auto",
+    scrollSnapType: "x mandatory",
+    padding: "2px 2px 12px",
+  },
+
+  moduleCard: {
+    minWidth: 216,
+    height: 262,
+    borderRadius: 28,
+    border: `1px solid ${BORDER}`,
+    padding: 14,
+    scrollSnapAlign: "center",
+    textAlign: "left",
+    transition: "transform .16s ease, box-shadow .16s ease, border-color .16s ease",
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  moduleTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  moduleIconWrap: {
+    flex: 1,
+    display: "grid",
+    placeItems: "center",
+  },
+
+  moduleTitle: {
+    color: TEXT,
+    fontSize: 24,
+    lineHeight: 1,
+    fontWeight: 980,
+    letterSpacing: -0.8,
+  },
+
+  moduleSub: {
+    marginTop: 7,
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 1.3,
+    fontWeight: 830,
+  },
+
+  selectedStrip: {
+    marginTop: 2,
+    borderRadius: 21,
+    background: "rgba(15,23,42,.035)",
+    border: `1px solid ${BORDER}`,
+    padding: 12,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  primaryMini: {
+    border: "none",
+    borderRadius: 999,
+    color: "#fff",
+    padding: "11px 14px",
+    fontSize: 13,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
+  moduleDetail: {
+    marginTop: 14,
+    borderRadius: 26,
     padding: 14,
     background: "#fff",
     border: `1px solid ${BORDER}`,
     boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  guideInner: {
-    marginTop: 13,
+  detailHero: {
     display: "flex",
     gap: 12,
-    alignItems: "flex-start",
+    alignItems: "center",
+    paddingBottom: 14,
+    borderBottom: `1px solid ${BORDER}`,
   },
 
-  guideIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 17,
+  detailIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 28,
     display: "grid",
     placeItems: "center",
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: 980,
     flexShrink: 0,
+  },
+
+  detailKicker: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: 950,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+
+  detailTitle: {
+    marginTop: 5,
+    color: TEXT,
+    fontSize: 25,
+    lineHeight: 1,
+    fontWeight: 980,
+    letterSpacing: -0.8,
+  },
+
+  detailSub: {
+    marginTop: 6,
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: 830,
+  },
+
+  panelList: {
+    marginTop: 12,
+    display: "grid",
+    gap: 10,
+  },
+
+  panelBtn: {
+    width: "100%",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 20,
+    background: "#fff",
+    padding: 13,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    textAlign: "left",
+    color: TEXT,
+  },
+
+  panelContent: {
+    borderRadius: 20,
+    background: "rgba(248,250,252,.9)",
+    border: `1px solid ${BORDER}`,
+    padding: 13,
+    marginTop: -4,
   },
 
   guideTitle: {
     color: TEXT,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: 980,
-    letterSpacing: -0.4,
   },
 
   guideText: {
@@ -1194,7 +1479,7 @@ const S = {
   },
 
   keywordRow: {
-    marginTop: 13,
+    marginTop: 12,
     display: "flex",
     gap: 8,
     flexWrap: "wrap",
@@ -1204,7 +1489,7 @@ const S = {
     border: `1px solid ${BORDER}`,
     borderRadius: 999,
     padding: "8px 10px",
-    background: "rgba(15,23,42,.03)",
+    background: "#fff",
     color: TEXT,
     fontSize: 12,
     fontWeight: 900,
@@ -1212,9 +1497,9 @@ const S = {
 
   keywordBox: {
     marginTop: 10,
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(15,23,42,.04)",
+    borderRadius: 17,
+    padding: 11,
+    background: "#fff",
     border: `1px solid ${BORDER}`,
     color: TEXT,
     fontSize: 13,
@@ -1222,15 +1507,25 @@ const S = {
     fontWeight: 800,
   },
 
-  targetDaysBox: {
-    marginTop: 13,
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(10,132,255,.08)",
-    border: "1px solid rgba(10,132,255,.14)",
+  durationGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
   },
 
-  label: {
+  durationBtn: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "#fff",
+    padding: "11px 8px",
+    display: "grid",
+    gap: 4,
+    color: TEXT,
+    textAlign: "center",
+  },
+
+  daysLabel: {
+    marginTop: 12,
     display: "grid",
     gap: 8,
     color: MUTED,
@@ -1259,44 +1554,7 @@ const S = {
     outline: "none",
   },
 
-  durationCard: {
-    marginTop: 14,
-    borderRadius: 25,
-    padding: 14,
-    background: "#fff",
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
-  },
-
-  durationGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
-  },
-
-  durationBtn: {
-    border: `1px solid ${BORDER}`,
-    borderRadius: 19,
-    background: "#fff",
-    padding: "11px 8px",
-    display: "grid",
-    gap: 4,
-    color: TEXT,
-    textAlign: "center",
-  },
-
-  cardioPlan: {
-    marginTop: 14,
-    borderRadius: 25,
-    padding: 14,
-    background: "linear-gradient(135deg, rgba(10,132,255,.10), rgba(255,255,255,.96))",
-    border: "1px solid rgba(10,132,255,.14)",
-    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
-  },
-
   cardioList: {
-    marginTop: 12,
     display: "grid",
     gap: 9,
   },
@@ -1305,37 +1563,20 @@ const S = {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
-    borderRadius: 18,
+    borderRadius: 17,
     padding: 11,
-    background: "rgba(255,255,255,.72)",
+    background: "#fff",
     border: `1px solid ${BORDER}`,
     color: TEXT,
     fontSize: 13,
     lineHeight: 1.35,
   },
 
-  editorCard: {
-    marginTop: 14,
-    borderRadius: 25,
-    padding: 14,
-    background: "#fff",
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 14px 44px rgba(15,23,42,.06)",
-  },
-
-  editorHead: {
+  exerciseHead: {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "center",
     gap: 12,
-    alignItems: "flex-start",
-  },
-
-  editorSub: {
-    marginTop: 7,
-    color: MUTED,
-    fontSize: 12,
-    lineHeight: 1.35,
-    fontWeight: 800,
   },
 
   addBtn: {
@@ -1350,15 +1591,15 @@ const S = {
   },
 
   exerciseList: {
-    marginTop: 13,
+    marginTop: 12,
     display: "grid",
-    gap: 12,
+    gap: 10,
   },
 
   exerciseCard: {
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 12,
-    background: "rgba(248,250,252,.82)",
+    background: "#fff",
     border: `1px solid ${BORDER}`,
   },
 
@@ -1380,14 +1621,37 @@ const S = {
     flexShrink: 0,
   },
 
+  exerciseName: {
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: 980,
+    letterSpacing: -0.3,
+  },
+
+  exerciseMeta: {
+    marginTop: 5,
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 830,
+  },
+
+  editBtn: {
+    border: "none",
+    borderRadius: 999,
+    padding: "9px 11px",
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
   nameInput: {
     width: "100%",
     border: "none",
     background: "transparent",
     color: TEXT,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 980,
-    letterSpacing: -0.35,
+    letterSpacing: -0.3,
     outline: "none",
   },
 
@@ -1400,22 +1664,6 @@ const S = {
     fontSize: 12,
     fontWeight: 850,
     outline: "none",
-  },
-
-  moveBtns: {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 5,
-  },
-
-  moveBtn: {
-    width: 30,
-    height: 26,
-    border: `1px solid ${BORDER}`,
-    borderRadius: 11,
-    background: "#fff",
-    color: TEXT,
-    fontWeight: 950,
   },
 
   editGrid: {
@@ -1470,19 +1718,46 @@ const S = {
     outline: "none",
   },
 
-  removeBtn: {
+  exerciseTools: {
     marginTop: 10,
-    width: "100%",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1.2fr",
+    gap: 8,
+  },
+
+  toolBtn: {
     border: `1px solid ${BORDER}`,
-    borderRadius: 16,
-    background: "rgba(255,255,255,.76)",
-    color: MUTED,
-    padding: 11,
+    borderRadius: 15,
+    background: "#fff",
+    color: TEXT,
+    padding: 10,
     fontSize: 12,
     fontWeight: 950,
   },
 
-  previewCard: {
+  removeBtn: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 15,
+    background: "rgba(255,55,95,.08)",
+    color: "#FF375F",
+    padding: 10,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  methodPreview: {
+    marginTop: 10,
+    borderRadius: 16,
+    padding: 10,
+    background: "rgba(15,23,42,.035)",
+    border: `1px solid ${BORDER}`,
+    color: MUTED,
+    fontSize: 12,
+    lineHeight: 1.35,
+    fontWeight: 780,
+  },
+
+  finalCard: {
     marginTop: 14,
     borderRadius: 26,
     padding: 14,
@@ -1492,20 +1767,20 @@ const S = {
     boxShadow: "0 22px 70px rgba(0,0,0,.20)",
   },
 
-  previewTitle: {
+  finalTitle: {
     fontSize: 20,
     fontWeight: 980,
     letterSpacing: -0.55,
   },
 
-  previewSub: {
+  finalSub: {
     marginTop: 6,
     color: "rgba(255,255,255,.68)",
     fontSize: 13,
     fontWeight: 800,
   },
 
-  primaryBtn: {
+  saveBtn: {
     marginTop: 13,
     width: "100%",
     height: 52,
@@ -1518,7 +1793,7 @@ const S = {
     boxShadow: "0 16px 42px rgba(255,106,0,.24)",
   },
 
-  secondaryBtn: {
+  backPlain: {
     marginTop: 9,
     width: "100%",
     height: 48,
