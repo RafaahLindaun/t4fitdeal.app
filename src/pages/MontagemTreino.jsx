@@ -23,11 +23,22 @@ function normalizeText(v) {
 }
 
 function uid() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function dateKey(d) {
+  return new Date(d).toISOString().slice(0, 10);
 }
 
 function todayLabel() {
@@ -63,37 +74,33 @@ function makeEditableExercise(ex) {
     reps: ex.reps || "10–12",
     rest: ex.rest || "60s",
     method: ex.method || "",
+    image: ex.image || null,
   };
 }
 
-/* ---------- ÍCONES SVG GRANDES ---------- */
-function ModuleIcon({ type, color = ORANGE }) {
+function getApplyWindow(scope) {
+  const start = new Date();
+  const days = scope === "semana" ? 7 : scope === "mes" ? 30 : 1;
+  const end = addDays(start, days - 1);
+
+  return {
+    scope,
+    startsOn: dateKey(start),
+    endsOn: dateKey(end),
+    days,
+    label: scope === "hoje" ? "Só hoje" : scope === "semana" ? "7 dias" : "30 dias",
+  };
+}
+
+/* ---------- ÍCONES GRANDES ---------- */
+function EmphasisIcon({ type, color = ORANGE }) {
   if (type === "gluteo") {
     return (
       <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path
-          d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z"
-          fill={color}
-          opacity="0.16"
-        />
-        <path
-          d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M25 39c4-6 9-9 16-9s12 3 16 9"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
+        <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
+        <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
+        <path d="M25 39c4-6 9-9 16-9s12 3 16 9" stroke={color} strokeWidth="5" strokeLinecap="round" />
       </svg>
     );
   }
@@ -101,11 +108,7 @@ function ModuleIcon({ type, color = ORANGE }) {
   if (type === "lombar") {
     return (
       <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path
-          d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z"
-          fill={color}
-          opacity="0.14"
-        />
+        <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
         <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
         <path d="M29 41h24" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -117,23 +120,9 @@ function ModuleIcon({ type, color = ORANGE }) {
   if (type === "emagrecer") {
     return (
       <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path
-          d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z"
-          fill={color}
-          opacity="0.16"
-        />
-        <path
-          d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M41 58c6-3 9-8 9-14"
-          stroke={color}
-          strokeWidth="4.5"
-          strokeLinecap="round"
-        />
+        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
+        <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+        <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
       </svg>
     );
   }
@@ -142,19 +131,9 @@ function ModuleIcon({ type, color = ORANGE }) {
     return (
       <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
-        <path
-          d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
+        <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-        <path
-          d="M24 51c4 8 12 13 21 11 6-1 11-5 14-10"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
+        <path d="M24 51c4 8 12 13 21 11 6-1 11-5 14-10" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M59 62V52H49" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
@@ -163,208 +142,94 @@ function ModuleIcon({ type, color = ORANGE }) {
   if (type === "leve") {
     return (
       <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-        <path
-          d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z"
-          fill={color}
-          opacity="0.16"
-        />
-        <path
-          d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z"
-          stroke={color}
-          strokeWidth="5"
-          strokeLinejoin="round"
-        />
+        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
+        <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
       </svg>
     );
   }
 
   return (
     <svg width="82" height="82" viewBox="0 0 82 82" fill="none" aria-hidden="true">
-      <path
-        d="M43 8 18 45h21l-4 29 29-40H43l7-26Z"
-        fill={color}
-        opacity="0.16"
-      />
-      <path
-        d="M43 8 18 45h21l-4 29 29-40H43l7-26Z"
-        stroke={color}
-        strokeWidth="5"
-        strokeLinejoin="round"
-      />
+      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
+      <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
     </svg>
   );
 }
 
-const MODULES = [
+function ExerciseVisual({ ex, color }) {
+  return (
+    <div
+      style={{
+        ...S.exerciseVisual,
+        background: `radial-gradient(circle at 70% 18%, ${color}33, transparent 36%), linear-gradient(135deg, #ffffff, #f8fafc)`,
+      }}
+    >
+      <div style={{ ...S.exerciseVisualIcon, background: color }}>
+        {String(ex.name || "?").slice(0, 1).toUpperCase()}
+      </div>
+    </div>
+  );
+}
+
+const EMPHASES = [
   {
     id: "gluteo",
     chapter: "01",
     title: "Glúteo",
-    fullTitle: "Glúteo hoje",
+    fullTitle: "Ênfase em glúteo",
     subtitle: "Ativação e posterior",
     color: "#FF6A00",
     soft: "rgba(255,106,0,.12)",
-    bg:
-      "radial-gradient(circle at 80% 10%, rgba(255,106,0,.28), rgba(255,106,0,0) 34%), linear-gradient(135deg, #FFF7ED, #FFFFFF)",
-    guideTitle: "Como usar esse módulo",
-    guideText:
-      "Ideal para dar foco no glúteo sem bagunçar o plano todo. Use controle, pausa no topo e amplitude segura.",
+    bg: "radial-gradient(circle at 80% 10%, rgba(255,106,0,.28), rgba(255,106,0,0) 34%), linear-gradient(135deg, #FFF7ED, #FFFFFF)",
+    guideTitle: "Para que serve",
+    guideText: "Use quando quiser sentir mais glúteo no treino sem desmontar seu plano. A prioridade é pausa, quadril e controle.",
     keywords: ["pausa no topo", "quadril", "amplitude", "controle"],
     exercises: [
-      {
-        name: "Hip thrust",
-        group: "Glúteos",
-        sets: 4,
-        reps: "8–12",
-        rest: "90–120s",
-        method: "Pausa de 1 segundo no topo. Não hiperestenda a lombar.",
-      },
-      {
-        name: "Terra romeno",
-        group: "Posterior/Glúteos",
-        sets: 4,
-        reps: "8–12",
-        rest: "90–120s",
-        method: "Desça com quadril para trás e coluna neutra.",
-      },
-      {
-        name: "Agachamento sumô",
-        group: "Glúteos/Pernas",
-        sets: 4,
-        reps: "10–12",
-        rest: "90s",
-        method: "Pés mais abertos, joelhos acompanhando a ponta dos pés.",
-      },
-      {
-        name: "Cadeira abdutora",
-        group: "Glúteo médio",
-        sets: 4,
-        reps: "12–20",
-        rest: "60s",
-        method: "Controle a volta. Não deixe o peso despencar.",
-      },
-      {
-        name: "Kickback no cabo",
-        group: "Glúteos",
-        sets: 3,
-        reps: "12–15",
-        rest: "60s",
-        method: "Movimento curto e limpo, sem girar o tronco.",
-      },
+      { name: "Hip thrust", group: "Glúteos", sets: 4, reps: "8–12", rest: "90–120s", method: "Pausa de 1 segundo no topo. Não hiperestenda a lombar." },
+      { name: "Terra romeno", group: "Posterior/Glúteos", sets: 4, reps: "8–12", rest: "90–120s", method: "Desça com quadril para trás e coluna neutra." },
+      { name: "Agachamento sumô", group: "Glúteos/Pernas", sets: 4, reps: "10–12", rest: "90s", method: "Pés mais abertos, joelhos acompanhando a ponta dos pés." },
+      { name: "Cadeira abdutora", group: "Glúteo médio", sets: 4, reps: "12–20", rest: "60s", method: "Controle a volta. Não deixe o peso despencar." },
+      { name: "Kickback no cabo", group: "Glúteos", sets: 3, reps: "12–15", rest: "60s", method: "Movimento curto e limpo, sem girar o tronco." },
     ],
   },
   {
     id: "lombar",
     chapter: "02",
     title: "Lombar",
-    fullTitle: "Dor na lombar",
+    fullTitle: "Ênfase em lombar",
     subtitle: "Controle e postura",
     color: "#34C759",
     soft: "rgba(52,199,89,.13)",
-    bg:
-      "radial-gradient(circle at 80% 10%, rgba(52,199,89,.25), rgba(52,199,89,0) 34%), linear-gradient(135deg, #F0FDF4, #FFFFFF)",
-    guideTitle: "Treino mais seguro para lombar",
-    guideText:
-      "A ideia é fortalecer core e postura, reduzindo movimentos agressivos. Dor forte, aguda ou irradiando precisa de avaliação profissional.",
+    bg: "radial-gradient(circle at 80% 10%, rgba(52,199,89,.25), rgba(52,199,89,0) 34%), linear-gradient(135deg, #F0FDF4, #FFFFFF)",
+    guideTitle: "Quando usar",
+    guideText: "Use quando quiser um treino mais seguro para lombar, com core, postura e menos agressão. Dor forte ou irradiando precisa avaliação profissional.",
     keywords: ["coluna neutra", "core", "controle", "sem dor"],
     exercises: [
-      {
-        name: "Dead bug",
-        group: "Core",
-        sets: 3,
-        reps: "10–12",
-        rest: "45–60s",
-        method: "Controle a respiração e mantenha lombar estável.",
-      },
-      {
-        name: "Prancha",
-        group: "Core",
-        sets: 4,
-        reps: "30–45s",
-        rest: "45–60s",
-        method: "Abdômen travado, sem deixar o quadril cair.",
-      },
-      {
-        name: "Hiperextensão lombar leve",
-        group: "Lombar",
-        sets: 3,
-        reps: "12–15",
-        rest: "60–75s",
-        method: "Suba só até alinhar o corpo. Sem jogar para trás.",
-      },
-      {
-        name: "Remada baixa",
-        group: "Costas/Postura",
-        sets: 4,
-        reps: "10–12",
-        rest: "75–90s",
-        method: "Peito aberto, escápulas firmes e tronco estável.",
-      },
-      {
-        name: "Alongamento de posterior",
-        group: "Mobilidade",
-        sets: 3,
-        reps: "30s",
-        rest: "30s",
-        method: "Alongue sem forçar dor. Respire devagar.",
-      },
+      { name: "Dead bug", group: "Core", sets: 3, reps: "10–12", rest: "45–60s", method: "Controle a respiração e mantenha lombar estável." },
+      { name: "Prancha", group: "Core", sets: 4, reps: "30–45s", rest: "45–60s", method: "Abdômen travado, sem deixar o quadril cair." },
+      { name: "Hiperextensão lombar leve", group: "Lombar", sets: 3, reps: "12–15", rest: "60–75s", method: "Suba só até alinhar o corpo. Sem jogar para trás." },
+      { name: "Remada baixa", group: "Costas/Postura", sets: 4, reps: "10–12", rest: "75–90s", method: "Peito aberto, escápulas firmes e tronco estável." },
+      { name: "Alongamento de posterior", group: "Mobilidade", sets: 3, reps: "30s", rest: "30s", method: "Alongue sem forçar dor. Respire devagar." },
     ],
   },
   {
     id: "emagrecer",
     chapter: "03",
     title: "Emagrecer",
-    fullTitle: "Emagrecer em dias",
+    fullTitle: "Ênfase em emagrecimento",
     subtitle: "Treino + cardio",
     color: "#0A84FF",
     soft: "rgba(10,132,255,.13)",
-    bg:
-      "radial-gradient(circle at 80% 10%, rgba(10,132,255,.25), rgba(10,132,255,0) 34%), linear-gradient(135deg, #EFF6FF, #FFFFFF)",
-    guideTitle: "Plano simples para emagrecer",
-    guideText:
-      "Combina musculação com cardio progressivo. O objetivo é consistência, não sofrimento. Você pode ajustar os dias abaixo.",
+    bg: "radial-gradient(circle at 80% 10%, rgba(10,132,255,.25), rgba(10,132,255,0) 34%), linear-gradient(135deg, #EFF6FF, #FFFFFF)",
+    guideTitle: "Como funciona",
+    guideText: "Combina musculação com cardio progressivo. O objetivo é constância, gasto calórico e treino sustentável.",
     keywords: ["cardio", "constância", "gasto calórico", "ritmo"],
     exercises: [
-      {
-        name: "Agachamento livre",
-        group: "Pernas",
-        sets: 4,
-        reps: "12–15",
-        rest: "60–75s",
-        method: "Ritmo constante, sem descanso longo demais.",
-      },
-      {
-        name: "Remada baixa",
-        group: "Costas",
-        sets: 4,
-        reps: "10–12",
-        rest: "60–75s",
-        method: "Movimento firme e controlado.",
-      },
-      {
-        name: "Supino inclinado",
-        group: "Peito",
-        sets: 3,
-        reps: "10–12",
-        rest: "60s",
-        method: "Controle a descida e mantenha ritmo.",
-      },
-      {
-        name: "Cadeira extensora",
-        group: "Quadríceps",
-        sets: 3,
-        reps: "12–15",
-        rest: "45–60s",
-        method: "Queima controlada, sem roubar.",
-      },
-      {
-        name: "Cardio moderado",
-        group: "Cardio",
-        sets: 1,
-        reps: "25–35min",
-        rest: "—",
-        method: "Esteira, bike ou elíptico em ritmo que dê para sustentar.",
-      },
+      { name: "Agachamento livre", group: "Pernas", sets: 4, reps: "12–15", rest: "60–75s", method: "Ritmo constante, sem descanso longo demais." },
+      { name: "Remada baixa", group: "Costas", sets: 4, reps: "10–12", rest: "60–75s", method: "Movimento firme e controlado." },
+      { name: "Supino inclinado", group: "Peito", sets: 3, reps: "10–12", rest: "60s", method: "Controle a descida e mantenha ritmo." },
+      { name: "Cadeira extensora", group: "Quadríceps", sets: 3, reps: "12–15", rest: "45–60s", method: "Queima controlada, sem roubar." },
+      { name: "Cardio moderado", group: "Cardio", sets: 1, reps: "25–35min", rest: "—", method: "Esteira, bike ou elíptico em ritmo que dê para sustentar." },
     ],
     cardioPlan: [
       "Semana 1: 3 cardios moderados de 25 minutos.",
@@ -377,171 +242,60 @@ const MODULES = [
     id: "trocar_hoje",
     chapter: "04",
     title: "Trocar hoje",
-    fullTitle: "Trocar treino de hoje",
+    fullTitle: "Ênfase alternativa",
     subtitle: "Sem bagunçar o plano",
     color: "#AF52DE",
     soft: "rgba(175,82,222,.13)",
-    bg:
-      "radial-gradient(circle at 80% 10%, rgba(175,82,222,.24), rgba(175,82,222,0) 34%), linear-gradient(135deg, #FAF5FF, #FFFFFF)",
-    guideTitle: "Troque só o necessário",
-    guideText:
-      "Use quando está cansado, sem tempo ou sem aparelho. Mantém estrutura sem destruir a semana.",
+    bg: "radial-gradient(circle at 80% 10%, rgba(175,82,222,.24), rgba(175,82,222,0) 34%), linear-gradient(135deg, #FAF5FF, #FFFFFF)",
+    guideTitle: "Troca inteligente",
+    guideText: "Use quando estiver sem tempo, cansado ou sem aparelho. Mantém a estrutura da semana sem travar seu treino.",
     keywords: ["troca rápida", "sem bagunçar", "adaptação", "praticidade"],
     exercises: [
-      {
-        name: "Leg press",
-        group: "Pernas",
-        sets: 3,
-        reps: "12",
-        rest: "75s",
-        method: "Opção segura para substituir agachamento pesado.",
-      },
-      {
-        name: "Puxada frente",
-        group: "Costas",
-        sets: 3,
-        reps: "12",
-        rest: "75s",
-        method: "Boa base para manter treino completo.",
-      },
-      {
-        name: "Supino máquina",
-        group: "Peito",
-        sets: 3,
-        reps: "12",
-        rest: "75s",
-        method: "Mais simples que livre em dias corridos.",
-      },
-      {
-        name: "Elevação lateral",
-        group: "Ombros",
-        sets: 3,
-        reps: "12–15",
-        rest: "60s",
-        method: "Carga leve e execução limpa.",
-      },
-      {
-        name: "Prancha",
-        group: "Core",
-        sets: 3,
-        reps: "30–45s",
-        rest: "45s",
-        method: "Finalização rápida.",
-      },
+      { name: "Leg press", group: "Pernas", sets: 3, reps: "12", rest: "75s", method: "Opção segura para substituir agachamento pesado." },
+      { name: "Puxada frente", group: "Costas", sets: 3, reps: "12", rest: "75s", method: "Boa base para manter treino completo." },
+      { name: "Supino máquina", group: "Peito", sets: 3, reps: "12", rest: "75s", method: "Mais simples que livre em dias corridos." },
+      { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "12–15", rest: "60s", method: "Carga leve e execução limpa." },
+      { name: "Prancha", group: "Core", sets: 3, reps: "30–45s", rest: "45s", method: "Finalização rápida." },
     ],
   },
   {
     id: "leve",
     chapter: "05",
     title: "Leve",
-    fullTitle: "Treino leve",
+    fullTitle: "Ênfase leve",
     subtitle: "Recuperar ritmo",
     color: "#64D2FF",
     soft: "rgba(100,210,255,.15)",
-    bg:
-      "radial-gradient(circle at 80% 10%, rgba(100,210,255,.28), rgba(100,210,255,0) 34%), linear-gradient(135deg, #F0FDFF, #FFFFFF)",
+    bg: "radial-gradient(circle at 80% 10%, rgba(100,210,255,.28), rgba(100,210,255,0) 34%), linear-gradient(135deg, #F0FDFF, #FFFFFF)",
     guideTitle: "Leve, mas útil",
-    guideText:
-      "Melhor fazer um treino leve bem feito do que faltar. Use menos carga e foque em controle.",
+    guideText: "Melhor fazer um treino leve bem feito do que faltar. Reduza carga e mantenha controle.",
     keywords: ["controle", "leve", "recuperação", "constância"],
     exercises: [
-      {
-        name: "Bike leve",
-        group: "Cardio",
-        sets: 1,
-        reps: "8–10min",
-        rest: "—",
-        method: "Aquecimento sem cansar demais.",
-      },
-      {
-        name: "Agachamento goblet leve",
-        group: "Pernas",
-        sets: 3,
-        reps: "12",
-        rest: "60s",
-        method: "Carga confortável e amplitude segura.",
-      },
-      {
-        name: "Remada máquina",
-        group: "Costas",
-        sets: 3,
-        reps: "12",
-        rest: "60s",
-        method: "Controle total, sem roubar.",
-      },
-      {
-        name: "Supino máquina",
-        group: "Peito",
-        sets: 3,
-        reps: "12",
-        rest: "60s",
-        method: "Movimento limpo e carga moderada.",
-      },
-      {
-        name: "Alongamento curto",
-        group: "Mobilidade",
-        sets: 1,
-        reps: "5min",
-        rest: "—",
-        method: "Finalize soltando quadril, posterior e costas.",
-      },
+      { name: "Bike leve", group: "Cardio", sets: 1, reps: "8–10min", rest: "—", method: "Aquecimento sem cansar demais." },
+      { name: "Agachamento goblet leve", group: "Pernas", sets: 3, reps: "12", rest: "60s", method: "Carga confortável e amplitude segura." },
+      { name: "Remada máquina", group: "Costas", sets: 3, reps: "12", rest: "60s", method: "Controle total, sem roubar." },
+      { name: "Supino máquina", group: "Peito", sets: 3, reps: "12", rest: "60s", method: "Movimento limpo e carga moderada." },
+      { name: "Alongamento curto", group: "Mobilidade", sets: 1, reps: "5min", rest: "—", method: "Finalize soltando quadril, posterior e costas." },
     ],
   },
   {
     id: "forte",
     chapter: "06",
     title: "Forte",
-    fullTitle: "Treino forte",
+    fullTitle: "Ênfase forte",
     subtitle: "Carga e progressão",
     color: "#FF375F",
     soft: "rgba(255,55,95,.13)",
-    bg:
-      "radial-gradient(circle at 80% 10%, rgba(255,55,95,.24), rgba(255,55,95,0) 34%), linear-gradient(135deg, #FFF1F2, #FFFFFF)",
+    bg: "radial-gradient(circle at 80% 10%, rgba(255,55,95,.24), rgba(255,55,95,0) 34%), linear-gradient(135deg, #FFF1F2, #FFFFFF)",
     guideTitle: "Forte sem bagunçar",
-    guideText:
-      "Treino forte precisa de técnica e descanso. Não é sobre fazer tudo até falhar.",
+    guideText: "Mais carga, técnica e descanso. Treino forte não é fazer tudo até falhar.",
     keywords: ["carga", "progressão", "descanso", "técnica"],
     exercises: [
-      {
-        name: "Agachamento",
-        group: "Pernas",
-        sets: 5,
-        reps: "5–8",
-        rest: "120s",
-        method: "Priorize técnica e carga progressiva.",
-      },
-      {
-        name: "Supino reto",
-        group: "Peito",
-        sets: 5,
-        reps: "5–8",
-        rest: "120s",
-        method: "Controle a descida e suba com força.",
-      },
-      {
-        name: "Remada curvada",
-        group: "Costas",
-        sets: 4,
-        reps: "6–10",
-        rest: "90–120s",
-        method: "Tronco firme e puxada forte.",
-      },
-      {
-        name: "Terra romeno",
-        group: "Posterior",
-        sets: 4,
-        reps: "8–10",
-        rest: "120s",
-        method: "Quadril para trás e coluna neutra.",
-      },
-      {
-        name: "Desenvolvimento",
-        group: "Ombros",
-        sets: 4,
-        reps: "6–10",
-        rest: "90s",
-        method: "Sem roubar com lombar.",
-      },
+      { name: "Agachamento", group: "Pernas", sets: 5, reps: "5–8", rest: "120s", method: "Priorize técnica e carga progressiva." },
+      { name: "Supino reto", group: "Peito", sets: 5, reps: "5–8", rest: "120s", method: "Controle a descida e suba com força." },
+      { name: "Remada curvada", group: "Costas", sets: 4, reps: "6–10", rest: "90–120s", method: "Tronco firme e puxada forte." },
+      { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–10", rest: "120s", method: "Quadril para trás e coluna neutra." },
+      { name: "Desenvolvimento", group: "Ombros", sets: 4, reps: "6–10", rest: "90s", method: "Sem roubar com lombar." },
     ],
   },
 ];
@@ -552,10 +306,10 @@ export default function MontagemTreino() {
 
   const [profile, setProfile] = useState(null);
   const [subscription, setSubscription] = useState(null);
-  const [selectedModuleId, setSelectedModuleId] = useState("gluteo");
-  const [exploring, setExploring] = useState(false);
-  const [openPanel, setOpenPanel] = useState("guide");
-  const [duration, setDuration] = useState("hoje");
+  const [selectedId, setSelectedId] = useState("gluteo");
+  const [expanded, setExpanded] = useState(false);
+  const [openInfo, setOpenInfo] = useState("guide");
+  const [scope, setScope] = useState("hoje");
   const [targetDays, setTargetDays] = useState("30");
   const [exercises, setExercises] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -563,16 +317,15 @@ export default function MontagemTreino() {
   const [loading, setLoading] = useState(true);
   const [openKeyword, setOpenKeyword] = useState(null);
 
-  const selectedModule = useMemo(() => {
-    return MODULES.find((item) => item.id === selectedModuleId) || MODULES[0];
-  }, [selectedModuleId]);
+  const selected = useMemo(() => EMPHASES.find((x) => x.id === selectedId) || EMPHASES[0], [selectedId]);
+  const applyWindow = useMemo(() => getApplyWindow(scope), [scope]);
 
   useEffect(() => {
-    setExercises((selectedModule.exercises || []).map(makeEditableExercise));
+    setExercises((selected.exercises || []).map(makeEditableExercise));
     setEditingId(null);
     setOpenKeyword(null);
-    setOpenPanel("guide");
-  }, [selectedModuleId]);
+    setOpenInfo("guide");
+  }, [selectedId]);
 
   useEffect(() => {
     let alive = true;
@@ -622,18 +375,16 @@ export default function MontagemTreino() {
     const objetivo = normalizeText(profile?.objetivo);
 
     if (objetivo.includes("emagrec") || objetivo.includes("perda")) {
-      setSelectedModuleId("emagrecer");
+      setSelectedId("emagrecer");
       return;
     }
 
     if (objetivo.includes("forca") || objetivo.includes("performance")) {
-      setSelectedModuleId("forte");
+      setSelectedId("forte");
       return;
     }
 
-    if (objetivo.includes("glute")) {
-      setSelectedModuleId("gluteo");
-    }
+    if (objetivo.includes("glute")) setSelectedId("gluteo");
   }, [profile?.objetivo]);
 
   const isPaid = hasActiveSubscription(subscription);
@@ -644,7 +395,7 @@ export default function MontagemTreino() {
 
     const map = {
       "pausa no topo": "Segure a contração por 1 segundo no ponto mais forte do movimento.",
-      quadril: "Pense em mover o quadril, não a lombar. Isso ajuda a ativar glúteos e posterior.",
+      quadril: "Pense em mover o quadril, não a lombar. Isso melhora a ativação de glúteos e posterior.",
       amplitude: "Use uma amplitude segura, sem perder postura ou sentir dor articular.",
       controle: "Controle a ida e a volta do movimento. Evite jogar o peso.",
       "coluna neutra": "Mantenha a coluna alinhada, sem arredondar ou hiperestender.",
@@ -672,18 +423,20 @@ export default function MontagemTreino() {
   const payload = useMemo(() => {
     return {
       source: "montagem",
-      intent: selectedModule.id,
-      duration,
-      targetDays: selectedModule.id === "emagrecer" ? Number(targetDays || 30) : null,
-      focusId: selectedModule.id,
-      focusTitle: selectedModule.fullTitle,
-      focusSubtitle: selectedModule.subtitle,
+      intent: selected.id,
+      emphasisId: selected.id,
+      focusId: selected.id,
+      focusTitle: selected.fullTitle,
+      focusSubtitle: selected.subtitle,
+      apply: applyWindow,
+      duration: scope,
+      targetDays: selected.id === "emagrecer" ? Number(targetDays || 30) : null,
       guide: {
-        chapter: selectedModule.chapter,
-        title: selectedModule.guideTitle,
-        text: selectedModule.guideText,
-        keywords: selectedModule.keywords,
-        color: selectedModule.color,
+        chapter: selected.chapter,
+        title: selected.guideTitle,
+        text: selected.guideText,
+        keywords: selected.keywords,
+        color: selected.color,
       },
       profile: {
         objetivo: profile?.objetivo || null,
@@ -697,7 +450,7 @@ export default function MontagemTreino() {
         planKey,
         status: subscription?.status || null,
       },
-      cardioPlan: selectedModule.cardioPlan || [],
+      cardioPlan: selected.cardioPlan || [],
       exercises: exercises.map((ex, index) => ({
         ...ex,
         order: index + 1,
@@ -705,23 +458,18 @@ export default function MontagemTreino() {
       })),
       createdAt: new Date().toISOString(),
     };
-  }, [selectedModule, duration, targetDays, profile, subscription, isPaid, planKey, exercises]);
+  }, [selected, applyWindow, scope, targetDays, profile, subscription, isPaid, planKey, exercises]);
 
-  function updateExercise(exerciseId, patch) {
-    setExercises((prev) =>
-      prev.map((ex) => {
-        if (ex.id !== exerciseId) return ex;
-        return { ...ex, ...patch };
-      })
-    );
+  function updateExercise(id, patch) {
+    setExercises((prev) => prev.map((ex) => (ex.id === id ? { ...ex, ...patch } : ex)));
   }
 
-  function removeExercise(exerciseId) {
-    setExercises((prev) => prev.filter((ex) => ex.id !== exerciseId));
+  function removeExercise(id) {
+    setExercises((prev) => prev.filter((ex) => ex.id !== id));
   }
 
   function addExercise() {
-    const newExercise = makeEditableExercise({
+    const ex = makeEditableExercise({
       name: "Novo exercício",
       group: "Grupo muscular",
       sets: 3,
@@ -730,14 +478,15 @@ export default function MontagemTreino() {
       method: "Descreva a execução.",
     });
 
-    setExercises((prev) => [...prev, newExercise]);
-    setEditingId(newExercise.id);
-    setOpenPanel("exercises");
+    setExercises((prev) => [...prev, ex]);
+    setEditingId(ex.id);
+    setOpenInfo("exercises");
+    setExpanded(true);
   }
 
-  function moveExercise(exerciseId, dir) {
+  function moveExercise(id, dir) {
     setExercises((prev) => {
-      const index = prev.findIndex((ex) => ex.id === exerciseId);
+      const index = prev.findIndex((ex) => ex.id === id);
       if (index < 0) return prev;
 
       const nextIndex = clamp(index + dir, 0, prev.length - 1);
@@ -759,6 +508,15 @@ export default function MontagemTreino() {
     try {
       localStorage.setItem("fitdeal_quick_workout", JSON.stringify(payload));
 
+      await supabase
+        .from("user_workout_montages")
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+
       const { data, error } = await supabase
         .from("user_workout_montages")
         .insert({
@@ -766,7 +524,7 @@ export default function MontagemTreino() {
           focus_key: payload.focusId,
           title: payload.focusTitle,
           selected_level: String(profile?.nivel || ""),
-          selected_days: String(duration || ""),
+          selected_days: payload.apply.label,
           payload,
           is_active: true,
           updated_at: new Date().toISOString(),
@@ -789,49 +547,49 @@ export default function MontagemTreino() {
     }
   }
 
-  function selectModule(id) {
-    setSelectedModuleId(id);
-    setExploring(false);
+  function selectEmphasis(id) {
+    setSelectedId(id);
+    setExpanded(false);
   }
 
-  const panelButton = (id, title, sub) => (
-    <button
-      type="button"
-      onClick={() => setOpenPanel(openPanel === id ? null : id)}
-      style={{
-        ...S.panelBtn,
-        ...(openPanel === id
-          ? {
-              borderColor: selectedModule.color,
-              background: selectedModule.soft,
-            }
-          : null),
-      }}
-    >
-      <div>
-        <b>{title}</b>
-        <span>{sub}</span>
-      </div>
-      <strong>{openPanel === id ? "−" : "+"}</strong>
-    </button>
-  );
+  function panelButton(id, title, sub) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpenInfo(openInfo === id ? null : id)}
+        style={{
+          ...S.panelBtn,
+          ...(openInfo === id
+            ? {
+                borderColor: selected.color,
+                background: selected.soft,
+              }
+            : null),
+        }}
+      >
+        <div>
+          <b>{title}</b>
+          <span>{sub}</span>
+        </div>
+        <strong>{openInfo === id ? "−" : "+"}</strong>
+      </button>
+    );
+  }
 
   return (
     <div style={S.page}>
       <div style={S.wrap}>
-        <section style={S.hero}>
+        <section style={S.bookHero}>
           <button type="button" style={S.backBtn} onClick={() => nav("/treino")}>
             ←
           </button>
 
-          <div style={S.heroMain}>
+          <div style={S.bookBody}>
             <div style={S.kicker}>Montagem inteligente</div>
-            <h1 style={S.heroTitle}>Vamos alterar seu foco hoje</h1>
-            <p style={S.heroSub}>
-              Arraste os módulos, escolha um foco e monte um treino leve de entender.
-            </p>
+            <h1 style={S.title}>Vamos alterar seu foco hoje</h1>
+            <p style={S.sub}>Arraste as ênfases, escolha uma e monte um treino mais fácil de seguir.</p>
 
-            <div style={S.miniProfile}>
+            <div style={S.miniStatus}>
               <span>{todayLabel()}</span>
               <span>{loading ? "Lendo perfil..." : profile?.objetivo || "Objetivo automático"}</span>
               <span>{isPaid ? planKey || "Plano ativo" : "Livre"}</span>
@@ -839,110 +597,153 @@ export default function MontagemTreino() {
           </div>
         </section>
 
-        <section style={S.modulesSection}>
-          <div style={S.sectionHead}>
+        <section style={S.emphasisShelf}>
+          <div style={S.shelfHead}>
             <div>
-              <div style={S.sectionTitle}>Módulos de treino</div>
-              <div style={S.sectionSub}>Arraste para o lado e toque no módulo.</div>
+              <div style={S.shelfTitle}>Ênfases</div>
+              <div style={S.shelfSub}>Escolha o foco do treino.</div>
             </div>
 
             <button
               type="button"
-              style={{
-                ...S.exploreSmall,
-                background: selectedModule.color,
-              }}
-              onClick={() => setExploring(true)}
+              style={{ ...S.openSelectedBtn, background: selected.color }}
+              onClick={() => setExpanded(true)}
             >
-              Explorar
+              Abrir
             </button>
           </div>
 
-          <div style={S.modulesScroller}>
-            {MODULES.map((item) => {
-              const active = item.id === selectedModuleId;
+          <div style={S.bookScroller}>
+            {EMPHASES.map((item) => {
+              const active = item.id === selectedId;
 
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => selectModule(item.id)}
+                  onClick={() => selectEmphasis(item.id)}
                   style={{
-                    ...S.moduleCard,
+                    ...S.bookCard,
                     background: item.bg,
                     borderColor: active ? item.color : "rgba(15,23,42,.08)",
-                    boxShadow: active
-                      ? `0 24px 60px ${item.soft}`
-                      : "0 16px 44px rgba(15,23,42,.07)",
+                    boxShadow: active ? `0 24px 60px ${item.soft}` : "0 16px 44px rgba(15,23,42,.07)",
                     transform: active ? "translateY(-2px)" : "translateY(0)",
                   }}
                 >
-                  <div style={S.moduleTop}>
+                  <div style={S.bookTop}>
                     <span>{item.chapter}</span>
                     <i style={{ background: item.color }} />
                   </div>
 
-                  <div style={S.moduleIconWrap}>
-                    <ModuleIcon type={item.id} color={item.color} />
+                  <div style={S.iconCenter}>
+                    <EmphasisIcon type={item.id} color={item.color} />
                   </div>
 
-                  <div style={S.moduleTitle}>{item.title}</div>
-                  <div style={S.moduleSub}>{item.subtitle}</div>
+                  <div style={S.bookTitle}>{item.title}</div>
+                  <div style={S.bookSub}>{item.subtitle}</div>
                 </button>
               );
             })}
           </div>
 
-          {!exploring ? (
-            <div style={S.selectedStrip}>
+          {!expanded ? (
+            <div style={S.selectedPreview}>
               <div>
-                <b>{selectedModule.fullTitle}</b>
-                <span>{selectedModule.subtitle}</span>
+                <b>{selected.fullTitle}</b>
+                <span>{selected.subtitle}</span>
               </div>
 
               <button
                 type="button"
-                onClick={() => setExploring(true)}
-                style={{
-                  ...S.primaryMini,
-                  background: selectedModule.color,
-                }}
+                onClick={() => setExpanded(true)}
+                style={{ ...S.previewBtn, background: selected.color }}
               >
-                Abrir módulo
+                Ver treino
               </button>
             </div>
           ) : null}
         </section>
 
-        {exploring ? (
+        {expanded ? (
           <>
-            <section style={S.moduleDetail}>
-              <div style={S.detailHero}>
-                <div
-                  style={{
-                    ...S.detailIcon,
-                    background: selectedModule.soft,
-                  }}
-                >
-                  <ModuleIcon type={selectedModule.id} color={selectedModule.color} />
+            <section style={S.detail}>
+              <div style={S.detailIntro}>
+                <div style={{ ...S.detailIcon, background: selected.soft }}>
+                  <EmphasisIcon type={selected.id} color={selected.color} />
                 </div>
 
                 <div style={{ minWidth: 0 }}>
-                  <div style={S.detailKicker}>Módulo {selectedModule.chapter}</div>
-                  <div style={S.detailTitle}>{selectedModule.fullTitle}</div>
-                  <div style={S.detailSub}>{selectedModule.subtitle}</div>
+                  <div style={S.detailKicker}>Ênfase {selected.chapter}</div>
+                  <div style={S.detailTitle}>{selected.fullTitle}</div>
+                  <div style={S.detailSub}>{selected.subtitle}</div>
                 </div>
               </div>
 
-              <div style={S.panelList}>
-                {panelButton("guide", "Explicação rápida", "Entenda quando usar")}
-                {openPanel === "guide" ? (
+              <div style={S.scopeBox}>
+                <div style={S.scopeHead}>
+                  <div>
+                    <b>Aplicar por quanto tempo?</b>
+                    <span>
+                      {applyWindow.startsOn} até {applyWindow.endsOn}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={S.scopeGrid}>
+                  {[
+                    { id: "hoje", title: "Hoje", sub: "Só o treino atual" },
+                    { id: "semana", title: "Semana", sub: "Vale por 7 dias" },
+                    { id: "mes", title: "Mês", sub: "Vale por 30 dias" },
+                  ].map((item) => {
+                    const active = scope === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setScope(item.id)}
+                        style={{
+                          ...S.scopeBtn,
+                          ...(active
+                            ? {
+                                borderColor: selected.color,
+                                background: selected.soft,
+                              }
+                            : null),
+                        }}
+                      >
+                        <b>{item.title}</b>
+                        <span>{item.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selected.id === "emagrecer" ? (
+                  <label style={S.daysLabel}>
+                    Quero emagrecer em quantos dias?
+                    <div style={S.daysInline}>
+                      <input
+                        value={targetDays}
+                        onChange={(e) => setTargetDays(e.target.value)}
+                        inputMode="numeric"
+                        style={S.daysInput}
+                      />
+                      <span>dias</span>
+                    </div>
+                  </label>
+                ) : null}
+              </div>
+
+              <div style={S.panelStack}>
+                {panelButton("guide", "Guia rápido", "Entenda como usar")}
+                {openInfo === "guide" ? (
                   <div style={S.panelContent}>
-                    <div style={S.guideTitle}>{selectedModule.guideTitle}</div>
-                    <div style={S.guideText}>{selectedModule.guideText}</div>
+                    <div style={S.guideTitle}>{selected.guideTitle}</div>
+                    <div style={S.guideText}>{selected.guideText}</div>
 
                     <div style={S.keywordRow}>
-                      {selectedModule.keywords.map((word) => {
+                      {selected.keywords.map((word) => {
                         const active = openKeyword === word;
 
                         return (
@@ -954,9 +755,9 @@ export default function MontagemTreino() {
                               ...S.keyword,
                               ...(active
                                 ? {
-                                    background: selectedModule.color,
+                                    background: selected.color,
                                     color: "#fff",
-                                    borderColor: selectedModule.color,
+                                    borderColor: selected.color,
                                   }
                                 : null),
                             }}
@@ -971,63 +772,13 @@ export default function MontagemTreino() {
                   </div>
                 ) : null}
 
-                {panelButton("duration", "Aplicar por quanto tempo?", "Hoje, semana ou mês")}
-                {openPanel === "duration" ? (
-                  <div style={S.panelContent}>
-                    <div style={S.durationGrid}>
-                      {[
-                        { id: "hoje", label: "Só hoje", sub: "Troca rápida" },
-                        { id: "semana", label: "Semana", sub: "7 dias" },
-                        { id: "mes", label: "Mês", sub: "Ciclo maior" },
-                      ].map((item) => {
-                        const active = duration === item.id;
-
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setDuration(item.id)}
-                            style={{
-                              ...S.durationBtn,
-                              ...(active
-                                ? {
-                                    borderColor: selectedModule.color,
-                                    background: selectedModule.soft,
-                                  }
-                                : null),
-                            }}
-                          >
-                            <b>{item.label}</b>
-                            <span>{item.sub}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {selectedModule.id === "emagrecer" ? (
-                      <label style={S.daysLabel}>
-                        Quero emagrecer em quantos dias?
-                        <div style={S.daysInline}>
-                          <input
-                            value={targetDays}
-                            onChange={(e) => setTargetDays(e.target.value)}
-                            inputMode="numeric"
-                            style={S.daysInput}
-                          />
-                          <span>dias</span>
-                        </div>
-                      </label>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {selectedModule.cardioPlan?.length ? (
+                {selected.cardioPlan?.length ? (
                   <>
-                    {panelButton("cardio", "Plano de cardio", "Sugestão por semanas")}
-                    {openPanel === "cardio" ? (
+                    {panelButton("cardio", "Cardio sugerido", "Plano progressivo")}
+                    {openInfo === "cardio" ? (
                       <div style={S.panelContent}>
                         <div style={S.cardioList}>
-                          {selectedModule.cardioPlan.map((line, index) => (
+                          {selected.cardioPlan.map((line, index) => (
                             <div key={index} style={S.cardioItem}>
                               <span>{index + 1}</span>
                               <b>{line}</b>
@@ -1039,13 +790,13 @@ export default function MontagemTreino() {
                   </>
                 ) : null}
 
-                {panelButton("exercises", "Exercícios recomendados", "Edite só se quiser")}
-                {openPanel === "exercises" ? (
+                {panelButton("exercises", "Exercícios indicados", "Com imagem e edição")}
+                {openInfo === "exercises" ? (
                   <div style={S.panelContent}>
                     <div style={S.exerciseHead}>
                       <div>
                         <b>{exercises.length} exercícios</b>
-                        <span>Séries, reps e descanso ficam editáveis.</span>
+                        <span>Toque em editar para mexer em séries, reps, descanso e execução.</span>
                       </div>
 
                       <button type="button" onClick={addExercise} style={S.addBtn}>
@@ -1059,110 +810,107 @@ export default function MontagemTreino() {
 
                         return (
                           <article key={ex.id} style={S.exerciseCard}>
-                            <div style={S.exerciseTop}>
-                              <div
-                                style={{
-                                  ...S.exerciseNumber,
-                                  background: selectedModule.color,
-                                }}
-                              >
-                                {index + 1}
+                            <ExerciseVisual ex={ex} color={selected.color} />
+
+                            <div style={S.exerciseBody}>
+                              <div style={S.exerciseTop}>
+                                <div style={{ ...S.exerciseNumber, background: selected.color }}>{index + 1}</div>
+
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  {editing ? (
+                                    <>
+                                      <input
+                                        value={ex.name}
+                                        onChange={(e) => updateExercise(ex.id, { name: e.target.value })}
+                                        style={S.nameInput}
+                                      />
+                                      <input
+                                        value={ex.group}
+                                        onChange={(e) => updateExercise(ex.id, { group: e.target.value })}
+                                        style={S.groupInput}
+                                      />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div style={S.exerciseName}>{ex.name}</div>
+                                      <div style={S.exerciseMeta}>
+                                        {ex.group} • {ex.sets}x • {ex.reps} • {ex.rest}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(editing ? null : ex.id)}
+                                  style={{
+                                    ...S.editBtn,
+                                    background: editing ? selected.color : "rgba(15,23,42,.05)",
+                                    color: editing ? "#fff" : TEXT,
+                                  }}
+                                >
+                                  {editing ? "Ok" : "Editar"}
+                                </button>
                               </div>
 
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                {editing ? (
-                                  <>
-                                    <input
-                                      value={ex.name}
-                                      onChange={(e) => updateExercise(ex.id, { name: e.target.value })}
-                                      style={S.nameInput}
-                                    />
-                                    <input
-                                      value={ex.group}
-                                      onChange={(e) => updateExercise(ex.id, { group: e.target.value })}
-                                      style={S.groupInput}
-                                    />
-                                  </>
-                                ) : (
-                                  <>
-                                    <div style={S.exerciseName}>{ex.name}</div>
-                                    <div style={S.exerciseMeta}>
-                                      {ex.group} • {ex.sets}x • {ex.reps} • {ex.rest}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
+                              {editing ? (
+                                <>
+                                  <div style={S.editGrid}>
+                                    <label style={S.miniLabel}>
+                                      Séries
+                                      <input
+                                        value={ex.sets}
+                                        onChange={(e) => updateExercise(ex.id, { sets: e.target.value })}
+                                        inputMode="numeric"
+                                        style={S.miniInput}
+                                      />
+                                    </label>
 
-                              <button
-                                type="button"
-                                onClick={() => setEditingId(editing ? null : ex.id)}
-                                style={{
-                                  ...S.editBtn,
-                                  background: editing ? selectedModule.color : "rgba(15,23,42,.05)",
-                                  color: editing ? "#fff" : TEXT,
-                                }}
-                              >
-                                {editing ? "Ok" : "Editar"}
-                              </button>
+                                    <label style={S.miniLabel}>
+                                      Reps
+                                      <input
+                                        value={ex.reps}
+                                        onChange={(e) => updateExercise(ex.id, { reps: e.target.value })}
+                                        style={S.miniInput}
+                                      />
+                                    </label>
+
+                                    <label style={S.miniLabel}>
+                                      Descanso
+                                      <input
+                                        value={ex.rest}
+                                        onChange={(e) => updateExercise(ex.id, { rest: e.target.value })}
+                                        style={S.miniInput}
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <label style={S.methodLabel}>
+                                    Execução
+                                    <textarea
+                                      value={ex.method}
+                                      onChange={(e) => updateExercise(ex.id, { method: e.target.value })}
+                                      style={S.methodInput}
+                                      rows={2}
+                                    />
+                                  </label>
+
+                                  <div style={S.exerciseTools}>
+                                    <button type="button" onClick={() => moveExercise(ex.id, -1)} style={S.toolBtn}>
+                                      Subir
+                                    </button>
+                                    <button type="button" onClick={() => moveExercise(ex.id, 1)} style={S.toolBtn}>
+                                      Descer
+                                    </button>
+                                    <button type="button" onClick={() => removeExercise(ex.id)} style={S.removeBtn}>
+                                      Remover
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
+                                <div style={S.methodPreview}>{ex.method}</div>
+                              )}
                             </div>
-
-                            {editing ? (
-                              <>
-                                <div style={S.editGrid}>
-                                  <label style={S.miniLabel}>
-                                    Séries
-                                    <input
-                                      value={ex.sets}
-                                      onChange={(e) => updateExercise(ex.id, { sets: e.target.value })}
-                                      inputMode="numeric"
-                                      style={S.miniInput}
-                                    />
-                                  </label>
-
-                                  <label style={S.miniLabel}>
-                                    Reps
-                                    <input
-                                      value={ex.reps}
-                                      onChange={(e) => updateExercise(ex.id, { reps: e.target.value })}
-                                      style={S.miniInput}
-                                    />
-                                  </label>
-
-                                  <label style={S.miniLabel}>
-                                    Descanso
-                                    <input
-                                      value={ex.rest}
-                                      onChange={(e) => updateExercise(ex.id, { rest: e.target.value })}
-                                      style={S.miniInput}
-                                    />
-                                  </label>
-                                </div>
-
-                                <label style={S.methodLabel}>
-                                  Execução
-                                  <textarea
-                                    value={ex.method}
-                                    onChange={(e) => updateExercise(ex.id, { method: e.target.value })}
-                                    style={S.methodInput}
-                                    rows={2}
-                                  />
-                                </label>
-
-                                <div style={S.exerciseTools}>
-                                  <button type="button" onClick={() => moveExercise(ex.id, -1)} style={S.toolBtn}>
-                                    Subir
-                                  </button>
-                                  <button type="button" onClick={() => moveExercise(ex.id, 1)} style={S.toolBtn}>
-                                    Descer
-                                  </button>
-                                  <button type="button" onClick={() => removeExercise(ex.id)} style={S.removeBtn}>
-                                    Remover
-                                  </button>
-                                </div>
-                              </>
-                            ) : (
-                              <div style={S.methodPreview}>{ex.method}</div>
-                            )}
                           </article>
                         );
                       })}
@@ -1176,8 +924,7 @@ export default function MontagemTreino() {
               <div>
                 <div style={S.finalTitle}>Treino pronto</div>
                 <div style={S.finalSub}>
-                  {selectedModule.fullTitle} • {exercises.length} exercícios •{" "}
-                  {duration === "hoje" ? "só hoje" : duration}
+                  {selected.fullTitle} • {exercises.length} exercícios • {applyWindow.label}
                 </div>
               </div>
 
@@ -1185,8 +932,8 @@ export default function MontagemTreino() {
                 {saving ? "Salvando..." : "Usar este treino"}
               </button>
 
-              <button type="button" style={S.backPlain} onClick={() => setExploring(false)}>
-                Voltar aos módulos
+              <button type="button" style={S.backPlain} onClick={() => setExpanded(false)}>
+                Voltar às ênfases
               </button>
             </section>
           </>
@@ -1209,7 +956,7 @@ const S = {
     margin: "0 auto",
   },
 
-  hero: {
+  bookHero: {
     display: "flex",
     gap: 12,
     alignItems: "flex-start",
@@ -1233,7 +980,7 @@ const S = {
     flexShrink: 0,
   },
 
-  heroMain: {
+  bookBody: {
     minWidth: 0,
     flex: 1,
   },
@@ -1246,7 +993,7 @@ const S = {
     textTransform: "uppercase",
   },
 
-  heroTitle: {
+  title: {
     margin: "7px 0 0",
     color: TEXT,
     fontSize: 29,
@@ -1255,7 +1002,7 @@ const S = {
     letterSpacing: -1.1,
   },
 
-  heroSub: {
+  sub: {
     margin: "10px 0 0",
     color: MUTED,
     fontSize: 14,
@@ -1263,7 +1010,7 @@ const S = {
     fontWeight: 780,
   },
 
-  miniProfile: {
+  miniStatus: {
     marginTop: 12,
     display: "flex",
     gap: 8,
@@ -1271,7 +1018,7 @@ const S = {
     paddingBottom: 2,
   },
 
-  modulesSection: {
+  emphasisShelf: {
     marginTop: 14,
     borderRadius: 25,
     padding: 14,
@@ -1280,14 +1027,14 @@ const S = {
     boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  sectionHead: {
+  shelfHead: {
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     alignItems: "center",
   },
 
-  sectionTitle: {
+  shelfTitle: {
     color: TEXT,
     fontSize: 20,
     lineHeight: 1,
@@ -1295,14 +1042,14 @@ const S = {
     letterSpacing: -0.65,
   },
 
-  sectionSub: {
+  shelfSub: {
     marginTop: 6,
     color: MUTED,
     fontSize: 12,
     fontWeight: 800,
   },
 
-  exploreSmall: {
+  openSelectedBtn: {
     border: "none",
     borderRadius: 999,
     color: "#fff",
@@ -1312,7 +1059,7 @@ const S = {
     boxShadow: "0 12px 30px rgba(15,23,42,.10)",
   },
 
-  modulesScroller: {
+  bookScroller: {
     marginTop: 14,
     display: "flex",
     gap: 12,
@@ -1321,7 +1068,7 @@ const S = {
     padding: "2px 2px 12px",
   },
 
-  moduleCard: {
+  bookCard: {
     minWidth: 216,
     height: 262,
     borderRadius: 28,
@@ -1334,7 +1081,7 @@ const S = {
     flexDirection: "column",
   },
 
-  moduleTop: {
+  bookTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -1343,13 +1090,13 @@ const S = {
     fontWeight: 950,
   },
 
-  moduleIconWrap: {
+  iconCenter: {
     flex: 1,
     display: "grid",
     placeItems: "center",
   },
 
-  moduleTitle: {
+  bookTitle: {
     color: TEXT,
     fontSize: 24,
     lineHeight: 1,
@@ -1357,7 +1104,7 @@ const S = {
     letterSpacing: -0.8,
   },
 
-  moduleSub: {
+  bookSub: {
     marginTop: 7,
     color: MUTED,
     fontSize: 13,
@@ -1365,7 +1112,7 @@ const S = {
     fontWeight: 830,
   },
 
-  selectedStrip: {
+  selectedPreview: {
     marginTop: 2,
     borderRadius: 21,
     background: "rgba(15,23,42,.035)",
@@ -1377,7 +1124,7 @@ const S = {
     gap: 12,
   },
 
-  primaryMini: {
+  previewBtn: {
     border: "none",
     borderRadius: 999,
     color: "#fff",
@@ -1387,7 +1134,7 @@ const S = {
     whiteSpace: "nowrap",
   },
 
-  moduleDetail: {
+  detail: {
     marginTop: 14,
     borderRadius: 26,
     padding: 14,
@@ -1396,7 +1143,7 @@ const S = {
     boxShadow: "0 14px 44px rgba(15,23,42,.06)",
   },
 
-  detailHero: {
+  detailIntro: {
     display: "flex",
     gap: 12,
     alignItems: "center",
@@ -1437,7 +1184,70 @@ const S = {
     fontWeight: 830,
   },
 
-  panelList: {
+  scopeBox: {
+    marginTop: 13,
+    borderRadius: 22,
+    padding: 13,
+    background: "rgba(248,250,252,.9)",
+    border: `1px solid ${BORDER}`,
+  },
+
+  scopeHead: {
+    display: "grid",
+    gap: 4,
+    color: TEXT,
+    fontSize: 14,
+  },
+
+  scopeGrid: {
+    marginTop: 11,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+  },
+
+  scopeBtn: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "#fff",
+    padding: "11px 8px",
+    display: "grid",
+    gap: 4,
+    color: TEXT,
+    textAlign: "center",
+  },
+
+  daysLabel: {
+    marginTop: 12,
+    display: "grid",
+    gap: 8,
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  daysInline: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    color: TEXT,
+    fontSize: 14,
+    fontWeight: 900,
+  },
+
+  daysInput: {
+    width: 82,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    background: "#fff",
+    padding: "12px 10px",
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: 950,
+    outline: "none",
+  },
+
+  panelStack: {
     marginTop: 12,
     display: "grid",
     gap: 10,
@@ -1507,53 +1317,6 @@ const S = {
     fontWeight: 800,
   },
 
-  durationGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
-  },
-
-  durationBtn: {
-    border: `1px solid ${BORDER}`,
-    borderRadius: 18,
-    background: "#fff",
-    padding: "11px 8px",
-    display: "grid",
-    gap: 4,
-    color: TEXT,
-    textAlign: "center",
-  },
-
-  daysLabel: {
-    marginTop: 12,
-    display: "grid",
-    gap: 8,
-    color: MUTED,
-    fontSize: 12,
-    fontWeight: 950,
-  },
-
-  daysInline: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    color: TEXT,
-    fontSize: 14,
-    fontWeight: 900,
-  },
-
-  daysInput: {
-    width: 82,
-    border: `1px solid ${BORDER}`,
-    borderRadius: 16,
-    background: "#fff",
-    padding: "12px 10px",
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: 950,
-    outline: "none",
-  },
-
   cardioList: {
     display: "grid",
     gap: 9,
@@ -1593,14 +1356,37 @@ const S = {
   exerciseList: {
     marginTop: 12,
     display: "grid",
-    gap: 10,
+    gap: 12,
   },
 
   exerciseCard: {
-    borderRadius: 20,
-    padding: 12,
+    borderRadius: 22,
+    overflow: "hidden",
     background: "#fff",
     border: `1px solid ${BORDER}`,
+    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
+  },
+
+  exerciseVisual: {
+    height: 118,
+    display: "grid",
+    placeItems: "center",
+  },
+
+  exerciseVisualIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 22,
+    display: "grid",
+    placeItems: "center",
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: 980,
+    boxShadow: "0 16px 38px rgba(15,23,42,.12)",
+  },
+
+  exerciseBody: {
+    padding: 12,
   },
 
   exerciseTop: {
