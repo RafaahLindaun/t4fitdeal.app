@@ -231,6 +231,7 @@ const EXERCISE_CATALOG = {
   ],
 
   posterior: [
+    "Terra romeno",
     "Terra romeno (barra)",
     "Stiff com halteres",
     "Mesa flexora",
@@ -615,7 +616,7 @@ const EMPHASES = [
 function EmphasisIcon({ type, color = ORANGE }) {
   if (type === "gluteo") {
     return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M22 39c0-12 8-22 19-22s19 10 19 22c0 14-8 27-19 27S22 53 22 39Z" fill={color} opacity="0.16" />
         <path d="M41 18c-7 7-10 15-10 24 0 10 4 18 10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M41 18c7 7 10 15 10 24 0 10-4 18-10 24" stroke={color} strokeWidth="5" strokeLinecap="round" />
@@ -626,7 +627,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "lombar") {
     return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M41 10c10 8 16 19 16 32S51 66 41 72C31 66 25 55 25 42S31 18 41 10Z" fill={color} opacity="0.14" />
         <path d="M41 16v50" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M31 28h20" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -638,7 +639,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "emagrecer") {
     return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" fill={color} opacity="0.16" />
         <path d="M46 10c4 14 18 19 18 36 0 15-10 26-23 26S18 61 18 46c0-13 7-22 17-33 0 10 3 16 11 21 3-6 3-14 0-24Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
         <path d="M41 58c6-3 9-8 9-14" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
@@ -648,7 +649,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "trocar_hoje") {
     return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <circle cx="41" cy="41" r="27" fill={color} opacity="0.13" />
         <path d="M58 31c-4-8-12-13-21-11-6 1-11 5-14 10" stroke={color} strokeWidth="5" strokeLinecap="round" />
         <path d="M23 20v10h10" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
@@ -660,7 +661,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
 
   if (type === "leve") {
     return (
-      <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+      <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
         <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" fill={color} opacity="0.16" />
         <path d="M55 17c-3 2-6 3-10 3-14 0-25 11-25 25s11 25 25 25c10 0 19-6 23-15-4 2-8 3-13 3-14 0-25-11-25-25 0-7 3-13 8-18 5-4 11-6 17-6Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
       </svg>
@@ -668,7 +669,7 @@ function EmphasisIcon({ type, color = ORANGE }) {
   }
 
   return (
-    <svg width="118" height="118" viewBox="0 0 82 82" fill="none" aria-hidden="true">
+    <svg width="104" height="104" viewBox="0 0 82 82" fill="none" aria-hidden="true">
       <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" fill={color} opacity="0.16" />
       <path d="M43 8 18 45h21l-4 29 29-40H43l7-26Z" stroke={color} strokeWidth="5" strokeLinejoin="round" />
     </svg>
@@ -708,6 +709,7 @@ export default function MontagemTreino() {
 
   const scrollerRef = useRef(null);
   const scrollTimerRef = useRef(null);
+  const rafRef = useRef(null);
 
   const [profile, setProfile] = useState(null);
   const [subscription, setSubscription] = useState(null);
@@ -742,6 +744,17 @@ export default function MontagemTreino() {
       document.body.classList.remove("fitdeal-hide-bottom-menu");
     };
   }, []);
+
+  useEffect(() => {
+    if (!exercisePickerOpen) return undefined;
+
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = oldOverflow;
+    };
+  }, [exercisePickerOpen]);
 
   useEffect(() => {
     let alive = true;
@@ -825,8 +838,27 @@ export default function MontagemTreino() {
   }
 
   function handleScroll() {
+    if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+
+    rafRef.current = window.requestAnimationFrame(() => {
+      selectNearestCard();
+    });
+
     if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = window.setTimeout(selectNearestCard, 70);
+    scrollTimerRef.current = window.setTimeout(selectNearestCard, 38);
+  }
+
+  function jumpToCard(id, event) {
+    setSelectedId(id);
+
+    const target = event?.currentTarget;
+    if (target?.scrollIntoView) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
   }
 
   const isPaid = hasActiveSubscription(subscription);
@@ -950,6 +982,7 @@ export default function MontagemTreino() {
       ...payload,
       duration: customScope,
       apply: nextApply,
+      updatedAt: new Date().toISOString(),
     };
 
     setSaving(true);
@@ -957,7 +990,7 @@ export default function MontagemTreino() {
     try {
       localStorage.setItem("fitdeal_quick_workout", JSON.stringify(finalPayload));
 
-      await supabase
+      const deactivate = await supabase
         .from("user_workout_montages")
         .update({
           is_active: false,
@@ -965,6 +998,10 @@ export default function MontagemTreino() {
         })
         .eq("user_id", user.id)
         .eq("is_active", true);
+
+      if (deactivate.error) {
+        console.error("saveMontage deactivate error:", deactivate.error);
+      }
 
       const { data, error } = await supabase
         .from("user_workout_montages")
@@ -982,7 +1019,7 @@ export default function MontagemTreino() {
         .single();
 
       if (error) {
-        console.error("saveMontage error:", error);
+        console.error("saveMontage insert error:", error);
         nav("/treino/detalhe?source=montagem");
         return;
       }
@@ -1022,20 +1059,20 @@ export default function MontagemTreino() {
                   type="button"
                   data-emphasis-id={item.id}
                   className="montagem-card-press"
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={(event) => jumpToCard(item.id, event)}
                   style={{
                     ...S.bigCard,
                     background: item.bg,
                     borderColor: active ? item.color : "rgba(15,23,42,.08)",
-                    opacity: active ? 1 : 0.86,
+                    opacity: active ? 1 : 0.9,
                     boxShadow: active
-                      ? `0 34px 86px ${item.soft}, 0 18px 44px rgba(15,23,42,.11)`
-                      : "0 14px 32px rgba(15,23,42,.06)",
+                      ? `0 24px 60px ${item.soft}, 0 12px 34px rgba(15,23,42,.08)`
+                      : "0 10px 24px rgba(15,23,42,.045)",
                     transform: active
-                      ? "perspective(1000px) rotateY(0deg) scale(1)"
+                      ? "perspective(900px) rotateY(0deg) translateY(-1px) scale(1)"
                       : index % 2 === 0
-                        ? "perspective(1000px) rotateY(-4deg) scale(.94)"
-                        : "perspective(1000px) rotateY(4deg) scale(.94)",
+                        ? "perspective(900px) rotateY(-2.5deg) scale(.965)"
+                        : "perspective(900px) rotateY(2.5deg) scale(.965)",
                   }}
                 >
                   <div style={S.bigCardTop}>
@@ -1127,7 +1164,7 @@ export default function MontagemTreino() {
             <div style={S.exerciseHead}>
               <div>
                 <div style={S.blockTitle}>Exercícios indicados</div>
-                <div style={S.blockSub}>Séries, reps e descanso. Toque em “Ver execução” para abrir GIF e detalhes.</div>
+                <div style={S.blockSub}>Toque em “Ver execução” para abrir GIF e detalhes.</div>
               </div>
 
               <button type="button" onClick={addExercise} style={S.addBtn}>
@@ -1361,7 +1398,9 @@ function ExercisePickerSheet({
   const activeFilters = pickerMode === "estilos" ? styleFilters : memberFilters;
 
   const keys = useMemo(() => {
-    if (pickerMode === "membros") return [pickerFilter];
+    if (pickerMode === "membros") {
+      return EXERCISE_CATALOG[pickerFilter] ? [pickerFilter] : ["peito"];
+    }
 
     const style = STYLE_FILTERS[pickerFilter] || STYLE_FILTERS.atual;
     if (typeof style.getKeys === "function") return style.getKeys(selected);
@@ -1421,6 +1460,7 @@ function ExercisePickerSheet({
             onClick={() => {
               setPickerMode("estilos");
               setPickerFilter("atual");
+              setPickerSearch("");
             }}
             style={{
               ...S.modeTab,
@@ -1435,6 +1475,7 @@ function ExercisePickerSheet({
             onClick={() => {
               setPickerMode("membros");
               setPickerFilter("peito");
+              setPickerSearch("");
             }}
             style={{
               ...S.modeTab,
@@ -1453,7 +1494,10 @@ function ExercisePickerSheet({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setPickerFilter(item.id)}
+                onClick={() => {
+                  setPickerFilter(item.id);
+                  setPickerSearch("");
+                }}
                 style={{
                   ...S.filterChip,
                   ...(active
@@ -1579,30 +1623,33 @@ const S = {
 
   deckScroller: {
     display: "flex",
-    gap: 14,
+    gap: 12,
     overflowX: "auto",
     scrollSnapType: "x mandatory",
-    padding: "4px 2px 18px",
+    padding: "4px 2px 16px",
     WebkitOverflowScrolling: "touch",
-    perspective: 1000,
+    perspective: 900,
     scrollBehavior: "smooth",
+    overscrollBehaviorX: "contain",
   },
 
   bigCard: {
-    minWidth: "84%",
-    height: 430,
-    borderRadius: 32,
+    minWidth: "80%",
+    height: 390,
+    borderRadius: 31,
     border: `1px solid ${BORDER}`,
-    padding: 17,
+    padding: 16,
     scrollSnapAlign: "center",
+    scrollSnapStop: "normal",
     textAlign: "left",
     transition:
-      "transform .24s cubic-bezier(.22,1,.36,1), box-shadow .24s ease, border-color .24s ease, opacity .24s ease",
+      "transform .14s cubic-bezier(.22,1,.36,1), box-shadow .14s ease, border-color .14s ease, opacity .14s ease",
     display: "flex",
     flexDirection: "column",
     position: "relative",
     overflow: "hidden",
     background: "#fff",
+    flexShrink: 0,
   },
 
   bigCardTop: {
@@ -1618,7 +1665,7 @@ const S = {
 
   bigIconArea: {
     flex: 1,
-    minHeight: 130,
+    minHeight: 120,
     display: "grid",
     placeItems: "center",
   },
@@ -1629,22 +1676,22 @@ const S = {
 
   bigCardTitle: {
     color: TEXT,
-    fontSize: 31,
+    fontSize: 29,
     lineHeight: 0.96,
     fontWeight: 980,
-    letterSpacing: -1.25,
+    letterSpacing: -1.15,
   },
 
   bigCardSub: {
     marginTop: 8,
     color: MUTED,
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 1.25,
     fontWeight: 850,
   },
 
   bigKeywords: {
-    marginTop: 13,
+    marginTop: 12,
     display: "flex",
     gap: 8,
     flexWrap: "wrap",
@@ -2137,8 +2184,8 @@ const S = {
     zIndex: 20000,
     display: "grid",
     alignItems: "end",
-    padding: 12,
-    paddingBottom: "calc(18px + env(safe-area-inset-bottom))",
+    padding: 10,
+    paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
   },
 
   sheetBackdrop: {
@@ -2154,11 +2201,11 @@ const S = {
     position: "relative",
     width: "100%",
     maxWidth: 520,
-    maxHeight: "82vh",
+    maxHeight: "84vh",
     margin: "0 auto",
     borderRadius: 30,
     padding: 14,
-    background: "rgba(255,255,255,.96)",
+    background: "rgba(255,255,255,.98)",
     border: "1px solid rgba(255,255,255,.60)",
     boxShadow: "0 30px 90px rgba(15,23,42,.24)",
     overflow: "hidden",
@@ -2172,6 +2219,7 @@ const S = {
     borderRadius: 999,
     background: "rgba(100,116,139,.24)",
     margin: "0 auto 12px",
+    flexShrink: 0,
   },
 
   pickerTop: {
@@ -2179,6 +2227,7 @@ const S = {
     justifyContent: "space-between",
     gap: 12,
     alignItems: "flex-start",
+    flexShrink: 0,
   },
 
   pickerTitle: {
@@ -2206,6 +2255,7 @@ const S = {
     color: TEXT,
     fontSize: 22,
     fontWeight: 950,
+    flexShrink: 0,
   },
 
   modeTabs: {
@@ -2216,6 +2266,7 @@ const S = {
     padding: 5,
     borderRadius: 18,
     background: "rgba(15,23,42,.04)",
+    flexShrink: 0,
   },
 
   modeTab: {
@@ -2240,6 +2291,7 @@ const S = {
     gap: 8,
     overflowX: "auto",
     paddingBottom: 4,
+    flexShrink: 0,
   },
 
   filterChip: {
@@ -2251,6 +2303,7 @@ const S = {
     fontSize: 12,
     fontWeight: 950,
     whiteSpace: "nowrap",
+    flexShrink: 0,
   },
 
   searchInput: {
@@ -2265,6 +2318,7 @@ const S = {
     fontSize: 14,
     fontWeight: 850,
     outline: "none",
+    flexShrink: 0,
   },
 
   exercisePickerList: {
@@ -2273,6 +2327,9 @@ const S = {
     display: "grid",
     gap: 8,
     paddingBottom: 8,
+    minHeight: 0,
+    flex: 1,
+    WebkitOverflowScrolling: "touch",
   },
 
   exercisePickerItem: {
@@ -2312,6 +2369,11 @@ if (typeof document !== "undefined") {
 
       body.fitdeal-hide-bottom-menu nav:has(.fitdeal-bottom-item),
       body.fitdeal-hide-bottom-menu div:has(> nav .fitdeal-bottom-item) {
+        display: none !important;
+      }
+
+      body.fitdeal-hide-bottom-menu .fitdeal-bottom-item,
+      body.fitdeal-hide-bottom-menu .fitdeal-main-item {
         display: none !important;
       }
 
