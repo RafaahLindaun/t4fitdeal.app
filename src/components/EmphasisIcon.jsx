@@ -22,25 +22,60 @@ const ICON_FILES = {
 };
 
 const ALIASES = {
-  quadriceps: "quadriceps",
   gluteo: "gluteo",
+  gluteos: "gluteo",
+
+  quadriceps: "quadriceps",
+  quadriceps_femoral: "quadriceps",
+
   panturrilha: "panturrilha",
+
   posterior: "posterior",
+  posterior_coxa: "posterior",
+  posterior_de_coxa: "posterior",
+
   abdomen: "abdomen",
+  abdominal: "abdomen",
+  core: "abdomen",
+
   emagrecer: "emagrecer",
+  emagrecimento: "emagrecer",
+  perda: "perda_peso",
   perda_peso: "perda_peso",
+  perda_de_peso: "perda_peso",
+
   biceps: "biceps",
+  braco_biceps: "biceps",
+
   ombro: "ombro",
+  ombros: "ombro",
+  deltoide: "ombro",
+
   triceps: "triceps",
-  peitoral: "peitoral",
+  braco_triceps: "triceps",
+
   peito: "peitoral",
+  peitoral: "peitoral",
+
   costas: "costas",
+  dorsais: "costas",
+  costas_dorsais: "costas",
+
   lombar: "lombar",
+  ciatico: "lombar",
+  lombar_ciatico: "lombar",
+
   trapezio: "trapezio",
+
   pescoco: "pescoco",
+  cervical: "pescoco",
+
   leve: "leve",
-  turbo: "turbo",
+  modo_leve: "leve",
+
   forte: "turbo",
+  turbo: "turbo",
+  modo_turbo: "turbo",
 };
 
 function normalizeType(type) {
@@ -80,54 +115,94 @@ function buildSources(type) {
 export default function EmphasisIcon({
   type = "gluteo",
   size = 118,
+  alt = "",
   style = {},
   imgStyle = {},
 }) {
   const sources = useMemo(() => buildSources(type), [type]);
   const [srcIndex, setSrcIndex] = useState(0);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     setSrcIndex(0);
+    setFailed(false);
   }, [type]);
 
   const src = sources[srcIndex];
+
+  /*
+    O PNG foi salvo em 512x512 com espaço transparente em volta.
+    Por isso o scale precisa compensar esse respiro interno.
+    No card grande, ele aumenta mais.
+    No card pequeno, aumenta menos para não estourar.
+  */
+  const visualScale = size >= 110 ? 1.95 : 1.45;
 
   return (
     <div
       style={{
         width: size,
         height: size,
+        minWidth: size,
+        minHeight: size,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        overflow: "hidden",
+        overflow: "visible",
         flexShrink: 0,
+        lineHeight: 0,
         ...style,
       }}
     >
-      <img
-        src={src}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        onError={() => {
-          setSrcIndex((current) => {
-            const next = current + 1;
-            return next < sources.length ? next : current;
-          });
-        }}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-          objectPosition: "center",
-          display: "block",
-          userSelect: "none",
-          WebkitUserDrag: "none",
-          pointerEvents: "none",
-          ...imgStyle,
-        }}
-      />
+      {!failed ? (
+        <img
+          src={src}
+          alt={alt}
+          aria-hidden={alt ? undefined : "true"}
+          draggable={false}
+          onError={() => {
+            setSrcIndex((current) => {
+              const next = current + 1;
+
+              if (next < sources.length) {
+                return next;
+              }
+
+              setFailed(true);
+              return current;
+            });
+          }}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            objectPosition: "center",
+            display: "block",
+            transform: `scale(${visualScale})`,
+            transformOrigin: "center",
+            userSelect: "none",
+            WebkitUserDrag: "none",
+            pointerEvents: "none",
+            ...imgStyle,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: size,
+            height: size,
+            borderRadius: 24,
+            display: "grid",
+            placeItems: "center",
+            background: "rgba(255,106,0,.10)",
+            color: "#FF6A00",
+            fontSize: Math.max(18, size * 0.32),
+            fontWeight: 950,
+          }}
+        >
+          {String(type || "?").slice(0, 1).toUpperCase()}
+        </div>
+      )}
     </div>
   );
 }
