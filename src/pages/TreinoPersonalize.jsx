@@ -2,20 +2,51 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import LogoMark from "../assets/IMG_5692.png";
 
 const ORANGE = "#FF6A00";
-const ORANGE_SOFT = "rgba(255,106,0,.12)";
 const BG = "#f8fafc";
 const TEXT = "#0f172a";
 const MUTED = "#64748b";
+const BORDER = "rgba(15,23,42,.08)";
+const BLACK = "#0B0B0C";
 
 const SPLITS = [
-  { id: "AB", days: 2, label: "AB (2 dias)" },
-  { id: "ABC", days: 3, label: "ABC (3 dias)" },
-  { id: "ABCD", days: 4, label: "ABCD (4 dias)" },
-  { id: "ABCDE", days: 5, label: "ABCDE (5 dias)" },
-  { id: "ABCDEF", days: 6, label: "ABCDEF (6 dias)" },
+  { id: "AB", days: 2, label: "AB" },
+  { id: "ABC", days: 3, label: "ABC" },
+  { id: "ABCD", days: 4, label: "ABCD" },
+  { id: "ABCDE", days: 5, label: "ABCDE" },
+  { id: "ABCDEF", days: 6, label: "ABCDEF" },
+];
+
+const METHODS = [
+  {
+    id: "normal",
+    label: "Normal",
+    short: "Base",
+    hint: "Séries tradicionais com descanso completo.",
+    note: "Método padrão. Melhor para técnica, progressão de carga e segurança.",
+  },
+  {
+    id: "biset",
+    label: "Biset",
+    short: "2 exercícios",
+    hint: "2 exercícios em sequência.",
+    note: "Faça o exercício atual e o próximo antes de descansar. Use com cargas moderadas.",
+  },
+  {
+    id: "triset",
+    label: "Triset",
+    short: "3 exercícios",
+    hint: "3 exercícios em sequência.",
+    note: "Faça três exercícios seguidos antes do descanso. Bom para intensidade e tempo curto.",
+  },
+  {
+    id: "dropset",
+    label: "Dropset",
+    short: "Reduz carga",
+    hint: "Falhou, reduz carga e continua.",
+    note: "Após a última série, reduza 20–35% da carga e continue com boa execução.",
+  },
 ];
 
 const EXERCISE_CATALOG = {
@@ -286,7 +317,7 @@ const MUSCLE_GROUPS = [
     id: "peito_triceps",
     name: "Peito + Tríceps",
     muscles: ["Peito", "Tríceps", "Ombro ant."],
-    default: { sets: 4, reps: "6–12", rest: "75–120s" },
+    default: { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" },
     pickerKeys: ["peito", "triceps", "ombro"],
     library: [
       { name: "Supino reto", group: "Peito" },
@@ -301,7 +332,7 @@ const MUSCLE_GROUPS = [
     id: "costas_biceps",
     name: "Costas + Bíceps",
     muscles: ["Costas", "Bíceps", "Ombro post."],
-    default: { sets: 4, reps: "8–12", rest: "75–120s" },
+    default: { sets: 4, reps: "8–12", rest: "75–120s", method: "normal" },
     pickerKeys: ["costas", "biceps", "ombro"],
     library: [
       { name: "Puxada (barra/puxador)", group: "Costas" },
@@ -316,7 +347,7 @@ const MUSCLE_GROUPS = [
     id: "pernas",
     name: "Pernas (Quad + geral)",
     muscles: ["Quadríceps", "Glúteos", "Panturrilha"],
-    default: { sets: 4, reps: "8–15", rest: "75–150s" },
+    default: { sets: 4, reps: "8–15", rest: "75–150s", method: "normal" },
     pickerKeys: ["quadriceps", "gluteo", "panturrilha", "core"],
     library: [
       { name: "Agachamento", group: "Pernas" },
@@ -331,7 +362,7 @@ const MUSCLE_GROUPS = [
     id: "posterior_gluteo",
     name: "Posterior + Glúteo",
     muscles: ["Posterior", "Glúteos", "Core"],
-    default: { sets: 4, reps: "8–12", rest: "75–150s" },
+    default: { sets: 4, reps: "8–12", rest: "75–150s", method: "normal" },
     pickerKeys: ["posterior", "gluteo", "core"],
     library: [
       { name: "Terra romeno", group: "Posterior" },
@@ -346,7 +377,7 @@ const MUSCLE_GROUPS = [
     id: "ombro_core",
     name: "Ombro + Core",
     muscles: ["Ombros", "Trapézio", "Core"],
-    default: { sets: 3, reps: "10–15", rest: "60–90s" },
+    default: { sets: 3, reps: "10–15", rest: "60–90s", method: "normal" },
     pickerKeys: ["ombro", "core"],
     library: [
       { name: "Desenvolvimento", group: "Ombros" },
@@ -361,7 +392,7 @@ const MUSCLE_GROUPS = [
     id: "fullbody",
     name: "Full body (seguro / saúde)",
     muscles: ["Corpo todo"],
-    default: { sets: 3, reps: "10–15", rest: "45–90s" },
+    default: { sets: 3, reps: "10–15", rest: "45–90s", method: "normal" },
     pickerKeys: ["quadriceps", "peito", "costas", "ombro", "posterior", "gluteo", "core", "panturrilha"],
     library: [
       { name: "Agachamento (leve)", group: "Pernas" },
@@ -401,8 +432,11 @@ function calcWeeklyVolume(daysConfig) {
     const share = muscles.length ? sets / muscles.length : 0;
     for (const m of muscles) volume[m] = (volume[m] || 0) + share;
   }
+
   const out = {};
-  Object.keys(volume).forEach((k) => (out[k] = Math.round(volume[k] * 10) / 10));
+  Object.keys(volume).forEach((k) => {
+    out[k] = Math.round(volume[k] * 10) / 10;
+  });
   return out;
 }
 
@@ -427,12 +461,19 @@ function uniq(arr) {
   const out = [];
   for (const x of arr || []) {
     const key = String(x || "").trim();
-    if (!key) continue;
-    if (s.has(key)) continue;
+    if (!key || s.has(key)) continue;
     s.add(key);
     out.push(key);
   }
   return out;
+}
+
+function normalizeText(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 }
 
 function parsePrescriptionFromReps(raw, fallback) {
@@ -440,21 +481,77 @@ function parsePrescriptionFromReps(raw, fallback) {
   let sets = fallback?.sets ?? 4;
   let reps = fallback?.reps ?? "6–12";
   let rest = fallback?.rest ?? "75–120s";
+  let method = fallback?.method ?? "normal";
 
   const setsMatch = text.match(/(\d+)\s*s[ée]ries/i);
   const repsMatch = text.match(/s[ée]ries\s*•\s*([^•]+)/i);
-  const restMatch = text.match(/descanso\s*(.+)$/i);
+  const restMatch = text.match(/descanso\s*([^•]+)/i);
+  const methodMatch = text.match(/m[ée]todo\s*([^•]+)/i);
 
   if (setsMatch) sets = clamp(Number(setsMatch[1] || sets), 1, 8);
   if (repsMatch) reps = String(repsMatch[1] || reps).trim();
   if (restMatch) rest = String(restMatch[1] || rest).trim();
+  if (methodMatch) method = normalizeMethod(methodMatch[1]);
 
-  return { sets, reps, rest };
+  return { sets, reps, rest, method };
+}
+
+function normalizeMethod(value) {
+  const key = normalizeText(value).replace(/[^a-z0-9]+/g, "_");
+  if (key.includes("biset")) return "biset";
+  if (key.includes("triset")) return "triset";
+  if (key.includes("drop")) return "dropset";
+  return "normal";
+}
+
+function methodLabel(method) {
+  return METHODS.find((m) => m.id === method)?.label || "Normal";
 }
 
 function defaultExercisesForGroup(groupId) {
   const g = MUSCLE_GROUPS.find((x) => x.id === groupId);
   return uniq((g?.library || []).map((x) => x.name)).slice(0, 8);
+}
+
+function findExerciseGroup(name) {
+  const target = normalizeText(name);
+  for (const [key, list] of Object.entries(EXERCISE_CATALOG)) {
+    if ((list || []).some((item) => normalizeText(item) === target)) return key;
+  }
+  return null;
+}
+
+function makeExerciseRows(keys, query) {
+  const q = normalizeText(query);
+  const rows = [];
+  for (const key of keys || []) {
+    const list = EXERCISE_CATALOG[key] || [];
+    for (const name of list) {
+      if (q && !normalizeText(name).includes(q)) continue;
+      rows.push({ name, key, group: prettyKeyLabel(key) });
+    }
+  }
+
+  const seen = new Set();
+  return rows.filter((row) => {
+    const id = `${row.key}_${row.name}`;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function LoadingScreen({ onBack }) {
+  return (
+    <div style={S.page}>
+      <button style={S.backBtn} onClick={onBack} type="button">←</button>
+      <div style={S.loadingCard}>
+        <div style={S.loadingDot} />
+        <div style={S.loadingTitle}>Carregando personalização</div>
+        <div style={S.loadingText}>Buscando seu plano atual no Supabase.</div>
+      </div>
+    </div>
+  );
 }
 
 export default function TreinoPersonalize() {
@@ -478,7 +575,7 @@ export default function TreinoPersonalize() {
     const baseGroups = pickDefaultSplit(defaultDays);
     for (let i = 0; i < baseGroups.length; i++) {
       const g = MUSCLE_GROUPS.find((x) => x.id === baseGroups[i]);
-      obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+      obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" };
     }
     return obj;
   });
@@ -493,6 +590,11 @@ export default function TreinoPersonalize() {
   const [pickerDayIndex, setPickerDayIndex] = useState(0);
 
   useEffect(() => {
+    document.body.classList.add("fitdeal-hide-bottom-menu");
+    return () => document.body.classList.remove("fitdeal-hide-bottom-menu");
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
     async function loadAccess() {
@@ -505,6 +607,7 @@ export default function TreinoPersonalize() {
       }
 
       setLoadingAccess(true);
+
       const { data, error } = await supabase
         .from("user_subscriptions")
         .select("plan_key,status")
@@ -520,7 +623,9 @@ export default function TreinoPersonalize() {
         setPaid(false);
       } else {
         const row = Array.isArray(data) ? data[0] : null;
-        const allowed = ["active", "trialing"].includes(String(row?.status || "").toLowerCase()) && ["basico", "nutri"].includes(String(row?.plan_key || "").toLowerCase());
+        const allowed =
+          ["active", "trialing"].includes(String(row?.status || "").toLowerCase()) &&
+          ["basico", "premium", "nutri"].includes(String(row?.plan_key || "").toLowerCase());
         setPaid(!!allowed);
       }
 
@@ -609,8 +714,12 @@ export default function TreinoPersonalize() {
         nextGroups[i] = groupId;
 
         const groupObj = MUSCLE_GROUPS.find((g) => g.id === groupId);
-        const baseDefault = groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
-        const exRows = row ? exercises.filter((ex) => ex.plan_day_id === row.id).sort((a, b) => Number(a.exercise_order || 0) - Number(b.exercise_order || 0)) : [];
+        const baseDefault = groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" };
+        const exRows = row
+          ? exercises
+              .filter((ex) => ex.plan_day_id === row.id)
+              .sort((a, b) => Number(a.exercise_order || 0) - Number(b.exercise_order || 0))
+          : [];
 
         nextPrescriptions[i] = exRows[0]?.reps ? parsePrescriptionFromReps(exRows[0].reps, baseDefault) : baseDefault;
         nextExercises[i] = exRows.length ? uniq(exRows.map((ex) => ex.name)) : defaultExercisesForGroup(groupId);
@@ -646,7 +755,7 @@ export default function TreinoPersonalize() {
         if (!out[i]) {
           const gid = (Array.isArray(dayGroups) && dayGroups[i]) || defaults[i];
           const g = MUSCLE_GROUPS.find((x) => x.id === gid);
-          out[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+          out[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" };
         }
       }
       Object.keys(out).forEach((k) => {
@@ -696,7 +805,7 @@ export default function TreinoPersonalize() {
 
     setPrescriptions((prev) => {
       const out = { ...(prev || {}) };
-      out[dayIndex] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+      out[dayIndex] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" };
       return out;
     });
 
@@ -727,7 +836,7 @@ export default function TreinoPersonalize() {
         letter: dayLetter(i),
         groupId: gid,
         groupObj,
-        prescription: prescriptions[i] || groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s" },
+        prescription: prescriptions[i] || groupObj?.default || { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" },
         chosenExercises: Array.isArray(dayExercises?.[i]) ? dayExercises[i] : [],
       });
     }
@@ -750,6 +859,7 @@ export default function TreinoPersonalize() {
           sets: clamp(Number(day.prescription?.sets || 4), 1, 8),
           reps: day.prescription?.reps || "6–12",
           rest: day.prescription?.rest || "75–120s",
+          method: normalizeMethod(day.prescription?.method || "normal"),
         },
         chosenExercises: uniq(day.chosenExercises || []),
       }));
@@ -816,20 +926,13 @@ export default function TreinoPersonalize() {
       if (existingDaysError) throw existingDaysError;
 
       const oldDayIds = (existingDays || []).map((d) => d.id);
-      if (oldDayIds.length) {
-        const { error: deleteExError } = await supabase
-          .from("workout_plan_exercises")
-          .delete()
-          .in("plan_day_id", oldDayIds);
 
+      if (oldDayIds.length) {
+        const { error: deleteExError } = await supabase.from("workout_plan_exercises").delete().in("plan_day_id", oldDayIds);
         if (deleteExError) throw deleteExError;
       }
 
-      const { error: deleteDaysError } = await supabase
-        .from("workout_plan_days")
-        .delete()
-        .eq("plan_id", planRow.id);
-
+      const { error: deleteDaysError } = await supabase.from("workout_plan_days").delete().eq("plan_id", planRow.id);
       if (deleteDaysError) throw deleteDaysError;
 
       const dayRowsPayload = normalizedDays.map((day) => ({
@@ -849,30 +952,28 @@ export default function TreinoPersonalize() {
       if (insertDaysError) throw insertDaysError;
 
       const exercisesPayload = [];
+
       for (const day of normalizedDays) {
         const dayRow = (insertedDays || []).find((row) => Number(row.day_index) === Number(day.dayIndex));
         if (!dayRow?.id) continue;
 
         const prescription = day.prescription || {};
-        const repsText = `${prescription.sets || 4} séries • ${prescription.reps || "6–12"} • descanso ${prescription.rest || "75–120s"}`;
+        const repsText = `${prescription.sets || 4} séries • ${prescription.reps || "6–12"} • descanso ${prescription.rest || "75–120s"} • método ${methodLabel(prescription.method)}`;
 
         for (const [order, name] of (day.chosenExercises || []).entries()) {
           exercisesPayload.push({
             plan_day_id: dayRow.id,
             exercise_order: order,
             name,
-            group_name: day.groupObj?.name || "",
+            group_name: prettyKeyLabel(findExerciseGroup(name)) || day.groupObj?.name || "",
             reps: repsText,
-            notes: splitId,
+            notes: `${splitId} • ${methodLabel(prescription.method)}`,
           });
         }
       }
 
       if (exercisesPayload.length) {
-        const { error: exError } = await supabase
-          .from("workout_plan_exercises")
-          .insert(exercisesPayload);
-
+        const { error: exError } = await supabase.from("workout_plan_exercises").insert(exercisesPayload);
         if (exError) throw exError;
       }
 
@@ -894,7 +995,7 @@ export default function TreinoPersonalize() {
 
     for (let i = 0; i < groups.length; i++) {
       const g = MUSCLE_GROUPS.find((x) => x.id === groups[i]);
-      obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s" };
+      obj[i] = g?.default || { sets: 4, reps: "6–12", rest: "75–120s", method: "normal" };
       ex[i] = defaultExercisesForGroup(groups[i]);
     }
 
@@ -923,430 +1024,1006 @@ export default function TreinoPersonalize() {
   }
 
   if (loadingAccess || loadingPlan) {
-    return (
-      <div style={S.page}>
-        <div style={S.bgGlow} />
-        <HeaderBrand title="Personalizar treino" subtitle="Carregando suas escolhas..." onBack={() => nav("/treino")} />
-      </div>
-    );
+    return <LoadingScreen onBack={() => nav("/treino")} />;
   }
 
   if (!paid) {
     return (
       <div style={S.page}>
-        <div style={S.bgGlow} />
-        <HeaderBrand title="Personalizar treino" subtitle="Monte seu split e exercícios" onBack={() => nav("/treino")} />
-
-        <div style={S.lockCard}>
-          <div style={S.lockIcon}>🔒</div>
-          <div style={S.lockTitle}>Recurso exclusivo</div>
-          <div style={S.lockText}>Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, volume semanal e seleção de exercícios.</div>
-          <button style={S.cta} onClick={() => nav("/planos")} type="button">Ver planos</button>
-          <button style={S.ghost} onClick={() => nav("/treino")} type="button">Voltar</button>
-        </div>
+        <button style={S.backBtn} onClick={() => nav("/treino")} type="button">←</button>
+        <section style={S.lockCard}>
+          <div style={S.lockBadge}>Premium</div>
+          <h1 style={S.lockTitle}>Recurso exclusivo</h1>
+          <p style={S.lockText}>Assine para montar seu treino do seu jeito: split, músculos, séries, reps, descanso, métodos avançados e seleção de exercícios.</p>
+          <div style={S.lockActions}>
+            <button style={S.primaryBtn} onClick={() => nav("/planos")} type="button">Ver planos</button>
+            <button style={S.secondaryBtn} onClick={() => nav("/treino")} type="button">Voltar</button>
+          </div>
+        </section>
+        <HideBottomMenuStyle />
       </div>
     );
   }
 
   return (
     <div style={S.page}>
-      <div style={S.bgGlow} />
-      <HeaderBrand title="Personalizar treino" subtitle="Monte o treino do seu jeito" onBack={() => nav("/treino")} />
+      <HideBottomMenuStyle />
 
-      <div style={S.card}>
-        <div style={S.cardTitle}>1) Split</div>
+      <section style={S.hero}>
+        <button style={S.heroBack} onClick={() => nav("/treino")} type="button">←</button>
+        <div style={{ minWidth: 0 }}>
+          <div style={S.kicker}>Personalizar treino</div>
+          <h1 style={S.title}>Monte seu plano</h1>
+          <p style={S.subtitle}>Mais leve, rápido e organizado. Escolha o split, o foco de cada dia, os exercícios e o método.</p>
+        </div>
+      </section>
+
+      <section style={S.quickCard}>
+        <div style={S.cardHead}>
+          <div>
+            <div style={S.sectionTitle}>Split da semana</div>
+            <div style={S.sectionSub}>Defina quantos treinos entram no ciclo.</div>
+          </div>
+        </div>
+
         <div style={S.splitRow}>
           {SPLITS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => changeSplit(s.id)}
-              style={{ ...S.pill, ...(splitId === s.id ? S.pillOn : S.pillOff) }}
-              type="button"
-            >
-              {s.id}
+            <button key={s.id} onClick={() => changeSplit(s.id)} style={{ ...S.splitPill, ...(splitId === s.id ? S.splitPillOn : null) }} type="button">
+              {s.label}
             </button>
           ))}
         </div>
-        <div style={S.smallNote}>Dias/semana:</div>
+
         <div style={S.daysRow}>
           {[2, 3, 4, 5, 6].map((d) => (
-            <button
-              key={d}
-              onClick={() => changeDays(d)}
-              style={{ ...S.dayBtn, ...(daysPerWeek === d ? S.dayOn : S.dayOff) }}
-              type="button"
-            >
+            <button key={d} onClick={() => changeDays(d)} style={{ ...S.dayBtn, ...(daysPerWeek === d ? S.dayOn : null) }} type="button">
               {d}x
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div style={S.card}>
-        <div style={S.cardTitle}>2) Músculos por dia</div>
-        <div style={S.daysGrid}>
-          {daysConfig.map((d) => (
-            <div key={d.dayIndex} style={S.dayCard}>
-              <div style={S.dayTop}>
-                <div style={S.badge}>{d.letter}</div>
-                <div>
-                  <div style={S.dayLabel}>Dia {d.letter}</div>
-                  <div style={S.daySub}>Escolha o foco do dia</div>
-                </div>
-                <button style={S.appleBtn} onClick={() => openPicker(d.dayIndex)} type="button">
-                  <span style={S.appleBtnDot} />
-                  Escolher exercícios
-                </button>
-              </div>
-
-              <select value={d.groupId} onChange={(e) => setDayGroup(d.dayIndex, e.target.value)} style={S.select}>
-                {MUSCLE_GROUPS.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-
-              <div style={S.musclesLine}>{d.groupObj?.muscles?.join(" • ") || "—"}</div>
-
-              <div style={S.presRow}>
-                <div style={S.presBox}>
-                  <div style={S.presLabel}>Séries</div>
-                  <input
-                    value={d.prescription?.sets ?? ""}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        setPrescription(d.dayIndex, { sets: "" });
-                        return;
-                      }
-                      if (!/^\d+$/.test(raw)) return;
-                      setPrescription(d.dayIndex, { sets: raw });
-                    }}
-                    onBlur={(e) => {
-                      const next = clamp(Number(e.target.value || 4), 1, 8);
-                      setPrescription(d.dayIndex, { sets: next });
-                    }}
-                    style={S.input}
-                  />
-                </div>
-                <div style={S.presBox}>
-                  <div style={S.presLabel}>Reps</div>
-                  <input value={d.prescription?.reps || ""} onChange={(e) => setPrescription(d.dayIndex, { reps: e.target.value })} placeholder="ex: 6–12" style={S.input} />
-                </div>
-                <div style={S.presBox}>
-                  <div style={S.presLabel}>Descanso</div>
-                  <input value={d.prescription?.rest || ""} onChange={(e) => setPrescription(d.dayIndex, { rest: e.target.value })} placeholder="ex: 75–120s" style={S.input} />
-                </div>
-              </div>
-
-              <div style={S.pickPreview}>
-                <div style={S.pickPreviewTop}>
-                  <div style={S.previewTitle}>Seu treino (exercícios escolhidos)</div>
-                  <div style={S.previewCount}>{(d.chosenExercises || []).length} itens</div>
-                </div>
-
-                {(d.chosenExercises || []).length === 0 ? (
-                  <div style={S.previewEmpty}>Nenhum exercício escolhido. Toque em “Escolher exercícios”.</div>
-                ) : (
-                  <div style={S.previewChips}>
-                    {d.chosenExercises.slice(0, 10).map((name) => (
-                      <span key={name} style={S.chip}>{name}</span>
-                    ))}
-                    {d.chosenExercises.length > 10 ? <span style={S.moreChip}>+{d.chosenExercises.length - 10}</span> : null}
-                  </div>
-                )}
-              </div>
-
-              <div style={S.previewBox}>
-                <div style={S.previewTitle}>Sugestões do grupo</div>
-                <div style={S.previewList}>
-                  {(d.groupObj?.library || []).slice(0, 6).map((x, i) => (
-                    <div key={`${x.name}_${i}`} style={S.previewItem}>
-                      <span style={S.dot} />
-                      <div>
-                        <div style={S.previewName}>{x.name}</div>
-                        <div style={S.previewSub}>{x.group}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <section style={S.volumeCard}>
+        <div>
+          <div style={S.sectionTitle}>Volume semanal</div>
+          <div style={S.sectionSub}>Estimativa simples por grupo muscular.</div>
+        </div>
+        <div style={S.volumeGrid}>
+          {Object.entries(weeklyVolume).slice(0, 8).map(([muscle, volume]) => (
+            <div key={muscle} style={S.volumeItem}>
+              <b>{volume}</b>
+              <span>{muscle}</span>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div style={S.card}>
-        <div style={S.cardTitle}>3) Volume semanal (estimativa)</div>
-        <div style={S.volGrid}>
-          {Object.keys(weeklyVolume).length === 0 ? (
-            <div style={S.volEmpty}>Defina os dias acima para ver o volume.</div>
-          ) : (
-            Object.entries(weeklyVolume).map(([m, v]) => (
-              <div key={m} style={S.volCard}>
-                <div style={S.volName}>{m}</div>
-                <div style={S.volVal}>{v} sets/sem</div>
+      <section style={S.daysList}>
+        {daysConfig.map((day) => {
+          const p = day.prescription || {};
+          const method = normalizeMethod(p.method || "normal");
+
+          return (
+            <article key={day.dayIndex} style={S.dayCard}>
+              <div style={S.dayTop}>
+                <div style={S.dayLetter}>{day.letter}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={S.dayTitle}>Treino {day.letter}</div>
+                  <div style={S.daySub}>{day.groupObj?.name || "Foco do dia"}</div>
+                </div>
+                <button style={S.chooseBtn} onClick={() => openPicker(day.dayIndex)} type="button">Exercícios</button>
               </div>
-            ))
-          )}
+
+              <div style={S.groupScroller}>
+                {MUSCLE_GROUPS.map((g) => (
+                  <button key={g.id} onClick={() => setDayGroup(day.dayIndex, g.id)} style={{ ...S.groupChip, ...(day.groupId === g.id ? S.groupChipOn : null) }} type="button">
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+
+              <div style={S.prescriptionGrid}>
+                <label style={S.fieldLabel}>
+                  Séries
+                  <input style={S.fieldInput} inputMode="numeric" value={p.sets || 4} onChange={(e) => setPrescription(day.dayIndex, { sets: e.target.value })} />
+                </label>
+                <label style={S.fieldLabel}>
+                  Reps
+                  <input style={S.fieldInput} value={p.reps || "6–12"} onChange={(e) => setPrescription(day.dayIndex, { reps: e.target.value })} />
+                </label>
+                <label style={S.fieldLabel}>
+                  Descanso
+                  <input style={S.fieldInput} value={p.rest || "75–120s"} onChange={(e) => setPrescription(day.dayIndex, { rest: e.target.value })} />
+                </label>
+              </div>
+
+              <div style={S.methodBlock}>
+                <div style={S.methodTitle}>Método</div>
+                <div style={S.methodRow}>
+                  {METHODS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPrescription(day.dayIndex, { method: m.id })}
+                      style={{ ...S.methodChip, ...(method === m.id ? S.methodChipOn : null) }}
+                    >
+                      <b>{m.label}</b>
+                      <span>{m.short}</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={S.methodHint}>{METHODS.find((m) => m.id === method)?.note || METHODS[0].note}</div>
+              </div>
+
+              <div style={S.exercisePreview}>
+                {(day.chosenExercises || []).slice(0, 8).map((name, index) => (
+                  <div key={`${name}_${index}`} style={S.previewRow}>
+                    <span>{index + 1}</span>
+                    <b>{name}</b>
+                  </div>
+                ))}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <section style={S.saveCard}>
+        <div>
+          <div style={S.saveTitle}>Salvar plano atual</div>
+          <div style={S.saveText}>O treino principal vai ler esse plano salvo no Supabase.</div>
         </div>
-        <div style={S.volTip}>Dica: consistência + progressão de carga (sem pressa) é o que mais “vende resultado” pro usuário comum.</div>
-      </div>
+        <div style={S.saveActions}>
+          <button style={S.secondaryDarkBtn} onClick={reset} type="button">Restaurar</button>
+          <button style={S.saveBtn} onClick={save} disabled={saving} type="button">{saving ? "Salvando..." : "Salvar treino"}</button>
+        </div>
+      </section>
 
-      <div style={S.actions}>
-        <button style={S.save} onClick={save} disabled={saving} type="button">{saving ? "Salvando..." : "Salvar"}</button>
-        <button style={S.reset} onClick={reset} type="button">Restaurar padrão</button>
-      </div>
-
-      <ExercisePickerSheet
-        open={pickerOpen}
-        onClose={closePicker}
-        day={daysConfig[pickerDayIndex]}
-        dayIndex={pickerDayIndex}
-        onApply={(list) => updateDayExercises(pickerDayIndex, list)}
-      />
+      {pickerOpen ? (
+        <ExercisePicker
+          day={daysConfig.find((d) => d.dayIndex === pickerDayIndex)}
+          current={dayExercises[pickerDayIndex] || []}
+          onChange={(list) => updateDayExercises(pickerDayIndex, list)}
+          onClose={closePicker}
+        />
+      ) : null}
     </div>
   );
 }
 
-function HeaderBrand({ title, subtitle, onBack }) {
-  return (
-    <div style={S.head}>
-      <button style={S.back} onClick={onBack} type="button">←</button>
-      <div style={S.brandMark}>
-        <img src={LogoMark} alt="fitdeal" style={S.brandLogo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={S.brandTop}>
-          <div style={S.brandName}>fitdeal</div>
-          <div style={S.brandBadge}>PRO</div>
-        </div>
-        <div style={S.hTitle}>{title}</div>
-        <div style={S.hSub}>{subtitle}</div>
-      </div>
-    </div>
-  );
-}
+function ExercisePicker({ day, current, onChange, onClose }) {
+  const [query, setQuery] = useState("");
+  const [mode, setMode] = useState("foco");
+  const [groupKey, setGroupKey] = useState(day?.groupObj?.pickerKeys?.[0] || "peito");
 
-function ExercisePickerSheet({ open, onClose, day, dayIndex, onApply }) {
-  const group = day?.groupObj;
-  const groupName = group?.name || `Dia ${day?.letter || ""}`;
-  const pickerKeys = Array.isArray(group?.pickerKeys) ? group.pickerKeys : [];
-  const [tab, setTab] = useState(() => pickerKeys[0] || "peito");
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState(() => (Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []));
+  const selected = useMemo(() => new Set(current || []), [current]);
 
-  useEffect(() => {
-    if (open) {
-      setSelected(Array.isArray(day?.chosenExercises) ? [...day.chosenExercises] : []);
-      setQ("");
-      setTab(pickerKeys[0] || "peito");
-    }
-  }, [open, dayIndex, day, pickerKeys]);
+  const keys = useMemo(() => {
+    if (mode === "foco") return day?.groupObj?.pickerKeys || ["peito", "costas", "quadriceps"];
+    return [groupKey];
+  }, [mode, groupKey, day?.groupObj?.pickerKeys]);
 
-  const list = useMemo(() => {
-    const base = (EXERCISE_CATALOG[tab] || []).map((name) => ({ name, key: tab }));
-    const term = String(q || "").trim().toLowerCase();
-    if (!term) return base;
-    return base.filter((x) => x.name.toLowerCase().includes(term));
-  }, [tab, q]);
+  const rows = useMemo(() => makeExerciseRows(keys, query), [keys, query]);
 
-  const selectedSet = useMemo(() => new Set((selected || []).map((x) => String(x))), [selected]);
-
-  function add(name) {
-    setSelected((prev) => uniq([...(prev || []), name]));
+  function toggle(name) {
+    const exists = selected.has(name);
+    const next = exists ? current.filter((x) => x !== name) : [...current, name];
+    onChange(next);
   }
 
   function remove(name) {
-    setSelected((prev) => (prev || []).filter((x) => x !== name));
+    onChange(current.filter((x) => x !== name));
   }
 
-  function clearAll() {
-    setSelected([]);
+  function move(name, dir) {
+    const index = current.findIndex((x) => x === name);
+    if (index < 0) return;
+    const nextIndex = clamp(index + dir, 0, current.length - 1);
+    if (nextIndex === index) return;
+    const copy = [...current];
+    const [item] = copy.splice(index, 1);
+    copy.splice(nextIndex, 0, item);
+    onChange(copy);
   }
-
-  function apply() {
-    onApply(uniq(selected));
-    onClose();
-  }
-
-  if (!open) return null;
 
   return (
-    <div style={S.sheetOverlay} onClick={onClose}>
-      <div style={S.sheet} onClick={(e) => e.stopPropagation()}>
-        <div style={S.sheetTop}>
+    <div style={S.sheetOverlay}>
+      <button style={S.sheetBackdrop} onClick={onClose} type="button" aria-label="Fechar" />
+      <div style={S.sheet}>
+        <div style={S.sheetGrab} />
+        <div style={S.sheetHead}>
           <div>
-            <div style={S.sheetTitle}>Escolher exercícios</div>
-            <div style={S.sheetSub}>{groupName} • Dia {day?.letter || ""} • toque para adicionar</div>
+            <div style={S.sheetTitle}>Selecionar exercícios</div>
+            <div style={S.sheetSub}>Treino {day?.letter} • {day?.groupObj?.name}</div>
           </div>
-          <button style={S.sheetClose} onClick={onClose} type="button">✕</button>
+          <button style={S.closeBtn} onClick={onClose} type="button">×</button>
         </div>
 
-        <div style={S.searchWrap}>
-          <div style={S.searchIcon}>⌕</div>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar exercício..." style={S.search} />
-          {q ? <button type="button" onClick={() => setQ("")} style={S.searchClear}>Limpar</button> : null}
+        <div style={S.pickerTabs}>
+          <button style={{ ...S.pickerTab, ...(mode === "foco" ? S.pickerTabOn : null) }} onClick={() => setMode("foco")} type="button">Do foco</button>
+          <button style={{ ...S.pickerTab, ...(mode === "membros" ? S.pickerTabOn : null) }} onClick={() => setMode("membros")} type="button">Por membro</button>
         </div>
 
-        <div style={S.tabsRow}>
-          {pickerKeys.map((k) => (
-            <button key={k} type="button" onClick={() => setTab(k)} style={{ ...S.tab, ...(tab === k ? S.tabOn : S.tabOff) }}>{prettyKeyLabel(k)}</button>
-          ))}
-        </div>
-
-        <div style={S.selectedBar}>
-          <div style={S.selectedLeft}>
-            <div style={S.selectedTitle}>Selecionados</div>
-            <div style={S.selectedCount}>{selected.length} exercícios</div>
-          </div>
-          <button type="button" onClick={clearAll} style={S.clearBtn}>Limpar</button>
-        </div>
-
-        {selected.length ? (
-          <div style={S.selectedChips}>
-            {selected.slice(0, 20).map((name) => (
-              <button key={name} type="button" onClick={() => remove(name)} style={S.selChip} title="Remover">
-                <span style={S.selChipDot} />
-                {name}
-                <span style={S.selChipX}>×</span>
+        {mode === "membros" ? (
+          <div style={S.memberRow}>
+            {Object.keys(EXERCISE_CATALOG).map((key) => (
+              <button key={key} style={{ ...S.memberChip, ...(groupKey === key ? S.memberChipOn : null) }} onClick={() => setGroupKey(key)} type="button">
+                {prettyKeyLabel(key)}
               </button>
             ))}
-            {selected.length > 20 ? <span style={S.moreSel}>+{selected.length - 20}</span> : null}
           </div>
-        ) : (
-          <div style={S.selectedEmpty}>Nenhum selecionado ainda. Adicione abaixo</div>
-        )}
+        ) : null}
 
-        <div style={S.list}>
-          {list.map((item) => {
-            const isOn = selectedSet.has(item.name);
-            return (
-              <div key={item.name} style={S.row}>
-                <div>
-                  <div style={S.rowName}>{item.name}</div>
-                  <div style={S.rowSub}>{prettyKeyLabel(tab)}</div>
+        <input style={S.searchInput} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar exercício..." />
+
+        {current?.length ? (
+          <div style={S.selectedBox}>
+            <div style={S.selectedBoxTitle}>Selecionados</div>
+            <div style={S.selectedList}>
+              {current.map((name, index) => (
+                <div key={`${name}_${index}`} style={S.selectedExercise}>
+                  <span>{index + 1}</span>
+                  <b>{name}</b>
+                  <button onClick={() => move(name, -1)} type="button">↑</button>
+                  <button onClick={() => move(name, 1)} type="button">↓</button>
+                  <button onClick={() => remove(name)} type="button">×</button>
                 </div>
-                {!isOn ? (
-                  <button type="button" onClick={() => add(item.name)} style={S.addBtn}>+ Adicionar</button>
-                ) : (
-                  <button type="button" onClick={() => remove(item.name)} style={S.addBtnOn}>✓ Adicionado</button>
-                )}
-              </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div style={S.catalogList}>
+          {rows.map((item) => {
+            const active = selected.has(item.name);
+            return (
+              <button key={`${item.key}_${item.name}`} style={{ ...S.catalogItem, ...(active ? S.catalogItemOn : null) }} onClick={() => toggle(item.name)} type="button">
+                <div>
+                  <b>{item.name}</b>
+                  <span>{item.group}</span>
+                </div>
+                <strong>{active ? "✓" : "+"}</strong>
+              </button>
             );
           })}
-          {list.length === 0 ? <div style={S.listEmpty}>Nada encontrado. Tente outro termo.</div> : null}
         </div>
 
-        <div style={S.sheetActions}>
-          <button style={S.sheetGhost} onClick={onClose} type="button">Voltar</button>
-          <button style={S.sheetMain} onClick={apply} type="button">Aplicar ao Dia {day?.letter || ""}</button>
-        </div>
-        <div style={S.safeBottom} />
+        <button style={S.doneBtn} onClick={onClose} type="button">Concluir seleção</button>
       </div>
     </div>
+  );
+}
+
+function HideBottomMenuStyle() {
+  return (
+    <style>{`
+      body.fitdeal-hide-bottom-menu nav:has(.fitdeal-bottom-item),
+      body.fitdeal-hide-bottom-menu div:has(> nav .fitdeal-bottom-item),
+      body.fitdeal-hide-bottom-menu .fitdeal-bottom-item,
+      body.fitdeal-hide-bottom-menu .fitdeal-main-item,
+      body.fitdeal-hide-bottom-menu .bottom-menu,
+      body.fitdeal-hide-bottom-menu .bottom-nav,
+      body.fitdeal-hide-bottom-menu .tabbar,
+      body.fitdeal-hide-bottom-menu .mobile-bottom-nav {
+        display: none !important;
+      }
+
+      button, input {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      ::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
+    `}</style>
   );
 }
 
 const S = {
-  page: { padding: 18, paddingBottom: 120, background: BG, minHeight: "100vh", position: "relative", overflowX: "hidden" },
-  bgGlow: { position: "absolute", inset: -140, pointerEvents: "none", background: "radial-gradient(900px 480px at 18% -10%, rgba(255,106,0,.16), rgba(248,250,252,0) 60%), radial-gradient(520px 260px at 86% 6%, rgba(15,23,42,.06), rgba(255,255,255,0) 70%)", opacity: 0.95 },
-  head: { borderRadius: 24, padding: 16, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 16px 50px rgba(15,23,42,.08)", display: "flex", gap: 12, alignItems: "center", position: "relative", zIndex: 1, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" },
-  back: { width: 44, height: 44, borderRadius: 16, border: "none", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, fontSize: 16, flexShrink: 0 },
-  brandMark: { width: 36, height: 36, borderRadius: 14, background: "rgba(255,106,0,.10)", border: "1px solid rgba(255,106,0,.14)", display: "grid", placeItems: "center", flexShrink: 0, overflow: "hidden" },
-  brandLogo: { width: 34, height: 34, objectFit: "contain", padding: 6, borderRadius: 10, display: "block" },
-  brandTop: { display: "flex", gap: 8, alignItems: "center" },
-  brandName: { fontWeight: 950, letterSpacing: -0.4, color: TEXT, fontSize: 14 },
-  brandBadge: { fontSize: 10, fontWeight: 950, padding: "4px 8px", borderRadius: 999, background: ORANGE_SOFT, border: "1px solid rgba(255,106,0,.25)", color: ORANGE },
-  hTitle: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
-  hSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  card: { marginTop: 12, borderRadius: 24, padding: 16, background: "rgba(255,255,255,.92)", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 14px 40px rgba(15,23,42,.06)", position: "relative", zIndex: 1, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" },
-  cardTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-  splitRow: { marginTop: 12, display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  pill: { border: "none", padding: "10px 12px", borderRadius: 999, fontWeight: 950, whiteSpace: "nowrap", transition: "transform .12s ease" },
-  pillOn: { background: "rgba(255,106,0,.14)", border: "1px solid rgba(255,106,0,.35)", color: ORANGE },
-  pillOff: { background: "rgba(15,23,42,.04)", border: "1px solid rgba(15,23,42,.06)", color: TEXT },
-  smallNote: { marginTop: 12, fontSize: 12, fontWeight: 900, color: MUTED },
-  daysRow: { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 },
-  dayBtn: { padding: 12, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", fontWeight: 950 },
-  dayOn: { background: ORANGE, color: "#111", border: "none", boxShadow: "0 14px 34px rgba(255,106,0,.22)" },
-  dayOff: { background: "#fff", color: TEXT },
-  daysGrid: { marginTop: 12, display: "grid", gap: 12 },
-  dayCard: { borderRadius: 22, padding: 16, background: "linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,106,0,.06))", border: "1px solid rgba(15,23,42,.06)", boxShadow: "0 10px 30px rgba(15,23,42,.06)" },
-  dayTop: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" },
-  badge: { width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg, rgba(255,106,0,.95), rgba(255,106,0,.60))", color: "#fff", fontWeight: 950, display: "grid", placeItems: "center" },
-  dayLabel: { fontSize: 14, fontWeight: 950, color: TEXT },
-  daySub: { marginTop: 2, fontSize: 12, fontWeight: 800, color: MUTED },
-  appleBtn: { marginLeft: "auto", padding: "10px 12px", borderRadius: 16, border: "1px solid rgba(255,106,0,.25)", background: "rgba(255,255,255,.70)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", fontWeight: 950, color: TEXT, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 12px 26px rgba(255,106,0,.12)" },
-  appleBtnDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, boxShadow: "0 10px 20px rgba(255,106,0,.25)" },
-  select: { marginTop: 12, width: "100%", padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontWeight: 900, color: TEXT, background: "#fff" },
-  musclesLine: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  presRow: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 },
-  presBox: { borderRadius: 18, padding: 12, background: "#fff", border: "1px solid rgba(15,23,42,.06)" },
-  presLabel: { fontSize: 11, fontWeight: 950, color: MUTED },
-  input: { marginTop: 6, width: "100%", padding: "12px 12px", borderRadius: 14, border: "1px solid rgba(15,23,42,.10)", outline: "none", fontWeight: 900, color: TEXT },
-  pickPreview: { marginTop: 12, borderRadius: 18, padding: 14, background: "rgba(255,106,0,.08)", border: "1px solid rgba(255,106,0,.18)" },
-  pickPreviewTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  previewTitle: { fontSize: 12, fontWeight: 950, color: TEXT, opacity: 0.9 },
-  previewCount: { fontSize: 12, fontWeight: 950, color: ORANGE },
-  previewEmpty: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  previewChips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 },
-  chip: { padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,.75)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 900, fontSize: 12, color: TEXT, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  moreChip: { padding: "8px 10px", borderRadius: 999, background: "rgba(15,23,42,.06)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 950, fontSize: 12, color: TEXT },
-  previewBox: { marginTop: 12, borderRadius: 18, padding: 14, background: "rgba(15,23,42,.03)", border: "1px solid rgba(15,23,42,.06)" },
-  previewList: { marginTop: 10, display: "grid", gap: 8 },
-  previewItem: { display: "flex", gap: 10, alignItems: "flex-start" },
-  dot: { width: 10, height: 10, borderRadius: 999, background: ORANGE, marginTop: 4, flexShrink: 0 },
-  previewName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
-  previewSub: { marginTop: 2, fontSize: 11, fontWeight: 800, color: MUTED },
-  volGrid: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  volCard: { borderRadius: 18, padding: 12, background: "#fff", border: "1px solid rgba(15,23,42,.06)" },
-  volName: { fontSize: 12, fontWeight: 950, color: MUTED },
-  volVal: { marginTop: 6, fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.3 },
-  volEmpty: { fontSize: 12, fontWeight: 800, color: MUTED },
-  volTip: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  actions: { marginTop: 12, display: "grid", gap: 10, position: "relative", zIndex: 1 },
-  save: { width: "100%", padding: 14, borderRadius: 18, border: "none", background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 18px 50px rgba(255,106,0,.22)" },
-  reset: { width: "100%", padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
-  lockCard: { marginTop: 12, borderRadius: 24, padding: 18, background: "linear-gradient(135deg, rgba(255,106,0,.16), rgba(15,23,42,.03))", border: "1px solid rgba(255,106,0,.22)", boxShadow: "0 18px 55px rgba(15,23,42,.12)", textAlign: "center" },
-  lockIcon: { fontSize: 34 },
-  lockTitle: { marginTop: 10, fontSize: 18, fontWeight: 950, color: TEXT },
-  lockText: { marginTop: 8, fontSize: 13, fontWeight: 800, color: MUTED, lineHeight: 1.45 },
-  cta: { marginTop: 14, width: "100%", padding: 14, borderRadius: 18, border: "none", background: ORANGE, color: "#111", fontWeight: 950, boxShadow: "0 18px 45px rgba(255,106,0,.22)" },
-  ghost: { marginTop: 10, width: "100%", padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "#fff", color: TEXT, fontWeight: 950 },
-  sheetOverlay: { position: "fixed", inset: 0, background: "rgba(2,6,23,.38)", zIndex: 999, display: "grid", alignItems: "end" },
-  sheet: { width: "100%", borderTopLeftRadius: 26, borderTopRightRadius: 26, background: "rgba(255,255,255,.88)", borderTop: "1px solid rgba(255,255,255,.55)", boxShadow: "0 -26px 80px rgba(0,0,0,.28)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: 14, maxHeight: "88vh", overflow: "hidden" },
-  sheetTop: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" },
-  sheetTitle: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.2 },
-  sheetSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED, lineHeight: 1.35 },
-  sheetClose: { width: 40, height: 40, borderRadius: 14, border: "1px solid rgba(15,23,42,.08)", background: "rgba(255,255,255,.75)", fontWeight: 950, color: TEXT },
-  searchWrap: { marginTop: 12, borderRadius: 18, border: "1px solid rgba(15,23,42,.08)", background: "rgba(255,255,255,.75)", padding: 12, display: "flex", alignItems: "center", gap: 10 },
-  searchIcon: { fontWeight: 950, color: MUTED },
-  search: { border: "none", outline: "none", width: "100%", background: "transparent", fontWeight: 900, color: TEXT },
-  searchClear: { border: "none", background: ORANGE_SOFT, color: ORANGE, fontWeight: 950, padding: "8px 10px", borderRadius: 999 },
-  tabsRow: { marginTop: 12, display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 },
-  tab: { border: "none", padding: "10px 12px", borderRadius: 999, fontWeight: 950, whiteSpace: "nowrap" },
-  tabOn: { background: "rgba(255,106,0,.16)", border: "1px solid rgba(255,106,0,.30)", color: ORANGE },
-  tabOff: { background: "rgba(15,23,42,.05)", border: "1px solid rgba(15,23,42,.06)", color: TEXT },
-  selectedBar: { marginTop: 12, borderRadius: 18, padding: 12, background: "rgba(255,106,0,.08)", border: "1px solid rgba(255,106,0,.18)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  selectedLeft: { display: "flex", flexDirection: "column" },
-  selectedTitle: { fontSize: 12, fontWeight: 950, color: TEXT },
-  selectedCount: { marginTop: 4, fontSize: 12, fontWeight: 900, color: ORANGE },
-  clearBtn: { border: "1px solid rgba(255,106,0,.22)", background: "rgba(255,255,255,.70)", color: TEXT, fontWeight: 950, padding: "10px 12px", borderRadius: 16, opacity: 1 },
-  selectedChips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 96, overflow: "auto" },
-  selChip: { display: "flex", alignItems: "center", gap: 8, borderRadius: 999, border: "1px solid rgba(15,23,42,.08)", background: "rgba(255,255,255,.75)", padding: "10px 12px", fontWeight: 950, color: TEXT, maxWidth: "100%" },
-  selChipDot: { width: 10, height: 10, borderRadius: 999, background: ORANGE },
-  selChipX: { marginLeft: 2, color: MUTED, fontWeight: 950 },
-  moreSel: { padding: "10px 12px", borderRadius: 999, background: "rgba(15,23,42,.06)", border: "1px solid rgba(15,23,42,.06)", fontWeight: 950, color: TEXT },
-  selectedEmpty: { marginTop: 10, fontSize: 12, fontWeight: 800, color: MUTED },
-  list: { marginTop: 12, borderRadius: 20, border: "1px solid rgba(15,23,42,.06)", background: "rgba(255,255,255,.70)", overflow: "auto", maxHeight: "36vh" },
-  row: { padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(15,23,42,.06)" },
-  rowName: { fontSize: 13, fontWeight: 950, color: TEXT, lineHeight: 1.2 },
-  rowSub: { marginTop: 4, fontSize: 11, fontWeight: 800, color: MUTED },
-  addBtn: { border: "none", background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))", color: "#111", fontWeight: 950, padding: "10px 12px", borderRadius: 999, boxShadow: "0 14px 30px rgba(255,106,0,.18)", whiteSpace: "nowrap" },
-  addBtnOn: { border: "1px solid rgba(15,23,42,.10)", background: "rgba(15,23,42,.06)", color: TEXT, fontWeight: 950, padding: "10px 12px", borderRadius: 999, whiteSpace: "nowrap" },
-  listEmpty: { padding: 16, fontSize: 12, fontWeight: 800, color: MUTED },
-  sheetActions: { marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  sheetGhost: { padding: 14, borderRadius: 18, border: "1px solid rgba(15,23,42,.10)", background: "rgba(255,255,255,.75)", color: TEXT, fontWeight: 950 },
-  sheetMain: { padding: 14, borderRadius: 18, border: "none", background: "linear-gradient(135deg, #FF6A00, #FF8A3D)", color: "#111", fontWeight: 950, boxShadow: "0 18px 50px rgba(255,106,0,.22)" },
-  safeBottom: { height: "calc(10px + env(safe-area-inset-bottom))" },
+  page: {
+    minHeight: "100vh",
+    background: BG,
+    padding: 14,
+    paddingBottom: 36,
+    color: TEXT,
+  },
+
+  backBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    border: `1px solid ${BORDER}`,
+    background: "#fff",
+    color: TEXT,
+    fontSize: 24,
+    fontWeight: 950,
+    boxShadow: "0 12px 30px rgba(15,23,42,.07)",
+  },
+
+  hero: {
+    display: "flex",
+    gap: 13,
+    alignItems: "flex-start",
+    borderRadius: 28,
+    padding: 15,
+    background: "radial-gradient(circle at 90% 0%, rgba(255,106,0,.26), rgba(255,106,0,0) 34%), linear-gradient(135deg, #fff, #fff7ed)",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 54px rgba(15,23,42,.08)",
+  },
+
+  heroBack: {
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(255,255,255,.86)",
+    color: TEXT,
+    fontSize: 24,
+    fontWeight: 950,
+    flexShrink: 0,
+  },
+
+  kicker: {
+    color: ORANGE,
+    fontSize: 11,
+    fontWeight: 950,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+  },
+
+  title: {
+    margin: "5px 0 0",
+    fontSize: 31,
+    lineHeight: 0.98,
+    fontWeight: 980,
+    letterSpacing: -1.2,
+  },
+
+  subtitle: {
+    margin: "9px 0 0",
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 1.38,
+    fontWeight: 800,
+  },
+
+  quickCard: {
+    marginTop: 14,
+    borderRadius: 25,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 40px rgba(15,23,42,.055)",
+  },
+
+  cardHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: 980,
+    letterSpacing: -0.45,
+  },
+
+  sectionSub: {
+    marginTop: 4,
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 800,
+  },
+
+  splitRow: {
+    marginTop: 12,
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    paddingBottom: 3,
+  },
+
+  splitPill: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.035)",
+    color: TEXT,
+    padding: "10px 13px",
+    fontSize: 13,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
+  splitPillOn: {
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    borderColor: "rgba(255,106,0,.32)",
+    color: "#111",
+    boxShadow: "0 12px 28px rgba(255,106,0,.18)",
+  },
+
+  daysRow: {
+    marginTop: 10,
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: 8,
+  },
+
+  dayBtn: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    background: "#fff",
+    color: TEXT,
+    padding: 12,
+    fontSize: 13,
+    fontWeight: 950,
+  },
+
+  dayOn: {
+    background: "rgba(255,106,0,.12)",
+    borderColor: "rgba(255,106,0,.26)",
+    color: ORANGE,
+  },
+
+  volumeCard: {
+    marginTop: 12,
+    borderRadius: 25,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 14px 38px rgba(15,23,42,.045)",
+  },
+
+  volumeGrid: {
+    marginTop: 12,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 9,
+  },
+
+  volumeItem: {
+    borderRadius: 18,
+    padding: 11,
+    background: "rgba(15,23,42,.035)",
+    border: `1px solid ${BORDER}`,
+    display: "grid",
+    gap: 4,
+  },
+
+  daysList: {
+    marginTop: 12,
+    display: "grid",
+    gap: 12,
+  },
+
+  dayCard: {
+    borderRadius: 27,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 16px 42px rgba(15,23,42,.06)",
+  },
+
+  dayTop: {
+    display: "flex",
+    alignItems: "center",
+    gap: 11,
+  },
+
+  dayLetter: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 980,
+    flexShrink: 0,
+  },
+
+  dayTitle: {
+    fontSize: 16,
+    fontWeight: 980,
+    letterSpacing: -0.3,
+  },
+
+  daySub: {
+    marginTop: 4,
+    fontSize: 12,
+    color: MUTED,
+    fontWeight: 800,
+  },
+
+  chooseBtn: {
+    border: "none",
+    borderRadius: 999,
+    background: BLACK,
+    color: "#fff",
+    padding: "11px 13px",
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
+  groupScroller: {
+    marginTop: 13,
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    paddingBottom: 3,
+  },
+
+  groupChip: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.035)",
+    color: TEXT,
+    padding: "9px 11px",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  groupChipOn: {
+    background: "rgba(255,106,0,.12)",
+    borderColor: "rgba(255,106,0,.28)",
+    color: ORANGE,
+  },
+
+  prescriptionGrid: {
+    marginTop: 13,
+    display: "grid",
+    gridTemplateColumns: "78px 1fr 1fr",
+    gap: 8,
+  },
+
+  fieldLabel: {
+    display: "grid",
+    gap: 6,
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: 950,
+  },
+
+  fieldInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 15,
+    background: "#fff",
+    color: TEXT,
+    padding: "11px 9px",
+    fontSize: 13,
+    fontWeight: 900,
+    outline: "none",
+  },
+
+  methodBlock: {
+    marginTop: 13,
+    borderRadius: 20,
+    padding: 11,
+    background: "rgba(248,250,252,.9)",
+    border: `1px solid ${BORDER}`,
+  },
+
+  methodTitle: {
+    fontSize: 12,
+    fontWeight: 980,
+    color: TEXT,
+    marginBottom: 9,
+  },
+
+  methodRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 8,
+  },
+
+  methodChip: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 17,
+    background: "#fff",
+    color: TEXT,
+    padding: 11,
+    display: "grid",
+    gap: 4,
+    textAlign: "left",
+  },
+
+  methodChipOn: {
+    background: "rgba(255,106,0,.12)",
+    borderColor: "rgba(255,106,0,.30)",
+    color: ORANGE,
+  },
+
+  methodHint: {
+    marginTop: 9,
+    fontSize: 12,
+    lineHeight: 1.35,
+    color: MUTED,
+    fontWeight: 800,
+  },
+
+  exercisePreview: {
+    marginTop: 12,
+    display: "grid",
+    gap: 7,
+  },
+
+  previewRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    borderRadius: 15,
+    background: "rgba(15,23,42,.025)",
+    border: `1px solid ${BORDER}`,
+    padding: "9px 10px",
+  },
+
+  saveCard: {
+    marginTop: 14,
+    borderRadius: 28,
+    padding: 15,
+    background: "radial-gradient(circle at 90% 10%, rgba(255,106,0,.33), rgba(255,106,0,0) 34%), linear-gradient(135deg, #050506, #121214)",
+    color: "#fff",
+    boxShadow: "0 22px 70px rgba(0,0,0,.20)",
+  },
+
+  saveTitle: {
+    fontSize: 21,
+    fontWeight: 980,
+    letterSpacing: -0.6,
+  },
+
+  saveText: {
+    marginTop: 7,
+    color: "rgba(255,255,255,.68)",
+    fontSize: 13,
+    lineHeight: 1.35,
+    fontWeight: 800,
+  },
+
+  saveActions: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 1.4fr",
+    gap: 9,
+  },
+
+  secondaryDarkBtn: {
+    border: "1px solid rgba(255,255,255,.13)",
+    borderRadius: 18,
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    padding: 14,
+    fontSize: 14,
+    fontWeight: 950,
+  },
+
+  saveBtn: {
+    border: "none",
+    borderRadius: 18,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    padding: 14,
+    fontSize: 14,
+    fontWeight: 980,
+    boxShadow: "0 16px 42px rgba(255,106,0,.24)",
+  },
+
+  loadingCard: {
+    marginTop: 16,
+    borderRadius: 28,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 16px 44px rgba(15,23,42,.06)",
+    padding: 18,
+  },
+
+  loadingDot: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    boxShadow: "0 16px 40px rgba(255,106,0,.20)",
+  },
+
+  loadingTitle: {
+    marginTop: 14,
+    fontSize: 20,
+    fontWeight: 980,
+  },
+
+  loadingText: {
+    marginTop: 6,
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  lockCard: {
+    marginTop: 16,
+    borderRadius: 28,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 16px 44px rgba(15,23,42,.06)",
+    padding: 18,
+  },
+
+  lockBadge: {
+    display: "inline-flex",
+    borderRadius: 999,
+    padding: "8px 11px",
+    background: "rgba(255,106,0,.12)",
+    color: ORANGE,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  lockTitle: {
+    margin: "13px 0 0",
+    fontSize: 28,
+    lineHeight: 1,
+    fontWeight: 980,
+    letterSpacing: -1,
+  },
+
+  lockText: {
+    margin: "10px 0 0",
+    color: MUTED,
+    fontSize: 14,
+    lineHeight: 1.42,
+    fontWeight: 800,
+  },
+
+  lockActions: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+
+  primaryBtn: {
+    border: "none",
+    borderRadius: 18,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    padding: 14,
+    fontSize: 14,
+    fontWeight: 980,
+  },
+
+  secondaryBtn: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "#fff",
+    color: TEXT,
+    padding: 14,
+    fontSize: 14,
+    fontWeight: 950,
+  },
+
+  sheetOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 20000,
+    display: "grid",
+    alignItems: "end",
+    padding: 10,
+    paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
+  },
+
+  sheetBackdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(2,6,23,.34)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+  },
+
+  sheet: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 540,
+    maxHeight: "86vh",
+    margin: "0 auto",
+    borderRadius: 30,
+    padding: 14,
+    background: "rgba(255,255,255,.98)",
+    border: "1px solid rgba(255,255,255,.60)",
+    boxShadow: "0 30px 90px rgba(15,23,42,.24)",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+
+  sheetGrab: {
+    width: 46,
+    height: 5,
+    borderRadius: 999,
+    background: "rgba(100,116,139,.24)",
+    margin: "0 auto 12px",
+    flexShrink: 0,
+  },
+
+  sheetHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+    flexShrink: 0,
+  },
+
+  sheetTitle: {
+    fontSize: 21,
+    fontWeight: 980,
+    letterSpacing: -0.7,
+  },
+
+  sheetSub: {
+    marginTop: 5,
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  closeBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(15,23,42,.04)",
+    color: TEXT,
+    fontSize: 22,
+    fontWeight: 950,
+    flexShrink: 0,
+  },
+
+  pickerTabs: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 8,
+    padding: 5,
+    borderRadius: 18,
+    background: "rgba(15,23,42,.04)",
+    flexShrink: 0,
+  },
+
+  pickerTab: {
+    border: "none",
+    borderRadius: 14,
+    background: "transparent",
+    color: MUTED,
+    padding: 11,
+    fontSize: 13,
+    fontWeight: 950,
+  },
+
+  pickerTabOn: {
+    background: "#fff",
+    color: TEXT,
+    boxShadow: "0 8px 22px rgba(15,23,42,.08)",
+  },
+
+  memberRow: {
+    marginTop: 11,
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    paddingBottom: 3,
+    flexShrink: 0,
+  },
+
+  memberChip: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 999,
+    background: "#fff",
+    color: TEXT,
+    padding: "9px 11px",
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  },
+
+  memberChipOn: {
+    background: "rgba(255,106,0,.12)",
+    borderColor: "rgba(255,106,0,.28)",
+    color: ORANGE,
+  },
+
+  searchInput: {
+    marginTop: 11,
+    width: "100%",
+    boxSizing: "border-box",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "#fff",
+    color: TEXT,
+    padding: "13px 13px",
+    fontSize: 14,
+    fontWeight: 850,
+    outline: "none",
+    flexShrink: 0,
+  },
+
+  selectedBox: {
+    marginTop: 11,
+    borderRadius: 20,
+    padding: 10,
+    background: "rgba(255,106,0,.07)",
+    border: "1px solid rgba(255,106,0,.14)",
+    flexShrink: 0,
+    maxHeight: 160,
+    overflowY: "auto",
+  },
+
+  selectedBoxTitle: {
+    fontSize: 12,
+    fontWeight: 980,
+    marginBottom: 8,
+  },
+
+  selectedList: {
+    display: "grid",
+    gap: 7,
+  },
+
+  selectedExercise: {
+    display: "grid",
+    gridTemplateColumns: "28px 1fr 30px 30px 30px",
+    gap: 6,
+    alignItems: "center",
+    borderRadius: 14,
+    background: "#fff",
+    padding: 8,
+    fontSize: 12,
+  },
+
+  catalogList: {
+    marginTop: 11,
+    overflowY: "auto",
+    display: "grid",
+    gap: 8,
+    paddingBottom: 8,
+    minHeight: 0,
+    flex: 1,
+    WebkitOverflowScrolling: "touch",
+  },
+
+  catalogItem: {
+    width: "100%",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 18,
+    background: "#fff",
+    color: TEXT,
+    padding: "12px 12px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    textAlign: "left",
+  },
+
+  catalogItemOn: {
+    borderColor: "rgba(255,106,0,.30)",
+    background: "rgba(255,106,0,.08)",
+  },
+
+  doneBtn: {
+    marginTop: 10,
+    height: 50,
+    border: "none",
+    borderRadius: 18,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontSize: 14,
+    fontWeight: 980,
+    flexShrink: 0,
+  },
 };
