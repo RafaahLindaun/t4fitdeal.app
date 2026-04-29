@@ -22,29 +22,22 @@ const ICON_FILES = {
 };
 
 const ALIASES = {
-  quadríceps: "quadriceps",
   quadriceps: "quadriceps",
-  glúteo: "gluteo",
   gluteo: "gluteo",
   panturrilha: "panturrilha",
   posterior: "posterior",
   abdomen: "abdomen",
-  abdômen: "abdomen",
   emagrecer: "emagrecer",
   perda_peso: "perda_peso",
   biceps: "biceps",
-  bíceps: "biceps",
   ombro: "ombro",
   triceps: "triceps",
-  tríceps: "triceps",
   peitoral: "peitoral",
   peito: "peitoral",
   costas: "costas",
   lombar: "lombar",
   trapezio: "trapezio",
-  trapézio: "trapezio",
   pescoco: "pescoco",
-  pescoço: "pescoco",
   leve: "leve",
   turbo: "turbo",
   forte: "turbo",
@@ -66,11 +59,21 @@ function buildSources(type) {
   const key = normalizeType(type);
   const file = ICON_FILES[key] || ICON_FILES.gluteo;
 
+  const lowerFile = file;
+  const upperFile = file.replace(".png", ".PNG");
+
   return [
-    `/icons/emphasis/${file}`,
-    `/emphasis_pngs/${file}`,
-    `/icons/${file}`,
-    `/assets/icons/emphasis/${file}`,
+    `/icons/emphasis/${lowerFile}`,
+    `/icons/emphasis/${upperFile}`,
+
+    `/emphasis_pngs/${lowerFile}`,
+    `/emphasis_pngs/${upperFile}`,
+
+    `/icons/${lowerFile}`,
+    `/icons/${upperFile}`,
+
+    `/assets/icons/emphasis/${lowerFile}`,
+    `/assets/icons/emphasis/${upperFile}`,
   ];
 }
 
