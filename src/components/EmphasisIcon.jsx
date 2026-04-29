@@ -1,124 +1,62 @@
+import React from "react";
+
 const ICONS = {
-  gluteo: "/icons/emphasis/gluteo.png",
-  quadriceps: "/icons/emphasis/quadriceps.png",
-  panturrilha: "/icons/emphasis/panturrilha.png",
-  posterior: "/icons/emphasis/posterior.png",
-  abdomen: "/icons/emphasis/abdomen.png",
-  perda_peso: "/icons/emphasis/perda-peso.png",
-  biceps: "/icons/emphasis/biceps.png",
-  ombro: "/icons/emphasis/ombro.png",
-  triceps: "/icons/emphasis/triceps.png",
-  peitoral: "/icons/emphasis/peitoral.png",
-  costas: "/icons/emphasis/costas.png",
-  lombar: "/icons/emphasis/lombar.png",
-  trapezio: "/icons/emphasis/trapezio.png",
-  pescoco: "/icons/emphasis/pescoco.png",
-  leve: "/icons/emphasis/leve.png",
-  turbo: "/icons/emphasis/turbo.png",
+  gluteo: "/emphasis_pngs/gluteo.png",
+  quadriceps: "/emphasis_pngs/quadriceps.png",
+  panturrilha: "/emphasis_pngs/panturrilha.png",
+  posterior: "/emphasis_pngs/posterior.png",
+  abdomen: "/emphasis_pngs/abdomen.png",
+  perda_peso: "/emphasis_pngs/perda_peso.png",
+  emagrecer: "/emphasis_pngs/perda_peso.png",
+  biceps: "/emphasis_pngs/biceps.png",
+  ombro: "/emphasis_pngs/ombro.png",
+  triceps: "/emphasis_pngs/triceps.png",
+  peitoral: "/emphasis_pngs/peitoral.png",
+  costas: "/emphasis_pngs/costas.png",
+  lombar: "/emphasis_pngs/lombar.png",
+  trapezio: "/emphasis_pngs/trapezio.png",
+  pescoco: "/emphasis_pngs/pescoco.png",
+  leve: "/emphasis_pngs/leve.png",
+  turbo: "/emphasis_pngs/turbo.png",
+  forte: "/emphasis_pngs/turbo.png",
 };
-
-const ALIASES = {
-  gluteo: "gluteo",
-  gluteos: "gluteo",
-
-  quadriceps: "quadriceps",
-  quadriceps_femoral: "quadriceps",
-
-  panturrilha: "panturrilha",
-
-  posterior: "posterior",
-  posterior_coxa: "posterior",
-  posterior_de_coxa: "posterior",
-
-  abdomen: "abdomen",
-  abdomen_trincado: "abdomen",
-  abdominal: "abdomen",
-  core: "abdomen",
-
-  emagrecer: "perda_peso",
-  emagrecimento: "perda_peso",
-  perda_peso: "perda_peso",
-  perda_de_peso: "perda_peso",
-  perda: "perda_peso",
-
-  biceps: "biceps",
-  braco_biceps: "biceps",
-
-  ombro: "ombro",
-  ombros: "ombro",
-  deltoide: "ombro",
-
-  triceps: "triceps",
-  braco_triceps: "triceps",
-
-  peito: "peitoral",
-  peitoral: "peitoral",
-
-  costas: "costas",
-  dorsais: "costas",
-  costas_dorsais: "costas",
-
-  lombar: "lombar",
-  ciatico: "lombar",
-  lombar_ciatico: "lombar",
-
-  trapezio: "trapezio",
-
-  pescoco: "pescoco",
-  cervical: "pescoco",
-
-  leve: "leve",
-  modo_leve: "leve",
-
-  forte: "turbo",
-  turbo: "turbo",
-  modo_turbo: "turbo",
-};
-
-function normalizeType(type) {
-  const raw = String(type || "gluteo")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return ALIASES[raw] || raw;
-}
 
 export default function EmphasisIcon({
-  type = "gluteo",
-  size = 118,
-  alt = "",
-  style,
+  type,
+  size = 96,
+  alt,
+  style = {},
+  imgStyle = {},
 }) {
-  const key = normalizeType(type);
-  const src = ICONS[key] || ICONS.gluteo;
+  const src = ICONS[type] || ICONS.gluteo;
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      aria-hidden={alt ? undefined : "true"}
-      draggable={false}
-      onError={(event) => {
-        if (!event.currentTarget.dataset.fallback) {
-          event.currentTarget.dataset.fallback = "1";
-          event.currentTarget.src = ICONS.gluteo;
-        }
-      }}
+    <div
       style={{
         width: size,
         height: size,
-        objectFit: "contain",
-        objectPosition: "center",
-        display: "block",
-        userSelect: "none",
-        WebkitUserDrag: "none",
-        pointerEvents: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
         ...style,
       }}
-    />
+    >
+      <img
+        src={src}
+        alt={alt || type || "ícone"}
+        draggable={false}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          objectPosition: "center",
+          display: "block",
+          userSelect: "none",
+          WebkitUserDrag: "none",
+          ...imgStyle,
+        }}
+      />
+    </div>
   );
 }
