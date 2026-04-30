@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 
 // ajuste o caminho do supabase se no seu projeto estiver diferente
 
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabase";
 
 /* =========================
 
