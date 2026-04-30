@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -535,6 +535,9 @@ export default function TreinoPersonalize() {
   const { user } = useAuth();
   const userId = user?.id || null;
 
+  const dragTimerRef = useRef(null);
+  const dragDataRef = useRef(null);
+
   const defaultDays = 3;
   const initial = useMemo(() => createInitialState(defaultDays), []);
 
@@ -549,6 +552,8 @@ export default function TreinoPersonalize() {
   const [expandedExerciseId, setExpandedExerciseId] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pairPicker, setPairPicker] = useState(null);
+  const [draggingExerciseId, setDraggingExerciseId] = useState(null);
+  const [dragOverExerciseId, setDragOverExerciseId] = useState(null);
 
   useEffect(() => {
     document.body.classList.add("fitdeal-hide-bottom-menu");
@@ -749,22 +754,85 @@ export default function TreinoPersonalize() {
     if (expandedExerciseId === exId) setExpandedExerciseId(null);
   }
 
-  function moveExercise(dayIndex, exId, dir) {
+  function reorderExerciseByIds(dayIndex, draggedId, overId) {
+    if (!draggedId || !overId || draggedId === overId) return;
+
     setExercisesByDay((prev) => {
       const list = [...(prev[dayIndex] || [])];
-      const index = list.findIndex((ex) => ex.id === exId);
 
-      if (index < 0) return prev;
+      const fromIndex = list.findIndex((ex) => ex.id === draggedId);
+      const toIndex = list.findIndex((ex) => ex.id === overId);
 
-      const nextIndex = clamp(index + dir, 0, list.length - 1);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return prev;
 
-      if (index === nextIndex) return prev;
+      const [draggedItem] = list.splice(fromIndex, 1);
+      list.splice(toIndex, 0, draggedItem);
 
-      const [item] = list.splice(index, 1);
-      list.splice(nextIndex, 0, item);
-
-      return { ...prev, [dayIndex]: list };
+      return {
+        ...prev,
+        [dayIndex]: list,
+      };
     });
+  }
+
+  function startExerciseDrag(e, dayIndex, exId) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    clearTimeout(dragTimerRef.current);
+
+    dragDataRef.current = {
+      dayIndex,
+      exId,
+      started: false,
+      lastOverId: null,
+    };
+
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+
+    dragTimerRef.current = setTimeout(() => {
+      if (!dragDataRef.current) return;
+
+      dragDataRef.current.started = true;
+      setDraggingExerciseId(exId);
+      setExpandedExerciseId(null);
+
+      if (navigator?.vibrate) navigator.vibrate(18);
+    }, 160);
+  }
+
+  function moveExerciseDrag(e) {
+    const data = dragDataRef.current;
+
+    if (!data?.started) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const element = document.elementFromPoint(e.clientX, e.clientY);
+    const card = element?.closest?.("[data-exercise-id]");
+    const overId = card?.getAttribute?.("data-exercise-id");
+
+    if (!overId || overId === data.exId || overId === data.lastOverId) return;
+
+    data.lastOverId = overId;
+    setDragOverExerciseId(overId);
+
+    reorderExerciseByIds(data.dayIndex, data.exId, overId);
+  }
+
+  function endExerciseDrag(e) {
+    clearTimeout(dragTimerRef.current);
+
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch {}
+
+    dragDataRef.current = null;
+    setDraggingExerciseId(null);
+    setDragOverExerciseId(null);
   }
 
   function addPairedExercise(dayIndex, targetExId, pickedName, method) {
@@ -983,21 +1051,27 @@ export default function TreinoPersonalize() {
             ))}
           </div>
 
-          <div style={S.dayTabs}>
-            {daysConfig.map((day) => (
-              <button
-                key={day.index}
-                type="button"
-                onClick={() => {
-                  setActiveDay(day.index);
-                  setExpandedExerciseId(null);
-                }}
-                style={{ ...S.dayTab, ...(activeDay === day.index ? S.dayTabOn : null) }}
-              >
-                <span style={S.dayTabMini}>Treino</span>
-                <strong>{day.letter}</strong>
-              </button>
-            ))}
+          <div style={S.dayTabsWrap}>
+            <div style={S.dayTabs}>
+              {daysConfig.map((day) => {
+                const active = activeDay === day.index;
+
+                return (
+                  <button
+                    key={day.index}
+                    type="button"
+                    onClick={() => {
+                      setActiveDay(day.index);
+                      setExpandedExerciseId(null);
+                    }}
+                    style={{ ...S.dayTab, ...(active ? S.dayTabOn : null) }}
+                  >
+                    <span style={{ ...S.dayTabLabel, ...(active ? S.dayTabLabelOn : null) }}>Treino</span>
+                    <span style={{ ...S.dayTabLetter, ...(active ? S.dayTabLetterOn : null) }}>{day.letter}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
 
@@ -1034,23 +1108,48 @@ export default function TreinoPersonalize() {
             const otherExercises = (selectedDay.exercises || []).filter((item) => item.id !== ex.id);
 
             return (
-              <article key={ex.id} style={S.exerciseCard}>
-                <button
-                  type="button"
-                  style={S.exerciseTop}
-                  onClick={() => setExpandedExerciseId(expanded ? null : ex.id)}
-                >
-                  <MiniGif name={ex.name} size={54} />
+              <article
+                key={ex.id}
+                data-exercise-id={ex.id}
+                style={{
+                  ...S.exerciseCard,
+                  ...(draggingExerciseId === ex.id ? S.exerciseCardDragging : null),
+                  ...(dragOverExerciseId === ex.id ? S.exerciseCardOver : null),
+                }}
+              >
+                <div style={S.exerciseTop}>
+                  <button
+                    type="button"
+                    style={S.exerciseTapArea}
+                    onClick={() => setExpandedExerciseId(expanded ? null : ex.id)}
+                  >
+                    <MiniGif name={ex.name} size={54} />
 
-                  <div style={S.exerciseText}>
-                    <div style={S.exerciseName}>{ex.name}</div>
-                    <div style={S.exerciseMeta}>
-                      {ex.group} • {ex.sets}x • {ex.reps} • {ex.rest}
+                    <div style={S.exerciseText}>
+                      <div style={S.exerciseName}>{ex.name}</div>
+                      <div style={S.exerciseMeta}>
+                        {ex.group} • {ex.sets}x • {ex.reps} • {ex.rest}
+                      </div>
                     </div>
-                  </div>
 
-                  <div style={S.orderBadge}>{index + 1}</div>
-                </button>
+                    <div style={S.orderBadge}>{index + 1}</div>
+                  </button>
+
+                  <div
+                    role="button"
+                    aria-label="Arrastar exercício"
+                    title="Segure e arraste"
+                    style={S.dragHandle}
+                    onPointerDown={(e) => startExerciseDrag(e, selectedDay.index, ex.id)}
+                    onPointerMove={moveExerciseDrag}
+                    onPointerUp={endExerciseDrag}
+                    onPointerCancel={endExerciseDrag}
+                  >
+                    <span style={S.dragDot} />
+                    <span style={S.dragDot} />
+                    <span style={S.dragDot} />
+                  </div>
+                </div>
 
                 {expanded ? (
                   <div style={S.expandedArea}>
@@ -1181,17 +1280,9 @@ export default function TreinoPersonalize() {
                       </div>
                     ) : null}
 
-                    <div style={S.toolRow}>
-                      <button style={S.toolBtn} onClick={() => moveExercise(selectedDay.index, ex.id, -1)} type="button">
-                        Subir
-                      </button>
-
-                      <button style={S.toolBtn} onClick={() => moveExercise(selectedDay.index, ex.id, 1)} type="button">
-                        Descer
-                      </button>
-
+                    <div style={S.toolRowSingle}>
                       <button style={S.removeBtn} onClick={() => removeExercise(selectedDay.index, ex.id)} type="button">
-                        Remover
+                        Remover exercício
                       </button>
                     </div>
                   </div>
@@ -1385,12 +1476,7 @@ function PairExercisePicker({ day, targetName, method, onPick, onClose }) {
 
         <div style={S.pickerList}>
           {rows.map((row) => (
-            <button
-              key={`${row.key}_${row.name}`}
-              type="button"
-              style={S.pickerItem}
-              onClick={() => onPick(row.name)}
-            >
+            <button key={`${row.key}_${row.name}`} type="button" style={S.pickerItem} onClick={() => onPick(row.name)}>
               <MiniGif name={row.name} size={42} />
 
               <div style={S.pickerText}>
@@ -1546,37 +1632,64 @@ const S = {
     color: "#111",
   },
 
+  dayTabsWrap: {
+    marginTop: 12,
+    overflow: "hidden",
+  },
+
   dayTabs: {
-    marginTop: 10,
-    display: "grid",
-    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-    gap: 7,
+    display: "flex",
+    gap: 10,
+    overflowX: "auto",
+    paddingBottom: 4,
+    WebkitOverflowScrolling: "touch",
   },
 
   dayTab: {
-    minWidth: 0,
-    border: `1px solid ${BORDER}`,
-    borderRadius: 15,
-    background: "#fff",
+    minWidth: 104,
+    height: 88,
+    borderRadius: 24,
+    border: "1px solid rgba(15,23,42,.08)",
+    background: "linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.96))",
+    boxShadow: "0 8px 24px rgba(15,23,42,.05)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    flexShrink: 0,
+    padding: "10px 12px",
     color: TEXT,
-    padding: "8px 6px",
-    fontWeight: 950,
-    display: "grid",
-    placeItems: "center",
-    gap: 2,
   },
 
   dayTabOn: {
-    background: "rgba(255,106,0,.12)",
-    borderColor: "rgba(255,106,0,.28)",
-    color: ORANGE,
+    border: "1px solid rgba(255,106,0,.22)",
+    background: "linear-gradient(180deg, rgba(255,106,0,.14), rgba(255,106,0,.08))",
+    boxShadow: "0 12px 28px rgba(255,106,0,.14)",
   },
 
-  dayTabMini: {
-    fontSize: 9,
-    fontWeight: 950,
-    color: "rgba(100,116,139,.85)",
+  dayTabLabel: {
+    fontSize: 13,
     lineHeight: 1,
+    fontWeight: 800,
+    color: "#7C8798",
+    letterSpacing: 0.2,
+  },
+
+  dayTabLabelOn: {
+    color: "#A15A21",
+  },
+
+  dayTabLetter: {
+    fontSize: 22,
+    lineHeight: 1,
+    fontWeight: 980,
+    color: TEXT,
+    letterSpacing: -0.4,
+  },
+
+  dayTabLetterOn: {
+    color: ORANGE,
   },
 
   dayHeader: {
@@ -1649,6 +1762,18 @@ const S = {
     border: `1px solid ${BORDER}`,
     boxShadow: "0 12px 32px rgba(15,23,42,.05)",
     overflow: "hidden",
+    transition: "transform .16s ease, opacity .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease",
+  },
+
+  exerciseCardDragging: {
+    opacity: 0.72,
+    transform: "scale(.985)",
+    boxShadow: "0 18px 48px rgba(15,23,42,.16)",
+  },
+
+  exerciseCardOver: {
+    borderColor: "rgba(255,106,0,.42)",
+    background: "rgba(255,106,0,.045)",
   },
 
   exerciseTop: {
@@ -1656,6 +1781,20 @@ const S = {
     border: "none",
     background: "transparent",
     padding: 12,
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    textAlign: "left",
+    color: TEXT,
+    boxSizing: "border-box",
+  },
+
+  exerciseTapArea: {
+    flex: 1,
+    minWidth: 0,
+    border: "none",
+    background: "transparent",
+    padding: 0,
     display: "flex",
     alignItems: "center",
     gap: 11,
@@ -1726,6 +1865,28 @@ const S = {
     color: ORANGE,
     fontWeight: 980,
     flexShrink: 0,
+  },
+
+  dragHandle: {
+    width: 32,
+    height: 38,
+    borderRadius: 13,
+    border: `1px solid ${BORDER}`,
+    background: "rgba(15,23,42,.035)",
+    display: "grid",
+    placeItems: "center",
+    gap: 3,
+    padding: "7px 0",
+    flexShrink: 0,
+    touchAction: "none",
+    cursor: "grab",
+  },
+
+  dragDot: {
+    width: 15,
+    height: 2,
+    borderRadius: 999,
+    background: "rgba(15,23,42,.38)",
   },
 
   expandedArea: {
@@ -1858,20 +2019,10 @@ const S = {
     fontWeight: 900,
   },
 
-  toolRow: {
+  toolRowSingle: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1.2fr",
+    gridTemplateColumns: "1fr",
     gap: 8,
-  },
-
-  toolBtn: {
-    border: `1px solid ${BORDER}`,
-    borderRadius: 15,
-    background: "#fff",
-    color: TEXT,
-    padding: 10,
-    fontSize: 12,
-    fontWeight: 950,
   },
 
   removeBtn: {
