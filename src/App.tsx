@@ -15,6 +15,7 @@ import NutriPlus from "./pages/NutriPlus.jsx";
 import Conta from "./pages/Conta";
 import Pagamentos from "./pages/Pagamentos";
 import Planos from "./pages/Planos";
+import TreinosSalvos from "./pages/TreinosSalvos";
 import TreinoPersonalize from "./pages/TreinoPersonalize.jsx";
 import Metas from "./pages/Metas.jsx";
 import Suplementacao from "./pages/Suplementacao.jsx";
@@ -78,6 +79,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/treinos-salvos" element={<TreinosSalvos />} />
 <Route path="/treino/compartilhado" element={<TreinoCompartilhado />} />
         <Route
           path="/treino"
