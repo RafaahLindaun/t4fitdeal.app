@@ -771,6 +771,11 @@ export default function TreinoPersonalize() {
       const [draggedItem] = list.splice(fromIndex, 1);
       list.splice(toIndex, 0, draggedItem);
 
+      dragDataRef.current = {
+        ...dragDataRef.current,
+        lastOverId: draggedId,
+      };
+
       return {
         ...prev,
         [dayIndex]: list,
@@ -803,7 +808,7 @@ export default function TreinoPersonalize() {
       setExpandedExerciseId(null);
 
       if (navigator?.vibrate) navigator.vibrate(18);
-    }, 160);
+    }, 75);
   }
 
   function moveExerciseDrag(e) {
@@ -818,7 +823,13 @@ export default function TreinoPersonalize() {
     const card = element?.closest?.("[data-exercise-id]");
     const overId = card?.getAttribute?.("data-exercise-id");
 
-    if (!overId || overId === data.exId || overId === data.lastOverId) return;
+    if (!overId || overId === data.exId) return;
+
+    const overRect = card.getBoundingClientRect();
+    const middleY = overRect.top + overRect.height / 2;
+    const passedMiddle = e.clientY > middleY;
+
+    if (overId === data.lastOverId && !passedMiddle) return;
 
     data.lastOverId = overId;
     setDragOverExerciseId(overId);
@@ -996,7 +1007,7 @@ export default function TreinoPersonalize() {
 
       if (error) throw error;
 
-      nav("/treinos-salvos", { replace: true });
+      nav("/treino", { replace: true });
     } catch (err) {
       console.error("TreinoPersonalize save saved_workout_plans:", err);
       alert(err?.message || "Não foi possível salvar o treino agora.");
@@ -1096,9 +1107,15 @@ export default function TreinoPersonalize() {
               <div style={S.sectionSub}>{selectedDay.group.name}</div>
             </div>
 
-            <button style={S.blackBtn} onClick={() => setPickerOpen(true)} type="button">
-              + Exercício
-            </button>
+            <div style={S.dayActions}>
+              <button style={S.savedBtn} onClick={() => nav("/treinos-salvos")} type="button">
+                Salvos
+              </button>
+
+              <button style={S.blackBtn} onClick={() => setPickerOpen(true)} type="button">
+                + Exercício
+              </button>
+            </div>
           </div>
 
           <div style={S.groupScroller}>
@@ -1747,6 +1764,25 @@ const S = {
     fontWeight: 800,
   },
 
+  dayActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 0,
+  },
+
+  savedBtn: {
+    border: "1px solid rgba(255,106,0,.22)",
+    borderRadius: 999,
+    background: "rgba(255,106,0,.10)",
+    color: ORANGE,
+    padding: "11px 12px",
+    minWidth: 76,
+    fontSize: 12,
+    fontWeight: 950,
+    whiteSpace: "nowrap",
+  },
+
   blackBtn: {
     border: "none",
     borderRadius: 999,
@@ -1797,20 +1833,22 @@ const S = {
     border: `1px solid ${BORDER}`,
     boxShadow: "0 12px 32px rgba(15,23,42,.05)",
     overflow: "hidden",
-    transition: "transform .16s ease, box-shadow .16s ease, border-color .16s ease",
+    transition:
+      "transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s cubic-bezier(.2,.8,.2,1), border-color .18s ease",
   },
 
   exerciseCardDragging: {
     opacity: 1,
-    transform: "scale(.992)",
-    boxShadow: "0 18px 44px rgba(15,23,42,.14)",
-    borderColor: "rgba(255,106,0,.24)",
+    transform: "scale(1.015)",
+    boxShadow: "0 22px 54px rgba(15,23,42,.16)",
+    borderColor: "rgba(255,106,0,.22)",
+    zIndex: 20,
   },
 
   exerciseCardOver: {
-    borderColor: "rgba(255,106,0,.30)",
+    borderColor: "rgba(255,106,0,.20)",
     background: "#fff",
-    boxShadow: "0 14px 34px rgba(255,106,0,.10)",
+    boxShadow: "0 12px 32px rgba(15,23,42,.05)",
   },
 
   deleteReveal: {
@@ -1849,7 +1887,7 @@ const S = {
     padding: 12,
     display: "flex",
     alignItems: "center",
-    gap: 9,
+    gap: 8,
     textAlign: "left",
     color: TEXT,
     boxSizing: "border-box",
@@ -1934,25 +1972,25 @@ const S = {
   },
 
   dragHandle: {
-    width: 32,
-    height: 38,
-    borderRadius: 13,
-    border: `1px solid ${BORDER}`,
-    background: "rgba(15,23,42,.035)",
+    width: 36,
+    height: 42,
+    borderRadius: 15,
+    border: "1px solid rgba(15,23,42,.06)",
+    background: "rgba(15,23,42,.025)",
     display: "grid",
     placeItems: "center",
     gap: 3,
-    padding: "7px 0",
+    padding: "8px 0",
     flexShrink: 0,
     touchAction: "none",
     cursor: "grab",
   },
 
   dragDot: {
-    width: 15,
+    width: 16,
     height: 2,
     borderRadius: 999,
-    background: "rgba(15,23,42,.38)",
+    background: "rgba(15,23,42,.26)",
   },
 
   expandedArea: {
