@@ -11,6 +11,9 @@ const MUTED = "#64748b";
 const BORDER = "rgba(15,23,42,.08)";
 const BLACK = "#0B0B0C";
 
+const GIF_OK_CACHE = new Map();
+const GIF_BAD_CACHE = new Set();
+
 const SPLITS = [
   { id: "AB", days: 2 },
   { id: "ABC", days: 3 },
@@ -178,7 +181,7 @@ const GIF_NAME_MAP = {
   "Supino inclinado com halteres": "supino-inclinado-halteres",
   "Supino máquina": "supino-maquina",
   "Peck-deck": "peck-deck",
-  "Crossover na polia (alto)": "crossover-polia-alto",
+  "Crossover na polia (alto)": "crossover-na-polia-alto",
   "Tríceps corda": "triceps-corda",
   "Tríceps francês (halter)": "triceps-frances-halter",
   "Puxada frente (puxador)": "puxada-frente",
@@ -204,7 +207,7 @@ const GIF_NAME_MAP = {
   "Kickback no cabo": "kickback-no-cabo",
   "Panturrilha em pé na máquina": "panturrilha-em-pe",
   "Panturrilha sentado": "panturrilha-sentado",
-  "Desenvolvimento com halteres": "desenvolvimento-halteres",
+  "Desenvolvimento com halteres": "desenvolvimento-com-halteres",
   "Elevação lateral": "elevacao-lateral",
   "Reverse fly (posterior)": "reverse-fly",
   "Prancha": "prancha",
@@ -229,7 +232,9 @@ function normalizeText(v) {
 }
 
 function slugify(v) {
-  return normalizeText(v).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return normalizeText(v)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
 function uid() {
@@ -250,11 +255,14 @@ function asTextList(value) {
 function getBankList() {
   try {
     if (Array.isArray(exerciseBank)) return exerciseBank;
+
     if (Array.isArray(exerciseBank?.list)) return exerciseBank.list;
+
     if (typeof exerciseBank?.list === "function") {
       const result = exerciseBank.list();
       return Array.isArray(result) ? result : [];
     }
+
     if (Array.isArray(exerciseBank?.exercises)) return exerciseBank.exercises;
     if (Array.isArray(exerciseBank?.EXERCISE_BANK)) return exerciseBank.EXERCISE_BANK;
     if (Array.isArray(exerciseBank?.data)) return exerciseBank.data;
@@ -287,18 +295,70 @@ function normalizeGroupKey(value) {
 
   if (n.includes("peito") || n.includes("peitoral") || n.includes("chest")) return "peito";
   if (n.includes("triceps") || n.includes("tricep")) return "triceps";
-  if (n.includes("costas") || n.includes("dorsal") || n.includes("latissimo") || n.includes("lats") || n.includes("back")) {
+
+  if (
+    n.includes("costas") ||
+    n.includes("dorsal") ||
+    n.includes("latissimo") ||
+    n.includes("lats") ||
+    n.includes("back")
+  ) {
     return "costas";
   }
+
   if (n.includes("biceps") || n.includes("bicep")) return "biceps";
   if (n.includes("quadriceps") || n.includes("quadricep") || n.includes("coxa anterior")) return "quadriceps";
-  if (n.includes("posterior") || n.includes("isquio") || n.includes("hamstring") || n.includes("flexor")) return "posterior";
+  if (n.includes("posterior") || n.includes("isquio") || n.includes("hamstring") || n.includes("flexor")) {
+    return "posterior";
+  }
   if (n.includes("glute") || n.includes("gluteo") || n.includes("glúteo")) return "gluteo";
-  if (n.includes("panturrilha") || n.includes("gemeo") || n.includes("gastro") || n.includes("calf")) return "panturrilha";
+  if (n.includes("panturrilha") || n.includes("gemeo") || n.includes("gastro") || n.includes("calf")) {
+    return "panturrilha";
+  }
   if (n.includes("ombro") || n.includes("deltoide") || n.includes("shoulder")) return "ombro";
-  if (n.includes("abdomen") || n.includes("abdominal") || n.includes("core") || n.includes("lombar") || n.includes("prancha")) return "core";
+  if (n.includes("abdomen") || n.includes("abdominal") || n.includes("core") || n.includes("lombar") || n.includes("prancha")) {
+    return "core";
+  }
 
   return "";
+}
+
+function groupKeyForExerciseFallback(name) {
+  const target = normalizeText(name);
+
+  for (const [key, list] of Object.entries(FALLBACK_EXERCISE_CATALOG)) {
+    if ((list || []).some((item) => normalizeText(item) === target)) return key;
+  }
+
+  if (target.includes("supino") || target.includes("peck") || target.includes("crossover") || target.includes("crucifixo")) {
+    return "peito";
+  }
+
+  if (target.includes("triceps")) return "triceps";
+
+  if (target.includes("puxada") || target.includes("remada") || target.includes("face pull") || target.includes("barra fixa")) {
+    return "costas";
+  }
+
+  if (target.includes("rosca")) return "biceps";
+
+  if (target.includes("agachamento") || target.includes("leg") || target.includes("extensora") || target.includes("afundo")) {
+    return "quadriceps";
+  }
+
+  if (target.includes("terra") || target.includes("stiff") || target.includes("flexora")) return "posterior";
+
+  if (target.includes("glute") || target.includes("thrust") || target.includes("abducao") || target.includes("kickback")) {
+    return "gluteo";
+  }
+
+  if (target.includes("panturrilha")) return "panturrilha";
+
+  if (target.includes("desenvolvimento") || target.includes("elevacao") || target.includes("reverse") || target.includes("ombro")) {
+    return "ombro";
+  }
+
+  return "core";
 }
 
 function bankGroupKey(item) {
@@ -339,6 +399,7 @@ function findBankExercise(name) {
     }) ||
     BANK_LIST.find((item) => {
       const names = bankSearchableNames(item);
+
       return names.some((candidate) => {
         const n = normalizeText(candidate);
         return n.includes(target) || target.includes(n);
@@ -346,6 +407,16 @@ function findBankExercise(name) {
     }) ||
     null
   );
+}
+
+function groupKeyForExercise(name) {
+  const bank = findBankExercise(name);
+  if (bank) return bankGroupKey(bank);
+  return groupKeyForExerciseFallback(name);
+}
+
+function groupLabelForExercise(name) {
+  return GROUP_LABELS[groupKeyForExercise(name)] || "Exercício";
 }
 
 function buildExerciseCatalogFromBank() {
@@ -376,6 +447,7 @@ function buildExerciseCatalogFromBank() {
 
   Object.entries(FALLBACK_EXERCISE_CATALOG).forEach(([key, names]) => {
     if (!catalog[key]) catalog[key] = [];
+
     names.forEach((name) => {
       if (!catalog[key].some((existing) => normalizeText(existing) === normalizeText(name))) {
         catalog[key].push(name);
@@ -387,6 +459,22 @@ function buildExerciseCatalogFromBank() {
 }
 
 const EXERCISE_CATALOG = buildExerciseCatalogFromBank();
+
+function pickFirst(names, key) {
+  const list = EXERCISE_CATALOG[key] || [];
+
+  for (const name of names) {
+    const found = list.find((item) => normalizeText(item) === normalizeText(name));
+    if (found) return found;
+  }
+
+  for (const name of names) {
+    const found = list.find((item) => normalizeText(item).includes(normalizeText(name)));
+    if (found) return found;
+  }
+
+  return list[0] || names[0];
+}
 
 const MUSCLE_GROUPS = [
   {
@@ -469,22 +557,6 @@ const MUSCLE_GROUPS = [
   },
 ];
 
-function pickFirst(names, key) {
-  const list = EXERCISE_CATALOG[key] || [];
-
-  for (const name of names) {
-    const found = list.find((item) => normalizeText(item) === normalizeText(name));
-    if (found) return found;
-  }
-
-  for (const name of names) {
-    const found = list.find((item) => normalizeText(item).includes(normalizeText(name)));
-    if (found) return found;
-  }
-
-  return list[0] || names[0];
-}
-
 function splitIdFromDays(days) {
   return SPLITS.find((s) => s.days === Number(days))?.id || "ABC";
 }
@@ -499,46 +571,6 @@ function defaultGroups(days) {
 
 function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
-}
-
-function groupKeyForExerciseFallback(name) {
-  const target = normalizeText(name);
-
-  for (const [key, list] of Object.entries(FALLBACK_EXERCISE_CATALOG)) {
-    if ((list || []).some((item) => normalizeText(item) === target)) return key;
-  }
-
-  if (target.includes("supino") || target.includes("peck") || target.includes("crossover") || target.includes("crucifixo")) {
-    return "peito";
-  }
-  if (target.includes("triceps")) return "triceps";
-  if (target.includes("puxada") || target.includes("remada") || target.includes("face pull") || target.includes("barra fixa")) {
-    return "costas";
-  }
-  if (target.includes("rosca")) return "biceps";
-  if (target.includes("agachamento") || target.includes("leg") || target.includes("extensora") || target.includes("afundo")) {
-    return "quadriceps";
-  }
-  if (target.includes("terra") || target.includes("stiff") || target.includes("flexora")) return "posterior";
-  if (target.includes("glute") || target.includes("thrust") || target.includes("abducao") || target.includes("kickback")) {
-    return "gluteo";
-  }
-  if (target.includes("panturrilha")) return "panturrilha";
-  if (target.includes("desenvolvimento") || target.includes("elevacao") || target.includes("reverse") || target.includes("ombro")) {
-    return "ombro";
-  }
-
-  return "core";
-}
-
-function groupKeyForExercise(name) {
-  const bank = findBankExercise(name);
-  if (bank) return bankGroupKey(bank);
-  return groupKeyForExerciseFallback(name);
-}
-
-function groupLabelForExercise(name) {
-  return GROUP_LABELS[groupKeyForExercise(name)] || "Exercício";
 }
 
 function bankGifCandidates(value) {
@@ -559,11 +591,7 @@ function bankGifCandidates(value) {
       `/gifs/${noExt}.gif`,
       `/gifs/${noExt}.GIF`,
       `/gifs/${noExt}.webp`,
-      `/gifs/${noExt}.WEBP`,
-      `/gifs/exercises/${noExt}.gif`,
-      `/gifs/exercises/${noExt}.GIF`,
-      `/assets/gifs/${noExt}.gif`,
-      `/assets/exercises/${noExt}.gif`,
+      `/gifs/${noExt}.png`,
     ])
   );
 }
@@ -576,27 +604,27 @@ function gifBase(name) {
 
 function gifSources(name) {
   const bank = findBankExercise(name);
-  const bankCandidates = [
+  const base = gifBase(name);
+  const raw = slugify(name);
+
+  const names = Array.from(
+    new Set([base, raw, GIF_NAME_MAP[name], base?.replaceAll("-", "_"), raw?.replaceAll("-", "_")])
+  ).filter(Boolean);
+
+  const out = [
     ...bankGifCandidates(bank?.gif),
     ...bankGifCandidates(bank?.image),
     ...bankGifCandidates(bank?.animation),
-    ...bankGifCandidates(bank?.media),
   ];
 
-  const base = gifBase(name);
-  const raw = slugify(name);
-  const names = Array.from(new Set([base, raw, base.replaceAll("-", "_"), raw.replaceAll("-", "_")])).filter(Boolean);
-  const folders = ["/gifs", "/gifs/exercises", "/exercises", "/assets/gifs", "/assets/exercises"];
-  const exts = ["gif", "GIF", "webp", "WEBP", "png", "PNG", "jpg", "JPG", "jpeg", "JPEG"];
-  const out = [...bankCandidates];
-
-  folders.forEach((folder) => {
-    names.forEach((n) => {
-      exts.forEach((ext) => out.push(`${folder}/${n}.${ext}`));
-    });
+  names.forEach((n) => {
+    out.push(`/gifs/${n}.gif`);
+    out.push(`/gifs/${n}.GIF`);
+    out.push(`/gifs/${n}.webp`);
+    out.push(`/gifs/${n}.png`);
   });
 
-  return Array.from(new Set(out));
+  return Array.from(new Set(out)).filter(Boolean);
 }
 
 function methodLabel(id) {
@@ -739,25 +767,57 @@ function buildRows(keys, query) {
 
 function MiniGif({ name, size = 52, expanded = false }) {
   const sources = useMemo(() => gifSources(name), [name]);
-  const [idx, setIdx] = useState(0);
+
+  const initialIndex = useMemo(() => {
+    const cached = GIF_OK_CACHE.get(name);
+    if (!cached) return 0;
+
+    const foundIndex = sources.findIndex((src) => src === cached);
+    return foundIndex >= 0 ? foundIndex : 0;
+  }, [name, sources]);
+
+  const [idx, setIdx] = useState(initialIndex);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    setIdx(0);
-    setFailed(false);
-  }, [name]);
+    const cached = GIF_OK_CACHE.get(name);
+    const foundIndex = cached ? sources.findIndex((src) => src === cached) : -1;
 
-  if (!failed && sources[idx]) {
+    setIdx(foundIndex >= 0 ? foundIndex : 0);
+    setFailed(false);
+  }, [name, sources]);
+
+  function tryNext() {
+    let next = idx + 1;
+
+    while (next < sources.length && GIF_BAD_CACHE.has(sources[next])) {
+      next += 1;
+    }
+
+    if (next < sources.length) {
+      setIdx(next);
+    } else {
+      setFailed(true);
+    }
+  }
+
+  const currentSrc = sources[idx];
+
+  if (!failed && currentSrc) {
     return (
       <div style={{ ...S.gifBox, width: size, height: size, borderRadius: expanded ? 22 : 16 }}>
         <img
-          src={sources[idx]}
+          src={currentSrc}
           alt={name}
           style={S.gifImg}
+          loading={expanded ? "eager" : "lazy"}
+          decoding="async"
+          onLoad={() => {
+            GIF_OK_CACHE.set(name, currentSrc);
+          }}
           onError={() => {
-            const next = idx + 1;
-            if (next < sources.length) setIdx(next);
-            else setFailed(true);
+            GIF_BAD_CACHE.add(currentSrc);
+            tryNext();
           }}
         />
       </div>
@@ -812,6 +872,7 @@ export default function TreinoPersonalize() {
 
   const dragTimerRef = useRef(null);
   const dragDataRef = useRef(null);
+  const dragRafRef = useRef(null);
   const swipeDataRef = useRef(null);
   const lastSwipeRef = useRef(false);
 
@@ -864,6 +925,7 @@ export default function TreinoPersonalize() {
         const access = ["active", "trialing"].includes(String(sub?.status || "").toLowerCase());
 
         if (!alive) return;
+
         setPaid(access);
 
         if (!access) {
@@ -1046,11 +1108,6 @@ export default function TreinoPersonalize() {
       const [draggedItem] = list.splice(fromIndex, 1);
       list.splice(toIndex, 0, draggedItem);
 
-      dragDataRef.current = {
-        ...dragDataRef.current,
-        lastOverId: draggedId,
-      };
-
       return {
         ...prev,
         [dayIndex]: list,
@@ -1070,20 +1127,25 @@ export default function TreinoPersonalize() {
       dayIndex,
       exId,
       started: false,
+      startY: e.clientY,
+      lastY: e.clientY,
+      lastX: e.clientX,
       lastOverId: null,
+      lastMoveAt: 0,
     };
 
     e.currentTarget.setPointerCapture?.(e.pointerId);
 
     dragTimerRef.current = setTimeout(() => {
-      if (!dragDataRef.current) return;
+      const data = dragDataRef.current;
+      if (!data) return;
 
-      dragDataRef.current.started = true;
+      data.started = true;
       setDraggingExerciseId(exId);
       setExpandedExerciseId(null);
 
-      if (navigator?.vibrate) navigator.vibrate(18);
-    }, 75);
+      if (navigator?.vibrate) navigator.vibrate(10);
+    }, 55);
   }
 
   function moveExerciseDrag(e) {
@@ -1094,26 +1156,54 @@ export default function TreinoPersonalize() {
     e.preventDefault();
     e.stopPropagation();
 
-    const element = document.elementFromPoint(e.clientX, e.clientY);
-    const card = element?.closest?.("[data-exercise-id]");
-    const overId = card?.getAttribute?.("data-exercise-id");
+    data.lastY = e.clientY;
+    data.lastX = e.clientX;
 
-    if (!overId || overId === data.exId) return;
+    if (dragRafRef.current) return;
 
-    const overRect = card.getBoundingClientRect();
-    const middleY = overRect.top + overRect.height / 2;
-    const passedMiddle = e.clientY > middleY;
+    dragRafRef.current = requestAnimationFrame(() => {
+      dragRafRef.current = null;
 
-    if (overId === data.lastOverId && !passedMiddle) return;
+      const current = dragDataRef.current;
+      if (!current?.started) return;
 
-    data.lastOverId = overId;
-    setDragOverExerciseId(overId);
+      const now = performance.now();
 
-    reorderExerciseByIds(data.dayIndex, data.exId, overId);
+      if (now - current.lastMoveAt < 42) return;
+
+      const element = document.elementFromPoint(current.lastX, current.lastY);
+      const card = element?.closest?.("[data-exercise-id]");
+      const overId = card?.getAttribute?.("data-exercise-id");
+
+      if (!overId || overId === current.exId) return;
+
+      const overRect = card.getBoundingClientRect();
+      const middleY = overRect.top + overRect.height / 2;
+      const movingDown = current.lastY > current.startY;
+
+      const passedZone = movingDown
+        ? current.lastY > middleY - overRect.height * 0.12
+        : current.lastY < middleY + overRect.height * 0.12;
+
+      if (!passedZone) return;
+      if (overId === current.lastOverId) return;
+
+      current.lastMoveAt = now;
+      current.lastOverId = overId;
+      current.startY = current.lastY;
+
+      setDragOverExerciseId(overId);
+      reorderExerciseByIds(current.dayIndex, current.exId, overId);
+    });
   }
 
   function endExerciseDrag(e) {
     clearTimeout(dragTimerRef.current);
+
+    if (dragRafRef.current) {
+      cancelAnimationFrame(dragRafRef.current);
+      dragRafRef.current = null;
+    }
 
     try {
       e.currentTarget.releasePointerCapture?.(e.pointerId);
@@ -1132,10 +1222,10 @@ export default function TreinoPersonalize() {
 
     if (
       target?.closest?.("[data-drag-handle]") ||
+      target?.closest?.("[data-no-swipe]") ||
       target?.closest?.("input") ||
       target?.closest?.("textarea") ||
-      target?.closest?.("select") ||
-      target?.closest?.("[data-no-swipe]")
+      target?.closest?.("select")
     ) {
       return;
     }
@@ -1241,53 +1331,196 @@ export default function TreinoPersonalize() {
     setPairPicker(null);
   }
 
+  function serializeExerciseForDb(ex, index) {
+    const method = normalizeMethod(ex.method || "normal");
+    const pairedWith = Array.isArray(ex.pairedWith) ? ex.pairedWith : [];
+
+    return {
+      order: index,
+      name: ex.name,
+      group: ex.group || groupLabelForExercise(ex.name),
+      sets: ex.sets || 4,
+      reps: ex.reps || "8–12",
+      rest: ex.rest || "75–120s",
+      method,
+      pairedWith,
+      equipment: ex.equipment || "",
+      pattern: ex.pattern || "",
+      primaryMuscles: safeArray(ex.primaryMuscles),
+      gif: ex.gif || "",
+    };
+  }
+
+  async function saveActiveWorkout() {
+    const now = new Date().toISOString();
+
+    const { data: existingPlans, error: existingError } = await supabase
+      .from("workout_plans")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (existingError) throw existingError;
+
+    const existingPlanId = Array.isArray(existingPlans) ? existingPlans[0]?.id : null;
+
+    let planId = existingPlanId;
+
+    if (planId) {
+      const { error } = await supabase
+        .from("workout_plans")
+        .update({
+          title: `Treino ${splitId}`,
+          split_label: splitId,
+          split_len: daysPerWeek,
+          is_active: true,
+          source: "personalize",
+          updated_at: now,
+        })
+        .eq("id", planId)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+    } else {
+      const { data, error } = await supabase
+        .from("workout_plans")
+        .insert({
+          user_id: userId,
+          title: `Treino ${splitId}`,
+          split_label: splitId,
+          split_len: daysPerWeek,
+          is_active: true,
+          source: "personalize",
+          created_at: now,
+          updated_at: now,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      planId = data.id;
+    }
+
+    const { data: oldDays, error: oldDaysError } = await supabase
+      .from("workout_plan_days")
+      .select("id")
+      .eq("plan_id", planId);
+
+    if (oldDaysError) throw oldDaysError;
+
+    const oldDayIds = (oldDays || []).map((day) => day.id);
+
+    if (oldDayIds.length) {
+      const { error: deleteExercisesError } = await supabase
+        .from("workout_plan_exercises")
+        .delete()
+        .in("plan_day_id", oldDayIds);
+
+      if (deleteExercisesError) throw deleteExercisesError;
+
+      const { error: deleteDaysError } = await supabase
+        .from("workout_plan_days")
+        .delete()
+        .eq("plan_id", planId);
+
+      if (deleteDaysError) throw deleteDaysError;
+    }
+
+    for (const day of daysConfig) {
+      const { data: insertedDay, error: dayError } = await supabase
+        .from("workout_plan_days")
+        .insert({
+          plan_id: planId,
+          day_index: day.index,
+          day_key: day.letter,
+          title: `Treino ${day.letter}`,
+          group_id: day.groupId,
+          group_name: day.group.name,
+        })
+        .select("id")
+        .single();
+
+      if (dayError) throw dayError;
+
+      const exercisesToInsert = (day.exercises || []).map((ex, index) => {
+        const clean = serializeExerciseForDb(ex, index);
+
+        return {
+          plan_day_id: insertedDay.id,
+          exercise_order: index,
+          name: clean.name,
+          group_name: clean.group,
+          reps: `${clean.sets} séries • ${clean.reps} • descanso ${clean.rest}`,
+          notes: `método: ${methodLabel(clean.method)}${
+            clean.pairedWith.length ? ` • conjugado: ${clean.pairedWith.join(", ")}` : ""
+          }`,
+        };
+      });
+
+      if (exercisesToInsert.length) {
+        const { error: exercisesError } = await supabase.from("workout_plan_exercises").insert(exercisesToInsert);
+
+        if (exercisesError) throw exercisesError;
+      }
+    }
+
+    return planId;
+  }
+
+  async function saveWorkoutCopy() {
+    const now = new Date().toISOString();
+
+    const { count, error: countError } = await supabase
+      .from("saved_workout_plans")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (countError) throw countError;
+
+    const nextNumber = Number(count || 0) + 1;
+
+    const payload = {
+      splitId,
+      daysPerWeek,
+      dayGroups,
+      days: daysConfig.map((day) => ({
+        index: day.index,
+        letter: day.letter,
+        groupId: day.groupId,
+        groupName: day.group.name,
+        exercises: (day.exercises || []).map((ex, index) => serializeExerciseForDb(ex, index)),
+      })),
+    };
+
+    const { error } = await supabase.from("saved_workout_plans").insert({
+      user_id: userId,
+      name: `Treino salvo ${nextNumber}`,
+      split_label: splitId,
+      split_len: daysPerWeek,
+      payload,
+      times_done: 0,
+      created_at: now,
+      updated_at: now,
+    });
+
+    if (error) throw error;
+  }
+
   async function save() {
     if (!userId || saving) return;
 
     setSaving(true);
 
     try {
-      const { count, error: countError } = await supabase
-        .from("saved_workout_plans")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-
-      if (countError) throw countError;
-
-      const nextNumber = Number(count || 0) + 1;
-      const savedName = `Treino salvo ${nextNumber}`;
-
-      const payload = {
-        splitId,
-        daysPerWeek,
-        dayGroups,
-        days: daysConfig.map((day) => ({
-          index: day.index,
-          letter: day.letter,
-          groupId: day.groupId,
-          groupName: day.group.name,
-          exercises: (day.exercises || []).map((ex) => ({
-            ...ex,
-            gifSources: undefined,
-          })),
-        })),
-      };
-
-      const { error } = await supabase.from("saved_workout_plans").insert({
-        user_id: userId,
-        name: savedName,
-        split_label: splitId,
-        split_len: daysPerWeek,
-        payload,
-        times_done: 0,
-        updated_at: new Date().toISOString(),
-      });
-
-      if (error) throw error;
+      await saveActiveWorkout();
+      await saveWorkoutCopy();
 
       nav("/treino", { replace: true });
     } catch (err) {
-      console.error("TreinoPersonalize save saved_workout_plans:", err);
+      console.error("TreinoPersonalize save:", err);
       alert(err?.message || "Não foi possível salvar o treino agora.");
     } finally {
       setSaving(false);
@@ -1482,7 +1715,7 @@ export default function TreinoPersonalize() {
                   </div>
 
                   {expanded ? (
-                    <div style={S.expandedArea}>
+                    <div style={S.expandedArea} data-no-swipe="true">
                       <MiniGif name={ex.name} size={210} expanded />
 
                       {infoLine || safeArray(ex.primaryMuscles).length ? (
@@ -1536,6 +1769,7 @@ export default function TreinoPersonalize() {
                               <button
                                 type="button"
                                 style={S.methodMainBtn}
+                                data-no-swipe="true"
                                 onClick={() =>
                                   updateExercise(selectedDay.index, ex.id, {
                                     method: m.id,
@@ -1551,6 +1785,7 @@ export default function TreinoPersonalize() {
                                 <button
                                   type="button"
                                   style={S.methodPlusBtn}
+                                  data-no-swipe="true"
                                   onClick={() => {
                                     updateExercise(selectedDay.index, ex.id, { method: m.id });
                                     setPairPicker({
@@ -1578,6 +1813,7 @@ export default function TreinoPersonalize() {
                                 key={name}
                                 type="button"
                                 style={S.pairChipOn}
+                                data-no-swipe="true"
                                 onClick={() =>
                                   updateExercise(selectedDay.index, ex.id, {
                                     pairedWith: ex.pairedWith.filter((item) => item !== name),
@@ -1602,6 +1838,7 @@ export default function TreinoPersonalize() {
                                   key={candidate.id}
                                   type="button"
                                   style={{ ...S.pairChip, ...(active ? S.pairChipOn : null) }}
+                                  data-no-swipe="true"
                                   onClick={() => {
                                     const current = Array.isArray(ex.pairedWith) ? ex.pairedWith : [];
                                     const next = active
@@ -1620,7 +1857,12 @@ export default function TreinoPersonalize() {
                       ) : null}
 
                       <div style={S.toolRowSingle}>
-                        <button style={S.removeBtn} onClick={() => removeExercise(selectedDay.index, ex.id)} type="button">
+                        <button
+                          style={S.removeBtn}
+                          data-no-swipe="true"
+                          onClick={() => removeExercise(selectedDay.index, ex.id)}
+                          type="button"
+                        >
                           Remover exercício
                         </button>
                       </div>
@@ -1863,6 +2105,14 @@ function HideBottomMenuStyle() {
       button {
         appearance: none;
         -webkit-appearance: none;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        background-clip: padding-box;
+      }
+
+      img {
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
       }
 
       ::-webkit-scrollbar {
@@ -2128,15 +2378,19 @@ const S = {
     boxShadow: "0 12px 32px rgba(15,23,42,.05)",
     overflow: "hidden",
     transition:
-      "transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s cubic-bezier(.2,.8,.2,1), border-color .18s ease",
+      "transform .26s cubic-bezier(.2,.9,.2,1), box-shadow .26s cubic-bezier(.2,.9,.2,1), border-color .18s ease",
+    transform: "translateZ(0)",
+    WebkitTransform: "translateZ(0)",
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
   },
 
   exerciseCardDragging: {
     opacity: 1,
-    transform: "scale(1.015)",
-    boxShadow: "0 22px 54px rgba(15,23,42,.16)",
-    borderColor: "rgba(255,106,0,.22)",
-    zIndex: 20,
+    transform: "scale(1.018) translateZ(0)",
+    boxShadow: "0 24px 58px rgba(15,23,42,.18)",
+    borderColor: "rgba(255,106,0,.20)",
+    zIndex: 30,
   },
 
   exerciseCardOver: {
@@ -2172,6 +2426,10 @@ const S = {
     touchAction: "pan-y",
     willChange: "transform",
     overflow: "hidden",
+    transform: "translateZ(0)",
+    WebkitTransform: "translateZ(0)",
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
   },
 
   exerciseTop: {
@@ -2208,7 +2466,7 @@ const S = {
   },
 
   gifBox: {
-    background: "linear-gradient(135deg, #fff, #f8fafc)",
+    background: "#fff",
     border: `1px solid ${BORDER}`,
     overflow: "hidden",
     display: "grid",
@@ -2219,8 +2477,9 @@ const S = {
   gifImg: {
     width: "100%",
     height: "100%",
-    objectFit: "cover",
+    objectFit: "contain",
     display: "block",
+    background: "#fff",
   },
 
   gifFallback: {
@@ -2297,18 +2556,20 @@ const S = {
   },
 
   dragHandle: {
-    width: 36,
-    height: 42,
-    borderRadius: 15,
-    border: "1px solid rgba(15,23,42,.06)",
-    background: "rgba(15,23,42,.025)",
+    width: 38,
+    height: 44,
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.055)",
+    background: "rgba(15,23,42,.022)",
     display: "grid",
     placeItems: "center",
     gap: 3,
-    padding: "8px 0",
+    padding: "9px 0",
     flexShrink: 0,
     touchAction: "none",
     cursor: "grab",
+    transform: "translateZ(0)",
+    WebkitTransform: "translateZ(0)",
   },
 
   dragDot: {
