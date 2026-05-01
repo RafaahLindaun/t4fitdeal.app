@@ -80,8 +80,31 @@ function keyForSetProg(planDayKey, exName) {
 }
 
 /* -------- parse do formato salvo pelo TreinoPersonalize -------- */
+function normalizeTrainingMethod(value) {
+  const text = normalizeName(value);
+
+  if (text.includes("biset")) return "biset";
+  if (text.includes("triset")) return "triset";
+  if (text.includes("drop")) return "dropset";
+
+  return "normal";
+}
+
+function methodTitle(method) {
+  const m = normalizeTrainingMethod(method);
+
+  if (m === "biset") return "Biset";
+  if (m === "triset") return "Triset";
+  if (m === "dropset") return "Dropset";
+
+  return "Normal";
+}
+
 function parsePackedExerciseMeta(rawReps, rawMethod, rawNotes) {
   const text = String(rawReps || "").trim();
+  const notesText = String(rawNotes || "").trim();
+  const methodText = String(rawMethod || rawNotes || "").trim();
+  const combinedText = `${text} • ${methodText} • ${notesText}`;
 
   let sets = null;
   let reps = null;
@@ -94,12 +117,14 @@ function parsePackedExerciseMeta(rawReps, rawMethod, rawNotes) {
   if (restMatch) rest = restMatch[1].replace(/\s+/g, " ").trim();
 
   const parts = text.split("•").map((p) => p.trim()).filter(Boolean);
+
   if (parts.length >= 2) {
     const repCandidate = parts.find(
       (p) =>
         !/s[ée]ries?/i.test(p) &&
         !/descanso/i.test(p)
     );
+
     if (repCandidate) reps = repCandidate;
   }
 
@@ -108,11 +133,23 @@ function parsePackedExerciseMeta(rawReps, rawMethod, rawNotes) {
     if (rangeMatch) reps = rangeMatch[1].replace(/\s+/g, " ").trim();
   }
 
+  const methodMatch = combinedText.match(/m[ée]todo:\s*([^•]+)/i);
+  const method = normalizeTrainingMethod(methodMatch?.[1] || rawMethod || rawNotes);
+
+  const pairedMatch = combinedText.match(/conjugado:\s*([^•]+)/i);
+  const pairedWith = pairedMatch?.[1]
+    ? pairedMatch[1]
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
   return {
     sets: Number(sets || 4),
     reps: reps || "6–12",
     rest: rest || "75–120s",
-    method: String(rawMethod || rawNotes || "Personalizado"),
+    method,
+    pairedWith,
   };
 }
 
@@ -362,6 +399,55 @@ function SetDots({ total, done, onToggle }) {
   );
 }
 
+function ComboMethodBlock({ ex }) {
+  const method = normalizeTrainingMethod(ex?.method);
+  const pairedWith = Array.isArray(ex?.pairedWith) ? ex.pairedWith : [];
+
+  if (method === "normal") return null;
+
+  if (method === "dropset") {
+    return (
+      <div style={S.comboBox}>
+        <div style={S.comboHead}>
+          <b>Dropset ativo</b>
+        </div>
+
+        <div style={S.comboHint}>
+          Na última série, reduza a carga e continue até próximo da falha.
+        </div>
+      </div>
+    );
+  }
+
+  const limit = method === "triset" ? 3 : 2;
+  const items = [ex?.name, ...pairedWith].filter(Boolean).slice(0, limit);
+
+  if (items.length <= 1) return null;
+
+  return (
+    <div style={S.comboBox}>
+      <div style={S.comboHead}>
+        <b>{methodTitle(method)}</b>
+      </div>
+
+      <div style={S.comboList}>
+        {items.map((name, index) => (
+          <div key={`${name}_${index}`} style={S.comboItem}>
+            <span style={S.comboNumber}>{index + 1}</span>
+
+            <div style={S.comboText}>
+              <b>{name}</b>
+              <span>
+                {index === 0 ? "Exercício principal" : "Exercício conjugado"}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- page ---------------- */
 export default function TreinoDetalhe() {
   const nav = useNavigate();
@@ -504,44 +590,44 @@ export default function TreinoDetalhe() {
         const activePlan = Array.isArray(planRes.data) ? planRes.data[0] : null;
 
         if (activePlan?.id) {
-const [daysRes, loadRes, progRes] = await Promise.all([
-  supabase
-    .from("workout_plan_days")
-    .select("id, day_index, day_key, title, group_id, group_name")
-    .eq("plan_id", activePlan.id)
-    .order("day_index", { ascending: true }),
+          const [daysRes, loadRes, progRes] = await Promise.all([
+            supabase
+              .from("workout_plan_days")
+              .select("id, day_index, day_key, title, group_id, group_name")
+              .eq("plan_id", activePlan.id)
+              .order("day_index", { ascending: true }),
 
-  supabase
-    .from("workout_exercise_loads")
-    .select("day_index, exercise_name, load_value")
-    .eq("user_id", userId),
+            supabase
+              .from("workout_exercise_loads")
+              .select("day_index, exercise_name, load_value")
+              .eq("user_id", userId),
 
-  supabase
-    .from("workout_set_progress")
-    .select("day_index, exercise_name, done_sets")
-    .eq("user_id", userId),
-]);
+            supabase
+              .from("workout_set_progress")
+              .select("day_index, exercise_name, done_sets")
+              .eq("user_id", userId),
+          ]);
 
-const days = daysRes.data || [];
-const dayIds = days.map((d) => d.id);
+          const days = daysRes.data || [];
+          const dayIds = days.map((d) => d.id);
 
-let exercises = [];
+          let exercises = [];
 
-if (dayIds.length > 0) {
-  const { data: exData, error: exError } = await supabase
-    .from("workout_plan_exercises")
-    .select("plan_day_id, exercise_order, name, group_name, reps, notes")
-    .in("plan_day_id", dayIds)
-    .order("exercise_order", { ascending: true });
+          if (dayIds.length > 0) {
+            const { data: exData, error: exError } = await supabase
+              .from("workout_plan_exercises")
+              .select("plan_day_id, exercise_order, name, group_name, reps, notes")
+              .in("plan_day_id", dayIds)
+              .order("exercise_order", { ascending: true });
 
-  if (exError) {
-    console.error("TreinoDetalhe exercises error:", exError);
-  } else {
-    exercises = exData || [];
-  }
-}
+            if (exError) {
+              console.error("TreinoDetalhe exercises error:", exError);
+            } else {
+              exercises = exData || [];
+            }
+          }
 
-setPlanDays(days);
+          setPlanDays(days);
 
           const split = days.map((day) => {
             const savedForDay = exercises
@@ -556,7 +642,8 @@ setPlanDays(days);
                   sets: unpacked.sets,
                   reps: unpacked.reps,
                   rest: unpacked.rest,
-                  method: unpacked.method || activePlan.split_label || "Personalizado",
+                  method: unpacked.method || "normal",
+                  pairedWith: unpacked.pairedWith || [],
                 };
               });
 
@@ -1116,6 +1203,8 @@ setPlanDays(days);
 
                 <SetDots total={totalSets} done={done} onToggle={toggleSet} />
 
+                <ComboMethodBlock ex={ex} />
+
                 <div style={S.loadBox}>
                   <div style={S.loadLeft}>
                     <div style={S.loadLabel}>Carga sugerida</div>
@@ -1550,6 +1639,70 @@ const S = {
     fontSize: 12,
     fontWeight: 900,
     color: MUTED,
+  },
+
+  comboBox: {
+    marginTop: 14,
+    borderRadius: 22,
+    padding: 14,
+    background: "rgba(255,106,0,.06)",
+    border: "1px solid rgba(255,106,0,.16)",
+    boxShadow: "0 14px 40px rgba(15,23,42,.04)",
+    position: "relative",
+  },
+
+  comboHead: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: 950,
+    marginBottom: 10,
+  },
+
+  comboList: {
+    display: "grid",
+    gap: 8,
+  },
+
+  comboItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 16,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    padding: 10,
+  },
+
+  comboNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 12,
+    display: "grid",
+    placeItems: "center",
+    background: "#0B0B0C",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 950,
+    flexShrink: 0,
+  },
+
+  comboText: {
+    minWidth: 0,
+    display: "grid",
+    gap: 3,
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: 900,
+  },
+
+  comboHint: {
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 1.35,
+    fontWeight: 800,
   },
 
   loadBox: {
