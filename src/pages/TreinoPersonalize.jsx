@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import exerciseBank from "../data/exerciseBank";
 
 const ORANGE = "#FF6A00";
 const BG = "#f8fafc";
@@ -25,88 +26,20 @@ const METHOD_OPTIONS = [
   { id: "dropset", label: "Dropset", hint: "Reduz carga na última série." },
 ];
 
-const MUSCLE_GROUPS = [
-  {
-    id: "peito_triceps",
-    name: "Peito + Tríceps",
-    pickerKeys: ["peito", "triceps", "ombro"],
-    defaults: [
-      "Supino reto com barra",
-      "Supino inclinado com halteres",
-      "Peck-deck",
-      "Crossover na polia (alto)",
-      "Tríceps corda",
-      "Tríceps francês (halter)",
-    ],
-  },
-  {
-    id: "costas_biceps",
-    name: "Costas + Bíceps",
-    pickerKeys: ["costas", "biceps", "ombro"],
-    defaults: [
-      "Puxada frente (puxador)",
-      "Remada baixa no cabo",
-      "Remada unilateral com halter",
-      "Face pull",
-      "Rosca direta (barra)",
-      "Rosca martelo (halter)",
-    ],
-  },
-  {
-    id: "pernas",
-    name: "Pernas",
-    pickerKeys: ["quadriceps", "gluteo", "panturrilha", "core"],
-    defaults: [
-      "Agachamento livre",
-      "Leg press 45°",
-      "Cadeira extensora",
-      "Afundo com halteres",
-      "Panturrilha em pé na máquina",
-      "Prancha",
-    ],
-  },
-  {
-    id: "posterior_gluteo",
-    name: "Posterior + Glúteo",
-    pickerKeys: ["posterior", "gluteo", "core"],
-    defaults: [
-      "Terra romeno (barra)",
-      "Mesa flexora",
-      "Hip thrust (barra)",
-      "Abdução na máquina",
-      "Kickback no cabo",
-      "Dead bug",
-    ],
-  },
-  {
-    id: "ombro_core",
-    name: "Ombro + Core",
-    pickerKeys: ["ombro", "core", "costas"],
-    defaults: [
-      "Desenvolvimento com halteres",
-      "Elevação lateral",
-      "Reverse fly (posterior)",
-      "Face pull",
-      "Pallof press",
-      "Abdominal na polia",
-    ],
-  },
-  {
-    id: "fullbody",
-    name: "Full body",
-    pickerKeys: ["quadriceps", "peito", "costas", "posterior", "gluteo", "ombro", "core"],
-    defaults: [
-      "Agachamento goblet",
-      "Supino reto com halteres",
-      "Remada baixa no cabo",
-      "Desenvolvimento com halteres",
-      "Terra romeno (barra)",
-      "Prancha",
-    ],
-  },
-];
+const GROUP_LABELS = {
+  peito: "Peito",
+  triceps: "Tríceps",
+  costas: "Costas",
+  biceps: "Bíceps",
+  quadriceps: "Quadríceps",
+  posterior: "Posterior",
+  gluteo: "Glúteo",
+  panturrilha: "Panturrilha",
+  ombro: "Ombro",
+  core: "Core",
+};
 
-const EXERCISE_CATALOG = {
+const FALLBACK_EXERCISE_CATALOG = {
   peito: [
     "Supino reto com barra",
     "Supino reto com halteres",
@@ -238,19 +171,6 @@ const EXERCISE_CATALOG = {
   ],
 };
 
-const GROUP_LABELS = {
-  peito: "Peito",
-  triceps: "Tríceps",
-  costas: "Costas",
-  biceps: "Bíceps",
-  quadriceps: "Quadríceps",
-  posterior: "Posterior",
-  gluteo: "Glúteo",
-  panturrilha: "Panturrilha",
-  ombro: "Ombro",
-  core: "Core",
-};
-
 const GIF_NAME_MAP = {
   "Supino reto com barra": "supino-reto",
   "Supino reto com halteres": "supino-reto-halteres",
@@ -317,6 +237,254 @@ function uid() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function asTextList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function getBankList() {
+  try {
+    if (Array.isArray(exerciseBank)) return exerciseBank;
+    if (Array.isArray(exerciseBank?.list)) return exerciseBank.list;
+    if (typeof exerciseBank?.list === "function") {
+      const result = exerciseBank.list();
+      return Array.isArray(result) ? result : [];
+    }
+    if (Array.isArray(exerciseBank?.exercises)) return exerciseBank.exercises;
+    if (Array.isArray(exerciseBank?.EXERCISE_BANK)) return exerciseBank.EXERCISE_BANK;
+    if (Array.isArray(exerciseBank?.data)) return exerciseBank.data;
+  } catch (err) {
+    console.warn("exerciseBank list fallback:", err);
+  }
+
+  return [];
+}
+
+const BANK_LIST = getBankList();
+
+function bankExerciseName(item) {
+  return String(item?.name || item?.title || item?.id || "").trim();
+}
+
+function bankSearchableNames(item) {
+  const out = [bankExerciseName(item), ...asTextList(item?.aliases), ...asTextList(item?.alias)];
+
+  if (item?.id) out.push(String(item.id));
+  if (item?.slug) out.push(String(item.slug));
+
+  return out.filter(Boolean);
+}
+
+function normalizeGroupKey(value) {
+  const n = normalizeText(value);
+
+  if (!n) return "";
+
+  if (n.includes("peito") || n.includes("peitoral") || n.includes("chest")) return "peito";
+  if (n.includes("triceps") || n.includes("tricep")) return "triceps";
+  if (n.includes("costas") || n.includes("dorsal") || n.includes("latissimo") || n.includes("lats") || n.includes("back")) {
+    return "costas";
+  }
+  if (n.includes("biceps") || n.includes("bicep")) return "biceps";
+  if (n.includes("quadriceps") || n.includes("quadricep") || n.includes("coxa anterior")) return "quadriceps";
+  if (n.includes("posterior") || n.includes("isquio") || n.includes("hamstring") || n.includes("flexor")) return "posterior";
+  if (n.includes("glute") || n.includes("gluteo") || n.includes("glúteo")) return "gluteo";
+  if (n.includes("panturrilha") || n.includes("gemeo") || n.includes("gastro") || n.includes("calf")) return "panturrilha";
+  if (n.includes("ombro") || n.includes("deltoide") || n.includes("shoulder")) return "ombro";
+  if (n.includes("abdomen") || n.includes("abdominal") || n.includes("core") || n.includes("lombar") || n.includes("prancha")) return "core";
+
+  return "";
+}
+
+function bankGroupKey(item) {
+  const candidates = [
+    item?.group,
+    item?.category,
+    item?.muscleGroup,
+    item?.muscle,
+    item?.bodyPart,
+    ...asTextList(item?.primaryMuscles),
+    ...asTextList(item?.muscles),
+    ...asTextList(item?.target),
+  ];
+
+  for (const candidate of candidates) {
+    const key = normalizeGroupKey(candidate);
+    if (key) return key;
+  }
+
+  return groupKeyForExerciseFallback(bankExerciseName(item));
+}
+
+function findBankExercise(name) {
+  const target = normalizeText(name);
+  if (!target) return null;
+
+  try {
+    if (typeof exerciseBank?.get === "function") {
+      const found = exerciseBank.get(name);
+      if (found) return found;
+    }
+  } catch {}
+
+  return (
+    BANK_LIST.find((item) => {
+      const names = bankSearchableNames(item);
+      return names.some((candidate) => normalizeText(candidate) === target);
+    }) ||
+    BANK_LIST.find((item) => {
+      const names = bankSearchableNames(item);
+      return names.some((candidate) => {
+        const n = normalizeText(candidate);
+        return n.includes(target) || target.includes(n);
+      });
+    }) ||
+    null
+  );
+}
+
+function buildExerciseCatalogFromBank() {
+  const catalog = {
+    peito: [],
+    triceps: [],
+    costas: [],
+    biceps: [],
+    quadriceps: [],
+    posterior: [],
+    gluteo: [],
+    panturrilha: [],
+    ombro: [],
+    core: [],
+  };
+
+  BANK_LIST.forEach((item) => {
+    const name = bankExerciseName(item);
+    if (!name) return;
+
+    const key = bankGroupKey(item) || "core";
+    if (!catalog[key]) catalog[key] = [];
+
+    if (!catalog[key].some((existing) => normalizeText(existing) === normalizeText(name))) {
+      catalog[key].push(name);
+    }
+  });
+
+  Object.entries(FALLBACK_EXERCISE_CATALOG).forEach(([key, names]) => {
+    if (!catalog[key]) catalog[key] = [];
+    names.forEach((name) => {
+      if (!catalog[key].some((existing) => normalizeText(existing) === normalizeText(name))) {
+        catalog[key].push(name);
+      }
+    });
+  });
+
+  return catalog;
+}
+
+const EXERCISE_CATALOG = buildExerciseCatalogFromBank();
+
+const MUSCLE_GROUPS = [
+  {
+    id: "peito_triceps",
+    name: "Peito + Tríceps",
+    pickerKeys: ["peito", "triceps", "ombro"],
+    defaults: [
+      pickFirst(["Supino reto com barra", "Supino reto", "Supino com barra"], "peito"),
+      pickFirst(["Supino inclinado com halteres", "Supino inclinado"], "peito"),
+      pickFirst(["Peck-deck", "Voador", "Crucifixo máquina"], "peito"),
+      pickFirst(["Crossover na polia (alto)", "Crossover na polia alto", "Crossover"], "peito"),
+      pickFirst(["Tríceps corda", "Triceps corda"], "triceps"),
+      pickFirst(["Tríceps francês (halter)", "Triceps francês", "Tríceps francês"], "triceps"),
+    ],
+  },
+  {
+    id: "costas_biceps",
+    name: "Costas + Bíceps",
+    pickerKeys: ["costas", "biceps", "ombro"],
+    defaults: [
+      pickFirst(["Puxada frente (puxador)", "Puxada frente", "Puxada alta"], "costas"),
+      pickFirst(["Remada baixa no cabo", "Remada baixa"], "costas"),
+      pickFirst(["Remada unilateral com halter", "Remada unilateral"], "costas"),
+      pickFirst(["Face pull"], "costas"),
+      pickFirst(["Rosca direta (barra)", "Rosca direta"], "biceps"),
+      pickFirst(["Rosca martelo (halter)", "Rosca martelo"], "biceps"),
+    ],
+  },
+  {
+    id: "pernas",
+    name: "Pernas",
+    pickerKeys: ["quadriceps", "gluteo", "panturrilha", "core"],
+    defaults: [
+      pickFirst(["Agachamento livre", "Agachamento"], "quadriceps"),
+      pickFirst(["Leg press 45°", "Leg press"], "quadriceps"),
+      pickFirst(["Cadeira extensora"], "quadriceps"),
+      pickFirst(["Afundo com halteres", "Afundo"], "quadriceps"),
+      pickFirst(["Panturrilha em pé na máquina", "Panturrilha em pé"], "panturrilha"),
+      pickFirst(["Prancha"], "core"),
+    ],
+  },
+  {
+    id: "posterior_gluteo",
+    name: "Posterior + Glúteo",
+    pickerKeys: ["posterior", "gluteo", "core"],
+    defaults: [
+      pickFirst(["Terra romeno (barra)", "Terra romeno", "Levantamento terra romeno"], "posterior"),
+      pickFirst(["Mesa flexora"], "posterior"),
+      pickFirst(["Hip thrust (barra)", "Hip thrust"], "gluteo"),
+      pickFirst(["Abdução na máquina", "Cadeira abdutora"], "gluteo"),
+      pickFirst(["Kickback no cabo", "Coice no cabo"], "gluteo"),
+      pickFirst(["Dead bug"], "core"),
+    ],
+  },
+  {
+    id: "ombro_core",
+    name: "Ombro + Core",
+    pickerKeys: ["ombro", "core", "costas"],
+    defaults: [
+      pickFirst(["Desenvolvimento com halteres"], "ombro"),
+      pickFirst(["Elevação lateral"], "ombro"),
+      pickFirst(["Reverse fly (posterior)", "Crucifixo inverso"], "ombro"),
+      pickFirst(["Face pull"], "costas"),
+      pickFirst(["Pallof press"], "core"),
+      pickFirst(["Abdominal na polia"], "core"),
+    ],
+  },
+  {
+    id: "fullbody",
+    name: "Full body",
+    pickerKeys: ["quadriceps", "peito", "costas", "posterior", "gluteo", "ombro", "core"],
+    defaults: [
+      pickFirst(["Agachamento goblet", "Agachamento"], "quadriceps"),
+      pickFirst(["Supino reto com halteres", "Supino reto"], "peito"),
+      pickFirst(["Remada baixa no cabo", "Remada baixa"], "costas"),
+      pickFirst(["Desenvolvimento com halteres"], "ombro"),
+      pickFirst(["Terra romeno (barra)", "Terra romeno"], "posterior"),
+      pickFirst(["Prancha"], "core"),
+    ],
+  },
+];
+
+function pickFirst(names, key) {
+  const list = EXERCISE_CATALOG[key] || [];
+
+  for (const name of names) {
+    const found = list.find((item) => normalizeText(item) === normalizeText(name));
+    if (found) return found;
+  }
+
+  for (const name of names) {
+    const found = list.find((item) => normalizeText(item).includes(normalizeText(name)));
+    if (found) return found;
+  }
+
+  return list[0] || names[0];
+}
+
 function splitIdFromDays(days) {
   return SPLITS.find((s) => s.days === Number(days))?.id || "ABC";
 }
@@ -333,41 +501,94 @@ function groupById(id) {
   return MUSCLE_GROUPS.find((g) => g.id === id) || MUSCLE_GROUPS[0];
 }
 
-function groupKeyForExercise(name) {
+function groupKeyForExerciseFallback(name) {
   const target = normalizeText(name);
 
-  for (const [key, list] of Object.entries(EXERCISE_CATALOG)) {
+  for (const [key, list] of Object.entries(FALLBACK_EXERCISE_CATALOG)) {
     if ((list || []).some((item) => normalizeText(item) === target)) return key;
   }
 
-  if (target.includes("supino") || target.includes("peck") || target.includes("crossover")) return "peito";
+  if (target.includes("supino") || target.includes("peck") || target.includes("crossover") || target.includes("crucifixo")) {
+    return "peito";
+  }
   if (target.includes("triceps")) return "triceps";
-  if (target.includes("puxada") || target.includes("remada") || target.includes("face pull")) return "costas";
+  if (target.includes("puxada") || target.includes("remada") || target.includes("face pull") || target.includes("barra fixa")) {
+    return "costas";
+  }
   if (target.includes("rosca")) return "biceps";
-  if (target.includes("agachamento") || target.includes("leg") || target.includes("extensora") || target.includes("afundo")) return "quadriceps";
+  if (target.includes("agachamento") || target.includes("leg") || target.includes("extensora") || target.includes("afundo")) {
+    return "quadriceps";
+  }
   if (target.includes("terra") || target.includes("stiff") || target.includes("flexora")) return "posterior";
-  if (target.includes("glute") || target.includes("thrust") || target.includes("abducao") || target.includes("kickback")) return "gluteo";
+  if (target.includes("glute") || target.includes("thrust") || target.includes("abducao") || target.includes("kickback")) {
+    return "gluteo";
+  }
   if (target.includes("panturrilha")) return "panturrilha";
-  if (target.includes("desenvolvimento") || target.includes("elevacao") || target.includes("reverse")) return "ombro";
+  if (target.includes("desenvolvimento") || target.includes("elevacao") || target.includes("reverse") || target.includes("ombro")) {
+    return "ombro";
+  }
 
   return "core";
+}
+
+function groupKeyForExercise(name) {
+  const bank = findBankExercise(name);
+  if (bank) return bankGroupKey(bank);
+  return groupKeyForExerciseFallback(name);
 }
 
 function groupLabelForExercise(name) {
   return GROUP_LABELS[groupKeyForExercise(name)] || "Exercício";
 }
 
+function bankGifCandidates(value) {
+  const gif = String(value || "").trim();
+  if (!gif) return [];
+
+  if (/^https?:\/\//i.test(gif)) return [gif];
+  if (gif.startsWith("/")) return [gif];
+
+  const raw = gif.replace(/^public\//, "").replace(/^\/+/, "");
+  const noFolder = raw.replace(/^gifs\//, "");
+  const noExt = noFolder.replace(/\.(gif|webp|png|jpg|jpeg)$/i, "");
+
+  return Array.from(
+    new Set([
+      `/${raw}`,
+      `/gifs/${noFolder}`,
+      `/gifs/${noExt}.gif`,
+      `/gifs/${noExt}.GIF`,
+      `/gifs/${noExt}.webp`,
+      `/gifs/${noExt}.WEBP`,
+      `/gifs/exercises/${noExt}.gif`,
+      `/gifs/exercises/${noExt}.GIF`,
+      `/assets/gifs/${noExt}.gif`,
+      `/assets/exercises/${noExt}.gif`,
+    ])
+  );
+}
+
 function gifBase(name) {
-  return GIF_NAME_MAP[name] || slugify(name);
+  const bank = findBankExercise(name);
+  const fromBank = bank?.slug || bank?.id || bank?.name;
+  return GIF_NAME_MAP[name] || slugify(fromBank || name);
 }
 
 function gifSources(name) {
+  const bank = findBankExercise(name);
+  const bankCandidates = [
+    ...bankGifCandidates(bank?.gif),
+    ...bankGifCandidates(bank?.image),
+    ...bankGifCandidates(bank?.animation),
+    ...bankGifCandidates(bank?.media),
+  ];
+
   const base = gifBase(name);
   const raw = slugify(name);
   const names = Array.from(new Set([base, raw, base.replaceAll("-", "_"), raw.replaceAll("-", "_")])).filter(Boolean);
-  const folders = ["/gifs/exercises", "/gifs", "/exercises", "/assets/gifs", "/assets/exercises"];
+  const folders = ["/gifs", "/gifs/exercises", "/exercises", "/assets/gifs", "/assets/exercises"];
   const exts = ["gif", "GIF", "webp", "WEBP", "png", "PNG", "jpg", "JPG", "jpeg", "JPEG"];
-  const out = [];
+  const out = [...bankCandidates];
 
   folders.forEach((folder) => {
     names.forEach((n) => {
@@ -375,7 +596,7 @@ function gifSources(name) {
     });
   });
 
-  return out;
+  return Array.from(new Set(out));
 }
 
 function methodLabel(id) {
@@ -388,6 +609,40 @@ function normalizeMethod(v) {
   if (n.includes("triset")) return "triset";
   if (n.includes("drop")) return "dropset";
   return "normal";
+}
+
+function bankInfoFor(name) {
+  const bank = findBankExercise(name);
+
+  if (!bank) {
+    return {
+      equipment: "",
+      pattern: "",
+      aliases: [],
+      primaryMuscles: [],
+      variants: null,
+      gif: "",
+    };
+  }
+
+  return {
+    equipment: bank?.equipment || bank?.equipamento || "",
+    pattern: bank?.pattern || bank?.padrao || "",
+    aliases: asTextList(bank?.aliases || bank?.alias),
+    primaryMuscles: asTextList(bank?.primaryMuscles || bank?.muscles || bank?.target),
+    variants: bank?.variants || bank?.variations || bank?.variacoes || null,
+    gif: bank?.gif || bank?.image || bank?.animation || "",
+  };
+}
+
+function exerciseInfoLine(ex) {
+  const parts = [];
+
+  if (ex?.group) parts.push(ex.group);
+  if (ex?.equipment) parts.push(ex.equipment);
+  if (ex?.pattern) parts.push(ex.pattern);
+
+  return parts.filter(Boolean).join(" • ");
 }
 
 function parseExerciseRow(row) {
@@ -412,6 +667,7 @@ function parseExerciseRow(row) {
 
 function makeExercise(input) {
   const name = input?.name || "Exercício";
+  const info = bankInfoFor(name);
 
   return {
     id: input?.id || uid(),
@@ -422,12 +678,18 @@ function makeExercise(input) {
     rest: input?.rest || "75–120s",
     method: normalizeMethod(input?.method || "normal"),
     pairedWith: Array.isArray(input?.pairedWith) ? input.pairedWith : [],
+    equipment: input?.equipment || info.equipment,
+    pattern: input?.pattern || info.pattern,
+    aliases: input?.aliases || info.aliases,
+    primaryMuscles: input?.primaryMuscles || info.primaryMuscles,
+    variants: input?.variants || info.variants,
+    gif: input?.gif || info.gif,
     gifSources: gifSources(name),
   };
 }
 
 function defaultExercises(groupId) {
-  return groupById(groupId).defaults.map((name) => makeExercise({ name }));
+  return groupById(groupId).defaults.filter(Boolean).map((name) => makeExercise({ name }));
 }
 
 function createInitialState(days = 3) {
@@ -447,8 +709,21 @@ function buildRows(keys, query) {
 
   keys.forEach((key) => {
     (EXERCISE_CATALOG[key] || []).forEach((name) => {
-      if (q && !normalizeText(name).includes(q)) return;
-      rows.push({ name, key, group: GROUP_LABELS[key] || key });
+      const bank = findBankExercise(name);
+      const searchParts = [name, ...bankSearchableNames(bank || {})].map(normalizeText);
+
+      if (q && !searchParts.some((part) => part.includes(q))) return;
+
+      const info = bankInfoFor(name);
+
+      rows.push({
+        name,
+        key,
+        group: GROUP_LABELS[key] || key,
+        equipment: info.equipment,
+        pattern: info.pattern,
+        primaryMuscles: info.primaryMuscles,
+      });
     });
   });
 
@@ -991,7 +1266,10 @@ export default function TreinoPersonalize() {
           letter: day.letter,
           groupId: day.groupId,
           groupName: day.group.name,
-          exercises: day.exercises || [],
+          exercises: (day.exercises || []).map((ex) => ({
+            ...ex,
+            gifSources: undefined,
+          })),
         })),
       };
 
@@ -1137,6 +1415,7 @@ export default function TreinoPersonalize() {
             const expanded = expandedExerciseId === ex.id;
             const needsPair = ["biset", "triset"].includes(normalizeMethod(ex.method));
             const otherExercises = (selectedDay.exercises || []).filter((item) => item.id !== ex.id);
+            const infoLine = exerciseInfoLine(ex);
 
             return (
               <article
@@ -1179,6 +1458,7 @@ export default function TreinoPersonalize() {
                         <div style={S.exerciseMeta}>
                           {ex.group} • {ex.sets}x • {ex.reps} • {ex.rest}
                         </div>
+                        {ex.equipment ? <div style={S.exerciseBankMeta}>{ex.equipment}</div> : null}
                       </div>
 
                       <div style={S.orderBadge}>{index + 1}</div>
@@ -1204,6 +1484,15 @@ export default function TreinoPersonalize() {
                   {expanded ? (
                     <div style={S.expandedArea}>
                       <MiniGif name={ex.name} size={210} expanded />
+
+                      {infoLine || safeArray(ex.primaryMuscles).length ? (
+                        <div style={S.bankInfoBox}>
+                          {infoLine ? <div style={S.bankInfoTitle}>{infoLine}</div> : null}
+                          {safeArray(ex.primaryMuscles).length ? (
+                            <div style={S.bankInfoText}>Músculos: {safeArray(ex.primaryMuscles).join(", ")}</div>
+                          ) : null}
+                        </div>
+                      ) : null}
 
                       <div style={S.editGrid}>
                         <label style={S.label}>
@@ -1400,7 +1689,7 @@ function ExercisePicker({ day, currentNames, onPick, onClose }) {
         <div style={S.sheetHead}>
           <div>
             <div style={S.sheetTitle}>Selecionar exercício</div>
-            <div style={S.sheetSub}>Toque no nome e depois conclua.</div>
+            <div style={S.sheetSub}>Puxando exercícios do banco principal.</div>
           </div>
 
           <button style={S.closeBtn} onClick={onClose} type="button">
@@ -1451,6 +1740,7 @@ function ExercisePicker({ day, currentNames, onPick, onClose }) {
         <div style={S.pickerList}>
           {rows.map((row) => {
             const active = current.has(row.name);
+            const detail = [row.group, row.equipment, row.pattern].filter(Boolean).join(" • ");
 
             return (
               <button
@@ -1463,7 +1753,7 @@ function ExercisePicker({ day, currentNames, onPick, onClose }) {
 
                 <div style={S.pickerText}>
                   <b style={S.pickerName}>{row.name}</b>
-                  <span style={S.pickerGroup}>{row.group}</span>
+                  <span style={S.pickerGroup}>{detail || row.group}</span>
                 </div>
 
                 <strong style={S.pickerPlus}>{active ? "✓" : "+"}</strong>
@@ -1526,18 +1816,22 @@ function PairExercisePicker({ day, targetName, method, onPick, onClose }) {
         />
 
         <div style={S.pickerList}>
-          {rows.map((row) => (
-            <button key={`${row.key}_${row.name}`} type="button" style={S.pickerItem} onClick={() => onPick(row.name)}>
-              <MiniGif name={row.name} size={42} />
+          {rows.map((row) => {
+            const detail = [row.group, row.equipment, row.pattern].filter(Boolean).join(" • ");
 
-              <div style={S.pickerText}>
-                <b style={S.pickerName}>{row.name}</b>
-                <span style={S.pickerGroup}>{row.group}</span>
-              </div>
+            return (
+              <button key={`${row.key}_${row.name}`} type="button" style={S.pickerItem} onClick={() => onPick(row.name)}>
+                <MiniGif name={row.name} size={42} />
 
-              <strong style={S.pickerPlus}>+</strong>
-            </button>
-          ))}
+                <div style={S.pickerText}>
+                  <b style={S.pickerName}>{row.name}</b>
+                  <span style={S.pickerGroup}>{detail || row.group}</span>
+                </div>
+
+                <strong style={S.pickerPlus}>+</strong>
+              </button>
+            );
+          })}
         </div>
 
         <button style={S.doneBtn} onClick={onClose} type="button">
@@ -1957,6 +2251,37 @@ const S = {
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
+  },
+
+  exerciseBankMeta: {
+    color: "rgba(15,23,42,.46)",
+    fontSize: 11,
+    fontWeight: 850,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+
+  bankInfoBox: {
+    borderRadius: 18,
+    padding: 11,
+    background: "rgba(15,23,42,.03)",
+    border: `1px solid ${BORDER}`,
+    display: "grid",
+    gap: 5,
+  },
+
+  bankInfoTitle: {
+    color: TEXT,
+    fontSize: 12,
+    fontWeight: 950,
+  },
+
+  bankInfoText: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 800,
+    lineHeight: 1.35,
   },
 
   orderBadge: {
