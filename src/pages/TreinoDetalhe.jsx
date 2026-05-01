@@ -16,25 +16,30 @@ const SOFT = "rgba(15,23,42,.04)";
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
+
 function mod(n, m) {
   if (!m) return 0;
   return ((n % m) + m) % m;
 }
+
 function stripAccents(s) {
   return String(s || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 }
+
 function normalizeName(s) {
   return stripAccents(String(s || ""))
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
 }
+
 function dayLetter(i) {
   const letters = ["A", "B", "C", "D", "E", "F"];
   return letters[i % letters.length] || "A";
 }
+
 function slugifyExercise(name) {
   const base = stripAccents(name)
     .toLowerCase()
@@ -42,12 +47,15 @@ function slugifyExercise(name) {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\s/g, "-");
+
   return base || "exercicio";
 }
+
 function gifCandidates(name) {
   const slug = slugifyExercise(name);
   return [`/gifs/${slug}.GIF`, `/gifs/${slug}.gif`];
 }
+
 function parseRestToSeconds(restText) {
   const raw = String(restText || "").toLowerCase().trim();
   if (!raw) return 90;
@@ -66,15 +74,18 @@ function parseRestToSeconds(restText) {
 
   return 90;
 }
+
 function fmtMMSS(sec) {
   const s = Math.max(0, Math.floor(Number(sec || 0)));
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
+
 function keyForLoad(planDayKey, exName) {
   return `${String(planDayKey)}__${String(exName || "").toLowerCase()}`;
 }
+
 function keyForSetProg(planDayKey, exName) {
   return `${String(planDayKey)}__${String(exName || "").toLowerCase()}`;
 }
@@ -155,15 +166,64 @@ function parsePackedExerciseMeta(rawReps, rawMethod, rawNotes) {
 
 /* ---------------- fallback database helpers ---------------- */
 const EXERCISE_CATALOG = {
-  peito: ["Supino reto com barra", "Supino inclinado com halteres", "Crucifixo inclinado com halteres", "Peck-deck", "Crossover na polia (alto)", "Flexão de braço tradicional"],
-  triceps: ["Tríceps corda", "Tríceps barra reta", "Tríceps francês (halter)", "Tríceps testa (barra W)", "Mergulho nas paralelas (assistido)"],
-  costas: ["Puxada frente (puxador)", "Barra fixa pronada", "Remada baixa no cabo", "Remada unilateral com halter", "Face pull"],
-  biceps: ["Rosca direta (barra)", "Rosca alternada (halter)", "Rosca martelo (halter)", "Rosca Scott (máquina)"],
-  quadriceps: ["Agachamento livre", "Leg press 45°", "Hack squat", "Cadeira extensora", "Afundo com halteres"],
-  posterior: ["Terra romeno (barra)", "Mesa flexora", "Cadeira flexora", "Hiperextensão"],
-  gluteo: ["Hip thrust (barra)", "Abdução na máquina", "Kickback no cabo", "Glute bridge"],
-  panturrilha: ["Panturrilha em pé na máquina", "Panturrilha sentado", "Panturrilha no leg press"],
-  ombro: ["Desenvolvimento com halteres", "Elevação lateral", "Reverse fly (posterior)", "Arnold press"],
+  peito: [
+    "Supino reto com barra",
+    "Supino inclinado com halteres",
+    "Crucifixo inclinado com halteres",
+    "Peck-deck",
+    "Crossover na polia (alto)",
+    "Flexão de braço tradicional",
+  ],
+  triceps: [
+    "Tríceps corda",
+    "Tríceps barra reta",
+    "Tríceps francês (halter)",
+    "Tríceps testa (barra W)",
+    "Mergulho nas paralelas (assistido)",
+  ],
+  costas: [
+    "Puxada frente (puxador)",
+    "Barra fixa pronada",
+    "Remada baixa no cabo",
+    "Remada unilateral com halter",
+    "Face pull",
+  ],
+  biceps: [
+    "Rosca direta (barra)",
+    "Rosca alternada (halter)",
+    "Rosca martelo (halter)",
+    "Rosca Scott (máquina)",
+  ],
+  quadriceps: [
+    "Agachamento livre",
+    "Leg press 45°",
+    "Hack squat",
+    "Cadeira extensora",
+    "Afundo com halteres",
+  ],
+  posterior: [
+    "Terra romeno (barra)",
+    "Mesa flexora",
+    "Cadeira flexora",
+    "Hiperextensão",
+  ],
+  gluteo: [
+    "Hip thrust (barra)",
+    "Abdução na máquina",
+    "Kickback no cabo",
+    "Glute bridge",
+  ],
+  panturrilha: [
+    "Panturrilha em pé na máquina",
+    "Panturrilha sentado",
+    "Panturrilha no leg press",
+  ],
+  ombro: [
+    "Desenvolvimento com halteres",
+    "Elevação lateral",
+    "Reverse fly (posterior)",
+    "Arnold press",
+  ],
   core: ["Prancha", "Dead bug", "Crunch", "Pallof press"],
 };
 
@@ -212,6 +272,7 @@ function groupById(id) {
 function ensureVolume(list, minCount = 7) {
   const base = Array.isArray(list) ? [...list] : [];
   if (base.length >= minCount) return base;
+
   const extras = [
     { name: "Aquecimento (5–8min)", group: "Preparação" },
     { name: "Alongamento curto", group: "Mobilidade" },
@@ -221,8 +282,10 @@ function ensureVolume(list, minCount = 7) {
     { name: "Tríceps corda (leve)", group: "Tríceps" },
     { name: "Panturrilha", group: "Panturrilha" },
   ];
+
   let i = 0;
   while (base.length < minCount && i < extras.length) base.push(extras[i++]);
+
   return base;
 }
 
@@ -233,44 +296,134 @@ function buildFallbackSplit() {
     { name: "Tríceps corda", group: "Tríceps", sets: 4, reps: "8–12", rest: "60–90s", method: "Básico" },
     { name: "Elevação lateral", group: "Ombros", sets: 3, reps: "10–15", rest: "60–90s", method: "Básico" },
   ];
+
   const B = [
     { name: "Puxada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
     { name: "Remada", group: "Costas", sets: 4, reps: "8–12", rest: "75–120s", method: "Básico" },
     { name: "Rosca direta", group: "Bíceps", sets: 3, reps: "8–12", rest: "60–90s", method: "Básico" },
     { name: "Face pull", group: "Ombro/escápulas", sets: 3, reps: "12–15", rest: "45–75s", method: "Básico" },
   ];
+
   const C = [
     { name: "Agachamento", group: "Pernas", sets: 4, reps: "6–12", rest: "90–150s", method: "Básico" },
     { name: "Leg press", group: "Pernas", sets: 4, reps: "10–15", rest: "75–120s", method: "Básico" },
     { name: "Terra romeno", group: "Posterior", sets: 4, reps: "8–12", rest: "90–150s", method: "Básico" },
     { name: "Panturrilha", group: "Panturrilha", sets: 4, reps: "10–15", rest: "45–75s", method: "Básico" },
   ];
-  return { base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" }, split: [A, B, C] };
+
+  return {
+    base: { style: "Padrão", sets: 4, reps: "6–12", rest: "75–120s" },
+    split: [A, B, C],
+  };
 }
 
 /* ---------------- details by name ---------------- */
 function detailFor(exName) {
   const n = String(exName || "").toLowerCase();
-  if (n.includes("supino")) return { area: "Peitoral, tríceps e deltoide anterior.", cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura." };
-  if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover")) return { area: "Peitoral (isolamento).", cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta." };
-  if (n.includes("puxada") || n.includes("pulldown")) return { area: "Dorsal e bíceps.", cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço." };
-  if (n.includes("remada")) return { area: "Costas médias/dorsal e estabilização.", cue: "Coluna firme. Puxe com cotovelos. Segure 1s no final. Volte controlando." };
-  if (n.includes("face pull")) return { area: "Posterior de ombro + escápulas.", cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco." };
-  if (n.includes("rosca")) return { area: "Bíceps e antebraço.", cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle." };
-  if (n.includes("tríceps") || n.includes("triceps")) return { area: "Tríceps.", cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar." };
-  if (n.includes("agacha")) return { area: "Quadríceps, glúteos e core.", cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte." };
-  if (n.includes("leg press")) return { area: "Quadríceps e glúteos.", cue: "Amplitude segura. Não trave joelho. Controle na descida." };
-  if (n.includes("terra") || n.includes("romeno")) return { area: "Posterior e glúteos.", cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura." };
-  if (n.includes("panturrilha")) return { area: "Panturrilha.", cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa." };
-  if (n.includes("prancha")) return { area: "Core e estabilização.", cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair." };
-  if (n.includes("abdominal")) return { area: "Core.", cue: "Exale subindo. Sem puxar pescoço. Controle a descida." };
-  return { area: "Músculos relacionados ao movimento.", cue: "Postura firme. Controle na descida. Execução limpa sem roubar." };
+
+  if (n.includes("supino")) {
+    return {
+      area: "Peitoral, tríceps e deltoide anterior.",
+      cue: "Escápulas firmes. Pés no chão. Desça controlando e suba forte sem perder postura.",
+    };
+  }
+
+  if (n.includes("crucifixo") || n.includes("peck") || n.includes("crossover")) {
+    return {
+      area: "Peitoral (isolamento).",
+      cue: "Abra até alongar com segurança. Feche apertando o peito. Controle total na volta.",
+    };
+  }
+
+  if (n.includes("puxada") || n.includes("pulldown")) {
+    return {
+      area: "Dorsal e bíceps.",
+      cue: "Peito alto. Cotovelos descem para o lado do corpo. Evite puxar com pescoço.",
+    };
+  }
+
+  if (n.includes("remada")) {
+    return {
+      area: "Costas médias/dorsal e estabilização.",
+      cue: "Coluna firme. Puxe com cotovelos. Segure 1s no final. Volte controlando.",
+    };
+  }
+
+  if (n.includes("face pull")) {
+    return {
+      area: "Posterior de ombro + escápulas.",
+      cue: "Puxe para o rosto abrindo cotovelos. Ombros baixos. Sem jogar o tronco.",
+    };
+  }
+
+  if (n.includes("rosca")) {
+    return {
+      area: "Bíceps e antebraço.",
+      cue: "Cotovelo fixo. Sem roubar com tronco. Suba e desça com controle.",
+    };
+  }
+
+  if (n.includes("tríceps") || n.includes("triceps")) {
+    return {
+      area: "Tríceps.",
+      cue: "Cotovelo firme e alinhado. Estenda até o final. Retorne devagar.",
+    };
+  }
+
+  if (n.includes("agacha")) {
+    return {
+      area: "Quadríceps, glúteos e core.",
+      cue: "Joelho acompanha o pé. Tronco firme. Desça controlando e suba forte.",
+    };
+  }
+
+  if (n.includes("leg press")) {
+    return {
+      area: "Quadríceps e glúteos.",
+      cue: "Amplitude segura. Não trave joelho. Controle na descida.",
+    };
+  }
+
+  if (n.includes("terra") || n.includes("romeno")) {
+    return {
+      area: "Posterior e glúteos.",
+      cue: "Quadril para trás. Coluna neutra. Alongue com controle e suba mantendo postura.",
+    };
+  }
+
+  if (n.includes("panturrilha")) {
+    return {
+      area: "Panturrilha.",
+      cue: "Pausa em cima e embaixo. Sem quicar. Amplitude completa.",
+    };
+  }
+
+  if (n.includes("prancha")) {
+    return {
+      area: "Core e estabilização.",
+      cue: "Glúteo contraído. Barriga firme. Não deixe quadril cair.",
+    };
+  }
+
+  if (n.includes("abdominal")) {
+    return {
+      area: "Core.",
+      cue: "Exale subindo. Sem puxar pescoço. Controle a descida.",
+    };
+  }
+
+  return {
+    area: "Músculos relacionados ao movimento.",
+    cue: "Postura firme. Controle na descida. Execução limpa sem roubar.",
+  };
 }
 
 function suggestLoadRange(exName, pesoKg, objetivo) {
   const kg = Number(pesoKg || 0) || 70;
   const n = String(exName || "").toLowerCase();
+
   let base = 0.35;
+
   if (n.includes("supino")) base = 0.55;
   if (n.includes("agacha")) base = 0.7;
   if (n.includes("leg press")) base = 0.8;
@@ -282,13 +435,16 @@ function suggestLoadRange(exName, pesoKg, objetivo) {
   if (n.includes("rosca")) base = 0.2;
   if (n.includes("tríceps") || n.includes("triceps")) base = 0.22;
   if (n.includes("panturrilha")) base = 0.35;
+
   const goal = String(objetivo || "").toLowerCase();
   const isForca = goal.includes("forc");
   const isHip = goal.includes("hip");
   const mult = isForca ? 1.12 : isHip ? 1.0 : 0.92;
+
   const mid = kg * base * mult;
   const low = Math.max(2, Math.round(mid * 0.85));
   const high = Math.max(low + 1, Math.round(mid * 1.05));
+
   return `${low}–${high}kg`;
 }
 
@@ -300,6 +456,7 @@ function IconChevronLeft() {
     </svg>
   );
 }
+
 function IconArrowRight() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -307,6 +464,7 @@ function IconArrowRight() {
     </svg>
   );
 }
+
 function IconPause() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -315,6 +473,7 @@ function IconPause() {
     </svg>
   );
 }
+
 function IconPlay() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -322,6 +481,7 @@ function IconPlay() {
     </svg>
   );
 }
+
 function IconReset() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -330,6 +490,7 @@ function IconReset() {
     </svg>
   );
 }
+
 function IconClock() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -355,7 +516,9 @@ function ExerciseGif({ name, style }) {
           setIdx((p) => p + 1);
           return;
         }
+
         e.currentTarget.style.display = "none";
+
         const parent = e.currentTarget.parentElement;
         if (parent) parent.setAttribute("data-gif-missing", "1");
       }}
@@ -376,12 +539,15 @@ function Chip({ label, value }) {
 function SetDots({ total, done, onToggle }) {
   const n = clamp(Number(total || 0) || 0, 1, 12);
   const d = clamp(Number(done || 0) || 0, 0, n);
+
   return (
     <div style={S.dotsBox}>
       <div style={S.dotsTitle}>Séries feitas</div>
+
       <div style={S.dotsRowInner}>
         {Array.from({ length: n }).map((_, i) => {
           const filled = i < d;
+
           return (
             <button
               key={i}
@@ -394,6 +560,7 @@ function SetDots({ total, done, onToggle }) {
           );
         })}
       </div>
+
       <div style={S.dotsMini}>{d}/{n}</div>
     </div>
   );
@@ -448,6 +615,48 @@ function ComboMethodBlock({ ex }) {
   );
 }
 
+function PaywallCompareMessages() {
+  return (
+    <div style={S.compareBlock}>
+      <div style={S.compareTitle}>Gratuito x Premium</div>
+
+      <div style={S.compareGrid}>
+        <div style={S.compareCard}>
+          <div style={S.comparePlanFree}>Gratuito</div>
+          <div style={S.compareLineOff}>Treino limitado</div>
+          <div style={S.compareLineOff}>Sem personalização completa</div>
+          <div style={S.compareLineOff}>Sem métodos avançados</div>
+        </div>
+
+        <div style={{ ...S.compareCard, ...S.compareCardPremium }}>
+          <div style={S.comparePlanPremium}>Premium</div>
+          <div style={S.compareLineOn}>Treino organizado por divisão</div>
+          <div style={S.compareLineOn}>GIFs, carga, descanso e séries</div>
+          <div style={S.compareLineOn}>Biset, triset, dropset e evolução</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaywallTransformationMessages() {
+  return (
+    <div style={S.emotionBlock}>
+      <div style={S.emotionItem}>
+        <div style={S.emotionSmall}>Sem estrutura</div>
+        <div style={S.emotionTextMuted}>Treinar no automático te mantém parado.</div>
+      </div>
+
+      <div style={S.emotionDivider} />
+
+      <div style={S.emotionItem}>
+        <div style={S.emotionSmallOn}>Com FitDeal Premium</div>
+        <div style={S.emotionText}>Treinar com direção te faz evoluir.</div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- page ---------------- */
 export default function TreinoDetalhe() {
   const nav = useNavigate();
@@ -489,21 +698,27 @@ export default function TreinoDetalhe() {
     setGifName(name);
     setGifOpen(true);
   }
+
   function closeGifFull() {
     setGifOpen(false);
   }
+
   function startGifPress(name) {
     gifDidLongPress.current = false;
+
     if (gifPressTimer.current) window.clearTimeout(gifPressTimer.current);
+
     gifPressTimer.current = window.setTimeout(() => {
       gifDidLongPress.current = true;
       openGifFull(name);
     }, 360);
   }
+
   function endGifPress() {
     if (gifPressTimer.current) window.clearTimeout(gifPressTimer.current);
     gifPressTimer.current = null;
   }
+
   function onGifClick(name, e) {
     if (gifDidLongPress.current) {
       e.preventDefault();
@@ -511,25 +726,33 @@ export default function TreinoDetalhe() {
       gifDidLongPress.current = false;
       return;
     }
+
     openGifFull(name);
   }
+
   function triggerDoneFlash(key) {
     setDoneFlashKey(key);
     setDoneFlash(true);
+
     window.setTimeout(() => {
       setDoneFlash(false);
       setDoneFlashKey("");
-    }, 720);
+    }, 1300);
   }
 
   useEffect(() => {
     if (!gifOpen) return;
+
     const prev = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
+
     const onKey = (e) => {
       if (e.key === "Escape") closeGifFull();
     };
+
     window.addEventListener("keydown", onKey);
+
     return () => {
       document.body.style.overflow = prev || "";
       window.removeEventListener("keydown", onKey);
@@ -553,11 +776,13 @@ export default function TreinoDetalhe() {
             .eq("user_id", userId)
             .in("status", ["active", "trialing"])
             .maybeSingle(),
+
           supabase
             .from("workout_runtime")
             .select("current_day_index, timer_open, swipe_hint_seen")
             .eq("user_id", userId)
             .maybeSingle(),
+
           supabase
             .from("workout_plans")
             .select("id, title, split_label, split_len, source, created_at, updated_at")
@@ -684,19 +909,23 @@ export default function TreinoDetalhe() {
           });
 
           const loadMap = {};
+
           for (const row of loadRes.data || []) {
             const matchedDay = days.find((d) => Number(d.day_index) === Number(row.day_index));
             const storageKey = keyForLoad(matchedDay?.id || row.day_index, row.exercise_name);
             loadMap[storageKey] = row.load_value || "";
           }
+
           setLoads(loadMap);
 
           const progMap = {};
+
           for (const row of progRes.data || []) {
             const matchedDay = days.find((d) => Number(d.day_index) === Number(row.day_index));
             const storageKey = keyForSetProg(matchedDay?.id || row.day_index, row.exercise_name);
             progMap[storageKey] = Number(row.done_sets || 0);
           }
+
           setSetsProg(progMap);
         }
       } catch (err) {
@@ -725,6 +954,7 @@ export default function TreinoDetalhe() {
   const currentDayStorageKey = currentPlanDay?.id || currentPlanDay?.day_index || viewSafe;
 
   const workoutRaw = useMemo(() => split[viewSafe] || [], [split, viewSafe]);
+
   const workout = useMemo(
     () => workoutRaw.filter((ex) => !String(ex?.name || "").toLowerCase().includes("aquecimento")),
     [workoutRaw]
@@ -737,6 +967,7 @@ export default function TreinoDetalhe() {
       ex,
       index: i,
     }));
+
     return [...exPages, { type: "cardio", key: "end_cardio" }];
   }, [workout]);
 
@@ -745,15 +976,18 @@ export default function TreinoDetalhe() {
 
   useEffect(() => {
     const p = pages[page];
+
     if (!p || p.type !== "exercise") {
       setRunning(false);
       setRestTotal(90);
       setRestLeft(90);
       return;
     }
+
     const ex = p.ex;
     const rest = ex?.rest ?? base.rest ?? "90s";
     const sec = parseRestToSeconds(rest);
+
     setRunning(false);
     setRestTotal(sec);
     setRestLeft(sec);
@@ -761,9 +995,11 @@ export default function TreinoDetalhe() {
 
   useEffect(() => {
     if (!running) return;
+
     const t = setInterval(() => {
       setRestLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
+
     return () => clearInterval(t);
   }, [running]);
 
@@ -773,6 +1009,7 @@ export default function TreinoDetalhe() {
 
   async function upsertRuntime(updates) {
     if (!userId) return;
+
     const next = {
       user_id: userId,
       current_day_index: updates.current_day_index ?? runtime.current_day_index ?? 0,
@@ -798,9 +1035,11 @@ export default function TreinoDetalhe() {
     if (restLeft <= 0) setRestLeft(restTotal);
     setRunning(true);
   }
+
   function pauseTimer() {
     setRunning(false);
   }
+
   function resetTimer() {
     setRunning(false);
     setRestLeft(restTotal);
@@ -818,6 +1057,7 @@ export default function TreinoDetalhe() {
 
   function softPingTimer() {
     if (timerOpen) return;
+
     setTimerOpen(true);
     window.setTimeout(() => setTimerOpen(false), 1200);
   }
@@ -830,6 +1070,7 @@ export default function TreinoDetalhe() {
       const w = el.clientWidth || 1;
       const idx = Math.round(el.scrollLeft / w);
       const safe = clamp(idx, 0, pages.length - 1);
+
       setPage(safe);
 
       if (showHint && Math.abs(el.scrollLeft) > 20) {
@@ -838,59 +1079,78 @@ export default function TreinoDetalhe() {
     };
 
     el.addEventListener("scroll", onScroll, { passive: true });
+
     return () => el.removeEventListener("scroll", onScroll);
   }, [pages.length, showHint, runtime.swipe_hint_seen]);
 
   function goTo(i) {
     const el = scrollerRef.current;
     if (!el) return;
+
     const w = el.clientWidth || 1;
     el.scrollTo({ left: w * i, behavior: "smooth" });
   }
 
   useEffect(() => {
     if (typeof document === "undefined") return;
+
     const id = "treino-detalhe-book-ui-v4";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
+
     style.innerHTML = `
       @keyframes tdSheen {
         0%, 35%   { transform: translateX(-70%); opacity: .18; }
         55%, 100% { transform: translateX(140%); opacity: .18; }
       }
+
       @keyframes tdPop {
         0%,100% { transform: scale(1); }
         50% { transform: scale(1.02); }
       }
+
       @keyframes tdDoneBurst {
-        0% { opacity: 0; transform: scale(.72); }
-        18% { opacity: 1; transform: scale(1.04); }
-        72% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0; transform: scale(1.1); }
+        0% { opacity: 0; transform: scale(.68); }
+        16% { opacity: 1; transform: scale(1.06); }
+        78% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0; transform: scale(1.12); }
       }
+
       @keyframes tdDoneBg {
         0% { opacity: 0; }
-        18% { opacity: 1; }
+        16% { opacity: 1; }
+        82% { opacity: 1; }
         100% { opacity: 0; }
       }
+
       .td-press { transition: transform .12s ease, filter .12s ease; }
       .td-press:active { transform: translateY(1px) scale(.99); filter: brightness(.985); }
+
+      .td-press small {
+        font-size: 11px;
+        font-weight: 850;
+        color: rgba(255,255,255,.72);
+      }
+
       input:focus {
         border-color: rgba(255,106,0,.38) !important;
         box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
       }
+
       @media (prefers-reduced-motion: reduce) {
         * { animation: none !important; transition: none !important; }
       }
     `;
+
     document.head.appendChild(style);
   }, []);
 
   async function setLoad(exName, v) {
     const k = keyForLoad(currentDayStorageKey, exName);
     const next = { ...loads, [k]: v };
+
     setLoads(next);
 
     if (!userId) return;
@@ -918,12 +1178,14 @@ export default function TreinoDetalhe() {
     const key = keyForSetProg(currentDayStorageKey, exName);
     const val = setsProg[key];
     const n = clamp(Number(setsTotal || 0) || 0, 1, 12);
+
     return clamp(Number(val || 0) || 0, 0, n);
   }
 
   async function setDone(exName, nextDone) {
     const key = keyForSetProg(currentDayStorageKey, exName);
     const next = { ...setsProg, [key]: nextDone };
+
     setSetsProg(next);
 
     if (!userId) return;
@@ -951,26 +1213,32 @@ export default function TreinoDetalhe() {
     dragStartY.current = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
     dragMoved.current = false;
   }
+
   function onDockPointerMove(e) {
     if (dragStartY.current == null) return;
+
     const y = e.clientY ?? (e.touches?.[0]?.clientY ?? null);
     if (y == null) return;
 
     const dy = y - dragStartY.current;
+
     if (Math.abs(dy) > 10) dragMoved.current = true;
 
     if (dy < -26) {
       dragStartY.current = null;
       setTimerOpenPersist(true);
     }
+
     if (dy > 26) {
       dragStartY.current = null;
       setTimerOpenPersist(false);
     }
   }
+
   function onDockPointerUp() {
     dragStartY.current = null;
   }
+
   function onDockClick() {
     if (dragMoved.current) return;
     setTimerOpenPersist(!timerOpen);
@@ -980,7 +1248,9 @@ export default function TreinoDetalhe() {
     return (
       <div style={S.page}>
         <div style={S.lockCard}>
-          <div style={S.lockTitle}>fitdeal<span style={{ color: ORANGE }}>.</span></div>
+          <div style={S.lockTitle}>
+            fitdeal<span style={{ color: ORANGE }}>.</span>
+          </div>
           <div style={S.lockText}>Carregando treino...</div>
         </div>
       </div>
@@ -990,15 +1260,146 @@ export default function TreinoDetalhe() {
   if (!paid) {
     return (
       <div style={S.page}>
-        <div style={S.lockCard}>
-          <div style={S.lockTitle}>Treino em modo “livro”</div>
-          <div style={S.lockText}>Assine para liberar páginas, GIFs, marcação de séries e cronômetro opcional.</div>
-          <button style={S.lockBtn} onClick={() => nav("/planos")} type="button" className="td-press">
-            Ver planos
-          </button>
-          <button style={S.lockGhost} onClick={() => nav("/treino")} type="button" className="td-press">
-            Voltar
-          </button>
+        <div style={S.paywallWrap}>
+          <div style={S.paywallHero}>
+            <div style={S.paywallGlow} aria-hidden="true" />
+
+            <div style={S.paywallTopRow}>
+              <button
+                style={S.back}
+                onClick={() => nav("/treino")}
+                aria-label="Voltar"
+                type="button"
+                className="td-press"
+              >
+                <IconChevronLeft />
+              </button>
+
+              <div style={S.paywallBadge}>
+                <span style={S.paywallBadgeDot} />
+                Premium treino
+              </div>
+            </div>
+
+            <div style={S.paywallKicker}>FitDeal Training</div>
+
+            <div style={S.paywallTitle}>
+              Treine com estrutura.
+              <br />
+              Evolua com direção.
+            </div>
+
+            <div style={S.paywallSubtitle}>
+              Desbloqueie uma experiência completa de treino com organização,
+              personalização e acompanhamento para realmente evoluir no físico,
+              na consistência e na execução.
+            </div>
+
+            <div style={S.paywallPreviewGrid}>
+              <div style={S.paywallMiniCard}>
+                <div style={S.paywallMiniLabel}>Plano inteligente</div>
+                <div style={S.paywallMiniValue}>ABC • ABCD • ABCDEF</div>
+                <div style={S.paywallMiniText}>Monte seu treino do seu jeito.</div>
+              </div>
+
+              <div style={S.paywallMiniCard}>
+                <div style={S.paywallMiniLabel}>Execução visual</div>
+                <div style={S.paywallMiniValue}>GIFs + orientação</div>
+                <div style={S.paywallMiniText}>Veja cada exercício com clareza.</div>
+              </div>
+            </div>
+          </div>
+
+          <PaywallCompareMessages />
+
+          <PaywallTransformationMessages />
+
+          <div style={S.paywallSection}>
+            <div style={S.paywallSectionTitle}>O que você desbloqueia</div>
+
+            <div style={S.featureList}>
+              <div style={S.featureCard}>
+                <div style={S.featureIcon}>A</div>
+                <div style={S.featureBody}>
+                  <div style={S.featureTitle}>Treinos personalizados</div>
+                  <div style={S.featureText}>
+                    Ajuste divisão, escolha exercícios, organize treino A/B/C/D e personalize sua rotina.
+                  </div>
+                </div>
+              </div>
+
+              <div style={S.featureCard}>
+                <div style={S.featureIcon}>GIF</div>
+                <div style={S.featureBody}>
+                  <div style={S.featureTitle}>Execução guiada</div>
+                  <div style={S.featureText}>
+                    Tenha GIFs dos exercícios, orientação visual e mais segurança na hora de treinar.
+                  </div>
+                </div>
+              </div>
+
+              <div style={S.featureCard}>
+                <div style={S.featureIcon}>✓</div>
+                <div style={S.featureBody}>
+                  <div style={S.featureTitle}>Progresso real</div>
+                  <div style={S.featureText}>
+                    Marque séries, acompanhe carga, descanso e mantenha constância com mais controle.
+                  </div>
+                </div>
+              </div>
+
+              <div style={S.featureCard}>
+                <div style={S.featureIcon}>+</div>
+                <div style={S.featureBody}>
+                  <div style={S.featureTitle}>Métodos avançados</div>
+                  <div style={S.featureText}>
+                    Use biset, triset e dropset para um treino mais estratégico e eficiente.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={S.resultBlock}>
+            <div style={S.resultKicker}>O que isso gera em você</div>
+            <div style={S.resultTitle}>Mais resultado. Mais confiança. Mais consistência.</div>
+            <div style={S.resultText}>
+              Um treino bem montado ajuda você a evoluir com mais clareza,
+              controlar volume, melhorar execução, manter disciplina e construir
+              um físico cada vez melhor ao longo do tempo.
+            </div>
+
+            <div style={S.resultPills}>
+              <div style={S.resultPill}>Melhor execução</div>
+              <div style={S.resultPill}>Mais disciplina</div>
+              <div style={S.resultPill}>Mais evolução</div>
+              <div style={S.resultPill}>Treino com lógica</div>
+            </div>
+          </div>
+
+          <div style={S.paywallBottom}>
+            <button
+              style={S.paywallMainBtn}
+              onClick={() => nav("/planos")}
+              type="button"
+              className="td-press"
+            >
+              Desbloquear plano de treino
+            </button>
+
+            <button
+              style={S.paywallGhostBtn}
+              onClick={() => nav("/treino")}
+              type="button"
+              className="td-press"
+            >
+              Agora não
+            </button>
+
+            <div style={S.paywallFootNote}>
+              Libere treino premium e treine com mais organização, clareza e performance.
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1120,6 +1521,7 @@ export default function TreinoDetalhe() {
 
           async function toggleSet(i) {
             let nextDone = 0;
+
             if (i < done) nextDone = i;
             else nextDone = i + 1;
 
@@ -1127,12 +1529,24 @@ export default function TreinoDetalhe() {
 
             if (nextDone > done) {
               const sec = parseRestToSeconds(rest);
+
               setRestTotal(sec);
               setRestLeft(sec);
               setRunning(true);
+
               softPingTimer();
               triggerDoneFlash(p.key);
             }
+          }
+
+          async function completeExercise() {
+            await setDone(ex.name, totalSets);
+
+            triggerDoneFlash(p.key);
+
+            window.setTimeout(() => {
+              goTo(Math.min(pages.length - 1, idx + 1));
+            }, 950);
           }
 
           return (
@@ -1185,6 +1599,7 @@ export default function TreinoDetalhe() {
                   onClick={(e) => onGifClick(ex.name, e)}
                 >
                   <ExerciseGif name={ex.name} />
+
                   <div style={S.gifHintBadge} aria-hidden="true">
                     Toque para ver
                   </div>
@@ -1201,7 +1616,22 @@ export default function TreinoDetalhe() {
                   <Chip label="Descanso" value={String(rest)} />
                 </div>
 
-                <SetDots total={totalSets} done={done} onToggle={toggleSet} />
+                <div style={S.completeRow}>
+                  <SetDots total={totalSets} done={done} onToggle={toggleSet} />
+
+                  <button
+                    type="button"
+                    style={S.completeExerciseBtn}
+                    className="td-press"
+                    onClick={completeExercise}
+                  >
+                    <span style={S.completeExerciseIcon}>✓</span>
+                    <span style={S.completeExerciseText}>
+                      Concluir
+                      <small>exercício</small>
+                    </span>
+                  </button>
+                </div>
 
                 <ComboMethodBlock ex={ex} />
 
@@ -1246,6 +1676,7 @@ export default function TreinoDetalhe() {
                   >
                     ← Anterior
                   </button>
+
                   <button
                     type="button"
                     onClick={() => goTo(Math.min(pages.length - 1, idx + 1))}
@@ -1292,6 +1723,7 @@ export default function TreinoDetalhe() {
         {timerOpen ? (
           <div style={S.dockBody} onClick={(e) => e.stopPropagation()}>
             <div style={S.dockBigTime}>{fmtMMSS(restLeft)}</div>
+
             <div style={S.dockSub}>
               {isExercise ? (
                 <>
@@ -1305,6 +1737,7 @@ export default function TreinoDetalhe() {
             <div style={S.dockBtns}>
               <button type="button" onClick={startTimer} style={S.bigStart} className="td-press" disabled={!isExercise}>
                 {running ? "Rodando..." : restLeft === 0 ? "Recomeçar" : "Começar"}
+
                 <span style={S.bigStartIcon} aria-hidden="true">
                   <IconPlay />
                 </span>
@@ -1350,6 +1783,7 @@ const S = {
     backdropFilter: "blur(14px)",
     WebkitBackdropFilter: "blur(14px)",
   },
+
   headGlow: {
     position: "absolute",
     inset: -40,
@@ -1357,6 +1791,7 @@ const S = {
       "radial-gradient(600px 260px at 20% 10%, rgba(255,106,0,.18), transparent 55%), radial-gradient(520px 260px at 92% 0%, rgba(15,23,42,.10), transparent 58%)",
     pointerEvents: "none",
   },
+
   back: {
     width: 46,
     height: 46,
@@ -1368,9 +1803,31 @@ const S = {
     placeItems: "center",
     flexShrink: 0,
   },
-  hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
-  hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7 },
-  hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+
+  hKicker: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: MUTED,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+
+  hTitle: {
+    marginTop: 6,
+    fontSize: 22,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.7,
+  },
+
+  hLine: {
+    marginTop: 10,
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+
   tagStrong: {
     display: "inline-flex",
     padding: "8px 10px",
@@ -1381,6 +1838,7 @@ const S = {
     fontWeight: 900,
     color: TEXT,
   },
+
   tagSoft: {
     display: "inline-flex",
     padding: "8px 10px",
@@ -1391,12 +1849,38 @@ const S = {
     fontWeight: 900,
     color: TEXT,
   },
-  hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.35 },
 
-  dotsNav: { marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" },
-  dotNav: { width: 10, height: 10, borderRadius: 999, border: "none" },
-  dotNavOn: { background: ORANGE, boxShadow: "0 0 0 6px rgba(255,106,0,.14)" },
-  dotNavOff: { background: "rgba(15,23,42,.14)" },
+  hMeta: {
+    marginTop: 10,
+    fontSize: 12,
+    color: MUTED,
+    fontWeight: 800,
+    lineHeight: 1.35,
+  },
+
+  dotsNav: {
+    marginTop: 12,
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+
+  dotNav: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    border: "none",
+  },
+
+  dotNavOn: {
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
+  },
+
+  dotNavOff: {
+    background: "rgba(15,23,42,.14)",
+  },
 
   pager: {
     marginTop: 12,
@@ -1409,7 +1893,11 @@ const S = {
     gap: 12,
     paddingBottom: 2,
   },
-  pageItem: { scrollSnapAlign: "start", flex: "0 0 100%" },
+
+  pageItem: {
+    scrollSnapAlign: "start",
+    flex: "0 0 100%",
+  },
 
   cardPage: {
     borderRadius: 28,
@@ -1421,6 +1909,7 @@ const S = {
     overflow: "hidden",
     minHeight: "calc(100vh - 290px)",
   },
+
   cardGlow: {
     position: "absolute",
     inset: -40,
@@ -1428,6 +1917,7 @@ const S = {
       "radial-gradient(620px 260px at 18% 0%, rgba(255,106,0,.14), transparent 60%), radial-gradient(520px 240px at 95% 0%, rgba(15,23,42,.10), transparent 62%)",
     pointerEvents: "none",
   },
+
   cardSheen: {
     position: "absolute",
     inset: 0,
@@ -1444,42 +1934,52 @@ const S = {
     display: "grid",
     placeItems: "center",
     pointerEvents: "none",
-    animation: "tdDoneBg .72s ease forwards",
+    animation: "tdDoneBg 1.3s ease forwards",
   },
+
   doneGlow: {
     position: "absolute",
     inset: 0,
     background: "radial-gradient(420px 240px at 50% 45%, rgba(255,106,0,.18), rgba(255,255,255,0) 65%)",
   },
+
   doneMarkWrap: {
     position: "relative",
     display: "grid",
     justifyItems: "center",
     gap: 10,
-    animation: "tdDoneBurst .72s ease forwards",
+    animation: "tdDoneBurst 1.3s ease forwards",
   },
+
   doneMark: {
-    width: 116,
-    height: 116,
+    width: 154,
+    height: 154,
     borderRadius: 999,
     display: "grid",
     placeItems: "center",
     background: "linear-gradient(135deg, rgba(255,106,0,1), rgba(255,138,61,1))",
     color: "#fff",
-    fontSize: 62,
+    fontSize: 82,
     fontWeight: 950,
     lineHeight: 1,
     boxShadow: "0 22px 80px rgba(255,106,0,.34), 0 0 0 10px rgba(255,106,0,.12)",
   },
+
   doneText: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 950,
     color: TEXT,
     letterSpacing: -0.35,
     textShadow: "0 2px 12px rgba(255,255,255,.55)",
   },
 
-  exerciseTop: { position: "relative", display: "flex", gap: 12, alignItems: "center" },
+  exerciseTop: {
+    position: "relative",
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
+
   exerciseIndex: {
     width: 44,
     height: 44,
@@ -1493,8 +1993,22 @@ const S = {
     boxShadow: "0 16px 42px rgba(255,106,0,.22)",
     flexShrink: 0,
   },
-  exerciseName: { fontSize: 18, fontWeight: 950, color: TEXT, letterSpacing: -0.35, lineHeight: 1.15 },
-  exerciseGroup: { marginTop: 5, fontSize: 12, fontWeight: 850, color: MUTED },
+
+  exerciseName: {
+    fontSize: 18,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.35,
+    lineHeight: 1.15,
+  },
+
+  exerciseGroup: {
+    marginTop: 5,
+    fontSize: 12,
+    fontWeight: 850,
+    color: MUTED,
+  },
+
   execBtn: {
     padding: "10px 12px",
     borderRadius: 16,
@@ -1514,7 +2028,13 @@ const S = {
     position: "relative",
     minHeight: 180,
   },
-  gif: { width: "100%", height: 220, objectFit: "cover", display: "block" },
+
+  gif: {
+    width: "100%",
+    height: 220,
+    objectFit: "cover",
+    display: "block",
+  },
 
   gifHintBadge: {
     position: "absolute",
@@ -1542,6 +2062,7 @@ const S = {
       "radial-gradient(520px 220px at 20% 0%, rgba(255,106,0,.10), transparent 60%), linear-gradient(135deg, rgba(255,255,255,.88), rgba(15,23,42,.03))",
     opacity: 0,
   },
+
   gifFallbackBadge: {
     display: "inline-flex",
     padding: "6px 10px",
@@ -1552,6 +2073,7 @@ const S = {
     fontWeight: 950,
     marginBottom: 8,
   },
+
   gifFallbackText: {
     fontSize: 12,
     fontWeight: 850,
@@ -1567,6 +2089,7 @@ const S = {
     gap: 10,
     position: "relative",
   },
+
   chip: {
     borderRadius: 20,
     padding: 12,
@@ -1577,6 +2100,7 @@ const S = {
     overflow: "hidden",
     minHeight: 72,
   },
+
   chipLabel: {
     fontSize: 11,
     fontWeight: 950,
@@ -1584,6 +2108,7 @@ const S = {
     letterSpacing: 0.7,
     textTransform: "uppercase",
   },
+
   chipValue: {
     marginTop: 10,
     fontSize: 18,
@@ -1591,6 +2116,7 @@ const S = {
     color: TEXT,
     letterSpacing: -0.45,
   },
+
   chipSheen: {
     position: "absolute",
     inset: 0,
@@ -1600,8 +2126,16 @@ const S = {
     pointerEvents: "none",
   },
 
-  dotsBox: {
+  completeRow: {
     marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 132px",
+    gap: 10,
+    alignItems: "stretch",
+    position: "relative",
+  },
+
+  dotsBox: {
     borderRadius: 22,
     padding: 14,
     background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(15,23,42,.02))",
@@ -1609,36 +2143,80 @@ const S = {
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     position: "relative",
   },
+
   dotsTitle: {
     fontSize: 12,
     fontWeight: 950,
     color: TEXT,
     letterSpacing: -0.2,
   },
+
   dotsRowInner: {
     marginTop: 10,
     display: "flex",
     gap: 10,
     flexWrap: "wrap",
   },
+
   dotBtn: {
     width: 16,
     height: 16,
     borderRadius: 999,
     border: "none",
   },
+
   dotBtnOn: {
     background: ORANGE,
     boxShadow: "0 0 0 6px rgba(255,106,0,.14)",
   },
+
   dotBtnOff: {
     background: "rgba(15,23,42,.14)",
   },
+
   dotsMini: {
     marginTop: 10,
     fontSize: 12,
     fontWeight: 900,
     color: MUTED,
+  },
+
+  completeExerciseBtn: {
+    border: "none",
+    borderRadius: 22,
+    padding: 12,
+    background: "linear-gradient(135deg, #0B0B0C, #1f2937)",
+    color: "#fff",
+    boxShadow: "0 16px 46px rgba(0,0,0,.18)",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 7,
+    minHeight: 104,
+    fontWeight: 950,
+  },
+
+  completeExerciseIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: 950,
+    boxShadow: "0 12px 32px rgba(255,106,0,.26)",
+  },
+
+  completeExerciseText: {
+    display: "grid",
+    justifyItems: "center",
+    gap: 2,
+    fontSize: 13,
+    lineHeight: 1,
+    letterSpacing: -0.2,
   },
 
   comboBox: {
@@ -1718,13 +2296,21 @@ const S = {
     alignItems: "end",
     position: "relative",
   },
-  loadLeft: { minWidth: 0 },
-  loadRight: { minWidth: 0 },
+
+  loadLeft: {
+    minWidth: 0,
+  },
+
+  loadRight: {
+    minWidth: 0,
+  },
+
   loadLabel: {
     fontSize: 12,
     fontWeight: 900,
     color: MUTED,
   },
+
   loadVal: {
     marginTop: 6,
     fontSize: 18,
@@ -1732,6 +2318,7 @@ const S = {
     color: TEXT,
     letterSpacing: -0.4,
   },
+
   loadHint: {
     marginTop: 6,
     fontSize: 12,
@@ -1739,6 +2326,7 @@ const S = {
     color: "#475569",
     lineHeight: 1.35,
   },
+
   input: {
     width: "100%",
     marginTop: 6,
@@ -1761,19 +2349,28 @@ const S = {
     boxShadow: "0 14px 40px rgba(15,23,42,.06)",
     position: "relative",
   },
+
   execTitle: {
     fontSize: 13,
     fontWeight: 950,
     color: TEXT,
     letterSpacing: -0.2,
   },
-  execArea: { marginTop: 10 },
-  execCue: { marginTop: 10 },
+
+  execArea: {
+    marginTop: 10,
+  },
+
+  execCue: {
+    marginTop: 10,
+  },
+
   execLabel: {
     fontSize: 12,
     fontWeight: 900,
     color: MUTED,
   },
+
   execText: {
     marginTop: 6,
     fontSize: 13,
@@ -1789,6 +2386,7 @@ const S = {
     gap: 10,
     position: "relative",
   },
+
   navBtn: {
     padding: 14,
     borderRadius: 20,
@@ -1798,7 +2396,10 @@ const S = {
     fontWeight: 950,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
-  navBtnDisabled: { opacity: 0.55 },
+
+  navBtnDisabled: {
+    opacity: 0.55,
+  },
 
   endKicker: {
     fontSize: 11,
@@ -1808,6 +2409,7 @@ const S = {
     textTransform: "uppercase",
     position: "relative",
   },
+
   endTitle: {
     marginTop: 10,
     fontSize: 22,
@@ -1816,6 +2418,7 @@ const S = {
     letterSpacing: -0.7,
     position: "relative",
   },
+
   endSub: {
     marginTop: 10,
     fontSize: 13,
@@ -1824,6 +2427,7 @@ const S = {
     lineHeight: 1.5,
     position: "relative",
   },
+
   endCta: {
     marginTop: 16,
     width: "100%",
@@ -1840,6 +2444,7 @@ const S = {
     gap: 10,
     position: "relative",
   },
+
   endCtaIcon: {
     width: 40,
     height: 40,
@@ -1848,6 +2453,7 @@ const S = {
     display: "grid",
     placeItems: "center",
   },
+
   endGhost: {
     marginTop: 10,
     width: "100%",
@@ -1858,6 +2464,7 @@ const S = {
     color: TEXT,
     fontWeight: 950,
   },
+
   endNote: {
     marginTop: 12,
     fontSize: 12,
@@ -1874,11 +2481,13 @@ const S = {
     border: "1px solid rgba(255,106,0,.22)",
     boxShadow: "0 18px 60px rgba(15,23,42,.10)",
   },
+
   lockTitle: {
     fontSize: 16,
     fontWeight: 950,
     color: TEXT,
   },
+
   lockText: {
     marginTop: 6,
     fontSize: 13,
@@ -1886,6 +2495,7 @@ const S = {
     fontWeight: 800,
     lineHeight: 1.4,
   },
+
   lockBtn: {
     marginTop: 10,
     width: "100%",
@@ -1897,6 +2507,7 @@ const S = {
     fontWeight: 950,
     boxShadow: "0 18px 55px rgba(255,106,0,.22)",
   },
+
   lockGhost: {
     marginTop: 10,
     width: "100%",
@@ -1906,6 +2517,401 @@ const S = {
     background: "rgba(255,255,255,.90)",
     color: TEXT,
     fontWeight: 950,
+  },
+
+  paywallWrap: {
+    display: "grid",
+    gap: 14,
+  },
+
+  paywallHero: {
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: 30,
+    padding: 18,
+    background: "linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,247,237,.96))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 24px 80px rgba(15,23,42,.10)",
+  },
+
+  paywallGlow: {
+    position: "absolute",
+    inset: -50,
+    background:
+      "radial-gradient(620px 260px at 18% 0%, rgba(255,106,0,.22), transparent 58%), radial-gradient(520px 260px at 95% 0%, rgba(15,23,42,.08), transparent 62%)",
+    pointerEvents: "none",
+  },
+
+  paywallTopRow: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  paywallBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 14px",
+    borderRadius: 999,
+    background: "rgba(11,11,12,.92)",
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 950,
+    letterSpacing: 0.1,
+    boxShadow: "0 14px 34px rgba(0,0,0,.16)",
+  },
+
+  paywallBadgeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: ORANGE,
+    boxShadow: "0 0 0 6px rgba(255,106,0,.16)",
+  },
+
+  paywallKicker: {
+    position: "relative",
+    marginTop: 18,
+    fontSize: 11,
+    fontWeight: 950,
+    color: ORANGE,
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+  },
+
+  paywallTitle: {
+    position: "relative",
+    marginTop: 10,
+    fontSize: 30,
+    lineHeight: 1.02,
+    fontWeight: 980,
+    color: TEXT,
+    letterSpacing: -1.15,
+  },
+
+  paywallSubtitle: {
+    position: "relative",
+    marginTop: 12,
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: "#475569",
+    fontWeight: 800,
+    maxWidth: 520,
+  },
+
+  paywallPreviewGrid: {
+    position: "relative",
+    marginTop: 18,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+
+  paywallMiniCard: {
+    borderRadius: 22,
+    padding: 14,
+    background: "rgba(255,255,255,.80)",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+  },
+
+  paywallMiniLabel: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: MUTED,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+
+  paywallMiniValue: {
+    marginTop: 7,
+    fontSize: 16,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.4,
+  },
+
+  paywallMiniText: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#475569",
+    lineHeight: 1.35,
+  },
+
+  compareBlock: {
+    borderRadius: 28,
+    padding: 16,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 60px rgba(15,23,42,.06)",
+  },
+
+  compareTitle: {
+    fontSize: 20,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.6,
+  },
+
+  compareGrid: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+
+  compareCard: {
+    borderRadius: 22,
+    padding: 13,
+    background: "rgba(15,23,42,.03)",
+    border: `1px solid ${BORDER}`,
+    display: "grid",
+    gap: 9,
+  },
+
+  compareCardPremium: {
+    background: "linear-gradient(180deg, rgba(255,106,0,.12), rgba(255,255,255,.95))",
+    border: "1px solid rgba(255,106,0,.20)",
+    boxShadow: "0 14px 38px rgba(255,106,0,.12)",
+  },
+
+  comparePlanFree: {
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: 950,
+  },
+
+  comparePlanPremium: {
+    color: ORANGE,
+    fontSize: 13,
+    fontWeight: 980,
+  },
+
+  compareLineOff: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: 850,
+    lineHeight: 1.25,
+  },
+
+  compareLineOn: {
+    fontSize: 12,
+    color: TEXT,
+    fontWeight: 900,
+    lineHeight: 1.25,
+  },
+
+  emotionBlock: {
+    borderRadius: 28,
+    padding: 18,
+    background: "linear-gradient(135deg, rgba(11,11,12,.98), rgba(30,41,59,.98))",
+    color: "#fff",
+    boxShadow: "0 24px 80px rgba(0,0,0,.18)",
+    display: "grid",
+    gap: 14,
+  },
+
+  emotionItem: {
+    display: "grid",
+    gap: 6,
+  },
+
+  emotionSmall: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: "rgba(255,255,255,.50)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+
+  emotionSmallOn: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: ORANGE,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+
+  emotionTextMuted: {
+    fontSize: 20,
+    fontWeight: 950,
+    lineHeight: 1.1,
+    color: "rgba(255,255,255,.62)",
+    letterSpacing: -0.5,
+  },
+
+  emotionText: {
+    fontSize: 25,
+    fontWeight: 980,
+    lineHeight: 1.05,
+    color: "#fff",
+    letterSpacing: -0.9,
+  },
+
+  emotionDivider: {
+    height: 1,
+    background: "linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent)",
+  },
+
+  paywallSection: {
+    borderRadius: 28,
+    padding: 16,
+    background: "linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.94))",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 60px rgba(15,23,42,.06)",
+  },
+
+  paywallSectionTitle: {
+    fontSize: 20,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.6,
+  },
+
+  featureList: {
+    marginTop: 14,
+    display: "grid",
+    gap: 10,
+  },
+
+  featureCard: {
+    display: "flex",
+    gap: 12,
+    alignItems: "flex-start",
+    borderRadius: 22,
+    padding: 14,
+    background: "#fff",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 12px 30px rgba(15,23,42,.05)",
+  },
+
+  featureIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    flexShrink: 0,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: "0 14px 30px rgba(255,106,0,.24)",
+  },
+
+  featureBody: {
+    minWidth: 0,
+  },
+
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: 950,
+    color: TEXT,
+    letterSpacing: -0.2,
+  },
+
+  featureText: {
+    marginTop: 5,
+    fontSize: 13,
+    lineHeight: 1.45,
+    color: "#475569",
+    fontWeight: 800,
+  },
+
+  resultBlock: {
+    borderRadius: 28,
+    padding: 18,
+    background: "linear-gradient(135deg, rgba(11,11,12,.98), rgba(30,41,59,.98))",
+    color: "#fff",
+    boxShadow: "0 24px 80px rgba(0,0,0,.18)",
+  },
+
+  resultKicker: {
+    fontSize: 11,
+    fontWeight: 950,
+    color: "rgba(255,255,255,.65)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+
+  resultTitle: {
+    marginTop: 10,
+    fontSize: 24,
+    lineHeight: 1.08,
+    fontWeight: 980,
+    letterSpacing: -0.8,
+  },
+
+  resultText: {
+    marginTop: 12,
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: "rgba(255,255,255,.78)",
+    fontWeight: 800,
+  },
+
+  resultPills: {
+    marginTop: 14,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  resultPill: {
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,.10)",
+    border: "1px solid rgba(255,255,255,.10)",
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
+  paywallBottom: {
+    borderRadius: 28,
+    padding: 16,
+    background: "rgba(255,255,255,.96)",
+    border: `1px solid ${BORDER}`,
+    boxShadow: "0 18px 60px rgba(15,23,42,.06)",
+  },
+
+  paywallMainBtn: {
+    width: "100%",
+    height: 56,
+    border: "none",
+    borderRadius: 20,
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    color: "#111",
+    fontSize: 15,
+    fontWeight: 980,
+    boxShadow: "0 18px 50px rgba(255,106,0,.24)",
+  },
+
+  paywallGhostBtn: {
+    width: "100%",
+    height: 52,
+    marginTop: 10,
+    borderRadius: 20,
+    border: `1px solid ${BORDER}`,
+    background: "#fff",
+    color: TEXT,
+    fontSize: 14,
+    fontWeight: 950,
+  },
+
+  paywallFootNote: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 1.4,
+    color: MUTED,
+    fontWeight: 800,
   },
 
   dock: {
@@ -1925,8 +2931,14 @@ const S = {
     cursor: "pointer",
     animation: "tdPop 6s ease-in-out infinite",
   },
-  dockOpen: { paddingBottom: 14 },
-  dockClosed: { paddingBottom: 10 },
+
+  dockOpen: {
+    paddingBottom: 14,
+  },
+
+  dockClosed: {
+    paddingBottom: 10,
+  },
 
   dockHeader: {
     display: "flex",
@@ -1934,6 +2946,7 @@ const S = {
     justifyContent: "space-between",
     gap: 12,
   },
+
   dockPill: {
     display: "inline-flex",
     alignItems: "center",
@@ -1944,6 +2957,7 @@ const S = {
     border: "1px solid rgba(255,106,0,.18)",
     boxShadow: "0 14px 34px rgba(255,106,0,.10)",
   },
+
   dockIcon: {
     width: 34,
     height: 34,
@@ -1953,6 +2967,7 @@ const S = {
     background: "rgba(255,255,255,.70)",
     border: "1px solid rgba(255,255,255,.55)",
   },
+
   dockTitle: {
     fontSize: 12,
     fontWeight: 950,
@@ -1964,12 +2979,14 @@ const S = {
     justifyItems: "end",
     gap: 2,
   },
+
   dockMiniTime: {
     fontSize: 14,
     fontWeight: 950,
     color: TEXT,
     letterSpacing: -0.2,
   },
+
   dockMiniState: {
     fontSize: 11,
     fontWeight: 900,
@@ -1980,12 +2997,14 @@ const S = {
     marginTop: 12,
     cursor: "default",
   },
+
   dockBigTime: {
     fontSize: 34,
     fontWeight: 950,
     color: TEXT,
     letterSpacing: -1,
   },
+
   dockSub: {
     marginTop: 6,
     fontSize: 12,
@@ -2016,6 +3035,7 @@ const S = {
     gap: 10,
     boxShadow: "0 18px 55px rgba(0,0,0,.18)",
   },
+
   bigStartIcon: {
     width: 42,
     height: 42,
@@ -2037,6 +3057,7 @@ const S = {
     gap: 10,
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
+
   resetBtn: {
     width: 50,
     height: 50,
@@ -2047,6 +3068,7 @@ const S = {
     placeItems: "center",
     boxShadow: "0 14px 34px rgba(15,23,42,.06)",
   },
+
   dockHint: {
     marginTop: 10,
     fontSize: 11,
@@ -2067,6 +3089,7 @@ const S = {
     backdropFilter: "blur(8px)",
     WebkitBackdropFilter: "blur(8px)",
   },
+
   gifSheet: {
     width: "100%",
     maxWidth: 640,
@@ -2078,13 +3101,18 @@ const S = {
     overflow: "hidden",
     padding: 14,
   },
-  gifSheetTop: { padding: "6px 6px 10px" },
+
+  gifSheetTop: {
+    padding: "6px 6px 10px",
+  },
+
   gifSheetTitle: {
     fontSize: 14,
     fontWeight: 950,
     color: TEXT,
     letterSpacing: -0.2,
   },
+
   gifSheetSub: {
     marginTop: 4,
     fontSize: 12,
@@ -2099,6 +3127,7 @@ const S = {
     background: "rgba(15,23,42,.03)",
     position: "relative",
   },
+
   gifFull: {
     width: "100%",
     height: "min(72vh, 560px)",
@@ -2134,13 +3163,16 @@ const S = {
 
 if (typeof window !== "undefined") {
   const id = "td-gif-missing-style";
+
   if (!document.getElementById(id)) {
     const st = document.createElement("style");
+
     st.id = id;
     st.innerHTML = `
       [data-gif-missing="1"] img { display: none !important; }
       [data-gif-missing="1"] > div { opacity: 1 !important; }
     `;
+
     document.head.appendChild(st);
   }
 }
