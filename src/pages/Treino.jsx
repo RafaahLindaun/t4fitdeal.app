@@ -1034,41 +1034,81 @@ export default function Treino() {
       </button>
 
       {/* MONTAGEM DE TREINO */}
-      <section style={styles.quickMountCard}>
-        <div style={styles.quickMountTop}>
-          <div style={styles.quickMountBadge}>Novo</div>
+      <button
+        className="apple-press"
+        type="button"
+        style={styles.quickMountCard}
+        onClick={openLatestMontageOrCreate}
+        aria-label="Abrir montagem de treino"
+      >
+        <span style={styles.quickMountTail} />
+        <span style={styles.quickMountGlow} />
+        <span style={styles.quickMountSparkA} />
+        <span style={styles.quickMountSparkB} />
+        <span style={styles.quickMountSparkC} />
 
-          {latestMontage?.title ? (
-            <div style={styles.quickMountStatus}>Última: {latestMontage.title}</div>
-          ) : (
-            <div style={styles.quickMountStatus}>Mais simples</div>
-          )}
-        </div>
+        <span style={styles.quickMountIconBox}>
+          <span style={styles.quickMountMiniBadge}>✦</span>
+          <span style={styles.quickMountDumbbell} aria-hidden="true">
+            <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
+              <path
+                d="M13 17v14M18 14v20M30 14v20M35 17v14"
+                stroke="#FF6A00"
+                strokeWidth="4.2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M18 24h12"
+                stroke="#FF6A00"
+                strokeWidth="4.2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M25.5 15.5 20.8 25H27l-4.5 7.5"
+                stroke="#FF6A00"
+                strokeWidth="3.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        </span>
 
-        <div style={styles.quickMountTitle}>Montagem de treino</div>
+        <span style={styles.quickMountContent}>
+          <span style={styles.quickMountTop}>
+            <span style={styles.quickMountBadge}>Novo</span>
+            <span style={styles.quickMountStatus}>
+              {latestMontage?.title ? `Última: ${latestMontage.title}` : "Mais simples"}
+            </span>
+          </span>
 
-        <div style={styles.quickMountSub}>
-          Escolha um foco, veja exercícios com mais clareza e abra um treino pronto sem configurar tudo manualmente.
-        </div>
+          <span style={styles.quickMountTitle}>Montagem de treino</span>
 
-        <div style={styles.quickMountActions}>
-          <button
-            type="button"
-            style={styles.quickMountSecondary}
-            onClick={openMontagemTreino}
-          >
-            Montar novo
-          </button>
+          <span style={styles.quickMountSub}>
+            {latestMontage?.id
+              ? "Abrir sua montagem pronta"
+              : "Monte um treino rápido do seu jeito"}
+          </span>
+        </span>
 
-          <button
-            type="button"
-            style={styles.quickMountPrimary}
-            onClick={openLatestMontageOrCreate}
-          >
-            {latestMontage?.id ? "Abrir montagem" : "Começar"}
-          </button>
-        </div>
-      </section>
+        <span style={styles.quickMountArrow} aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M5 12h13"
+              stroke="#FF6A00"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+            />
+            <path
+              d="M13 6l6 6-6 6"
+              stroke="#FF6A00"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
 
       {/* CARD: METAS */}
       <div style={styles.card}>
@@ -1466,23 +1506,139 @@ const styles = {
   progressHint: { marginTop: 10, fontSize: 12, fontWeight: 850, color: MUTED },
 
   quickMountCard: {
-    marginTop: 14,
-    borderRadius: 26,
-    padding: 16,
+    marginTop: 18,
+    width: "100%",
+    minHeight: 116,
+    border: "1px solid rgba(255,255,255,.78)",
+    borderRadius: "28px 28px 28px 8px",
+    padding: "16px 14px 16px 16px",
     background:
-      "radial-gradient(circle at 88% 8%, rgba(255,106,0,.36), rgba(255,106,0,0) 34%), linear-gradient(135deg, #050506, #121214)",
-    color: "#fff",
-    boxShadow: "0 22px 70px rgba(0,0,0,.20)",
+      "radial-gradient(circle at 90% 45%, rgba(255,106,0,.12), rgba(255,106,0,0) 38%), linear-gradient(135deg, rgba(255,255,255,.98), rgba(255,246,238,.96))",
+    color: TEXT,
+    boxShadow:
+      "0 24px 70px rgba(255,106,0,.18), 0 20px 54px rgba(15,23,42,.11), inset 0 1px 0 rgba(255,255,255,.95)",
     display: "grid",
-    gap: 12,
-    overflow: "hidden",
+    gridTemplateColumns: "76px 1fr 48px",
+    alignItems: "center",
+    gap: 14,
+    textAlign: "left",
+    position: "relative",
+    overflow: "visible",
+    transform: "translateX(0)",
+    animation: "messageFloat 4s ease-in-out infinite",
+  },
+
+  quickMountTail: {
+    position: "absolute",
+    left: -1,
+    bottom: -1,
+    width: 26,
+    height: 26,
+    background: "rgba(255,255,255,.98)",
+    borderLeft: "1px solid rgba(255,255,255,.78)",
+    borderBottom: "1px solid rgba(255,255,255,.78)",
+    borderBottomLeftRadius: 22,
+    clipPath: "polygon(0 30%, 100% 0, 100% 100%, 0 100%)",
+    boxShadow: "-10px 12px 24px rgba(15,23,42,.07)",
+  },
+
+  quickMountGlow: {
+    position: "absolute",
+    right: -26,
+    bottom: -34,
+    width: 126,
+    height: 126,
+    borderRadius: 999,
+    background: "rgba(255,106,0,.20)",
+    filter: "blur(22px)",
+    pointerEvents: "none",
+  },
+
+  quickMountSparkA: {
+    position: "absolute",
+    right: 4,
+    top: -12,
+    width: 4,
+    height: 20,
+    borderRadius: 99,
+    background: ORANGE,
+    transform: "rotate(8deg)",
+    boxShadow: "0 8px 18px rgba(255,106,0,.30)",
+  },
+
+  quickMountSparkB: {
+    position: "absolute",
+    right: -10,
+    top: 8,
+    width: 4,
+    height: 20,
+    borderRadius: 99,
+    background: ORANGE,
+    transform: "rotate(45deg)",
+    boxShadow: "0 8px 18px rgba(255,106,0,.30)",
+  },
+
+  quickMountSparkC: {
+    position: "absolute",
+    left: -10,
+    bottom: 8,
+    width: 4,
+    height: 18,
+    borderRadius: 99,
+    background: ORANGE,
+    transform: "rotate(72deg)",
+    boxShadow: "0 8px 18px rgba(255,106,0,.30)",
+  },
+
+  quickMountIconBox: {
+    width: 76,
+    height: 76,
+    borderRadius: 28,
+    background:
+      "radial-gradient(circle at 32% 18%, rgba(255,255,255,.95), rgba(255,255,255,0) 35%), linear-gradient(135deg, rgba(255,106,0,.16), rgba(255,106,0,.06))",
+    border: "1px solid rgba(255,106,0,.10)",
+    display: "grid",
+    placeItems: "center",
+    position: "relative",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.85), 0 16px 36px rgba(255,106,0,.10)",
+    flexShrink: 0,
+  },
+
+  quickMountMiniBadge: {
+    position: "absolute",
+    left: -5,
+    top: -7,
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #FF6A00, #FF944D)",
+    color: "#fff",
+    display: "grid",
+    placeItems: "center",
+    fontSize: 14,
+    fontWeight: 950,
+    boxShadow: "0 12px 26px rgba(255,106,0,.28)",
+  },
+
+  quickMountDumbbell: {
+    display: "grid",
+    placeItems: "center",
+    filter: "drop-shadow(0 10px 14px rgba(255,106,0,.18))",
+  },
+
+  quickMountContent: {
+    minWidth: 0,
+    display: "grid",
+    gap: 6,
+    position: "relative",
+    zIndex: 1,
   },
 
   quickMountTop: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
+    gap: 8,
+    minWidth: 0,
   },
 
   quickMountBadge: {
@@ -1491,68 +1647,55 @@ const styles = {
     justifyContent: "center",
     width: "fit-content",
     borderRadius: 999,
-    padding: "7px 10px",
-    background: "rgba(255,106,0,.16)",
-    color: "#FFB26B",
-    border: "1px solid rgba(255,106,0,.28)",
-    fontSize: 11,
+    padding: "5px 8px",
+    background: "rgba(255,106,0,.12)",
+    color: ORANGE,
+    border: "1px solid rgba(255,106,0,.18)",
+    fontSize: 10,
     fontWeight: 950,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 1,
+    flexShrink: 0,
   },
 
   quickMountStatus: {
     minWidth: 0,
-    maxWidth: 160,
     overflow: "hidden",
     whiteSpace: "nowrap",
     textOverflow: "ellipsis",
-    color: "rgba(255,255,255,.58)",
+    color: "#94a3b8",
     fontSize: 11,
     fontWeight: 850,
   },
 
   quickMountTitle: {
-    marginTop: 2,
-    fontSize: 24,
-    lineHeight: 1,
+    display: "block",
+    fontSize: 20,
+    lineHeight: 1.06,
     fontWeight: 980,
-    letterSpacing: -0.8,
+    letterSpacing: -0.7,
+    color: "#111827",
   },
 
   quickMountSub: {
-    color: "rgba(255,255,255,.70)",
+    display: "block",
+    color: "#64748b",
     fontSize: 13,
-    lineHeight: 1.45,
-    fontWeight: 750,
+    lineHeight: 1.34,
+    fontWeight: 800,
   },
 
-  quickMountActions: {
+  quickMountArrow: {
+    width: 46,
+    height: 46,
+    borderRadius: 999,
+    background: "rgba(255,255,255,.78)",
+    border: "1px solid rgba(15,23,42,.06)",
     display: "grid",
-    gridTemplateColumns: "1fr 1.05fr",
-    gap: 10,
-    marginTop: 2,
-  },
-
-  quickMountSecondary: {
-    height: 50,
-    border: "1px solid rgba(255,255,255,.12)",
-    borderRadius: 18,
-    background: "rgba(255,255,255,.08)",
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: 950,
-  },
-
-  quickMountPrimary: {
-    height: 50,
-    border: "none",
-    borderRadius: 18,
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-    color: "#111",
-    fontSize: 14,
-    fontWeight: 980,
-    boxShadow: "0 16px 42px rgba(255,106,0,.24)",
+    placeItems: "center",
+    position: "relative",
+    zIndex: 1,
+    boxShadow: "0 16px 34px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.92)",
   },
 
   card: {
@@ -1815,6 +1958,10 @@ if (typeof document !== "undefined") {
       @keyframes softFloat {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-2px); }
+      }
+      @keyframes messageFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-3px); }
       }
       @keyframes finishFloat {
         0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
