@@ -908,6 +908,92 @@ function WeekTimeline({ sessions }) {
 
 }
 
+function CardioPremiumPreview() {
+
+  return (
+
+    <div style={S.previewCard}>
+
+      <div style={S.previewRing}>
+
+        <div style={S.previewRingInner}>
+
+          <div style={S.previewTime}>28:34</div>
+
+          <div style={S.previewSub}>de 45:00</div>
+
+        </div>
+
+      </div>
+
+      <div style={S.previewSide}>
+
+        <div style={S.previewWeekTitle}>Progresso</div>
+
+        <div style={S.previewBars}>
+
+          {[32, 62, 74, 42, 60, 92, 48].map((h, i) => (
+
+            <span
+
+              key={i}
+
+              style={{
+
+                ...S.previewBar,
+
+                height: h,
+
+                background: i === 5 ? "linear-gradient(180deg, #FF6A00, #FFB26B)" : "rgba(255,255,255,.20)",
+
+              }}
+
+            />
+
+          ))}
+
+        </div>
+
+        <div style={S.previewMiniGrid}>
+
+          <div style={S.previewMini}>
+
+            <IconFlame />
+
+            <b>1.248</b>
+
+            <span>kcal</span>
+
+          </div>
+
+          <div style={S.previewMini}>
+
+            <IconClock />
+
+            <b>4h32</b>
+
+            <span>total</span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div style={S.previewLock}>
+
+        <span>🔒</span>
+
+        Recurso Premium
+
+      </div>
+
+    </div>
+
+  );
+
+}
+
 /* ---------------- PAGE ---------------- */
 
 export default function Cardio() {
@@ -1149,6 +1235,18 @@ export default function Cardio() {
     return true;
 
   }
+
+  useEffect(() => {
+
+    document.body.classList.add("fitdeal-hide-bottom-menu");
+
+    return () => {
+
+      document.body.classList.remove("fitdeal-hide-bottom-menu");
+
+    };
+
+  }, []);
 
   useEffect(() => {
 
@@ -1402,29 +1500,13 @@ export default function Cardio() {
 
     };
 
-  }, [
-
-    running,
-
-    mode,
-
-    durationSec,
-
-    userId,
-
-    selectedWorkoutId,
-
-    selectedIntensity,
-
-    minutes,
-
-  ]);
+  }, [running, mode, durationSec, userId, selectedWorkoutId, selectedIntensity, minutes]);
 
   useEffect(() => {
 
     if (typeof document === "undefined") return;
 
-    const id = "cardio-apple-glass-ui-v13";
+    const id = "cardio-apple-glass-ui-v14";
 
     if (document.getElementById(id)) return;
 
@@ -1459,6 +1541,24 @@ export default function Cardio() {
         border-color: rgba(255,106,0,.38) !important;
 
         box-shadow: 0 0 0 4px rgba(255,106,0,.10), inset 0 1px 0 rgba(255,255,255,.7) !important;
+
+      }
+
+      body.fitdeal-hide-bottom-menu [data-bottom-menu],
+
+      body.fitdeal-hide-bottom-menu [data-testid="bottom-menu"],
+
+      body.fitdeal-hide-bottom-menu .bottom-menu,
+
+      body.fitdeal-hide-bottom-menu .bottomMenu,
+
+      body.fitdeal-hide-bottom-menu .BottomMenu,
+
+      body.fitdeal-hide-bottom-menu .bottom-nav,
+
+      body.fitdeal-hide-bottom-menu .bottomNav {
+
+        display: none !important;
 
       }
 
@@ -1988,21 +2088,31 @@ export default function Cardio() {
 
               <span style={S.paywallBadgeDot} />
 
-              Cardio Premium
+              Premium
 
             </div>
 
           </div>
 
-          <div style={S.paywallKicker}>FitDeal Cardio</div>
+          <div style={S.paywallLogo}>
 
-          <div style={S.paywallTitle}>Desbloqueie seu Cardio</div>
+            Fit<span>Deal</span>
+
+          </div>
+
+          <div style={S.paywallTitle}>
+
+            Cardio <span>Premium</span>
+
+          </div>
 
           <div style={S.paywallText}>
 
-            Tenha timer, sessões guiadas e controle simples para evoluir seu condicionamento.
+            Mais controle, mais consistência, mais resultado.
 
           </div>
+
+          <CardioPremiumPreview />
 
           <div style={S.paywallCards}>
 
@@ -2014,29 +2124,23 @@ export default function Cardio() {
 
               </div>
 
-              <div>
+              <div style={{ minWidth: 0, flex: 1 }}>
 
-                <div style={S.paywallFeatureTitle}>Cronômetro inteligente</div>
+                <div style={S.paywallFeatureTitle}>Timer inteligente</div>
 
-                <div style={S.paywallFeatureText}>Controle seu tempo de cardio com praticidade e foco.</div>
+                <div style={S.paywallFeatureText}>
 
-              </div>
+                  Controle tempo, ritmo e descanso com leveza.
 
-            </div>
-
-            <div style={S.paywallFeature}>
-
-              <div style={S.paywallFeatureIcon}>
-
-                <IconPlay />
+                </div>
 
               </div>
 
-              <div>
+              <div style={S.paywallMiniPreviewDark}>
 
-                <div style={S.paywallFeatureTitle}>Sessões guiadas</div>
+                <div style={S.paywallMiniSmall}>Aquecimento</div>
 
-                <div style={S.paywallFeatureText}>Escolha intensidade, duração e siga seu treino com clareza.</div>
+                <div style={S.paywallMiniTime}>01:30</div>
 
               </div>
 
@@ -2050,11 +2154,55 @@ export default function Cardio() {
 
               </div>
 
-              <div>
+              <div style={{ minWidth: 0, flex: 1 }}>
 
-                <div style={S.paywallFeatureTitle}>Evolução e consistência</div>
+                <div style={S.paywallFeatureTitle}>Meta por calorias</div>
 
-                <div style={S.paywallFeatureText}>Acompanhe sessões e mantenha frequência para melhores resultados.</div>
+                <div style={S.paywallFeatureText}>
+
+                  Descubra quanto tempo precisa para bater sua meta.
+
+                </div>
+
+              </div>
+
+              <div style={S.paywallMiniPreviewLight}>
+
+                <div style={S.paywallMiniSmallOrange}>Meta: 600 kcal</div>
+
+                <div style={S.paywallMiniBig}>600</div>
+
+              </div>
+
+            </div>
+
+            <div style={S.paywallFeature}>
+
+              <div style={S.paywallFeatureIcon}>
+
+                <span style={{ fontSize: 22, lineHeight: 1 }}>▮</span>
+
+              </div>
+
+              <div style={{ minWidth: 0, flex: 1 }}>
+
+                <div style={S.paywallFeatureTitle}>Evolução semanal</div>
+
+                <div style={S.paywallFeatureText}>
+
+                  Veja seu histórico e mantenha constância no cardio.
+
+                </div>
+
+              </div>
+
+              <div style={S.paywallDots}>
+
+                {[1, 1, 1, 1, 1, 0, 0].map((on, i) => (
+
+                  <span key={i} style={{ ...S.paywallDot, ...(on ? S.paywallDotOn : null) }} />
+
+                ))}
 
               </div>
 
@@ -2065,6 +2213,8 @@ export default function Cardio() {
           <div style={S.paywallActions}>
 
             <button style={S.paywallMainBtn} onClick={() => nav("/planos")} type="button" className="cd-press">
+
+              <span style={S.paywallCrown}>♛</span>
 
               Ver planos
 
@@ -2078,9 +2228,15 @@ export default function Cardio() {
 
             <button style={S.paywallGhostBtn} onClick={() => nav("/treino")} type="button" className="cd-press">
 
-              Voltar ao treino
+              ← Voltar ao treino
 
             </button>
+
+            <div style={S.paywallFoot}>
+
+              🔒 Recurso exclusivo para assinantes Premium
+
+            </div>
 
           </div>
 
@@ -2346,7 +2502,7 @@ export default function Cardio() {
 
                 onClick={() => changeMode("timer")}
 
-                style={{ ...S.modeBtn, ...(mode === "timer" ? S.modeBtnOn : S.modeBtnOff) }}
+                style={{ ...S.modeBtn, ...(mode === "timer ? S.modeBtnOn : S.modeBtnOff) }}
 
                 className="cd-press"
 
@@ -3588,11 +3744,49 @@ const S = {
 
   },
 
-  hKicker: { fontSize: 11, fontWeight: 950, color: MUTED, letterSpacing: 0.8, textTransform: "uppercase" },
+  hKicker: {
 
-  hTitle: { marginTop: 6, fontSize: 22, fontWeight: 950, color: TEXT, letterSpacing: -0.7, lineHeight: 1.1 },
+    fontSize: 11,
 
-  hLine: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+    fontWeight: 950,
+
+    color: MUTED,
+
+    letterSpacing: 0.8,
+
+    textTransform: "uppercase",
+
+  },
+
+  hTitle: {
+
+    marginTop: 6,
+
+    fontSize: 22,
+
+    fontWeight: 950,
+
+    color: TEXT,
+
+    letterSpacing: -0.7,
+
+    lineHeight: 1.1,
+
+  },
+
+  hLine: {
+
+    marginTop: 10,
+
+    display: "flex",
+
+    gap: 8,
+
+    flexWrap: "wrap",
+
+    alignItems: "center",
+
+  },
 
   tagStrong: {
 
@@ -3634,7 +3828,19 @@ const S = {
 
   },
 
-  hMeta: { marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800, lineHeight: 1.4 },
+  hMeta: {
+
+    marginTop: 10,
+
+    fontSize: 12,
+
+    color: MUTED,
+
+    fontWeight: 800,
+
+    lineHeight: 1.4,
+
+  },
 
   cardioPaywall: {
 
@@ -3728,21 +3934,23 @@ const S = {
 
   },
 
-  paywallKicker: {
+  paywallLogo: {
 
     position: "relative",
 
-    marginTop: 28,
+    marginTop: 22,
 
-    fontSize: 11,
+    textAlign: "center",
 
-    fontWeight: 950,
+    color: "#111",
 
-    color: ORANGE,
+    fontSize: 25,
 
-    letterSpacing: 1.1,
+    fontWeight: 980,
 
-    textTransform: "uppercase",
+    letterSpacing: -0.8,
+
+    fontStyle: "italic",
 
   },
 
@@ -3750,17 +3958,19 @@ const S = {
 
     position: "relative",
 
-    marginTop: 10,
+    marginTop: 22,
 
-    fontSize: 34,
+    fontSize: 38,
 
-    lineHeight: 1.02,
+    lineHeight: 1,
 
     fontWeight: 980,
 
     color: TEXT,
 
-    letterSpacing: -1.25,
+    letterSpacing: -1.45,
+
+    textAlign: "center",
 
   },
 
@@ -3778,7 +3988,215 @@ const S = {
 
     fontWeight: 800,
 
-    maxWidth: 520,
+    textAlign: "center",
+
+  },
+
+  previewCard: {
+
+    position: "relative",
+
+    marginTop: 24,
+
+    borderRadius: 28,
+
+    padding: 18,
+
+    minHeight: 220,
+
+    background: "linear-gradient(135deg, #0B0B0C, #1f2937)",
+
+    border: "1px solid rgba(255,255,255,.14)",
+
+    boxShadow: "0 24px 70px rgba(0,0,0,.24)",
+
+    display: "grid",
+
+    gridTemplateColumns: "1fr 1fr",
+
+    gap: 14,
+
+    alignItems: "center",
+
+    overflow: "hidden",
+
+  },
+
+  previewRing: {
+
+    width: 132,
+
+    height: 132,
+
+    borderRadius: 999,
+
+    background: `conic-gradient(${ORANGE} 0deg, ${ORANGE_2} 260deg, rgba(255,255,255,.10) 260deg)`,
+
+    display: "grid",
+
+    placeItems: "center",
+
+    margin: "0 auto",
+
+    boxShadow: "0 0 0 10px rgba(255,255,255,.04)",
+
+  },
+
+  previewRingInner: {
+
+    width: 100,
+
+    height: 100,
+
+    borderRadius: 999,
+
+    background: "#0B0B0C",
+
+    display: "grid",
+
+    placeItems: "center",
+
+    alignContent: "center",
+
+  },
+
+  previewTime: {
+
+    color: "#fff",
+
+    fontSize: 28,
+
+    fontWeight: 980,
+
+    letterSpacing: -1,
+
+  },
+
+  previewSub: {
+
+    marginTop: 3,
+
+    color: "rgba(255,255,255,.65)",
+
+    fontSize: 12,
+
+    fontWeight: 850,
+
+  },
+
+  previewSide: {
+
+    minWidth: 0,
+
+    display: "grid",
+
+    gap: 10,
+
+  },
+
+  previewWeekTitle: {
+
+    color: "#fff",
+
+    fontSize: 13,
+
+    fontWeight: 950,
+
+  },
+
+  previewBars: {
+
+    height: 84,
+
+    display: "flex",
+
+    alignItems: "end",
+
+    gap: 10,
+
+  },
+
+  previewBar: {
+
+    width: 13,
+
+    borderRadius: 999,
+
+    display: "block",
+
+  },
+
+  previewMiniGrid: {
+
+    display: "grid",
+
+    gridTemplateColumns: "1fr 1fr",
+
+    gap: 8,
+
+  },
+
+  previewMini: {
+
+    minHeight: 58,
+
+    borderRadius: 16,
+
+    background: "rgba(255,255,255,.08)",
+
+    border: "1px solid rgba(255,255,255,.10)",
+
+    color: "#fff",
+
+    display: "grid",
+
+    alignContent: "center",
+
+    justifyItems: "center",
+
+    gap: 2,
+
+    fontSize: 11,
+
+  },
+
+  previewLock: {
+
+    position: "absolute",
+
+    left: "50%",
+
+    bottom: 12,
+
+    transform: "translateX(-50%)",
+
+    padding: "10px 16px",
+
+    borderRadius: 999,
+
+    background: "rgba(255,255,255,.22)",
+
+    border: "1px solid rgba(255,255,255,.20)",
+
+    backdropFilter: "blur(14px)",
+
+    WebkitBackdropFilter: "blur(14px)",
+
+    color: "#fff",
+
+    fontSize: 13,
+
+    fontWeight: 950,
+
+    display: "inline-flex",
+
+    alignItems: "center",
+
+    gap: 8,
+
+    boxShadow: "0 14px 34px rgba(0,0,0,.22)",
+
+    whiteSpace: "nowrap",
 
   },
 
@@ -3786,7 +4204,7 @@ const S = {
 
     position: "relative",
 
-    marginTop: 22,
+    marginTop: 18,
 
     display: "grid",
 
@@ -3800,13 +4218,13 @@ const S = {
 
     gap: 12,
 
-    alignItems: "flex-start",
+    alignItems: "center",
 
     borderRadius: 24,
 
     padding: 14,
 
-    background: "rgba(255,255,255,.78)",
+    background: "rgba(255,255,255,.84)",
 
     border: `1px solid ${BORDER}`,
 
@@ -3820,11 +4238,11 @@ const S = {
 
   paywallFeatureIcon: {
 
-    width: 44,
+    width: 54,
 
-    height: 44,
+    height: 54,
 
-    borderRadius: 17,
+    borderRadius: 999,
 
     flexShrink: 0,
 
@@ -3832,23 +4250,25 @@ const S = {
 
     placeItems: "center",
 
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    background: "rgba(255,106,0,.08)",
 
-    color: "#fff",
+    color: ORANGE,
 
-    boxShadow: "0 14px 30px rgba(255,106,0,.24)",
+    border: `1px solid ${BORDER}`,
+
+    boxShadow: "0 12px 26px rgba(15,23,42,.04)",
 
   },
 
   paywallFeatureTitle: {
 
-    fontSize: 15,
+    fontSize: 16,
 
     fontWeight: 950,
 
     color: TEXT,
 
-    letterSpacing: -0.25,
+    letterSpacing: -0.3,
 
   },
 
@@ -3863,6 +4283,142 @@ const S = {
     color: "#475569",
 
     fontWeight: 800,
+
+  },
+
+  paywallMiniPreviewDark: {
+
+    width: 96,
+
+    minHeight: 58,
+
+    borderRadius: 16,
+
+    background: "#0B0B0C",
+
+    color: "#fff",
+
+    display: "grid",
+
+    alignContent: "center",
+
+    padding: 10,
+
+    flexShrink: 0,
+
+  },
+
+  paywallMiniSmall: {
+
+    fontSize: 10,
+
+    fontWeight: 800,
+
+    color: "rgba(255,255,255,.65)",
+
+  },
+
+  paywallMiniSmallOrange: {
+
+    fontSize: 10,
+
+    fontWeight: 900,
+
+    color: ORANGE,
+
+  },
+
+  paywallMiniTime: {
+
+    marginTop: 4,
+
+    fontSize: 20,
+
+    fontWeight: 980,
+
+    letterSpacing: -0.7,
+
+  },
+
+  paywallMiniPreviewLight: {
+
+    width: 96,
+
+    minHeight: 58,
+
+    borderRadius: 16,
+
+    background: "#fff",
+
+    color: TEXT,
+
+    display: "grid",
+
+    alignContent: "center",
+
+    padding: 10,
+
+    flexShrink: 0,
+
+    border: `1px solid ${BORDER}`,
+
+    boxShadow: "0 12px 26px rgba(15,23,42,.05)",
+
+  },
+
+  paywallMiniBig: {
+
+    marginTop: 3,
+
+    fontSize: 24,
+
+    fontWeight: 980,
+
+    letterSpacing: -0.8,
+
+  },
+
+  paywallDots: {
+
+    width: 96,
+
+    minHeight: 58,
+
+    borderRadius: 16,
+
+    background: "#fff",
+
+    border: `1px solid ${BORDER}`,
+
+    boxShadow: "0 12px 26px rgba(15,23,42,.05)",
+
+    display: "flex",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    gap: 6,
+
+    flexShrink: 0,
+
+  },
+
+  paywallDot: {
+
+    width: 10,
+
+    height: 10,
+
+    borderRadius: 999,
+
+    background: "rgba(15,23,42,.14)",
+
+  },
+
+  paywallDotOn: {
+
+    background: ORANGE,
 
   },
 
@@ -3884,7 +4440,7 @@ const S = {
 
     width: "100%",
 
-    minHeight: 58,
+    minHeight: 62,
 
     border: "none",
 
@@ -3892,23 +4448,43 @@ const S = {
 
     background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
 
-    color: "#111",
+    color: "#fff",
 
-    fontSize: 15,
+    fontSize: 22,
 
     fontWeight: 980,
 
-    boxShadow: "0 18px 50px rgba(255,106,0,.26)",
+    boxShadow: "0 18px 50px rgba(255,106,0,.30)",
 
-    display: "flex",
+    display: "grid",
+
+    gridTemplateColumns: "44px 1fr 40px",
 
     alignItems: "center",
-
-    justifyContent: "space-between",
 
     gap: 12,
 
     padding: "0 16px",
+
+  },
+
+  paywallCrown: {
+
+    width: 44,
+
+    height: 44,
+
+    borderRadius: 999,
+
+    background: "#0B0B0C",
+
+    color: ORANGE_2,
+
+    display: "grid",
+
+    placeItems: "center",
+
+    fontSize: 22,
 
   },
 
@@ -3920,13 +4496,13 @@ const S = {
 
     borderRadius: 16,
 
-    background: "rgba(255,255,255,.34)",
+    background: "rgba(255,255,255,.22)",
 
     display: "grid",
 
     placeItems: "center",
 
-    color: "#111",
+    color: "#fff",
 
     flexShrink: 0,
 
@@ -3936,21 +4512,33 @@ const S = {
 
     width: "100%",
 
-    minHeight: 54,
+    minHeight: 56,
 
-    borderRadius: 22,
+    borderRadius: 20,
 
-    border: `1px solid ${BORDER}`,
+    border: "1px solid rgba(15,23,42,.18)",
 
-    background: "rgba(255,255,255,.90)",
+    background: "rgba(255,255,255,.70)",
 
     color: TEXT,
 
-    fontSize: 14,
+    fontSize: 16,
 
     fontWeight: 950,
 
     boxShadow: "0 14px 34px rgba(15,23,42,.05)",
+
+  },
+
+  paywallFoot: {
+
+    textAlign: "center",
+
+    color: "rgba(15,23,42,.42)",
+
+    fontSize: 12,
+
+    fontWeight: 800,
 
   },
 
@@ -5364,7 +5952,7 @@ const MD = {
 
 if (typeof document !== "undefined") {
 
-  const id = "cardio-v13-responsive";
+  const id = "cardio-v14-responsive";
 
   if (!document.getElementById(id)) {
 
@@ -5452,7 +6040,7 @@ if (typeof document !== "undefined") {
 
       }
 
-      @media (max-width: 520px) {
+      @media (max-width: 560px) {
 
         [data-cardio-workout-grid] {
 
@@ -5463,6 +6051,16 @@ if (typeof document !== "undefined") {
         [data-cardio-timeline-row] {
 
           gap: 6px !important;
+
+        }
+
+      }
+
+      @media (max-width: 430px) {
+
+        .fitdeal-hide-bottom-menu .cardio-premium-force-mobile {
+
+          grid-template-columns: 1fr !important;
 
         }
 
