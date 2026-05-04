@@ -76,28 +76,6 @@ function getWeekdaysStrip(splitLen, currentIdx) {
 
 }
 
-function uniqStrings(arr) {
-
-  const s = new Set();
-
-  const out = [];
-
-  for (const x of arr || []) {
-
-    const v = String(x || "").trim();
-
-    if (!v || s.has(v)) continue;
-
-    s.add(v);
-
-    out.push(v);
-
-  }
-
-  return out;
-
-}
-
 function normalizeName(s) {
 
   return String(s || "")
@@ -138,7 +116,7 @@ function parseKg(raw) {
 
 }
 
-/* ---------------- banco de grupos musculares (fallback base) ---------------- */
+/* ---------------- banco de grupos musculares ---------------- */
 
 const MUSCLE_GROUPS = [
 
@@ -1046,8 +1024,6 @@ export default function Treino() {
 
   const { user } = useAuth();
 
-  const email = (user?.email || "anon").toLowerCase();
-
   const autoPreviewFinishRef = useRef(false);
 
   const [profile, setProfile] = useState(null);
@@ -1087,6 +1063,28 @@ export default function Treino() {
   const [latestMontage, setLatestMontage] = useState(null);
 
   const [weightEditor, setWeightEditor] = useState(null);
+
+  useEffect(() => {
+
+    if (typeof document === "undefined") return;
+
+    if (weightEditor) {
+
+      document.body.classList.add("fitdeal-weight-editor-open");
+
+    } else {
+
+      document.body.classList.remove("fitdeal-weight-editor-open");
+
+    }
+
+    return () => {
+
+      document.body.classList.remove("fitdeal-weight-editor-open");
+
+    };
+
+  }, [weightEditor]);
 
   useEffect(() => {
 
@@ -2550,7 +2548,7 @@ export default function Treino() {
 
       ) : null}
 
-      {/* EDITOR DE PESO - PADRÃO INTERNO FITDEAL */}
+      {/* EDITOR DE PESO */}
 
       {weightEditor ? (
 
@@ -3488,11 +3486,7 @@ const styles = {
 
   list: { marginTop: 12, display: "grid", gap: 12 },
 
-  previewHeader: {
-
-    marginTop: 16,
-
-  },
+  previewHeader: { marginTop: 16 },
 
   previewSub: {
 
@@ -3662,11 +3656,7 @@ const styles = {
 
   },
 
-  previewExBody: {
-
-    minWidth: 0,
-
-  },
+  previewExBody: { minWidth: 0 },
 
   previewExName: {
 
@@ -4256,7 +4246,7 @@ const styles = {
 
     inset: 0,
 
-    zIndex: 3000,
+    zIndex: 999999,
 
     background: "rgba(15,23,42,.28)",
 
@@ -4288,9 +4278,13 @@ const styles = {
 
     boxShadow: "0 -24px 80px rgba(15,23,42,.22)",
 
-    padding: "10px 16px 18px",
+    padding: "10px 16px calc(18px + env(safe-area-inset-bottom))",
 
     animation: "sheetUp .18s ease-out",
+
+    position: "relative",
+
+    zIndex: 1000000,
 
   },
 
@@ -4565,6 +4559,28 @@ if (typeof document !== "undefined") {
       .apple-press:active { transform: translateY(1px) scale(.98); }
 
       .settings-press:active { transform: translateY(1px) scale(.97); }
+
+      body.fitdeal-weight-editor-open .bottom-menu,
+
+      body.fitdeal-weight-editor-open .bottomMenu,
+
+      body.fitdeal-weight-editor-open .BottomMenu,
+
+      body.fitdeal-weight-editor-open [data-bottom-menu="true"],
+
+      body.fitdeal-weight-editor-open nav[class*="bottom"],
+
+      body.fitdeal-weight-editor-open div[class*="bottom-menu"],
+
+      body.fitdeal-weight-editor-open div[class*="BottomMenu"] {
+
+        opacity: 0 !important;
+
+        pointer-events: none !important;
+
+        transform: translateY(24px) !important;
+
+      }
 
     `;
 
