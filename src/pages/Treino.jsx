@@ -118,6 +118,26 @@ function keyForLoad(viewIdx, exName) {
 
 }
 
+function formatKg(value) {
+
+  const n = Number(value || 0);
+
+  if (!Number.isFinite(n)) return "0";
+
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+
+}
+
+function parseKg(raw) {
+
+  const n = Number(String(raw || "").replace(",", "."));
+
+  if (!Number.isFinite(n) || n < 0) return 0;
+
+  return Math.round(n * 2) / 2;
+
+}
+
 /* ---------------- banco de grupos musculares (fallback base) ---------------- */
 
 const MUSCLE_GROUPS = [
@@ -670,11 +690,7 @@ async function createPlanFromFallback(userId, fallback) {
 
       }));
 
-      const { error: exError } = await supabase
-
-        .from("workout_plan_exercises")
-
-        .insert(rows);
+      const { error: exError } = await supabase.from("workout_plan_exercises").insert(rows);
 
       if (exError) throw exError;
 
@@ -956,11 +972,7 @@ async function getOrCreateTodaySession(userId, planId, planDayId, dayIndex, work
 
     }));
 
-    const { error: seedError } = await supabase
-
-      .from("workout_session_exercises")
-
-      .insert(seedRows);
+    const { error: seedError } = await supabase.from("workout_session_exercises").insert(seedRows);
 
     if (seedError) throw seedError;
 
@@ -1073,6 +1085,8 @@ export default function Treino() {
   const [todaySessionId, setTodaySessionId] = useState(null);
 
   const [latestMontage, setLatestMontage] = useState(null);
+
+  const [weightEditor, setWeightEditor] = useState(null);
 
   useEffect(() => {
 
@@ -1490,27 +1504,67 @@ export default function Treino() {
 
   }
 
-  async function editPreviewLoad(exName, fallbackValue) {
+  function openWeightEditor(exName, fallbackLoad) {
 
-    if (!user?.id || !currentPlanDay?.id) return;
+    const k = keyForLoad(currentPlanDay?.id || viewSafe, exName);
 
-    const k = keyForLoad(currentPlanDay.id, exName);
+    const saved = Number(loads[k] || 0);
+
+    const start = saved > 0 ? saved : Number(fallbackLoad || 0);
+
+    setWeightEditor({
+
+      exName,
+
+      value: String(formatKg(start)),
+
+      fallbackLoad,
+
+    });
+
+  }
+
+  function closeWeightEditor() {
+
+    setWeightEditor(null);
+
+  }
+
+  function bumpWeightEditor(delta) {
+
+    setWeightEditor((prev) => {
+
+      if (!prev) return prev;
+
+      const current = parseKg(prev.value);
+
+      const next = Math.max(0, Math.round((current + delta) * 2) / 2);
+
+      return { ...prev, value: formatKg(next) };
+
+    });
+
+  }
+
+  async function saveWeightEditor() {
+
+    if (!weightEditor?.exName || !currentPlanDay?.id) {
+
+      closeWeightEditor();
+
+      return;
+
+    }
+
+    const next = parseKg(weightEditor.value);
+
+    const k = keyForLoad(currentPlanDay.id, weightEditor.exName);
 
     const cur = Number(loads[k] || 0);
 
-    const currentShown = cur > 0 ? cur : Number(fallbackValue || 0);
+    await adjustLoad(weightEditor.exName, next - cur);
 
-    const raw = window.prompt("Digite a carga em kg", String(currentShown).replace(".", ","));
-
-    if (raw == null) return;
-
-    const next = Number(String(raw).replace(",", "."));
-
-    if (!Number.isFinite(next) || next < 0) return;
-
-    const delta = next - cur;
-
-    await adjustLoad(exName, delta);
+    closeWeightEditor();
 
   }
 
@@ -1590,11 +1644,7 @@ export default function Treino() {
 
   }
 
-  const previewCount = paid
-
-    ? Math.max(2, Math.ceil(workout.length / 2))
-
-    : Math.min(2, workout.length);
+  const previewCount = paid ? Math.max(2, Math.ceil(workout.length / 2)) : Math.min(2, workout.length);
 
   const previewList = workout.slice(0, previewCount);
 
@@ -1639,12 +1689,6 @@ export default function Treino() {
   function openExercises() {
 
     nav(`/treino/detalhe?d=${viewSafe}`, { state: { from: "/treino" } });
-
-  }
-
-  function openMontagemTreino() {
-
-    nav("/montagem-treino");
 
   }
 
@@ -1864,29 +1908,9 @@ export default function Treino() {
 
             <svg width="38" height="38" viewBox="0 0 48 48" fill="none">
 
-              <path
+              <path d="M13 17v14M18 14v20M30 14v20M35 17v14" stroke="#FF6A00" strokeWidth="4" strokeLinecap="round" />
 
-                d="M13 17v14M18 14v20M30 14v20M35 17v14"
-
-                stroke="#FF6A00"
-
-                strokeWidth="4"
-
-                strokeLinecap="round"
-
-              />
-
-              <path
-
-                d="M18 24h12"
-
-                stroke="#FF6A00"
-
-                strokeWidth="4"
-
-                strokeLinecap="round"
-
-              />
+              <path d="M18 24h12" stroke="#FF6A00" strokeWidth="4" strokeLinecap="round" />
 
               <path
 
@@ -1920,11 +1944,7 @@ export default function Treino() {
 
           <span style={styles.quickMountSub}>
 
-            {latestMontage?.id
-
-              ? "Abrir sua montagem pronta"
-
-              : "Seu treino pronto em poucos toques"}
+            {latestMontage?.id ? "Abrir sua montagem pronta" : "Seu treino pronto em poucos toques"}
 
           </span>
 
@@ -1934,31 +1954,9 @@ export default function Treino() {
 
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
 
-            <path
+            <path d="M5 12h13" stroke="#FF6A00" strokeWidth="2.7" strokeLinecap="round" />
 
-              d="M5 12h13"
-
-              stroke="#FF6A00"
-
-              strokeWidth="2.7"
-
-              strokeLinecap="round"
-
-            />
-
-            <path
-
-              d="M13 6l6 6-6 6"
-
-              stroke="#FF6A00"
-
-              strokeWidth="2.7"
-
-              strokeLinecap="round"
-
-              strokeLinejoin="round"
-
-            />
+            <path d="M13 6l6 6-6 6" stroke="#FF6A00" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
 
           </svg>
 
@@ -2122,17 +2120,7 @@ export default function Treino() {
 
             <div style={styles.previewProgressTrack}>
 
-              <div
-
-                style={{
-
-                  ...styles.previewProgressFill,
-
-                  width: `${Math.round(freePct * 100)}%`,
-
-                }}
-
-              />
+              <div style={{ ...styles.previewProgressFill, width: `${Math.round(freePct * 100)}%` }} />
 
             </div>
 
@@ -2154,9 +2142,7 @@ export default function Treino() {
 
               const fallbackLoad = i === 0 ? 20 : 18;
 
-              const shownLoad =
-
-                Number(curLoad || 0) > 0 ? Number(curLoad || 0).toFixed(0) : String(fallbackLoad);
+              const shownLoad = Number(curLoad || 0) > 0 ? formatKg(curLoad) : String(fallbackLoad);
 
               const isDone = !!done[i];
 
@@ -2186,7 +2172,7 @@ export default function Treino() {
 
                         style={styles.previewChipButton}
 
-                        onClick={() => editPreviewLoad(ex.name, fallbackLoad)}
+                        onClick={() => openWeightEditor(ex.name, fallbackLoad)}
 
                         aria-label={`Alterar carga de ${ex.name}`}
 
@@ -2280,17 +2266,9 @@ export default function Treino() {
 
               <div style={styles.previewBrandPill}>FitDeal</div>
 
-              <div style={styles.previewLockTitle}>
+              <div style={styles.previewLockTitle}>Mais {lockedList.length} exercícios bloqueados</div>
 
-                Mais {lockedList.length} exercícios bloqueados
-
-              </div>
-
-              <div style={styles.previewLockSub}>
-
-                Libere execução, cargas, descanso e progressão.
-
-              </div>
+              <div style={styles.previewLockSub}>Libere execução, cargas, descanso e progressão.</div>
 
               <div style={styles.previewBenefits}>
 
@@ -2320,17 +2298,7 @@ export default function Treino() {
 
               </div>
 
-              <button
-
-                type="button"
-
-                className="apple-press"
-
-                style={styles.previewPremiumBtn}
-
-                onClick={() => nav("/planos")}
-
-              >
+              <button type="button" className="apple-press" style={styles.previewPremiumBtn} onClick={() => nav("/planos")}>
 
                 <span>Liberar treino completo</span>
 
@@ -2582,6 +2550,104 @@ export default function Treino() {
 
       ) : null}
 
+      {/* EDITOR DE PESO - PADRÃO INTERNO FITDEAL */}
+
+      {weightEditor ? (
+
+        <div style={styles.weightOverlay} onClick={closeWeightEditor}>
+
+          <div style={styles.weightSheet} onClick={(e) => e.stopPropagation()}>
+
+            <div style={styles.weightHandle} />
+
+            <div style={styles.weightTop}>
+
+              <div>
+
+                <div style={styles.weightKicker}>Carga do exercício</div>
+
+                <div style={styles.weightTitle}>{weightEditor.exName}</div>
+
+              </div>
+
+              <button type="button" style={styles.weightClose} onClick={closeWeightEditor} aria-label="Fechar">
+
+                ×
+
+              </button>
+
+            </div>
+
+            <div style={styles.weightControl}>
+
+              <button type="button" className="apple-press" style={styles.weightRoundBtn} onClick={() => bumpWeightEditor(-2.5)}>
+
+                −
+
+              </button>
+
+              <div style={styles.weightValueBox}>
+
+                <input
+
+                  style={styles.weightInput}
+
+                  value={weightEditor.value}
+
+                  inputMode="decimal"
+
+                  onChange={(e) =>
+
+                    setWeightEditor((prev) =>
+
+                      prev ? { ...prev, value: e.target.value.replace(/[^\d,.]/g, "") } : prev
+
+                    )
+
+                  }
+
+                />
+
+                <div style={styles.weightUnit}>kg</div>
+
+              </div>
+
+              <button type="button" className="apple-press" style={styles.weightRoundBtn} onClick={() => bumpWeightEditor(2.5)}>
+
+                +
+
+              </button>
+
+            </div>
+
+            <div style={styles.weightQuickRow}>
+
+              <button type="button" className="apple-press" style={styles.weightQuickBtn} onClick={() => bumpWeightEditor(-1)}>
+
+                -1 kg
+
+              </button>
+
+              <button type="button" className="apple-press" style={styles.weightQuickBtn} onClick={() => bumpWeightEditor(1)}>
+
+                +1 kg
+
+              </button>
+
+            </div>
+
+            <button type="button" className="apple-press" style={styles.weightSaveBtn} onClick={saveWeightEditor}>
+
+              Salvar carga
+
+            </button>
+
+          </div>
+
+        </div>
+
+      ) : null}
+
       <div style={{ height: 140 }} />
 
     </div>
@@ -2670,19 +2736,7 @@ function CheckRingIcon() {
 
       <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="#111" strokeWidth="2.2" strokeOpacity="0.9" />
 
-      <path
-
-        d="M7.5 12.3l2.8 2.9L16.8 9"
-
-        stroke="#111"
-
-        strokeWidth="2.6"
-
-        strokeLinecap="round"
-
-        strokeLinejoin="round"
-
-      />
+      <path d="M7.5 12.3l2.8 2.9L16.8 9" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
 
     </svg>
 
@@ -2696,67 +2750,15 @@ function GiftIcon() {
 
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 
-      <path
+      <path d="M20 12v8H4v-8" stroke="#FF6A00" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
 
-        d="M20 12v8H4v-8"
+      <path d="M2.8 8h18.4v4H2.8V8Z" stroke="#FF6A00" strokeWidth="2.2" strokeLinejoin="round" />
 
-        stroke="#FF6A00"
+      <path d="M12 8v12" stroke="#FF6A00" strokeWidth="2.2" strokeLinecap="round" />
 
-        strokeWidth="2.2"
+      <path d="M12 8H8.8a2.2 2.2 0 1 1 2.2-2.2V8Z" stroke="#FF6A00" strokeWidth="2.2" strokeLinejoin="round" />
 
-        strokeLinecap="round"
-
-        strokeLinejoin="round"
-
-      />
-
-      <path
-
-        d="M2.8 8h18.4v4H2.8V8Z"
-
-        stroke="#FF6A00"
-
-        strokeWidth="2.2"
-
-        strokeLinejoin="round"
-
-      />
-
-      <path
-
-        d="M12 8v12"
-
-        stroke="#FF6A00"
-
-        strokeWidth="2.2"
-
-        strokeLinecap="round"
-
-      />
-
-      <path
-
-        d="M12 8H8.8a2.2 2.2 0 1 1 2.2-2.2V8Z"
-
-        stroke="#FF6A00"
-
-        strokeWidth="2.2"
-
-        strokeLinejoin="round"
-
-      />
-
-      <path
-
-        d="M12 8h3.2a2.2 2.2 0 1 0-2.2-2.2V8Z"
-
-        stroke="#FF6A00"
-
-        strokeWidth="2.2"
-
-        strokeLinejoin="round"
-
-      />
+      <path d="M12 8h3.2a2.2 2.2 0 1 0-2.2-2.2V8Z" stroke="#FF6A00" strokeWidth="2.2" strokeLinejoin="round" />
 
     </svg>
 
@@ -2800,17 +2802,7 @@ function LockIcon() {
 
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 
-      <path
-
-        d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10"
-
-        stroke="#FF6A00"
-
-        strokeWidth="2.2"
-
-        strokeLinecap="round"
-
-      />
+      <path d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10" stroke="#FF6A00" strokeWidth="2.2" strokeLinecap="round" />
 
       <path
 
@@ -3124,15 +3116,11 @@ const styles = {
 
     padding: "14px 14px 14px 15px",
 
-    background:
-
-      "linear-gradient(135deg, rgba(255,255,255,.99), rgba(255,250,246,.98))",
+    background: "linear-gradient(135deg, rgba(255,255,255,.99), rgba(255,250,246,.98))",
 
     color: TEXT,
 
-    boxShadow:
-
-      "0 18px 48px rgba(15,23,42,.08), 0 10px 28px rgba(255,106,0,.08), inset 0 1px 0 rgba(255,255,255,.95)",
+    boxShadow: "0 18px 48px rgba(15,23,42,.08), 0 10px 28px rgba(255,106,0,.08), inset 0 1px 0 rgba(255,255,255,.95)",
 
     display: "grid",
 
@@ -3208,9 +3196,7 @@ const styles = {
 
     borderRadius: 24,
 
-    background:
-
-      "linear-gradient(135deg, rgba(255,246,239,.96), rgba(255,255,255,.96))",
+    background: "linear-gradient(135deg, rgba(255,246,239,.96), rgba(255,255,255,.96))",
 
     border: "1px solid rgba(255,106,0,.14)",
 
@@ -4090,30 +4076,6 @@ const styles = {
 
   },
 
-  numMuted: {
-
-    width: 44,
-
-    height: 44,
-
-    borderRadius: 14,
-
-    display: "grid",
-
-    placeItems: "center",
-
-    background: "rgba(15,23,42,.06)",
-
-    color: TEXT,
-
-    fontWeight: 950,
-
-    fontSize: 15,
-
-    flexShrink: 0,
-
-  },
-
   exName: { fontSize: 16, fontWeight: 950, color: TEXT, letterSpacing: -0.4 },
 
   exNote: { marginTop: 4, fontSize: 12, fontWeight: 800, color: MUTED },
@@ -4202,8 +4164,6 @@ const styles = {
 
   checkOff: { background: "rgba(15,23,42,.06)", boxShadow: "none" },
 
-  checkGhost: { marginLeft: "auto", width: 44, height: 44, borderRadius: 16, background: "rgba(15,23,42,.06)" },
-
   finishFab: {
 
     position: "fixed",
@@ -4290,6 +4250,264 @@ const styles = {
 
   },
 
+  weightOverlay: {
+
+    position: "fixed",
+
+    inset: 0,
+
+    zIndex: 3000,
+
+    background: "rgba(15,23,42,.28)",
+
+    backdropFilter: "blur(8px)",
+
+    WebkitBackdropFilter: "blur(8px)",
+
+    display: "flex",
+
+    alignItems: "flex-end",
+
+    justifyContent: "center",
+
+    padding: 14,
+
+  },
+
+  weightSheet: {
+
+    width: "100%",
+
+    maxWidth: 520,
+
+    borderRadius: "28px 28px 24px 24px",
+
+    background: "#fff",
+
+    border: "1px solid rgba(255,255,255,.80)",
+
+    boxShadow: "0 -24px 80px rgba(15,23,42,.22)",
+
+    padding: "10px 16px 18px",
+
+    animation: "sheetUp .18s ease-out",
+
+  },
+
+  weightHandle: {
+
+    width: 44,
+
+    height: 5,
+
+    borderRadius: 999,
+
+    background: "rgba(15,23,42,.16)",
+
+    margin: "2px auto 14px",
+
+  },
+
+  weightTop: {
+
+    display: "flex",
+
+    justifyContent: "space-between",
+
+    alignItems: "flex-start",
+
+    gap: 12,
+
+  },
+
+  weightKicker: {
+
+    fontSize: 12,
+
+    fontWeight: 950,
+
+    color: ORANGE,
+
+    textTransform: "uppercase",
+
+    letterSpacing: 0.7,
+
+  },
+
+  weightTitle: {
+
+    marginTop: 5,
+
+    fontSize: 20,
+
+    fontWeight: 980,
+
+    color: TEXT,
+
+    letterSpacing: -0.5,
+
+  },
+
+  weightClose: {
+
+    width: 38,
+
+    height: 38,
+
+    borderRadius: 999,
+
+    border: "1px solid rgba(15,23,42,.07)",
+
+    background: "rgba(15,23,42,.04)",
+
+    color: TEXT,
+
+    fontSize: 28,
+
+    lineHeight: "32px",
+
+    fontWeight: 700,
+
+  },
+
+  weightControl: {
+
+    marginTop: 18,
+
+    display: "grid",
+
+    gridTemplateColumns: "54px 1fr 54px",
+
+    gap: 12,
+
+    alignItems: "center",
+
+  },
+
+  weightRoundBtn: {
+
+    width: 54,
+
+    height: 54,
+
+    borderRadius: 18,
+
+    border: "none",
+
+    background: "rgba(255,106,0,.13)",
+
+    color: TEXT,
+
+    fontSize: 28,
+
+    fontWeight: 950,
+
+  },
+
+  weightValueBox: {
+
+    minHeight: 64,
+
+    borderRadius: 22,
+
+    background: "rgba(15,23,42,.035)",
+
+    border: "1px solid rgba(15,23,42,.07)",
+
+    display: "flex",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    gap: 8,
+
+    padding: "0 14px",
+
+  },
+
+  weightInput: {
+
+    width: 92,
+
+    border: "none",
+
+    outline: "none",
+
+    background: "transparent",
+
+    color: TEXT,
+
+    fontSize: 28,
+
+    fontWeight: 980,
+
+    textAlign: "center",
+
+  },
+
+  weightUnit: {
+
+    color: MUTED,
+
+    fontSize: 16,
+
+    fontWeight: 950,
+
+  },
+
+  weightQuickRow: {
+
+    marginTop: 12,
+
+    display: "grid",
+
+    gridTemplateColumns: "1fr 1fr",
+
+    gap: 10,
+
+  },
+
+  weightQuickBtn: {
+
+    minHeight: 46,
+
+    borderRadius: 16,
+
+    border: "1px solid rgba(255,106,0,.18)",
+
+    background: "rgba(255,106,0,.07)",
+
+    color: TEXT,
+
+    fontWeight: 950,
+
+  },
+
+  weightSaveBtn: {
+
+    marginTop: 12,
+
+    width: "100%",
+
+    minHeight: 56,
+
+    border: "none",
+
+    borderRadius: 18,
+
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+
+    color: "#111",
+
+    fontSize: 15,
+
+    fontWeight: 980,
+
+    boxShadow: "0 18px 42px rgba(255,106,0,.22)",
+
+  },
+
 };
 
 if (typeof document !== "undefined") {
@@ -4333,6 +4551,14 @@ if (typeof document !== "undefined") {
         0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
 
         50% { transform: translateX(-50%) translateY(-3px) scale(1.01); }
+
+      }
+
+      @keyframes sheetUp {
+
+        from { transform: translateY(18px); opacity: .75; }
+
+        to { transform: translateY(0); opacity: 1; }
 
       }
 
