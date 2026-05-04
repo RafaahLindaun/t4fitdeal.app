@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -1036,6 +1036,8 @@ export default function Treino() {
 
   const email = (user?.email || "anon").toLowerCase();
 
+  const autoPreviewFinishRef = useRef(false);
+
   const [profile, setProfile] = useState(null);
 
   const [paid, setPaid] = useState(false);
@@ -1278,6 +1280,12 @@ export default function Treino() {
 
   useEffect(() => {
 
+    autoPreviewFinishRef.current = false;
+
+  }, [viewSafe, paid]);
+
+  useEffect(() => {
+
     let active = true;
 
     async function hydrateTodayState() {
@@ -1482,6 +1490,30 @@ export default function Treino() {
 
   }
 
+  async function editPreviewLoad(exName, fallbackValue) {
+
+    if (!user?.id || !currentPlanDay?.id) return;
+
+    const k = keyForLoad(currentPlanDay.id, exName);
+
+    const cur = Number(loads[k] || 0);
+
+    const currentShown = cur > 0 ? cur : Number(fallbackValue || 0);
+
+    const raw = window.prompt("Digite a carga em kg", String(currentShown).replace(".", ","));
+
+    if (raw == null) return;
+
+    const next = Number(String(raw).replace(",", "."));
+
+    if (!Number.isFinite(next) || next < 0) return;
+
+    const delta = next - cur;
+
+    await adjustLoad(exName, delta);
+
+  }
+
   async function finishWorkout() {
 
     if (!viewingIsToday || !user?.id || !split.length) return;
@@ -1567,6 +1599,34 @@ export default function Treino() {
   const previewList = workout.slice(0, previewCount);
 
   const lockedList = paid ? [] : workout.slice(previewCount);
+
+  useEffect(() => {
+
+    if (paid) return;
+
+    if (!viewingIsToday) return;
+
+    if (!todaySessionId) return;
+
+    if (!previewList.length) return;
+
+    if (autoPreviewFinishRef.current) return;
+
+    const allPreviewDone = previewList.every((_, i) => !!done[i]);
+
+    if (!allPreviewDone) return;
+
+    autoPreviewFinishRef.current = true;
+
+    const t = setTimeout(() => {
+
+      finishWorkout();
+
+    }, 350);
+
+    return () => clearTimeout(t);
+
+  }, [paid, viewingIsToday, todaySessionId, previewList, done]);
 
   const strip = useMemo(
 
@@ -2092,9 +2152,13 @@ export default function Treino() {
 
               const curLoad = loads[loadKey] ?? 0;
 
+              const fallbackLoad = i === 0 ? 20 : 18;
+
               const shownLoad =
 
-                Number(curLoad || 0) > 0 ? Number(curLoad || 0).toFixed(0) : i === 0 ? "20" : "18";
+                Number(curLoad || 0) > 0 ? Number(curLoad || 0).toFixed(0) : String(fallbackLoad);
+
+              const isDone = !!done[i];
 
               return (
 
@@ -2114,13 +2178,25 @@ export default function Treino() {
 
                     <div style={styles.previewChips}>
 
-                      <span style={styles.previewChip}>
+                      <button
+
+                        type="button"
+
+                        className="apple-press"
+
+                        style={styles.previewChipButton}
+
+                        onClick={() => editPreviewLoad(ex.name, fallbackLoad)}
+
+                        aria-label={`Alterar carga de ${ex.name}`}
+
+                      >
 
                         <DumbbellMiniIcon />
 
                         {shownLoad} kg
 
-                      </span>
+                      </button>
 
                       <span style={styles.previewChip}>
 
@@ -2129,6 +2205,52 @@ export default function Treino() {
                         {ex.rest}
 
                       </span>
+
+                      <button
+
+                        type="button"
+
+                        className="apple-press"
+
+                        onClick={() => toggleDone(i)}
+
+                        disabled={!viewingIsToday}
+
+                        aria-label={isDone ? "Desmarcar exercício" : "Concluir exercício"}
+
+                        style={{
+
+                          ...styles.previewCheckBtn,
+
+                          ...(isDone ? styles.previewCheckBtnOn : styles.previewCheckBtnOff),
+
+                          opacity: viewingIsToday ? 1 : 0.55,
+
+                          transform: tapId === i ? "scale(.94)" : "scale(1)",
+
+                        }}
+
+                      >
+
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+
+                          <path
+
+                            d="M20 7L10 17l-5-5"
+
+                            stroke={isDone ? "#111" : "#64748b"}
+
+                            strokeWidth="2.7"
+
+                            strokeLinecap="round"
+
+                            strokeLinejoin="round"
+
+                          />
+
+                        </svg>
+
+                      </button>
 
                     </div>
 
@@ -3598,6 +3720,8 @@ const styles = {
 
     flexWrap: "wrap",
 
+    alignItems: "center",
+
   },
 
   previewChip: {
@@ -3625,6 +3749,68 @@ const styles = {
     gap: 8,
 
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.70)",
+
+  },
+
+  previewChipButton: {
+
+    minHeight: 36,
+
+    padding: "8px 13px",
+
+    borderRadius: 999,
+
+    background: "rgba(255,106,0,.065)",
+
+    border: "1px solid rgba(255,106,0,.13)",
+
+    color: TEXT,
+
+    fontSize: 13,
+
+    fontWeight: 950,
+
+    display: "inline-flex",
+
+    alignItems: "center",
+
+    gap: 8,
+
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.70)",
+
+  },
+
+  previewCheckBtn: {
+
+    width: 36,
+
+    height: 36,
+
+    borderRadius: 999,
+
+    display: "grid",
+
+    placeItems: "center",
+
+    border: "1px solid rgba(15,23,42,.07)",
+
+    transition: "transform .12s ease, background .12s ease, box-shadow .12s ease",
+
+  },
+
+  previewCheckBtnOff: {
+
+    background: "rgba(15,23,42,.045)",
+
+    boxShadow: "none",
+
+  },
+
+  previewCheckBtnOn: {
+
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+
+    boxShadow: "0 12px 28px rgba(255,106,0,.20)",
 
   },
 
