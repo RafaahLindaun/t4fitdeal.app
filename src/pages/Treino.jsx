@@ -1558,11 +1558,15 @@ export default function Treino() {
 
   }
 
-  const previewCount = Math.max(2, Math.ceil(workout.length / 2));
+  const previewCount = paid
+
+    ? Math.max(2, Math.ceil(workout.length / 2))
+
+    : Math.min(2, workout.length);
 
   const previewList = workout.slice(0, previewCount);
 
-  const lockedList = workout.slice(previewCount);
+  const lockedList = paid ? [] : workout.slice(previewCount);
 
   const strip = useMemo(
 
@@ -1605,6 +1609,8 @@ export default function Treino() {
   const doneCount = Object.values(done).filter(Boolean).length;
 
   const progressPct = workout.length ? clamp(doneCount / workout.length, 0, 1) : 0;
+
+  const freePct = workout.length ? clamp(previewList.length / workout.length, 0, 1) : 0;
 
   return (
 
@@ -2026,95 +2032,325 @@ export default function Treino() {
 
       {/* LISTA */}
 
-      <div style={styles.sectionTitle}>Lista do treino - Resumido</div>
+      {!paid ? (
 
-      <div style={styles.list}>
+        <>
 
-        {previewList.map((ex, i) => {
+          <div style={styles.previewHeader}>
 
-          const isDone = !!done[i];
+            <div style={styles.sectionTitle}>Lista do treino - Prévia</div>
 
-          const loadKey = keyForLoad(currentPlanDay?.id || viewSafe, ex.name);
+            <div style={styles.previewSub}>
 
-          const curLoad = loads[loadKey] ?? 0;
+              {String(profile?.objetivo || "Hipertrofia").trim() || "Hipertrofia"} •{" "}
 
-          return (
+              {String(profile?.frequencia || "3").trim() || "3"}x/sem • {previewList.length} de {workout.length} liberados
 
-            <div key={i} style={styles.exCard}>
+            </div>
 
-              <div style={styles.exTop}>
+          </div>
 
-                <div style={styles.num}>{i + 1}</div>
+          <div style={styles.previewProgressCard}>
 
-                <div style={{ minWidth: 0 }}>
+            <div style={styles.previewGiftIcon}>
 
-                  <div style={styles.exName}>{ex.name}</div>
+              <GiftIcon />
 
-                  <div style={styles.exNote}>
+            </div>
 
-                    {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
+            <div style={styles.previewProgressText}>Prévia gratuita</div>
+
+            <div style={styles.previewProgressTrack}>
+
+              <div
+
+                style={{
+
+                  ...styles.previewProgressFill,
+
+                  width: `${Math.round(freePct * 100)}%`,
+
+                }}
+
+              />
+
+            </div>
+
+            <div style={styles.previewProgressPill}>
+
+              {previewList.length}/{workout.length} liberados
+
+            </div>
+
+          </div>
+
+          <div style={styles.previewList}>
+
+            {previewList.map((ex, i) => {
+
+              const loadKey = keyForLoad(currentPlanDay?.id || viewSafe, ex.name);
+
+              const curLoad = loads[loadKey] ?? 0;
+
+              const shownLoad =
+
+                Number(curLoad || 0) > 0 ? Number(curLoad || 0).toFixed(0) : i === 0 ? "20" : "18";
+
+              return (
+
+                <div key={i} style={styles.previewExCard}>
+
+                  <div style={styles.previewNumber}>{i + 1}</div>
+
+                  <div style={styles.previewExBody}>
+
+                    <div style={styles.previewExName}>{ex.name}</div>
+
+                    <div style={styles.previewExNote}>
+
+                      {ex.group} • {ex.sets} séries • {ex.reps} reps
+
+                    </div>
+
+                    <div style={styles.previewChips}>
+
+                      <span style={styles.previewChip}>
+
+                        <DumbbellMiniIcon />
+
+                        {shownLoad} kg
+
+                      </span>
+
+                      <span style={styles.previewChip}>
+
+                        <ClockMiniIcon />
+
+                        {ex.rest}
+
+                      </span>
+
+                    </div>
 
                   </div>
 
-                  <div style={styles.loadRow}>
+                </div>
 
-                    <span style={styles.loadLabel}>Carga</span>
+              );
 
-                    <div style={styles.loadPill}>
+            })}
 
-                      <button
+          </div>
 
-                        type="button"
+          {lockedList.length > 0 ? (
 
-                        className="apple-press"
+            <div style={styles.previewLockedCard}>
 
-                        style={styles.loadBtn}
+              <div style={styles.lockSparkOne}>✦</div>
 
-                        onClick={(e) => {
+              <div style={styles.lockSparkTwo}>✦</div>
 
-                          e.stopPropagation();
+              <div style={styles.previewLockIcon}>
 
-                          adjustLoad(ex.name, -2.5);
+                <LockIcon />
 
-                        }}
+              </div>
 
-                        aria-label="Diminuir carga"
+              <div style={styles.previewBrandPill}>FitDeal</div>
 
-                      >
+              <div style={styles.previewLockTitle}>
 
-                        −
+                Mais {lockedList.length} exercícios bloqueados
 
-                      </button>
+              </div>
 
-                      <div style={styles.loadValue}>
+              <div style={styles.previewLockSub}>
 
-                        <b>{Number(curLoad || 0).toFixed(1)}</b> kg
+                Libere execução, cargas, descanso e progressão.
+
+              </div>
+
+              <div style={styles.previewBenefits}>
+
+                <div style={styles.previewBenefit}>
+
+                  <CoachIcon />
+
+                  <span>Execução guiada</span>
+
+                </div>
+
+                <div style={styles.previewBenefit}>
+
+                  <ProgressIcon />
+
+                  <span>Progressão de carga</span>
+
+                </div>
+
+                <div style={styles.previewBenefit}>
+
+                  <HistoryIcon />
+
+                  <span>Histórico do treino</span>
+
+                </div>
+
+              </div>
+
+              <button
+
+                type="button"
+
+                className="apple-press"
+
+                style={styles.previewPremiumBtn}
+
+                onClick={() => nav("/planos")}
+
+              >
+
+                <span>Liberar treino completo</span>
+
+                <span style={styles.previewPremiumArrow}>›</span>
+
+              </button>
+
+              <div style={styles.previewAccess}>
+
+                <SmallLockIcon />
+
+                Acesso imediato
+
+              </div>
+
+            </div>
+
+          ) : null}
+
+        </>
+
+      ) : (
+
+        <>
+
+          <div style={styles.sectionTitle}>Lista do treino - Resumido</div>
+
+          <div style={styles.list}>
+
+            {previewList.map((ex, i) => {
+
+              const isDone = !!done[i];
+
+              const loadKey = keyForLoad(currentPlanDay?.id || viewSafe, ex.name);
+
+              const curLoad = loads[loadKey] ?? 0;
+
+              return (
+
+                <div key={i} style={styles.exCard}>
+
+                  <div style={styles.exTop}>
+
+                    <div style={styles.num}>{i + 1}</div>
+
+                    <div style={{ minWidth: 0 }}>
+
+                      <div style={styles.exName}>{ex.name}</div>
+
+                      <div style={styles.exNote}>
+
+                        {ex.group} • {ex.sets} séries • {ex.reps} • descanso {ex.rest}
 
                       </div>
 
-                      <button
+                      <div style={styles.loadRow}>
 
-                        type="button"
+                        <span style={styles.loadLabel}>Carga</span>
 
-                        className="apple-press"
+                        <div style={styles.loadPill}>
 
-                        style={styles.loadBtn}
+                          <button
 
-                        onClick={(e) => {
+                            type="button"
 
-                          e.stopPropagation();
+                            className="apple-press"
 
-                          adjustLoad(ex.name, +2.5);
+                            style={styles.loadBtn}
 
-                        }}
+                            onClick={(e) => {
 
-                        aria-label="Aumentar carga"
+                              e.stopPropagation();
 
-                      >
+                              adjustLoad(ex.name, -2.5);
 
-                        +
+                            }}
 
-                      </button>
+                            aria-label="Diminuir carga"
+
+                          >
+
+                            −
+
+                          </button>
+
+                          <div style={styles.loadValue}>
+
+                            <b>{Number(curLoad || 0).toFixed(1)}</b> kg
+
+                          </div>
+
+                          <button
+
+                            type="button"
+
+                            className="apple-press"
+
+                            style={styles.loadBtn}
+
+                            onClick={(e) => {
+
+                              e.stopPropagation();
+
+                              adjustLoad(ex.name, +2.5);
+
+                            }}
+
+                            aria-label="Aumentar carga"
+
+                          >
+
+                            +
+
+                          </button>
+
+                        </div>
+
+                        <button
+
+                          type="button"
+
+                          className="apple-press"
+
+                          style={styles.loadMini}
+
+                          onClick={(e) => {
+
+                            e.stopPropagation();
+
+                            adjustLoad(ex.name, +1);
+
+                          }}
+
+                          title="Ajuste fino"
+
+                        >
+
+                          +1
+
+                        </button>
+
+                      </div>
 
                     </div>
 
@@ -2124,21 +2360,43 @@ export default function Treino() {
 
                       className="apple-press"
 
-                      style={styles.loadMini}
+                      onClick={() => toggleDone(i)}
 
-                      onClick={(e) => {
+                      aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
 
-                        e.stopPropagation();
+                      style={{
 
-                        adjustLoad(ex.name, +1);
+                        ...styles.checkBtn,
+
+                        ...(isDone ? styles.checkOn : styles.checkOff),
+
+                        transform: tapId === i ? "scale(0.92)" : "scale(1)",
+
+                        opacity: viewingIsToday ? 1 : 0.7,
 
                       }}
 
-                      title="Ajuste fino"
+                      disabled={!viewingIsToday}
 
                     >
 
-                      +1
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+
+                        <path
+
+                          d="M20 7L10 17l-5-5"
+
+                          stroke={isDone ? "#111" : "#64748b"}
+
+                          strokeWidth="2.6"
+
+                          strokeLinecap="round"
+
+                          strokeLinejoin="round"
+
+                        />
+
+                      </svg>
 
                     </button>
 
@@ -2146,119 +2404,15 @@ export default function Treino() {
 
                 </div>
 
-                <button
+              );
 
-                  type="button"
-
-                  className="apple-press"
-
-                  onClick={() => toggleDone(i)}
-
-                  aria-label={isDone ? "Desmarcar" : "Marcar como feito"}
-
-                  style={{
-
-                    ...styles.checkBtn,
-
-                    ...(isDone ? styles.checkOn : styles.checkOff),
-
-                    transform: tapId === i ? "scale(0.92)" : "scale(1)",
-
-                    opacity: viewingIsToday ? 1 : 0.7,
-
-                  }}
-
-                  disabled={!viewingIsToday}
-
-                >
-
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-
-                    <path
-
-                      d="M20 7L10 17l-5-5"
-
-                      stroke={isDone ? "#111" : "#64748b"}
-
-                      strokeWidth="2.6"
-
-                      strokeLinecap="round"
-
-                      strokeLinejoin="round"
-
-                    />
-
-                  </svg>
-
-                </button>
-
-              </div>
-
-            </div>
-
-          );
-
-        })}
-
-      </div>
-
-      {/* BLOQUEADO */}
-
-      {!paid && lockedList.length > 0 ? (
-
-        <>
-
-          <div style={styles.lockTitle}>Parte do treino bloqueada</div>
-
-          <div style={styles.lockWrap}>
-
-            {lockedList.map((ex, j) => (
-
-              <div key={`l_${j}`} style={styles.exCard}>
-
-                <div style={styles.exTop}>
-
-                  <div style={styles.numMuted}>{previewCount + j + 1}</div>
-
-                  <div style={{ minWidth: 0 }}>
-
-                    <div style={styles.exName}>{ex.name}</div>
-
-                    <div style={styles.exNote}>{ex.group} • + dicas e execução</div>
-
-                  </div>
-
-                  <div style={styles.checkGhost} />
-
-                </div>
-
-              </div>
-
-            ))}
+            })}
 
           </div>
 
-          <button className="apple-press" style={styles.fab} onClick={() => nav("/planos")} type="button">
-
-            <span style={styles.fabIcon} aria-hidden="true">
-
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-
-                <path d="M5 12h12" stroke="#111" strokeWidth="2.6" strokeLinecap="round" />
-
-                <path d="M13 6l6 6-6 6" stroke="#111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-
-              </svg>
-
-            </span>
-
-            <span style={styles.fabText}>Começar agora</span>
-
-          </button>
-
         </>
 
-      ) : null}
+      )}
 
       {/* BOTÃO FLUTUANTE “CONCLUIR TREINO” */}
 
@@ -2407,6 +2561,216 @@ function CheckRingIcon() {
         strokeLinejoin="round"
 
       />
+
+    </svg>
+
+  );
+
+}
+
+function GiftIcon() {
+
+  return (
+
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path
+
+        d="M20 12v8H4v-8"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinecap="round"
+
+        strokeLinejoin="round"
+
+      />
+
+      <path
+
+        d="M2.8 8h18.4v4H2.8V8Z"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinejoin="round"
+
+      />
+
+      <path
+
+        d="M12 8v12"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinecap="round"
+
+      />
+
+      <path
+
+        d="M12 8H8.8a2.2 2.2 0 1 1 2.2-2.2V8Z"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinejoin="round"
+
+      />
+
+      <path
+
+        d="M12 8h3.2a2.2 2.2 0 1 0-2.2-2.2V8Z"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinejoin="round"
+
+      />
+
+    </svg>
+
+  );
+
+}
+
+function DumbbellMiniIcon() {
+
+  return (
+
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path d="M7 8v8M17 8v8M4 10v4M20 10v4M7 12h10" stroke="#0f172a" strokeWidth="2.1" strokeLinecap="round" />
+
+    </svg>
+
+  );
+
+}
+
+function ClockMiniIcon() {
+
+  return (
+
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" stroke="#0f172a" strokeWidth="2.1" />
+
+      <path d="M12 6.8v5.5l3.7 2.2" stroke="#0f172a" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+
+    </svg>
+
+  );
+
+}
+
+function LockIcon() {
+
+  return (
+
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path
+
+        d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinecap="round"
+
+      />
+
+      <path
+
+        d="M6.5 10h11a1.4 1.4 0 0 1 1.4 1.4v7.2a1.4 1.4 0 0 1-1.4 1.4h-11a1.4 1.4 0 0 1-1.4-1.4v-7.2A1.4 1.4 0 0 1 6.5 10Z"
+
+        stroke="#FF6A00"
+
+        strokeWidth="2.2"
+
+        strokeLinejoin="round"
+
+      />
+
+    </svg>
+
+  );
+
+}
+
+function SmallLockIcon() {
+
+  return (
+
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path d="M8 10V7.8a4 4 0 0 1 8 0V10" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" />
+
+      <path d="M6.7 10h10.6a1.3 1.3 0 0 1 1.3 1.3v7.1a1.3 1.3 0 0 1-1.3 1.3H6.7a1.3 1.3 0 0 1-1.3-1.3v-7.1A1.3 1.3 0 0 1 6.7 10Z" stroke="#64748b" strokeWidth="2.2" />
+
+    </svg>
+
+  );
+
+}
+
+function CoachIcon() {
+
+  return (
+
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="#FF6A00" strokeWidth="2.1" />
+
+      <path d="M4.5 20c.9-3.4 3.6-5.2 7.5-5.2s6.6 1.8 7.5 5.2" stroke="#FF6A00" strokeWidth="2.1" strokeLinecap="round" />
+
+      <path d="M9.3 8.2h5.4" stroke="#FF6A00" strokeWidth="2.1" strokeLinecap="round" />
+
+    </svg>
+
+  );
+
+}
+
+function ProgressIcon() {
+
+  return (
+
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path d="M4 17l5-5 4 4 7-8" stroke="#FF6A00" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+
+      <path d="M15 8h5v5" stroke="#FF6A00" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+
+    </svg>
+
+  );
+
+}
+
+function HistoryIcon() {
+
+  return (
+
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+      <path d="M8 5h8" stroke="#FF6A00" strokeWidth="2.1" strokeLinecap="round" />
+
+      <path d="M9 3h6v4H9V3Z" stroke="#FF6A00" strokeWidth="2.1" strokeLinejoin="round" />
+
+      <path d="M6.5 6h11A1.5 1.5 0 0 1 19 7.5v12A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5v-12A1.5 1.5 0 0 1 6.5 6Z" stroke="#FF6A00" strokeWidth="2.1" />
+
+      <path d="M8.5 12h7M8.5 16h5" stroke="#FF6A00" strokeWidth="2.1" strokeLinecap="round" />
 
     </svg>
 
@@ -3016,6 +3380,488 @@ const styles = {
 
   list: { marginTop: 12, display: "grid", gap: 12 },
 
+  previewHeader: {
+
+    marginTop: 16,
+
+  },
+
+  previewSub: {
+
+    marginTop: 6,
+
+    fontSize: 15,
+
+    fontWeight: 850,
+
+    color: MUTED,
+
+    letterSpacing: -0.2,
+
+  },
+
+  previewProgressCard: {
+
+    marginTop: 14,
+
+    borderRadius: 20,
+
+    padding: "14px 16px",
+
+    background: "#fff",
+
+    border: "1px solid rgba(15,23,42,.06)",
+
+    boxShadow: "0 12px 34px rgba(15,23,42,.05)",
+
+    display: "grid",
+
+    gridTemplateColumns: "34px auto 1fr auto",
+
+    alignItems: "center",
+
+    gap: 12,
+
+  },
+
+  previewGiftIcon: {
+
+    width: 34,
+
+    height: 34,
+
+    borderRadius: 999,
+
+    display: "grid",
+
+    placeItems: "center",
+
+    background: "rgba(255,106,0,.07)",
+
+    border: "1px solid rgba(255,106,0,.18)",
+
+  },
+
+  previewProgressText: {
+
+    fontSize: 13,
+
+    fontWeight: 900,
+
+    color: "#64748b",
+
+    whiteSpace: "nowrap",
+
+  },
+
+  previewProgressTrack: {
+
+    height: 9,
+
+    borderRadius: 999,
+
+    background: "rgba(15,23,42,.06)",
+
+    overflow: "hidden",
+
+  },
+
+  previewProgressFill: {
+
+    height: "100%",
+
+    borderRadius: 999,
+
+    background: "linear-gradient(90deg, #FF6A00, #FF8A3D)",
+
+    boxShadow: "0 8px 18px rgba(255,106,0,.16)",
+
+  },
+
+  previewProgressPill: {
+
+    padding: "8px 11px",
+
+    borderRadius: 999,
+
+    background: "rgba(15,23,42,.04)",
+
+    border: "1px solid rgba(15,23,42,.05)",
+
+    color: "#334155",
+
+    fontSize: 12,
+
+    fontWeight: 950,
+
+    whiteSpace: "nowrap",
+
+  },
+
+  previewList: {
+
+    marginTop: 14,
+
+    display: "grid",
+
+    gap: 14,
+
+  },
+
+  previewExCard: {
+
+    borderRadius: 24,
+
+    padding: 16,
+
+    background: "#fff",
+
+    border: "1px solid rgba(15,23,42,.055)",
+
+    boxShadow: "0 14px 38px rgba(15,23,42,.055)",
+
+    display: "grid",
+
+    gridTemplateColumns: "70px 1fr",
+
+    gap: 14,
+
+    alignItems: "center",
+
+  },
+
+  previewNumber: {
+
+    width: 58,
+
+    height: 58,
+
+    borderRadius: 18,
+
+    display: "grid",
+
+    placeItems: "center",
+
+    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+
+    color: "#fff",
+
+    fontSize: 23,
+
+    fontWeight: 980,
+
+    boxShadow: "0 14px 30px rgba(255,106,0,.18)",
+
+  },
+
+  previewExBody: {
+
+    minWidth: 0,
+
+  },
+
+  previewExName: {
+
+    fontSize: 20,
+
+    fontWeight: 980,
+
+    color: TEXT,
+
+    letterSpacing: -0.55,
+
+    lineHeight: 1.05,
+
+  },
+
+  previewExNote: {
+
+    marginTop: 6,
+
+    fontSize: 13.5,
+
+    fontWeight: 850,
+
+    color: MUTED,
+
+    lineHeight: 1.25,
+
+  },
+
+  previewChips: {
+
+    marginTop: 12,
+
+    display: "flex",
+
+    gap: 10,
+
+    flexWrap: "wrap",
+
+  },
+
+  previewChip: {
+
+    minHeight: 36,
+
+    padding: "8px 13px",
+
+    borderRadius: 999,
+
+    background: "rgba(255,106,0,.065)",
+
+    border: "1px solid rgba(255,106,0,.13)",
+
+    color: TEXT,
+
+    fontSize: 13,
+
+    fontWeight: 950,
+
+    display: "inline-flex",
+
+    alignItems: "center",
+
+    gap: 8,
+
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.70)",
+
+  },
+
+  previewLockedCard: {
+
+    marginTop: 16,
+
+    borderRadius: 28,
+
+    padding: "24px 18px 20px",
+
+    background:
+
+      "radial-gradient(circle at 50% 0%, rgba(255,106,0,.12), rgba(255,106,0,0) 38%), linear-gradient(135deg, rgba(255,248,243,.98), rgba(255,255,255,.98))",
+
+    border: "1px dashed rgba(255,106,0,.22)",
+
+    boxShadow: "0 18px 48px rgba(255,106,0,.08), 0 12px 32px rgba(15,23,42,.055)",
+
+    textAlign: "center",
+
+    position: "relative",
+
+    overflow: "hidden",
+
+  },
+
+  lockSparkOne: {
+
+    position: "absolute",
+
+    top: 48,
+
+    left: "36%",
+
+    color: "rgba(255,106,0,.34)",
+
+    fontSize: 18,
+
+    fontWeight: 900,
+
+  },
+
+  lockSparkTwo: {
+
+    position: "absolute",
+
+    top: 54,
+
+    right: "35%",
+
+    color: "rgba(255,106,0,.28)",
+
+    fontSize: 15,
+
+    fontWeight: 900,
+
+  },
+
+  previewLockIcon: {
+
+    width: 72,
+
+    height: 72,
+
+    borderRadius: 24,
+
+    margin: "0 auto",
+
+    display: "grid",
+
+    placeItems: "center",
+
+    background: "rgba(255,255,255,.78)",
+
+    border: "1px solid rgba(255,255,255,.88)",
+
+    boxShadow: "0 16px 34px rgba(15,23,42,.07), inset 0 1px 0 rgba(255,255,255,.95)",
+
+  },
+
+  previewBrandPill: {
+
+    margin: "12px auto 0",
+
+    width: "fit-content",
+
+    padding: "6px 12px",
+
+    borderRadius: 999,
+
+    background: "rgba(255,106,0,.10)",
+
+    border: "1px solid rgba(255,106,0,.10)",
+
+    color: ORANGE,
+
+    fontSize: 13,
+
+    fontWeight: 980,
+
+  },
+
+  previewLockTitle: {
+
+    marginTop: 18,
+
+    color: TEXT,
+
+    fontSize: 22,
+
+    fontWeight: 980,
+
+    letterSpacing: -0.65,
+
+    lineHeight: 1.08,
+
+  },
+
+  previewLockSub: {
+
+    marginTop: 8,
+
+    color: MUTED,
+
+    fontSize: 13.5,
+
+    fontWeight: 800,
+
+    lineHeight: 1.35,
+
+  },
+
+  previewBenefits: {
+
+    marginTop: 16,
+
+    display: "grid",
+
+    gridTemplateColumns: "1fr",
+
+    gap: 9,
+
+  },
+
+  previewBenefit: {
+
+    minHeight: 42,
+
+    padding: "10px 12px",
+
+    borderRadius: 999,
+
+    background: "rgba(255,255,255,.66)",
+
+    border: "1px solid rgba(255,106,0,.12)",
+
+    color: "#334155",
+
+    fontSize: 12.5,
+
+    fontWeight: 900,
+
+    display: "flex",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    gap: 8,
+
+  },
+
+  previewPremiumBtn: {
+
+    marginTop: 16,
+
+    width: "100%",
+
+    minHeight: 58,
+
+    border: "none",
+
+    borderRadius: 999,
+
+    background: "linear-gradient(135deg, #FF6A00, #FF7A1A)",
+
+    color: "#fff",
+
+    fontSize: 16,
+
+    fontWeight: 980,
+
+    letterSpacing: -0.25,
+
+    boxShadow: "0 18px 42px rgba(255,106,0,.26), inset 0 1px 0 rgba(255,255,255,.22)",
+
+    display: "flex",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    gap: 10,
+
+  },
+
+  previewPremiumArrow: {
+
+    fontSize: 26,
+
+    lineHeight: 1,
+
+    transform: "translateY(-1px)",
+
+  },
+
+  previewAccess: {
+
+    marginTop: 12,
+
+    color: MUTED,
+
+    fontSize: 13,
+
+    fontWeight: 900,
+
+    display: "inline-flex",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    gap: 7,
+
+  },
+
   exCard: {
 
     borderRadius: 22,
@@ -3171,78 +4017,6 @@ const styles = {
   checkOff: { background: "rgba(15,23,42,.06)", boxShadow: "none" },
 
   checkGhost: { marginLeft: "auto", width: 44, height: 44, borderRadius: 16, background: "rgba(15,23,42,.06)" },
-
-  lockTitle: { marginTop: 14, fontSize: 14, fontWeight: 950, color: TEXT },
-
-  lockWrap: { marginTop: 10, filter: "blur(2.8px)", opacity: 0.65, pointerEvents: "none", display: "grid", gap: 12 },
-
-  fab: {
-
-    position: "fixed",
-
-    left: "50%",
-
-    transform: "translateX(-50%)",
-
-    bottom: 160,
-
-    zIndex: 999,
-
-    minHeight: 56,
-
-    padding: "14px 18px",
-
-    borderRadius: 999,
-
-    border: "1px solid rgba(255,255,255,.35)",
-
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
-
-    color: "#111",
-
-    fontWeight: 950,
-
-    letterSpacing: -0.2,
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    gap: 12,
-
-    boxShadow: "0 22px 70px rgba(255,106,0,.34), inset 0 1px 0 rgba(255,255,255,.28)",
-
-    animation: "pulseGlow 1.8s ease-in-out infinite",
-
-    willChange: "transform",
-
-  },
-
-  fabIcon: {
-
-    width: 38,
-
-    height: 38,
-
-    borderRadius: 999,
-
-    flexShrink: 0,
-
-    background: "rgba(255,255,255,.88)",
-
-    border: "1px solid rgba(255,255,255,.55)",
-
-    display: "grid",
-
-    placeItems: "center",
-
-    boxShadow: "0 12px 26px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.55)",
-
-  },
-
-  fabText: { fontSize: 14, lineHeight: 1, whiteSpace: "nowrap" },
 
   finishFab: {
 
