@@ -50,16 +50,6 @@ function clamp(n, a, b) {
 
 }
 
-function estimateWorkoutKcal(weightKg) {
-
-  const kg = Number(weightKg || 0);
-
-  if (!kg) return 320;
-
-  return Math.round(((6 * 3.5 * kg) / 200) * 45);
-
-}
-
 function calcWeeklyCount(list) {
 
   const now = new Date();
@@ -183,6 +173,80 @@ function progressFromGoal(goal, weekly, streak) {
   }
 
   return clamp(streak / 10, 0, 1);
+
+}
+
+function calcReadiness(lastWorkout) {
+
+  if (!lastWorkout) {
+
+    return {
+
+      percent: 100,
+
+      label: "Pronto",
+
+      text: "Você está pronto para começar.",
+
+      hoursText: "novo ciclo",
+
+    };
+
+  }
+
+  const rawDate = lastWorkout.completed_at || lastWorkout.created_at || lastWorkout.session_date;
+
+  const lastDate = new Date(rawDate);
+
+  const now = new Date();
+
+  const diffHours = Math.max(0, (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60));
+
+  const percent = clamp(Math.round((diffHours / 24) * 100), 0, 100);
+
+  if (diffHours < 12) {
+
+    return {
+
+      percent,
+
+      label: "Recuperando",
+
+      text: "Seu último treino foi recente.",
+
+      hoursText: `${Math.floor(diffHours)}h`,
+
+    };
+
+  }
+
+  if (diffHours < 20) {
+
+    return {
+
+      percent,
+
+      label: "Quase pronto",
+
+      text: "Você já pode fazer um treino leve.",
+
+      hoursText: `${Math.floor(diffHours)}h`,
+
+    };
+
+  }
+
+  return {
+
+    percent,
+
+    label: "Pronto",
+
+    text: "Seu corpo já teve uma boa recuperação.",
+
+    hoursText: `${Math.floor(diffHours)}h`,
+
+  };
 
 }
 
@@ -573,7 +637,6 @@ function GoalRow({ goal, progress, onClick }) {
   );
 
 }
-
 /* =========================
 
    SUPABASE
@@ -677,6 +740,100 @@ async function loadCompletedWorkoutDates(userId) {
   } catch {
 
     return [];
+
+  }
+
+}
+
+async function loadLastWorkout(userId) {
+
+  if (!userId) return null;
+
+  try {
+
+    const { data, error } = await supabase
+
+      .from("workout_sessions")
+
+      .select("session_date, completed_at, created_at")
+
+      .eq("user_id", userId)
+
+      .eq("completed", true)
+
+      .order("completed_at", { ascending: false, nullsFirst: false })
+
+      .order("created_at", { ascending: false })
+
+      .limit(1)
+
+      .maybeSingle();
+
+    if (error) return null;
+
+    return data || null;
+
+  } catch {
+
+    return null;
+
+  }
+
+}
+
+async function loadTodayCalories(userId, dateKey) {
+
+  if (!userId || !dateKey) return 0;
+
+  try {
+
+    const [{ data: workoutRows }, { data: cardioRows }] = await Promise.all([
+
+      supabase
+
+        .from("workout_sessions")
+
+        .select("calories_burned")
+
+        .eq("user_id", userId)
+
+        .eq("completed", true)
+
+        .eq("session_date", dateKey),
+
+      supabase
+
+        .from("cardio_sessions")
+
+        .select("calories_burned")
+
+        .eq("user_id", userId)
+
+        .eq("date_key", dateKey),
+
+    ]);
+
+    const workoutKcal = (workoutRows || []).reduce(
+
+      (sum, row) => sum + Number(row.calories_burned || 0),
+
+      0
+
+    );
+
+    const cardioKcal = (cardioRows || []).reduce(
+
+      (sum, row) => sum + Number(row.calories_burned || 0),
+
+      0
+
+    );
+
+    return workoutKcal + cardioKcal;
+
+  } catch {
+
+    return 0;
 
   }
 
@@ -790,6 +947,10 @@ export default function Dashboard() {
 
   const [waterMl, setWaterMl] = useState(0);
 
+  const [lastWorkout, setLastWorkout] = useState(null);
+
+  const [todayCalories, setTodayCalories] = useState(0);
+
   const name = user?.nome ? user.nome.split(" ")[0] : "Rafael";
 
   const peso = Number(user?.peso || 0) || 80;
@@ -800,21 +961,11 @@ export default function Dashboard() {
 
   const streak = useMemo(() => calcStreak(workouts), [workouts]);
 
-  const kcalPerWorkout = useMemo(() => estimateWorkoutKcal(user?.peso), [user?.peso]);
-
-  const kcalThisWeek = useMemo(() => weekly * kcalPerWorkout, [weekly, kcalPerWorkout]);
-
   const goalMl = useMemo(() => clamp(Math.round(peso * 35), 1800, 5000), [peso]);
 
   const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
 
-  const recovery = useMemo(() => {
-
-    const base = 82 - Math.max(0, streak - 3) * 3 + Math.min(weekly, weekGoal) * 2;
-
-    return clamp(base, 48, 96);
-
-  }, [weekly, streak, weekGoal]);
+  const readiness = useMemo(() => calcReadiness(lastWorkout), [lastWorkout]);
 
   const momentum = useMemo(
 
@@ -884,21 +1035,39 @@ export default function Dashboard() {
 
       if (!user?.id) return;
 
-      const [paidStatus, nutriStatus, workoutDates, activeGoals, hydration] =
+      const [
 
-        await Promise.all([
+        paidStatus,
 
-          loadPaidStatus(user.id),
+        nutriStatus,
 
-          loadNutriStatus(user.id),
+        workoutDates,
 
-          loadCompletedWorkoutDates(user.id),
+        activeGoals,
 
-          loadGoals(user.id),
+        hydration,
 
-          loadHydration(user.id, today),
+        lastWorkoutRow,
 
-        ]);
+        todayKcal,
+
+      ] = await Promise.all([
+
+        loadPaidStatus(user.id),
+
+        loadNutriStatus(user.id),
+
+        loadCompletedWorkoutDates(user.id),
+
+        loadGoals(user.id),
+
+        loadHydration(user.id, today),
+
+        loadLastWorkout(user.id),
+
+        loadTodayCalories(user.id, today),
+
+      ]);
 
       if (!active) return;
 
@@ -912,6 +1081,10 @@ export default function Dashboard() {
 
       setWaterMl(hydration);
 
+      setLastWorkout(lastWorkoutRow);
+
+      setTodayCalories(todayKcal);
+
     }
 
     bootstrap();
@@ -919,6 +1092,88 @@ export default function Dashboard() {
     return () => {
 
       active = false;
+
+    };
+
+  }, [user?.id, today]);
+
+  useEffect(() => {
+
+    if (!user?.id) return;
+
+    const channel = supabase
+
+      .channel(`dashboard-live-${user.id}`)
+
+      .on(
+
+        "postgres_changes",
+
+        {
+
+          event: "*",
+
+          schema: "public",
+
+          table: "workout_sessions",
+
+          filter: `user_id=eq.${user.id}`,
+
+        },
+
+        async () => {
+
+          const [nextWorkouts, nextCalories, lastWorkoutRow] = await Promise.all([
+
+            loadCompletedWorkoutDates(user.id),
+
+            loadTodayCalories(user.id, today),
+
+            loadLastWorkout(user.id),
+
+          ]);
+
+          setWorkouts(nextWorkouts);
+
+          setTodayCalories(nextCalories);
+
+          setLastWorkout(lastWorkoutRow);
+
+        }
+
+      )
+
+      .on(
+
+        "postgres_changes",
+
+        {
+
+          event: "*",
+
+          schema: "public",
+
+          table: "cardio_sessions",
+
+          filter: `user_id=eq.${user.id}`,
+
+        },
+
+        async () => {
+
+          const nextCalories = await loadTodayCalories(user.id, today);
+
+          setTodayCalories(nextCalories);
+
+        }
+
+      )
+
+      .subscribe();
+
+    return () => {
+
+      supabase.removeChannel(channel);
 
     };
 
@@ -1088,11 +1343,11 @@ export default function Dashboard() {
 
           <p style={styles.heroParagraph}>
 
-            Seu corpo está {recovery}% recuperado.
+            {readiness.text}
 
             <br />
 
-            Ótimo momento para treinar.
+            Último treino: {readiness.hoursText}.
 
           </p>
 
@@ -1142,7 +1397,7 @@ export default function Dashboard() {
 
               background: `conic-gradient(${ORANGE} 0 ${
 
-                Math.min(100, (25 / 30) * 100)
+                readiness.percent
 
               }%, rgba(255,106,0,.16) 0 100%)`,
 
@@ -1152,15 +1407,15 @@ export default function Dashboard() {
 
             <div style={styles.ringInner}>
 
-              <strong style={styles.ringNumber}>25</strong>
+              <strong style={styles.ringNumber}>{readiness.percent}</strong>
 
-              <span style={styles.ringMin}>min</span>
+              <span style={styles.ringMin}>%</span>
 
             </div>
 
           </div>
 
-          <div style={styles.ringLabel}>Meta diária</div>
+          <div style={styles.ringLabel}>{readiness.label}</div>
 
         </button>
 
@@ -1172,9 +1427,9 @@ export default function Dashboard() {
 
           icon="fire"
 
-          value={kcalThisWeek || 766}
+          value={todayCalories}
 
-          sub="Queimadas"
+          sub="kcal hoje"
 
           onClick={() => nav("/treino")}
 
@@ -1348,15 +1603,7 @@ export default function Dashboard() {
 
       <section style={styles.actions}>
 
-        <ActionButton
-
-          icon="bolt"
-
-          label="Treino"
-
-          onClick={() => nav("/treino")}
-
-        />
+        <ActionButton icon="bolt" label="Treino" onClick={() => nav("/treino")} />
 
         <ActionButton
 
@@ -1365,26 +1612,6 @@ export default function Dashboard() {
           label="Exercícios"
 
           onClick={() => nav("/montagem-treino")}
-
-        />
-
-        <ActionButton
-
-          icon="stretch"
-
-          label="Alongamento"
-
-          onClick={() => nav("/treino")}
-
-        />
-
-        <ActionButton
-
-          icon="clipboard"
-
-          label="Avaliação"
-
-          onClick={() => nav("/conta")}
 
         />
 
@@ -1398,15 +1625,7 @@ export default function Dashboard() {
 
             <h2 style={styles.cardTitle}>Suas metas</h2>
 
-            <button
-
-              type="button"
-
-              style={styles.cardLink}
-
-              onClick={() => nav("/metas")}
-
-            >
+            <button type="button" style={styles.cardLink} onClick={() => nav("/metas")}>
 
               Ver todas
 
@@ -1476,15 +1695,7 @@ export default function Dashboard() {
 
           <h2 style={styles.cardTitle}>Registro de progresso</h2>
 
-          <button
-
-            type="button"
-
-            style={styles.cardLink}
-
-            onClick={() => nav("/treino")}
-
-          >
+          <button type="button" style={styles.cardLink} onClick={() => nav("/treino")}>
 
             Ver histórico
 
@@ -2404,7 +2615,7 @@ const styles = {
 
     display: "grid",
 
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns: "repeat(2, 1fr)",
 
     overflow: "hidden",
 
