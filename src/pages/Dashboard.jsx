@@ -8,12 +8,6 @@ import { supabase } from "../lib/supabase";
 
 import LogoMark from "../assets/IMG_5692.png";
 
-/* =========================
-
-   THEME
-
-========================= */
-
 const ORANGE = "#FF6A00";
 
 const TEXT = "#0f172a";
@@ -25,12 +19,6 @@ const BORDER = "rgba(15,23,42,.08)";
 const GREEN = "#22c55e";
 
 const BLUE = "#1D9BF0";
-
-/* =========================
-
-   HELPERS
-
-========================= */
 
 function haptic() {
 
@@ -138,23 +126,11 @@ function momentumLabel(weekly, weekGoal, streak) {
 
 function momentumText(v) {
 
-  if (v === "Insano") {
+  if (v === "Insano") return "Seu ritmo está acima da média. Continue assim.";
 
-    return "Seu ritmo está acima da média. Continue assim.";
+  if (v === "Excelente") return "Você está mantendo uma consistência forte.";
 
-  }
-
-  if (v === "Excelente") {
-
-    return "Você está mantendo uma consistência forte.";
-
-  }
-
-  if (v === "Forte") {
-
-    return "Mais um treino e você fecha a meta semanal.";
-
-  }
+  if (v === "Forte") return "Mais um treino e você fecha a meta semanal.";
 
   return "Seu progresso depende da repetição diária.";
 
@@ -250,11 +226,11 @@ function calcReadiness(lastWorkout) {
 
 }
 
-/* =========================
+function estimateKcal({ weightKg = 80, minutes = 45, met = 6 }) {
 
-   LOGO TYPE EFFECT
+  return Math.round(((met * 3.5 * Number(weightKg || 80)) / 200) * Number(minutes || 0));
 
-========================= */
+}
 
 function TypeLogo({ text = "fitdeal" }) {
 
@@ -289,12 +265,6 @@ function TypeLogo({ text = "fitdeal" }) {
   );
 
 }
-
-/* =========================
-
-   ICON
-
-========================= */
 
 function Icon({ name, size = 20, color = TEXT }) {
 
@@ -408,34 +378,6 @@ function Icon({ name, size = 20, color = TEXT }) {
 
       );
 
-    case "stretch":
-
-      return (
-
-        <svg viewBox="0 0 24 24" {...common}>
-
-          <circle cx="12" cy="5" r="2" />
-
-          <path d="M12 7v5l4 2M12 12l-4 2M10 22l2-5 2 5" />
-
-        </svg>
-
-      );
-
-    case "clipboard":
-
-      return (
-
-        <svg viewBox="0 0 24 24" {...common}>
-
-          <rect x="5" y="4" width="14" height="18" rx="2" />
-
-          <path d="M9 4h6v3H9z" />
-
-        </svg>
-
-      );
-
     case "target":
 
       return (
@@ -471,12 +413,6 @@ function Icon({ name, size = 20, color = TEXT }) {
   }
 
 }
-
-/* =========================
-
-   COMPONENTS
-
-========================= */
 
 function TinyLine({ color = ORANGE }) {
 
@@ -637,11 +573,6 @@ function GoalRow({ goal, progress, onClick }) {
   );
 
 }
-/* =========================
-
-   SUPABASE
-
-========================= */
 
 async function loadPaidStatus(userId) {
 
@@ -677,6 +608,10 @@ async function loadPaidStatus(userId) {
 
     if (String(profile?.plan || "").toLowerCase() === "premium") return true;
 
+    if (String(profile?.plan || "").toLowerCase() === "basic") return true;
+
+    if (String(profile?.plan || "").toLowerCase() === "basico") return true;
+
     return false;
 
   } catch {
@@ -706,6 +641,8 @@ async function loadNutriStatus(userId) {
     if (profile?.nutri_plus === true) return true;
 
     if (String(profile?.plan || "").toLowerCase() === "nutri+") return true;
+
+    if (String(profile?.plan || "").toLowerCase() === "nutri_plus") return true;
 
     return false;
 
@@ -781,7 +718,7 @@ async function loadLastWorkout(userId) {
 
 }
 
-async function loadTodayCalories(userId, dateKey) {
+async function loadTodayCalories(userId, dateKey, weightKg = 80) {
 
   if (!userId || !dateKey) return 0;
 
@@ -793,7 +730,7 @@ async function loadTodayCalories(userId, dateKey) {
 
         .from("workout_sessions")
 
-        .select("calories_burned")
+        .select("calories_burned, duration_minutes, session_date, completed")
 
         .eq("user_id", userId)
 
@@ -805,7 +742,7 @@ async function loadTodayCalories(userId, dateKey) {
 
         .from("cardio_sessions")
 
-        .select("calories_burned")
+        .select("calories_burned, duration_minutes, date_key")
 
         .eq("user_id", userId)
 
@@ -813,21 +750,31 @@ async function loadTodayCalories(userId, dateKey) {
 
     ]);
 
-    const workoutKcal = (workoutRows || []).reduce(
+    const workoutKcal = (workoutRows || []).reduce((sum, row) => {
 
-      (sum, row) => sum + Number(row.calories_burned || 0),
+      const saved = Number(row.calories_burned || 0);
 
-      0
+      if (saved > 0) return sum + saved;
 
-    );
+      const minutes = Number(row.duration_minutes || 45);
 
-    const cardioKcal = (cardioRows || []).reduce(
+      return sum + estimateKcal({ weightKg, minutes, met: 6 });
 
-      (sum, row) => sum + Number(row.calories_burned || 0),
+    }, 0);
 
-      0
+    const cardioKcal = (cardioRows || []).reduce((sum, row) => {
 
-    );
+      const saved = Number(row.calories_burned || 0);
+
+      if (saved > 0) return sum + saved;
+
+      const minutes = Number(row.duration_minutes || 0);
+
+      if (!minutes) return sum;
+
+      return sum + estimateKcal({ weightKg, minutes, met: 7 });
+
+    }, 0);
 
     return workoutKcal + cardioKcal;
 
@@ -923,12 +870,6 @@ async function saveHydration(userId, dateKey, waterMl) {
 
 }
 
-/* =========================
-
-   PAGE
-
-========================= */
-
 export default function Dashboard() {
 
   const nav = useNavigate();
@@ -950,6 +891,12 @@ export default function Dashboard() {
   const [lastWorkout, setLastWorkout] = useState(null);
 
   const [todayCalories, setTodayCalories] = useState(0);
+
+  const [consistencyOpen, setConsistencyOpen] = useState(false);
+
+  const [hydrationOpen, setHydrationOpen] = useState(false);
+
+  const [momentumOpen, setMomentumOpen] = useState(false);
 
   const name = user?.nome ? user.nome.split(" ")[0] : "Rafael";
 
@@ -983,13 +930,7 @@ export default function Dashboard() {
 
   );
 
-  const loadEvolution = useMemo(() => clamp(weekly * 2 + streak, 0, 18), [
-
-    weekly,
-
-    streak,
-
-  ]);
+  const loadEvolution = useMemo(() => clamp(weekly * 2 + streak, 0, 18), [weekly, streak]);
 
   const mainGoals = useMemo(() => {
 
@@ -1065,7 +1006,7 @@ export default function Dashboard() {
 
         loadLastWorkout(user.id),
 
-        loadTodayCalories(user.id, today),
+        loadTodayCalories(user.id, today, peso),
 
       ]);
 
@@ -1095,7 +1036,7 @@ export default function Dashboard() {
 
     };
 
-  }, [user?.id, today]);
+  }, [user?.id, today, peso]);
 
   useEffect(() => {
 
@@ -1127,7 +1068,7 @@ export default function Dashboard() {
 
             loadCompletedWorkoutDates(user.id),
 
-            loadTodayCalories(user.id, today),
+            loadTodayCalories(user.id, today, peso),
 
             loadLastWorkout(user.id),
 
@@ -1161,9 +1102,35 @@ export default function Dashboard() {
 
         async () => {
 
-          const nextCalories = await loadTodayCalories(user.id, today);
+          const nextCalories = await loadTodayCalories(user.id, today, peso);
 
           setTodayCalories(nextCalories);
+
+        }
+
+      )
+
+      .on(
+
+        "postgres_changes",
+
+        {
+
+          event: "*",
+
+          schema: "public",
+
+          table: "daily_hydration",
+
+          filter: `user_id=eq.${user.id}`,
+
+        },
+
+        async () => {
+
+          const nextWater = await loadHydration(user.id, today);
+
+          setWaterMl(nextWater);
 
         }
 
@@ -1177,9 +1144,9 @@ export default function Dashboard() {
 
     };
 
-  }, [user?.id, today]);
+  }, [user?.id, today, peso]);
 
-  async function addWaterQuick() {
+  async function addWaterQuick(amount = 300) {
 
     if (!user?.id || !hasNutriPlus) {
 
@@ -1189,7 +1156,7 @@ export default function Dashboard() {
 
     }
 
-    const next = clamp(waterMl + 300, 0, goalMl * 2);
+    const next = clamp(waterMl + amount, 0, goalMl * 2);
 
     setWaterMl(next);
 
@@ -1293,7 +1260,7 @@ export default function Dashboard() {
 
           haptic();
 
-          nav("/treino");
+          nav("/treino-detalhe");
 
         }}
 
@@ -1361,7 +1328,7 @@ export default function Dashboard() {
 
               haptic();
 
-              nav("/treino");
+              nav("/treino-detalhe");
 
             }}
 
@@ -1383,7 +1350,7 @@ export default function Dashboard() {
 
             haptic();
 
-            nav("/treino");
+            nav("/treino-detalhe");
 
           }}
 
@@ -1395,11 +1362,7 @@ export default function Dashboard() {
 
               ...styles.ring,
 
-              background: `conic-gradient(${ORANGE} 0 ${
-
-                readiness.percent
-
-              }%, rgba(255,106,0,.16) 0 100%)`,
+              background: `conic-gradient(${ORANGE} 0 ${readiness.percent}%, rgba(255,106,0,.16) 0 100%)`,
 
             }}
 
@@ -1431,7 +1394,7 @@ export default function Dashboard() {
 
           sub="kcal hoje"
 
-          onClick={() => nav("/treino")}
+          onClick={() => nav("/treino-detalhe")}
 
         >
 
@@ -1447,7 +1410,7 @@ export default function Dashboard() {
 
           sub="Consistência"
 
-          onClick={() => nav("/treino")}
+          onClick={() => setConsistencyOpen((v) => !v)}
 
         >
 
@@ -1455,29 +1418,9 @@ export default function Dashboard() {
 
             <span style={styles.dotLineItem} />
 
-            <span
+            <span style={{ ...styles.dotLineItem, opacity: streak >= 2 ? 1 : 0.35 }} />
 
-              style={{
-
-                ...styles.dotLineItem,
-
-                opacity: streak >= 2 ? 1 : 0.35,
-
-              }}
-
-            />
-
-            <span
-
-              style={{
-
-                ...styles.dotLineItem,
-
-                opacity: streak >= 4 ? 1 : 0.35,
-
-              }}
-
-            />
+            <span style={{ ...styles.dotLineItem, opacity: streak >= 4 ? 1 : 0.35 }} />
 
           </div>
 
@@ -1491,7 +1434,7 @@ export default function Dashboard() {
 
           sub="Semana"
 
-          onClick={() => nav("/treino")}
+          onClick={() => nav("/treino-detalhe")}
 
         >
 
@@ -1531,7 +1474,13 @@ export default function Dashboard() {
 
           locked={!hasNutriPlus}
 
-          onClick={addWaterQuick}
+          onClick={() => {
+
+            if (!hasNutriPlus) return nav("/planos");
+
+            setHydrationOpen((v) => !v);
+
+          }}
 
         >
 
@@ -1554,6 +1503,60 @@ export default function Dashboard() {
         </StatCard>
 
       </section>
+
+      {consistencyOpen ? (
+
+        <section style={styles.expandCard}>
+
+          <div style={styles.expandTitle}>Consistência</div>
+
+          <div style={styles.expandText}>
+
+            Você está com {streak} dia(s) de sequência e {weekly}/{weekGoal} treinos nesta semana.
+
+          </div>
+
+          <button style={styles.expandBtn} onClick={() => nav("/treino-detalhe")} type="button">
+
+            Ver histórico
+
+          </button>
+
+        </section>
+
+      ) : null}
+
+      {hydrationOpen ? (
+
+        <section style={styles.expandCard}>
+
+          <div style={styles.expandTitle}>Hidratação</div>
+
+          <div style={styles.expandText}>
+
+            {waterMl}ml consumidos hoje de {goalMl}ml.
+
+          </div>
+
+          <div style={styles.waterActions}>
+
+            <button style={styles.waterBtn} onClick={() => addWaterQuick(100)} type="button">
+
+              +100ml
+
+            </button>
+
+            <button style={styles.waterBtn} onClick={() => addWaterQuick(250)} type="button">
+
+              +250ml
+
+            </button>
+
+          </div>
+
+        </section>
+
+      ) : null}
 
       <section style={styles.planCard}>
 
@@ -1603,7 +1606,7 @@ export default function Dashboard() {
 
       <section style={styles.actions}>
 
-        <ActionButton icon="bolt" label="Treino" onClick={() => nav("/treino")} />
+        <ActionButton icon="bolt" label="Treino" onClick={() => nav("/treino-detalhe")} />
 
         <ActionButton
 
@@ -1611,7 +1614,7 @@ export default function Dashboard() {
 
           label="Exercícios"
 
-          onClick={() => nav("/montagem-treino")}
+          onClick={() => nav("/personalize")}
 
         />
 
@@ -1665,7 +1668,7 @@ export default function Dashboard() {
 
             haptic();
 
-            nav("/treino");
+            setMomentumOpen((v) => !v);
 
           }}
 
@@ -1685,6 +1688,24 @@ export default function Dashboard() {
 
           <TinyLine />
 
+          {momentumOpen ? (
+
+            <div style={styles.momentumDetails}>
+
+              <div style={styles.detailTitle}>Recomendação</div>
+
+              <div style={styles.detailText}>
+
+                Priorize exercícios compostos e mantenha o ritmo semanal. Para evoluir melhor,
+
+                registre cargas no treino de peito, ombro, costas e pernas.
+
+              </div>
+
+            </div>
+
+          ) : null}
+
         </button>
 
       </section>
@@ -1695,11 +1716,7 @@ export default function Dashboard() {
 
           <h2 style={styles.cardTitle}>Registro de progresso</h2>
 
-          <button type="button" style={styles.cardLink} onClick={() => nav("/treino")}>
-
-            Ver histórico
-
-          </button>
+          <span style={styles.cardLink}>Resumo</span>
 
         </div>
 
@@ -1748,12 +1765,6 @@ export default function Dashboard() {
   );
 
 }
-
-/* =========================
-
-   STYLES
-
-========================= */
 
 const styles = {
 
@@ -2325,7 +2336,7 @@ const styles = {
 
     gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
 
-    gap: 9,
+    gap: 8,
 
     marginBottom: 14,
 
@@ -2345,7 +2356,7 @@ const styles = {
 
     boxShadow: "0 14px 34px rgba(15,23,42,.07)",
 
-    padding: 12,
+    padding: 11,
 
     textAlign: "left",
 
@@ -2503,6 +2514,98 @@ const styles = {
 
   },
 
+  expandCard: {
+
+    position: "relative",
+
+    zIndex: 2,
+
+    borderRadius: 22,
+
+    padding: 16,
+
+    background: "rgba(255,255,255,.92)",
+
+    border: `1px solid ${BORDER}`,
+
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
+
+    marginBottom: 14,
+
+  },
+
+  expandTitle: {
+
+    fontSize: 15,
+
+    fontWeight: 950,
+
+    color: TEXT,
+
+  },
+
+  expandText: {
+
+    marginTop: 6,
+
+    fontSize: 13,
+
+    fontWeight: 750,
+
+    color: MUTED,
+
+    lineHeight: 1.35,
+
+  },
+
+  expandBtn: {
+
+    marginTop: 12,
+
+    height: 38,
+
+    padding: "0 14px",
+
+    borderRadius: 999,
+
+    border: "none",
+
+    background: ORANGE,
+
+    color: "#fff",
+
+    fontWeight: 950,
+
+  },
+
+  waterActions: {
+
+    marginTop: 12,
+
+    display: "grid",
+
+    gridTemplateColumns: "1fr 1fr",
+
+    gap: 10,
+
+  },
+
+  waterBtn: {
+
+    height: 40,
+
+    borderRadius: 14,
+
+    border: "1px solid rgba(255,106,0,.18)",
+
+    background: "rgba(255,106,0,.10)",
+
+    color: ORANGE,
+
+    fontWeight: 950,
+
+  },
+
   planCard: {
 
     position: "relative",
@@ -2641,9 +2744,9 @@ const styles = {
 
     color: MUTED,
 
-    fontSize: 10.5,
+    fontSize: 12,
 
-    fontWeight: 850,
+    fontWeight: 900,
 
     borderRight: "1px solid rgba(15,23,42,.06)",
 
@@ -2896,6 +2999,40 @@ const styles = {
     fontWeight: 750,
 
     color: MUTED,
+
+  },
+
+  momentumDetails: {
+
+    marginTop: 12,
+
+    paddingTop: 12,
+
+    borderTop: "1px solid rgba(15,23,42,.08)",
+
+  },
+
+  detailTitle: {
+
+    fontSize: 13,
+
+    fontWeight: 950,
+
+    color: TEXT,
+
+  },
+
+  detailText: {
+
+    marginTop: 5,
+
+    fontSize: 12,
+
+    fontWeight: 750,
+
+    color: MUTED,
+
+    lineHeight: 1.35,
 
   },
 
