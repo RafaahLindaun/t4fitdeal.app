@@ -8,21 +8,35 @@ import { supabase } from "../lib/supabase";
 
 import LogoMark from "../assets/IMG_5692.png";
 
-const ORANGE = "#FF6A00";
+/* =========================
 
-const ORANGE_2 = "#FF8A3D";
+   THEME
+
+========================= */
+
+const ORANGE = "#FF6A00";
 
 const TEXT = "#0f172a";
 
 const MUTED = "#64748b";
 
-const SOFT = "#f8fafc";
+const BORDER = "rgba(15,23,42,.08)";
 
-const BORDER = "rgba(15,23,42,.07)";
+const GREEN = "#22c55e";
 
 const BLUE = "#1D9BF0";
 
-const GREEN = "#22c55e";
+/* =========================
+
+   HELPERS
+
+========================= */
+
+function haptic() {
+
+  if (navigator.vibrate) navigator.vibrate(8);
+
+}
 
 function todayKey() {
 
@@ -33,16 +47,6 @@ function todayKey() {
 function clamp(n, a, b) {
 
   return Math.max(a, Math.min(b, n));
-
-}
-
-function haptic() {
-
-  try {
-
-    if (navigator.vibrate) navigator.vibrate(8);
-
-  } catch {}
 
 }
 
@@ -116,133 +120,95 @@ function getGreeting() {
 
 }
 
-function startOfWeek(date = new Date()) {
-
-  const d = new Date(date);
-
-  d.setHours(0, 0, 0, 0);
-
-  const day = d.getDay();
-
-  d.setDate(d.getDate() - day);
-
-  return d;
-
-}
-
-function buildWeekDays(workoutDates = []) {
-
-  const workoutSet = new Set(workoutDates || []);
-
-  const start = startOfWeek(new Date());
-
-  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-  return Array.from({ length: 7 }).map((_, i) => {
-
-    const d = new Date(start);
-
-    d.setDate(start.getDate() + i);
-
-    const key = d.toISOString().slice(0, 10);
-
-    return {
-
-      key,
-
-      label: labels[i],
-
-      dayNum: d.getDate(),
-
-      done: workoutSet.has(key),
-
-      isToday: key === todayKey(),
-
-    };
-
-  });
-
-}
-
 function labelFromGoal(g) {
 
   if (!g) return "";
 
   if (g.type === "freq") return `${g.value} dias de frequência`;
 
-  if (g.type === "pr") return `${g.value} kg no ${g.exercise || "exercício"}`;
+  if (g.type === "pr") return `${g.value}kg no ${g.exercise || "exercício"}`;
 
-  if (g.type === "peso") return `${g.value} kg de peso-alvo`;
-
-  if (g.type === "cardio") return `${g.value} sessões de cardio/sem`;
+  if (g.type === "peso") return `${g.value}kg alvo`;
 
   return g.title || "Meta";
 
 }
 
-function progressFromGoal(g, weekly, streak) {
-
-  if (!g) return 0;
-
-  const target = Number(g.value || 0);
-
-  if (g.type === "freq") return clamp(streak / Math.max(target, 1), 0, 1);
-
-  if (g.type === "cardio") return clamp(weekly / Math.max(target, 1), 0, 1);
-
-  return Number(g.progress || g.percent || 0) > 1
-
-    ? clamp(Number(g.progress || g.percent || 0) / 100, 0, 1)
-
-    : clamp(Number(g.progress || g.percent || 0) || 0.58, 0, 1);
-
-}
-
 function momentumLabel(weekly, weekGoal, streak) {
 
-  const score = weekly / Math.max(weekGoal, 1) + streak / 7;
+  if (streak >= 7) return "Insano";
 
-  if (score >= 1.25) return "ALTO";
+  if (weekly >= weekGoal) return "Excelente";
 
-  if (score >= 0.72) return "BOM";
+  if (weekly >= weekGoal - 1) return "Forte";
 
-  return "BAIXO";
-
-}
-
-function momentumText(label) {
-
-  if (label === "ALTO") return "Você está em uma sequência forte.";
-
-  if (label === "BOM") return "Seu ritmo está consistente esta semana.";
-
-  return "Volte hoje para recuperar o ritmo.";
+  return "Constante";
 
 }
 
-function TypeLogo({ text = "fitdeal." }) {
+function momentumText(v) {
+
+  if (v === "Insano") {
+
+    return "Seu ritmo está acima da média. Continue assim.";
+
+  }
+
+  if (v === "Excelente") {
+
+    return "Você está mantendo uma consistência forte.";
+
+  }
+
+  if (v === "Forte") {
+
+    return "Mais um treino e você fecha a meta semanal.";
+
+  }
+
+  return "Seu progresso depende da repetição diária.";
+
+}
+
+function progressFromGoal(goal, weekly, streak) {
+
+  if (!goal) return 0.4;
+
+  if (goal.progress) return goal.progress;
+
+  if (goal.type === "freq") {
+
+    return clamp(weekly / Number(goal.value || 1), 0, 1);
+
+  }
+
+  return clamp(streak / 10, 0, 1);
+
+}
+
+/* =========================
+
+   LOGO TYPE EFFECT
+
+========================= */
+
+function TypeLogo({ text = "fitdeal" }) {
 
   const [count, setCount] = useState(0);
 
-  const [done, setDone] = useState(false);
-
   useEffect(() => {
 
-    if (done) return;
+    if (count >= text.length) return;
 
     const t = setTimeout(() => {
 
-      const next = count + 1;
-
-      setCount(next);
-
-      if (next >= text.length) setDone(true);
+      setCount((v) => v + 1);
 
     }, count === 0 ? 250 : 115);
 
     return () => clearTimeout(t);
 
-  }, [count, done, text]);
+  }, [count, text]);
 
   return (
 
@@ -250,7 +216,9 @@ function TypeLogo({ text = "fitdeal." }) {
 
       <span>{text.slice(0, count)}</span>
 
-      <span style={styles.cursor} />
+      <span style={styles.logoDot}>.</span>
+
+      {count < text.length ? <span style={styles.cursor} /> : null}
 
     </div>
 
@@ -258,7 +226,13 @@ function TypeLogo({ text = "fitdeal." }) {
 
 }
 
-function Icon({ name, size = 24, color = ORANGE, stroke = 2.2 }) {
+/* =========================
+
+   ICON
+
+========================= */
+
+function Icon({ name, size = 20, color = TEXT }) {
 
   const common = {
 
@@ -266,13 +240,11 @@ function Icon({ name, size = 24, color = ORANGE, stroke = 2.2 }) {
 
     height: size,
 
-    viewBox: "0 0 24 24",
+    stroke: color,
 
     fill: "none",
 
-    stroke: color,
-
-    strokeWidth: stroke,
+    strokeWidth: 2,
 
     strokeLinecap: "round",
 
@@ -280,273 +252,168 @@ function Icon({ name, size = 24, color = ORANGE, stroke = 2.2 }) {
 
   };
 
-  if (name === "home")
+  switch (name) {
 
-    return (
+    case "fire":
 
-      <svg {...common}>
+      return (
 
-        <path d="M3 10.8 12 3l9 7.8" />
+        <svg viewBox="0 0 24 24" {...common}>
 
-        <path d="M5 10v10h14V10" />
+          <path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-4 4-8 4-8Z" />
 
-        <path d="M9 20v-6h6v6" />
+          <path d="M12 14a3 3 0 1 0 3 3" />
 
-      </svg>
+        </svg>
 
-    );
+      );
 
-  if (name === "food")
+    case "calendar":
 
-    return (
+      return (
 
-      <svg {...common}>
+        <svg viewBox="0 0 24 24" {...common}>
 
-        <path d="M7 3v18" />
+          <rect x="3" y="5" width="18" height="16" rx="3" />
 
-        <path d="M4 3v5a3 3 0 0 0 6 0V3" />
+          <path d="M16 3v4M8 3v4M3 10h18" />
 
-        <path d="M17 3v18" />
+        </svg>
 
-        <path d="M17 3c2.2 1.8 3.3 4 3.3 6.6 0 2.4-1.2 4.2-3.3 5" />
+      );
 
-      </svg>
+    case "dumbbell":
 
-    );
+      return (
 
-  if (name === "dumbbell")
+        <svg viewBox="0 0 24 24" {...common}>
 
-    return (
+          <path d="M3 10v4M6 8v8M18 8v8M21 10v4M8 12h8" />
 
-      <svg {...common}>
+        </svg>
 
-        <path d="m6.5 6.5 11 11" />
+      );
 
-        <path d="m21 14-2 2" />
+    case "drop":
 
-        <path d="m16 19 2-2" />
+      return (
 
-        <path d="m8 3-2 2" />
+        <svg viewBox="0 0 24 24" {...common}>
 
-        <path d="m5 8 2-2" />
+          <path d="M12 2s6 7 6 11a6 6 0 1 1-12 0c0-4 6-11 6-11Z" />
 
-        <path d="m3 10 3-3" />
+        </svg>
 
-        <path d="m14 21 3-3" />
+      );
 
-      </svg>
+    case "lock":
 
-    );
+      return (
 
-  if (name === "card")
+        <svg viewBox="0 0 24 24" {...common}>
 
-    return (
+          <rect x="5" y="11" width="14" height="10" rx="2" />
 
-      <svg {...common}>
+          <path d="M8 11V8a4 4 0 1 1 8 0v3" />
 
-        <rect x="3" y="5" width="18" height="14" rx="3" />
+        </svg>
 
-        <path d="M3 10h18" />
+      );
 
-        <path d="M7 15h4" />
+    case "bolt":
 
-      </svg>
+      return (
 
-    );
+        <svg viewBox="0 0 24 24" {...common}>
 
-  if (name === "user")
+          <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
 
-    return (
+        </svg>
 
-      <svg {...common}>
+      );
 
-        <circle cx="12" cy="8" r="4" />
+    case "exercise":
 
-        <path d="M4 21a8 8 0 0 1 16 0" />
+      return (
 
-      </svg>
+        <svg viewBox="0 0 24 24" {...common}>
 
-    );
+          <path d="M4 10v4M7 8v8M17 8v8M20 10v4M9 12h6" />
 
-  if (name === "fire")
+        </svg>
 
-    return (
+      );
 
-      <svg {...common} fill="none">
+    case "stretch":
 
-        <path d="M12 22c4 0 7-2.8 7-6.8 0-3.6-2.5-6.2-4.7-8.5-.5 2.8-1.8 4.3-3.5 5.5.2-3.5-1.4-6.3-4-8.2.2 3.8-2 5.8-3.2 8.1C2.4 14.6 3 22 12 22Z" />
+      return (
 
-      </svg>
+        <svg viewBox="0 0 24 24" {...common}>
 
-    );
+          <circle cx="12" cy="5" r="2" />
 
-  if (name === "calendar")
+          <path d="M12 7v5l4 2M12 12l-4 2M10 22l2-5 2 5" />
 
-    return (
+        </svg>
 
-      <svg {...common}>
+      );
 
-        <rect x="3" y="5" width="18" height="16" rx="3" />
+    case "clipboard":
 
-        <path d="M16 3v4" />
+      return (
 
-        <path d="M8 3v4" />
+        <svg viewBox="0 0 24 24" {...common}>
 
-        <path d="M3 10h18" />
+          <rect x="5" y="4" width="14" height="18" rx="2" />
 
-        <path d="M8 14h.01" />
+          <path d="M9 4h6v3H9z" />
 
-        <path d="M12 14h.01" />
+        </svg>
 
-        <path d="M16 14h.01" />
+      );
 
-        <path d="M8 18h.01" />
+    case "target":
 
-        <path d="M12 18h.01" />
+      return (
 
-      </svg>
+        <svg viewBox="0 0 24 24" {...common}>
 
-    );
+          <circle cx="12" cy="12" r="8" />
 
-  if (name === "drop")
+          <circle cx="12" cy="12" r="4" />
 
-    return (
+        </svg>
 
-      <svg {...common} stroke={BLUE}>
+      );
 
-        <path d="M12 3s6 6.2 6 11a6 6 0 0 1-12 0c0-4.8 6-11 6-11Z" />
+    case "info":
 
-      </svg>
+      return (
 
-    );
+        <svg viewBox="0 0 24 24" {...common}>
 
-  if (name === "bolt")
+          <circle cx="12" cy="12" r="9" />
 
-    return (
+          <path d="M12 10v6M12 7h.01" />
 
-      <svg {...common}>
+        </svg>
 
-        <path d="M13 2 4 14h7l-1 8 10-13h-7l0-7Z" />
+      );
 
-      </svg>
+    default:
 
-    );
+      return null;
 
-  if (name === "exercise")
-
-    return (
-
-      <svg {...common}>
-
-        <path d="M6 20v-5" />
-
-        <path d="M18 20v-5" />
-
-        <path d="M8 12 6 8l3-3 3 4 3-4 3 3-2 4" />
-
-        <path d="M12 9v8" />
-
-        <circle cx="12" cy="4" r="2" />
-
-      </svg>
-
-    );
-
-  if (name === "stretch")
-
-    return (
-
-      <svg {...common}>
-
-        <circle cx="15" cy="5" r="2" />
-
-        <path d="M14 8c-2 1-3 3-3 6" />
-
-        <path d="M11 14 7 20" />
-
-        <path d="M11 14h7" />
-
-        <path d="M13 10 6 9" />
-
-      </svg>
-
-    );
-
-  if (name === "clipboard")
-
-    return (
-
-      <svg {...common}>
-
-        <path d="M9 4h6" />
-
-        <path d="M9 4a3 3 0 0 0 6 0" />
-
-        <rect x="5" y="3" width="14" height="18" rx="3" />
-
-        <path d="M8 11h8" />
-
-        <path d="M8 15h8" />
-
-      </svg>
-
-    );
-
-  if (name === "lock")
-
-    return (
-
-      <svg {...common} stroke="#0f172a">
-
-        <rect x="5" y="11" width="14" height="10" rx="3" />
-
-        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-
-      </svg>
-
-    );
-
-  if (name === "info")
-
-    return (
-
-      <svg {...common} stroke={MUTED}>
-
-        <circle cx="12" cy="12" r="9" />
-
-        <path d="M12 11v5" />
-
-        <path d="M12 8h.01" />
-
-      </svg>
-
-    );
-
-  if (name === "target")
-
-    return (
-
-      <svg {...common} stroke={MUTED}>
-
-        <circle cx="12" cy="12" r="8" />
-
-        <circle cx="12" cy="12" r="3" />
-
-        <path d="M12 2v3" />
-
-        <path d="M12 19v3" />
-
-        <path d="M2 12h3" />
-
-        <path d="M19 12h3" />
-
-      </svg>
-
-    );
-
-  return null;
+  }
 
 }
+
+/* =========================
+
+   COMPONENTS
+
+========================= */
+
 function TinyLine({ color = ORANGE }) {
 
   return (
@@ -599,7 +466,7 @@ function StatCard({ icon, value, sub, children, locked, onClick }) {
 
         <div style={styles.lockMini}>
 
-          <Icon name="lock" size={15} />
+          <Icon name="lock" size={14} />
 
         </div>
 
@@ -607,7 +474,7 @@ function StatCard({ icon, value, sub, children, locked, onClick }) {
 
       <div style={styles.statIcon}>
 
-        <Icon name={icon} size={24} />
+        <Icon name={icon} size={20} color={ORANGE} />
 
       </div>
 
@@ -637,13 +504,13 @@ function ActionButton({ icon, label, onClick }) {
 
         haptic();
 
-        if (onClick) onClick();
+        onClick();
 
       }}
 
     >
 
-      <Icon name={icon} size={27} />
+      <Icon name={icon} size={22} color={ORANGE} />
 
       <span>{label}</span>
 
@@ -653,51 +520,9 @@ function ActionButton({ icon, label, onClick }) {
 
 }
 
-function NavItem({ icon, label, active, onClick, center }) {
-
-  return (
-
-    <button
-
-      type="button"
-
-      onClick={() => {
-
-        haptic();
-
-        if (onClick) onClick();
-
-      }}
-
-      style={{
-
-        ...styles.navItem,
-
-        ...(active ? styles.navActive : null),
-
-        ...(center ? styles.navCenter : null),
-
-      }}
-
-    >
-
-      <div style={center ? styles.navCenterIcon : styles.navIcon}>
-
-        <Icon name={icon} size={center ? 30 : 25} color={active || center ? "#fff" : MUTED} />
-
-      </div>
-
-      <span style={{ color: active ? "#fff" : MUTED }}>{label}</span>
-
-    </button>
-
-  );
-
-}
-
 function GoalRow({ goal, progress, onClick }) {
 
-  const pct = clamp(Math.round((Number(progress) || 0) * 100), 0, 100);
+  const pct = Math.round(progress * 100);
 
   return (
 
@@ -711,7 +536,7 @@ function GoalRow({ goal, progress, onClick }) {
 
         haptic();
 
-        if (onClick) onClick();
+        onClick();
 
       }}
 
@@ -719,7 +544,7 @@ function GoalRow({ goal, progress, onClick }) {
 
       <div style={styles.goalIcon}>
 
-        <Icon name={goal?.type === "freq" ? "calendar" : "target"} size={19} color={MUTED} />
+        <Icon name={goal?.type === "freq" ? "calendar" : "target"} size={18} color={MUTED} />
 
       </div>
 
@@ -729,7 +554,7 @@ function GoalRow({ goal, progress, onClick }) {
 
         <div style={styles.goalSub}>
 
-          {goal?.type === "freq" ? "Meta anual" : "+12 kg nas últimas 6 semanas"}
+          {goal?.type === "freq" ? "Meta anual" : "+12kg nas últimas semanas"}
 
         </div>
 
@@ -749,13 +574,19 @@ function GoalRow({ goal, progress, onClick }) {
 
 }
 
+/* =========================
+
+   SUPABASE
+
+========================= */
+
 async function loadPaidStatus(userId) {
 
   if (!userId) return false;
 
   try {
 
-    const { data: subRows, error: subError } = await supabase
+    const { data: subRows } = await supabase
 
       .from("subscriptions")
 
@@ -767,9 +598,9 @@ async function loadPaidStatus(userId) {
 
       .limit(1);
 
-    if (!subError && Array.isArray(subRows) && subRows.length > 0) return true;
+    if (Array.isArray(subRows) && subRows.length > 0) return true;
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
 
       .from("profiles")
 
@@ -779,25 +610,13 @@ async function loadPaidStatus(userId) {
 
       .maybeSingle();
 
-    if (!profileError) {
+    if (profile?.is_paid === true) return true;
 
-      if (profile?.is_paid === true) return true;
-
-      if (String(profile?.plan || "").toLowerCase() === "premium") return true;
-
-      if (String(profile?.role || "").toLowerCase() === "premium") return true;
-
-      if (String(profile?.plan || "").toLowerCase() === "basic") return true;
-
-      if (String(profile?.plan || "").toLowerCase() === "basico") return true;
-
-    }
+    if (String(profile?.plan || "").toLowerCase() === "premium") return true;
 
     return false;
 
-  } catch (err) {
-
-    console.error("loadPaidStatus:", err);
+  } catch {
 
     return false;
 
@@ -811,33 +630,23 @@ async function loadNutriStatus(userId) {
 
   try {
 
-    const { data: profile, error } = await supabase
+    const { data: profile } = await supabase
 
       .from("profiles")
 
-      .select("nutri_plus, plan, role")
+      .select("nutri_plus, plan")
 
       .eq("id", userId)
 
       .maybeSingle();
 
-    if (error) return false;
-
     if (profile?.nutri_plus === true) return true;
 
     if (String(profile?.plan || "").toLowerCase() === "nutri+") return true;
 
-    if (String(profile?.plan || "").toLowerCase() === "nutri_plus") return true;
-
-    if (String(profile?.role || "").toLowerCase() === "nutri+") return true;
-
-    if (String(profile?.role || "").toLowerCase() === "nutri_plus") return true;
-
     return false;
 
-  } catch (err) {
-
-    console.error("loadNutriStatus:", err);
+  } catch {
 
     return false;
 
@@ -851,7 +660,7 @@ async function loadCompletedWorkoutDates(userId) {
 
   try {
 
-    const { data, error } = await supabase
+    const { data } = await supabase
 
       .from("workout_sessions")
 
@@ -863,19 +672,9 @@ async function loadCompletedWorkoutDates(userId) {
 
       .order("session_date", { ascending: false });
 
-    if (error) {
-
-      console.error("loadCompletedWorkoutDates:", error);
-
-      return [];
-
-    }
-
     return (data || []).map((row) => row.session_date).filter(Boolean);
 
-  } catch (err) {
-
-    console.error("loadCompletedWorkoutDates:", err);
+  } catch {
 
     return [];
 
@@ -889,7 +688,7 @@ async function loadGoals(userId) {
 
   try {
 
-    const { data, error } = await supabase
+    const { data } = await supabase
 
       .from("user_goals")
 
@@ -901,19 +700,9 @@ async function loadGoals(userId) {
 
       .order("created_at", { ascending: false });
 
-    if (error) {
-
-      console.error("loadGoals:", error);
-
-      return [];
-
-    }
-
     return data || [];
 
-  } catch (err) {
-
-    console.error("loadGoals:", err);
+  } catch {
 
     return [];
 
@@ -927,7 +716,7 @@ async function loadHydration(userId, dateKey) {
 
   try {
 
-    const { data, error } = await supabase
+    const { data } = await supabase
 
       .from("daily_hydration")
 
@@ -939,13 +728,9 @@ async function loadHydration(userId, dateKey) {
 
       .maybeSingle();
 
-    if (error) return 0;
-
     return Number(data?.water_ml || 0);
 
-  } catch (err) {
-
-    console.error("loadHydration:", err);
+  } catch {
 
     return 0;
 
@@ -959,7 +744,7 @@ async function saveHydration(userId, dateKey, waterMl) {
 
   try {
 
-    const { error } = await supabase.from("daily_hydration").upsert(
+    await supabase.from("daily_hydration").upsert(
 
       {
 
@@ -977,15 +762,15 @@ async function saveHydration(userId, dateKey, waterMl) {
 
     );
 
-    if (error) console.error("saveHydration:", error);
-
-  } catch (err) {
-
-    console.error("saveHydration:", err);
-
-  }
+  } catch {}
 
 }
+
+/* =========================
+
+   PAGE
+
+========================= */
 
 export default function Dashboard() {
 
@@ -1047,7 +832,13 @@ export default function Dashboard() {
 
   );
 
-  const loadEvolution = useMemo(() => clamp(weekly * 2 + streak, 0, 18), [weekly, streak]);
+  const loadEvolution = useMemo(() => clamp(weekly * 2 + streak, 0, 18), [
+
+    weekly,
+
+    streak,
+
+  ]);
 
   const mainGoals = useMemo(() => {
 
@@ -1093,19 +884,21 @@ export default function Dashboard() {
 
       if (!user?.id) return;
 
-      const [paidStatus, nutriStatus, workoutDates, activeGoals, hydration] = await Promise.all([
+      const [paidStatus, nutriStatus, workoutDates, activeGoals, hydration] =
 
-        loadPaidStatus(user.id),
+        await Promise.all([
 
-        loadNutriStatus(user.id),
+          loadPaidStatus(user.id),
 
-        loadCompletedWorkoutDates(user.id),
+          loadNutriStatus(user.id),
 
-        loadGoals(user.id),
+          loadCompletedWorkoutDates(user.id),
 
-        loadHydration(user.id, today),
+          loadGoals(user.id),
 
-      ]);
+          loadHydration(user.id, today),
+
+        ]);
 
       if (!active) return;
 
@@ -1126,102 +919,6 @@ export default function Dashboard() {
     return () => {
 
       active = false;
-
-    };
-
-  }, [user?.id, today]);
-
-  useEffect(() => {
-
-    if (!user?.id) return;
-
-    const channel = supabase
-
-      .channel(`dashboard-live-${user.id}`)
-
-      .on(
-
-        "postgres_changes",
-
-        {
-
-          event: "*",
-
-          schema: "public",
-
-          table: "workout_sessions",
-
-          filter: `user_id=eq.${user.id}`,
-
-        },
-
-        async () => {
-
-          const next = await loadCompletedWorkoutDates(user.id);
-
-          setWorkouts(next);
-
-        }
-
-      )
-
-      .on(
-
-        "postgres_changes",
-
-        {
-
-          event: "*",
-
-          schema: "public",
-
-          table: "user_goals",
-
-          filter: `user_id=eq.${user.id}`,
-
-        },
-
-        async () => {
-
-          const next = await loadGoals(user.id);
-
-          setGoals(next);
-
-        }
-
-      )
-
-      .on(
-
-        "postgres_changes",
-
-        {
-
-          event: "*",
-
-          schema: "public",
-
-          table: "daily_hydration",
-
-          filter: `user_id=eq.${user.id}`,
-
-        },
-
-        async () => {
-
-          const next = await loadHydration(user.id, today);
-
-          setWaterMl(next);
-
-        }
-
-      )
-
-      .subscribe();
-
-    return () => {
-
-      supabase.removeChannel(channel);
 
     };
 
@@ -1253,17 +950,9 @@ export default function Dashboard() {
 
         @keyframes cursorBlink {
 
-          0%, 45% { opacity: 1; }
+          0%,45% { opacity: 1; }
 
-          46%, 100% { opacity: .15; }
-
-        }
-
-        @keyframes enterUp {
-
-          from { opacity: 0; transform: translateY(14px) scale(.985); }
-
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          46%,100% { opacity: .15; }
 
         }
 
@@ -1288,46 +977,6 @@ export default function Dashboard() {
         button:active {
 
           transform: scale(.985);
-
-        }
-
-        .dash-card {
-
-          animation: enterUp .48s cubic-bezier(.2,.8,.2,1) both;
-
-        }
-
-        @media (max-width: 430px) {
-
-          .statsGrid {
-
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-
-            gap: 10px !important;
-
-          }
-
-          .bottomGrid {
-
-            grid-template-columns: 1fr 1fr !important;
-
-          }
-
-        }
-
-        @media (max-width: 380px) {
-
-          .statsGrid {
-
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-
-          }
-
-          .bottomGrid {
-
-            grid-template-columns: 1fr !important;
-
-          }
 
         }
 
@@ -1407,13 +1056,13 @@ export default function Dashboard() {
 
         <div style={styles.liveWave}>
 
-          <span style={{ ...styles.liveWaveBar, height: 9 }} />
-
-          <span style={{ ...styles.liveWaveBar, height: 18 }} />
+          <span style={{ ...styles.liveWaveBar, height: 7 }} />
 
           <span style={{ ...styles.liveWaveBar, height: 13 }} />
 
-          <span style={{ ...styles.liveWaveBar, height: 22 }} />
+          <span style={{ ...styles.liveWaveBar, height: 19 }} />
+
+          <span style={{ ...styles.liveWaveBar, height: 10 }} />
 
         </div>
 
@@ -1423,15 +1072,11 @@ export default function Dashboard() {
 
         </div>
 
-        <div style={styles.liveDivider} />
-
-        <div style={styles.liveAction}>Manter ritmo</div>
-
         <div style={styles.chev}>›</div>
 
       </button>
 
-      <section className="dash-card" style={styles.hero}>
+      <section style={styles.hero}>
 
         <div style={styles.heroText}>
 
@@ -1495,13 +1140,11 @@ export default function Dashboard() {
 
               ...styles.ring,
 
-              background: `conic-gradient(${ORANGE} 0 ${Math.min(
+              background: `conic-gradient(${ORANGE} 0 ${
 
-                100,
+                Math.min(100, (25 / 30) * 100)
 
-                (25 / 30) * 100
-
-              )}%, rgba(255,106,0,.16) 0 100%)`,
+              }%, rgba(255,106,0,.16) 0 100%)`,
 
             }}
 
@@ -1523,7 +1166,7 @@ export default function Dashboard() {
 
       </section>
 
-      <section className="statsGrid" style={styles.statsGrid}>
+      <section style={styles.statsGrid}>
 
         <StatCard
 
@@ -1541,15 +1184,45 @@ export default function Dashboard() {
 
         </StatCard>
 
-        <StatCard icon="calendar" value={streak} sub="Consistência" onClick={() => nav("/treino")}>
+        <StatCard
+
+          icon="calendar"
+
+          value={streak}
+
+          sub="Consistência"
+
+          onClick={() => nav("/treino")}
+
+        >
 
           <div style={styles.dotsLine}>
 
-            <span style={{ ...styles.dotLineItem, opacity: 1 }} />
+            <span style={styles.dotLineItem} />
 
-            <span style={{ ...styles.dotLineItem, opacity: streak >= 2 ? 1 : 0.35 }} />
+            <span
 
-            <span style={{ ...styles.dotLineItem, opacity: streak >= 4 ? 1 : 0.35 }} />
+              style={{
+
+                ...styles.dotLineItem,
+
+                opacity: streak >= 2 ? 1 : 0.35,
+
+              }}
+
+            />
+
+            <span
+
+              style={{
+
+                ...styles.dotLineItem,
+
+                opacity: streak >= 4 ? 1 : 0.35,
+
+              }}
+
+            />
 
           </div>
 
@@ -1561,7 +1234,7 @@ export default function Dashboard() {
 
           value={`${weekly}/${weekGoal}`}
 
-          sub="Esta semana"
+          sub="Semana"
 
           onClick={() => nav("/treino")}
 
@@ -1579,7 +1252,7 @@ export default function Dashboard() {
 
                   ...styles.barItem,
 
-                  height: `${h * 34}px`,
+                  height: `${h * 30}px`,
 
                   opacity: weekly > i ? 1 : 0.35,
 
@@ -1609,7 +1282,17 @@ export default function Dashboard() {
 
           <div style={styles.waterMiniTrack}>
 
-            <div style={{ ...styles.waterMiniFill, width: `${Math.round(waterPct * 100)}%` }} />
+            <div
+
+              style={{
+
+                ...styles.waterMiniFill,
+
+                width: `${Math.round(waterPct * 100)}%`,
+
+              }}
+
+            />
 
           </div>
 
@@ -1617,21 +1300,25 @@ export default function Dashboard() {
 
       </section>
 
-      <section className="dash-card" style={styles.planCard}>
+      <section style={styles.planCard}>
 
-        <div style={{ minWidth: 0 }}>
+        <div>
 
           <div style={styles.planLabel}>Plano ativo</div>
 
           <div style={styles.planName}>
 
-            {paid ? "Básico ativo • R$ 12,99/mês" : "Plano gratuito"}
+            {paid ? "Básico ativo • R$12,99/mês" : "Plano gratuito"}
 
           </div>
 
           <div style={styles.planSub}>
 
-            {paid ? "Treinos liberados. Nutri+ é upgrade." : "Assine para liberar treino completo."}
+            {paid
+
+              ? "Treinos liberados. Nutri+ é upgrade."
+
+              : "Assine para liberar treino completo."}
 
           </div>
 
@@ -1659,27 +1346,67 @@ export default function Dashboard() {
 
       </section>
 
-      <section className="dash-card" style={styles.actions}>
+      <section style={styles.actions}>
 
-        <ActionButton icon="bolt" label="Treino rápido" onClick={() => nav("/treino")} />
+        <ActionButton
 
-        <ActionButton icon="exercise" label="Exercícios" onClick={() => nav("/montagem-treino")} />
+          icon="bolt"
 
-        <ActionButton icon="stretch" label="Alongamento" onClick={() => nav("/treino")} />
+          label="Treino"
 
-        <ActionButton icon="clipboard" label="Avaliação" onClick={() => nav("/conta")} />
+          onClick={() => nav("/treino")}
+
+        />
+
+        <ActionButton
+
+          icon="exercise"
+
+          label="Exercícios"
+
+          onClick={() => nav("/montagem-treino")}
+
+        />
+
+        <ActionButton
+
+          icon="stretch"
+
+          label="Alongamento"
+
+          onClick={() => nav("/treino")}
+
+        />
+
+        <ActionButton
+
+          icon="clipboard"
+
+          label="Avaliação"
+
+          onClick={() => nav("/conta")}
+
+        />
 
       </section>
 
-      <section className="bottomGrid" style={styles.bottomGrid}>
+      <section style={styles.bottomGrid}>
 
-        <div className="dash-card" style={styles.goalsCard}>
+        <div style={styles.goalsCard}>
 
           <div style={styles.cardTop}>
 
             <h2 style={styles.cardTitle}>Suas metas</h2>
 
-            <button type="button" style={styles.cardLink} onClick={() => nav("/metas")}>
+            <button
+
+              type="button"
+
+              style={styles.cardLink}
+
+              onClick={() => nav("/metas")}
+
+            >
 
               Ver todas
 
@@ -1713,8 +1440,6 @@ export default function Dashboard() {
 
           type="button"
 
-          className="dash-card"
-
           style={styles.momentumCard}
 
           onClick={() => {
@@ -1731,7 +1456,7 @@ export default function Dashboard() {
 
             <h2 style={styles.cardTitle}>Momentum</h2>
 
-            <Icon name="info" size={20} />
+            <Icon name="info" size={18} color={MUTED} />
 
           </div>
 
@@ -1745,13 +1470,21 @@ export default function Dashboard() {
 
       </section>
 
-      <section className="dash-card" style={styles.progressCard}>
+      <section style={styles.progressCard}>
 
         <div style={styles.progressTop}>
 
           <h2 style={styles.cardTitle}>Registro de progresso</h2>
 
-          <button type="button" style={styles.cardLink} onClick={() => nav("/treino")}>
+          <button
+
+            type="button"
+
+            style={styles.cardLink}
+
+            onClick={() => nav("/treino")}
+
+          >
 
             Ver histórico
 
@@ -1777,9 +1510,13 @@ export default function Dashboard() {
 
           </div>
 
-          <div style={styles.progressStatBox}>
+          <div>
 
-            <strong style={{ ...styles.progressStrong, color: GREEN }}>+{loadEvolution}%</strong>
+            <strong style={{ ...styles.progressStrong, color: GREEN }}>
+
+              +{loadEvolution}%
+
+            </strong>
 
             <span style={styles.progressSpan}>evolução nas cargas</span>
 
@@ -1795,25 +1532,17 @@ export default function Dashboard() {
 
       </section>
 
-      <nav style={styles.bottomNav}>
-
-        <NavItem icon="home" label="Início" active onClick={() => nav("/")} />
-
-        <NavItem icon="food" label="Nutrição" onClick={() => nav("/nutricao")} />
-
-        <NavItem icon="dumbbell" label="Treino" center onClick={() => nav("/treino")} />
-
-        <NavItem icon="card" label="Planos" onClick={() => nav("/planos")} />
-
-        <NavItem icon="user" label="Conta" onClick={() => nav("/conta")} />
-
-      </nav>
-
     </div>
 
   );
 
 }
+
+/* =========================
+
+   STYLES
+
+========================= */
 
 const styles = {
 
@@ -1821,15 +1550,21 @@ const styles = {
 
     minHeight: "100dvh",
 
-    padding: "30px 16px 126px",
+    width: "100%",
+
+    boxSizing: "border-box",
+
+    padding: "18px 14px 118px",
 
     background:
 
-      "radial-gradient(760px 380px at 18% -8%, rgba(255,106,0,.12), rgba(255,255,255,0) 62%), linear-gradient(180deg, #fbfcff 0%, #f7f9fc 100%)",
+      "radial-gradient(620px 320px at 18% -8%, rgba(255,106,0,.12), rgba(255,255,255,0) 62%), linear-gradient(180deg, #fbfcff 0%, #f7f9fc 100%)",
 
     position: "relative",
 
-    overflow: "hidden",
+    overflowX: "hidden",
+
+    overflowY: "auto",
 
     color: TEXT,
 
@@ -1839,19 +1574,19 @@ const styles = {
 
     position: "absolute",
 
-    width: 340,
+    width: 280,
 
-    height: 340,
+    height: 280,
 
     borderRadius: 999,
 
     background: "rgba(255,106,0,.08)",
 
-    filter: "blur(70px)",
+    filter: "blur(60px)",
 
-    top: -120,
+    top: -110,
 
-    left: -120,
+    left: -110,
 
     pointerEvents: "none",
 
@@ -1861,19 +1596,19 @@ const styles = {
 
     position: "absolute",
 
-    width: 260,
+    width: 220,
 
-    height: 260,
+    height: 220,
 
     borderRadius: 999,
 
     background: "rgba(15,23,42,.045)",
 
-    filter: "blur(70px)",
+    filter: "blur(60px)",
 
-    top: 140,
+    top: 130,
 
-    right: -110,
+    right: -120,
 
     pointerEvents: "none",
 
@@ -1887,23 +1622,23 @@ const styles = {
 
     display: "grid",
 
-    gridTemplateColumns: "56px 1fr 74px",
+    gridTemplateColumns: "46px 1fr 64px",
 
     alignItems: "start",
 
-    gap: 10,
+    gap: 8,
 
-    marginBottom: 20,
+    marginBottom: 14,
 
   },
 
   logoBox: {
 
-    width: 48,
+    width: 42,
 
-    height: 48,
+    height: 42,
 
-    borderRadius: 18,
+    borderRadius: 15,
 
     objectFit: "contain",
 
@@ -1911,9 +1646,11 @@ const styles = {
 
     border: "1px solid rgba(255,106,0,.12)",
 
-    padding: 9,
+    padding: 8,
 
-    boxShadow: "0 16px 35px rgba(15,23,42,.06)",
+    boxShadow: "0 12px 28px rgba(15,23,42,.06)",
+
+    boxSizing: "border-box",
 
   },
 
@@ -1923,11 +1660,13 @@ const styles = {
 
     minWidth: 0,
 
+    overflow: "hidden",
+
   },
 
   wordmark: {
 
-    minHeight: 48,
+    minHeight: 42,
 
     display: "inline-flex",
 
@@ -1935,13 +1674,13 @@ const styles = {
 
     justifyContent: "center",
 
-    fontFamily: `"Courier New", monospace`,
+    fontFamily: `"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
 
-    fontSize: 38,
+    fontSize: 32,
 
-    fontWeight: 500,
+    fontWeight: 950,
 
-    letterSpacing: 7,
+    letterSpacing: -1.2,
 
     color: "#020617",
 
@@ -1949,13 +1688,21 @@ const styles = {
 
     lineHeight: 1,
 
+    maxWidth: "100%",
+
+  },
+
+  logoDot: {
+
+    color: ORANGE,
+
   },
 
   cursor: {
 
-    width: 3,
+    width: 2,
 
-    height: 42,
+    height: 31,
 
     marginLeft: 3,
 
@@ -1969,15 +1716,17 @@ const styles = {
 
   slogan: {
 
-    marginTop: 2,
+    marginTop: 0,
 
-    fontFamily: `"Courier New", monospace`,
+    fontFamily: `"Inter", system-ui, sans-serif`,
 
-    fontSize: 14,
+    fontSize: 12,
 
     color: MUTED,
 
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
+
+    whiteSpace: "nowrap",
 
   },
 
@@ -1991,15 +1740,15 @@ const styles = {
 
     justifySelf: "end",
 
-    height: 36,
+    height: 32,
 
-    padding: "0 13px",
+    padding: "0 10px",
 
     borderRadius: 999,
 
     border: "1px solid rgba(15,23,42,.06)",
 
-    background: "rgba(255,255,255,.76)",
+    background: "rgba(255,255,255,.78)",
 
     backdropFilter: "blur(18px)",
 
@@ -2009,29 +1758,29 @@ const styles = {
 
     alignItems: "center",
 
-    gap: 8,
+    gap: 7,
 
-    fontSize: 14,
+    fontSize: 12,
 
     fontWeight: 950,
 
     color: "#475569",
 
-    boxShadow: "0 12px 28px rgba(15,23,42,.06)",
+    boxShadow: "0 10px 24px rgba(15,23,42,.06)",
 
   },
 
   proDot: {
 
-    width: 10,
+    width: 9,
 
-    height: 10,
+    height: 9,
 
     borderRadius: 999,
 
     background: ORANGE,
 
-    boxShadow: "0 0 0 6px rgba(255,106,0,.11)",
+    boxShadow: "0 0 0 5px rgba(255,106,0,.11)",
 
   },
 
@@ -2043,31 +1792,33 @@ const styles = {
 
     width: "100%",
 
-    minHeight: 54,
+    minHeight: 48,
 
     borderRadius: 999,
 
     border: "1px solid rgba(15,23,42,.055)",
 
-    background: "rgba(255,255,255,.82)",
+    background: "rgba(255,255,255,.84)",
 
     backdropFilter: "blur(20px)",
 
     WebkitBackdropFilter: "blur(20px)",
 
-    boxShadow: "0 18px 46px rgba(15,23,42,.055)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.055)",
 
     display: "flex",
 
     alignItems: "center",
 
-    gap: 10,
+    gap: 8,
 
-    padding: "0 16px",
+    padding: "0 12px",
 
-    marginBottom: 18,
+    marginBottom: 14,
 
     textAlign: "left",
+
+    boxSizing: "border-box",
 
   },
 
@@ -2077,11 +1828,11 @@ const styles = {
 
     alignItems: "center",
 
-    gap: 8,
+    gap: 7,
 
     color: GREEN,
 
-    fontSize: 13,
+    fontSize: 12,
 
     fontWeight: 950,
 
@@ -2091,9 +1842,9 @@ const styles = {
 
   liveDot: {
 
-    width: 10,
+    width: 9,
 
-    height: 10,
+    height: 9,
 
     borderRadius: 999,
 
@@ -2107,9 +1858,11 @@ const styles = {
 
     width: 1,
 
-    height: 24,
+    height: 20,
 
     background: "rgba(15,23,42,.08)",
+
+    flexShrink: 0,
 
   },
 
@@ -2121,7 +1874,9 @@ const styles = {
 
     gap: 3,
 
-    height: 22,
+    height: 20,
+
+    flexShrink: 0,
 
   },
 
@@ -2143,7 +1898,7 @@ const styles = {
 
     minWidth: 0,
 
-    fontSize: 13,
+    fontSize: 12,
 
     fontWeight: 850,
 
@@ -2157,27 +1912,15 @@ const styles = {
 
   },
 
-  liveAction: {
-
-    fontSize: 13,
-
-    fontWeight: 950,
-
-    color: ORANGE,
-
-    whiteSpace: "nowrap",
-
-  },
-
   chev: {
 
-    fontSize: 27,
+    fontSize: 24,
 
     lineHeight: 1,
 
     color: MUTED,
 
-    marginLeft: -4,
+    marginLeft: -2,
 
   },
 
@@ -2187,27 +1930,29 @@ const styles = {
 
     zIndex: 2,
 
-    minHeight: 190,
+    minHeight: 162,
 
-    borderRadius: 28,
+    borderRadius: 24,
 
-    padding: 22,
+    padding: 18,
 
     background: "linear-gradient(135deg, rgba(255,106,0,.13), rgba(255,255,255,.92) 58%)",
 
     border: "1px solid rgba(255,106,0,.16)",
 
-    boxShadow: "0 24px 70px rgba(15,23,42,.08)",
+    boxShadow: "0 18px 50px rgba(15,23,42,.08)",
 
     display: "grid",
 
-    gridTemplateColumns: "1fr 128px",
+    gridTemplateColumns: "1fr 104px",
 
-    gap: 10,
+    gap: 8,
 
     alignItems: "center",
 
-    marginBottom: 18,
+    marginBottom: 14,
+
+    boxSizing: "border-box",
 
   },
 
@@ -2221,11 +1966,11 @@ const styles = {
 
     margin: 0,
 
-    fontSize: 29,
+    fontSize: 24,
 
     fontWeight: 950,
 
-    letterSpacing: -0.9,
+    letterSpacing: -0.8,
 
     color: TEXT,
 
@@ -2235,11 +1980,11 @@ const styles = {
 
   heroParagraph: {
 
-    margin: "14px 0 0",
+    margin: "11px 0 0",
 
-    fontSize: 17,
+    fontSize: 14,
 
-    lineHeight: 1.45,
+    lineHeight: 1.42,
 
     fontWeight: 750,
 
@@ -2249,11 +1994,11 @@ const styles = {
 
   recommendBtn: {
 
-    marginTop: 18,
+    marginTop: 14,
 
-    height: 45,
+    height: 39,
 
-    padding: "0 18px",
+    padding: "0 14px",
 
     borderRadius: 999,
 
@@ -2263,17 +2008,17 @@ const styles = {
 
     color: ORANGE,
 
-    fontSize: 14,
+    fontSize: 12,
 
     fontWeight: 950,
 
-    boxShadow: "0 16px 36px rgba(15,23,42,.07)",
+    boxShadow: "0 12px 28px rgba(15,23,42,.07)",
 
     display: "inline-flex",
 
     alignItems: "center",
 
-    gap: 14,
+    gap: 10,
 
   },
 
@@ -2289,21 +2034,23 @@ const styles = {
 
     justifyItems: "center",
 
-    gap: 12,
+    gap: 8,
 
   },
 
   ring: {
 
-    width: 116,
+    width: 96,
 
-    height: 116,
+    height: 96,
 
     borderRadius: 999,
 
-    padding: 12,
+    padding: 10,
 
-    boxShadow: "0 18px 44px rgba(255,106,0,.18)",
+    boxShadow: "0 14px 34px rgba(255,106,0,.18)",
+
+    boxSizing: "border-box",
 
   },
 
@@ -2327,7 +2074,7 @@ const styles = {
 
   ringNumber: {
 
-    fontSize: 43,
+    fontSize: 34,
 
     fontWeight: 950,
 
@@ -2339,7 +2086,7 @@ const styles = {
 
   ringMin: {
 
-    fontSize: 18,
+    fontSize: 15,
 
     fontWeight: 850,
 
@@ -2349,7 +2096,7 @@ const styles = {
 
   ringLabel: {
 
-    fontSize: 13,
+    fontSize: 11,
 
     fontWeight: 850,
 
@@ -2367,9 +2114,9 @@ const styles = {
 
     gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
 
-    gap: 12,
+    gap: 9,
 
-    marginBottom: 18,
+    marginBottom: 14,
 
   },
 
@@ -2377,21 +2124,23 @@ const styles = {
 
     position: "relative",
 
-    minHeight: 160,
+    minHeight: 132,
 
-    borderRadius: 24,
+    borderRadius: 20,
 
     border: `1px solid ${BORDER}`,
 
     background: "rgba(255,255,255,.88)",
 
-    boxShadow: "0 18px 46px rgba(15,23,42,.07)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.07)",
 
-    padding: 16,
+    padding: 12,
 
     textAlign: "left",
 
     overflow: "hidden",
+
+    boxSizing: "border-box",
 
   },
 
@@ -2399,13 +2148,13 @@ const styles = {
 
     position: "absolute",
 
-    top: 10,
+    top: 8,
 
-    right: 10,
+    right: 8,
 
-    width: 31,
+    width: 26,
 
-    height: 31,
+    height: 26,
 
     borderRadius: 999,
 
@@ -2423,9 +2172,9 @@ const styles = {
 
   statIcon: {
 
-    width: 45,
+    width: 36,
 
-    height: 45,
+    height: 36,
 
     borderRadius: 999,
 
@@ -2435,19 +2184,19 @@ const styles = {
 
     placeItems: "center",
 
-    marginBottom: 18,
+    marginBottom: 13,
 
   },
 
   statValue: {
 
-    fontSize: 26,
+    fontSize: 22,
 
     fontWeight: 950,
 
     color: TEXT,
 
-    letterSpacing: -0.8,
+    letterSpacing: -0.7,
 
     lineHeight: 1,
 
@@ -2455,21 +2204,21 @@ const styles = {
 
   statSub: {
 
-    marginTop: 6,
+    marginTop: 5,
 
-    fontSize: 13,
+    fontSize: 11,
 
     fontWeight: 800,
 
     color: MUTED,
 
-    lineHeight: 1.25,
+    lineHeight: 1.2,
 
   },
 
   statVisual: {
 
-    marginTop: 15,
+    marginTop: 10,
 
   },
 
@@ -2479,17 +2228,17 @@ const styles = {
 
     alignItems: "center",
 
-    gap: 16,
+    gap: 12,
 
-    marginTop: 20,
+    marginTop: 16,
 
   },
 
   dotLineItem: {
 
-    width: 10,
+    width: 8,
 
-    height: 10,
+    height: 8,
 
     borderRadius: 999,
 
@@ -2503,17 +2252,17 @@ const styles = {
 
     alignItems: "end",
 
-    gap: 8,
+    gap: 6,
 
-    height: 36,
+    height: 31,
 
   },
 
   barItem: {
 
-    width: 17,
+    width: 13,
 
-    borderRadius: 5,
+    borderRadius: 4,
 
     background: "linear-gradient(180deg, #FF6A00, #FF8A3D)",
 
@@ -2521,7 +2270,7 @@ const styles = {
 
   waterMiniTrack: {
 
-    height: 7,
+    height: 6,
 
     borderRadius: 999,
 
@@ -2529,7 +2278,7 @@ const styles = {
 
     overflow: "hidden",
 
-    marginTop: 25,
+    marginTop: 21,
 
   },
 
@@ -2549,15 +2298,15 @@ const styles = {
 
     zIndex: 2,
 
-    borderRadius: 26,
+    borderRadius: 23,
 
-    padding: 20,
+    padding: 17,
 
     background: "linear-gradient(135deg, rgba(255,106,0,.14), rgba(255,255,255,.92))",
 
     border: "1px solid rgba(255,106,0,.14)",
 
-    boxShadow: "0 22px 60px rgba(15,23,42,.07)",
+    boxShadow: "0 18px 46px rgba(15,23,42,.07)",
 
     display: "flex",
 
@@ -2565,57 +2314,61 @@ const styles = {
 
     justifyContent: "space-between",
 
-    gap: 16,
+    gap: 12,
 
-    marginBottom: 18,
+    marginBottom: 14,
+
+    boxSizing: "border-box",
 
   },
 
   planLabel: {
 
-    fontSize: 13,
+    fontSize: 12,
 
     fontWeight: 850,
 
     color: TEXT,
 
-    marginBottom: 7,
+    marginBottom: 5,
 
   },
 
   planName: {
 
-    fontSize: 18,
+    fontSize: 15,
 
     fontWeight: 950,
 
     color: TEXT,
 
-    letterSpacing: -0.35,
+    letterSpacing: -0.3,
+
+    whiteSpace: "normal",
 
   },
 
   planSub: {
 
-    marginTop: 8,
+    marginTop: 6,
 
-    fontSize: 13,
+    fontSize: 12,
 
     fontWeight: 800,
 
     color: MUTED,
 
-    lineHeight: 1.35,
+    lineHeight: 1.3,
 
   },
 
   manageBtn: {
 
-    height: 48,
+    height: 42,
 
-    padding: "0 20px",
+    padding: "0 15px",
 
-    borderRadius: 18,
+    borderRadius: 16,
 
     border: "none",
 
@@ -2623,13 +2376,15 @@ const styles = {
 
     background: "linear-gradient(135deg, #FF6A00, #FF7A22)",
 
-    boxShadow: "0 18px 42px rgba(255,106,0,.25)",
+    boxShadow: "0 14px 32px rgba(255,106,0,.25)",
 
-    fontSize: 15,
+    fontSize: 13,
 
     fontWeight: 950,
 
     whiteSpace: "nowrap",
+
+    flexShrink: 0,
 
   },
 
@@ -2639,13 +2394,13 @@ const styles = {
 
     zIndex: 2,
 
-    borderRadius: 25,
+    borderRadius: 22,
 
     background: "rgba(255,255,255,.88)",
 
     border: `1px solid ${BORDER}`,
 
-    boxShadow: "0 18px 46px rgba(15,23,42,.06)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
 
     display: "grid",
 
@@ -2653,13 +2408,13 @@ const styles = {
 
     overflow: "hidden",
 
-    marginBottom: 18,
+    marginBottom: 14,
 
   },
 
   actionBtn: {
 
-    minHeight: 84,
+    minHeight: 72,
 
     border: "none",
 
@@ -2671,15 +2426,19 @@ const styles = {
 
     alignContent: "center",
 
-    gap: 8,
+    gap: 6,
 
     color: MUTED,
 
-    fontSize: 12,
+    fontSize: 10.5,
 
     fontWeight: 850,
 
     borderRight: "1px solid rgba(15,23,42,.06)",
+
+    padding: "8px 3px",
+
+    boxSizing: "border-box",
 
   },
 
@@ -2691,27 +2450,27 @@ const styles = {
 
     display: "grid",
 
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "1fr",
 
     gap: 12,
 
-    marginBottom: 18,
+    marginBottom: 14,
 
   },
 
   goalsCard: {
 
-    minHeight: 196,
-
-    borderRadius: 25,
+    borderRadius: 23,
 
     background: "rgba(255,255,255,.90)",
 
     border: `1px solid ${BORDER}`,
 
-    boxShadow: "0 18px 46px rgba(15,23,42,.06)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
 
-    padding: 18,
+    padding: 16,
+
+    boxSizing: "border-box",
 
   },
 
@@ -2725,7 +2484,7 @@ const styles = {
 
     gap: 12,
 
-    marginBottom: 16,
+    marginBottom: 14,
 
   },
 
@@ -2733,7 +2492,7 @@ const styles = {
 
     margin: 0,
 
-    fontSize: 15,
+    fontSize: 14,
 
     fontWeight: 950,
 
@@ -2763,7 +2522,7 @@ const styles = {
 
     display: "grid",
 
-    gap: 14,
+    gap: 13,
 
   },
 
@@ -2779,7 +2538,7 @@ const styles = {
 
     alignItems: "center",
 
-    gap: 12,
+    gap: 11,
 
     padding: 0,
 
@@ -2789,9 +2548,9 @@ const styles = {
 
   goalIcon: {
 
-    width: 38,
+    width: 36,
 
-    height: 38,
+    height: 36,
 
     borderRadius: 13,
 
@@ -2809,7 +2568,7 @@ const styles = {
 
   goalTitle: {
 
-    fontSize: 14,
+    fontSize: 13,
 
     fontWeight: 950,
 
@@ -2837,7 +2596,7 @@ const styles = {
 
   goalTrack: {
 
-    marginTop: 9,
+    marginTop: 8,
 
     height: 5,
 
@@ -2861,11 +2620,11 @@ const styles = {
 
   goalPct: {
 
-    minWidth: 34,
+    minWidth: 32,
 
     textAlign: "right",
 
-    fontSize: 12,
+    fontSize: 11,
 
     fontWeight: 850,
 
@@ -2875,19 +2634,19 @@ const styles = {
 
   momentumCard: {
 
-    minHeight: 196,
-
-    borderRadius: 25,
+    borderRadius: 23,
 
     background: "rgba(255,255,255,.90)",
 
     border: `1px solid ${BORDER}`,
 
-    boxShadow: "0 18px 46px rgba(15,23,42,.06)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
 
-    padding: 18,
+    padding: 16,
 
     textAlign: "left",
+
+    boxSizing: "border-box",
 
   },
 
@@ -2903,9 +2662,9 @@ const styles = {
 
   momentumLabel: {
 
-    marginTop: 22,
+    marginTop: 16,
 
-    fontSize: 30,
+    fontSize: 27,
 
     fontWeight: 950,
 
@@ -2917,9 +2676,9 @@ const styles = {
 
   momentumText: {
 
-    margin: "7px 0 17px",
+    margin: "6px 0 13px",
 
-    fontSize: 13,
+    fontSize: 12,
 
     lineHeight: 1.35,
 
@@ -2935,17 +2694,19 @@ const styles = {
 
     zIndex: 2,
 
-    borderRadius: 25,
+    borderRadius: 23,
 
     background: "rgba(255,255,255,.90)",
 
     border: `1px solid ${BORDER}`,
 
-    boxShadow: "0 18px 46px rgba(15,23,42,.06)",
+    boxShadow: "0 14px 34px rgba(15,23,42,.06)",
 
-    padding: 18,
+    padding: 16,
 
     marginBottom: 20,
+
+    boxSizing: "border-box",
 
   },
 
@@ -2959,7 +2720,7 @@ const styles = {
 
     gap: 12,
 
-    marginBottom: 14,
+    marginBottom: 12,
 
   },
 
@@ -2967,11 +2728,11 @@ const styles = {
 
     display: "grid",
 
-    gridTemplateColumns: "1fr 1fr 1fr 1.3fr",
+    gridTemplateColumns: "1fr 1fr 1fr",
 
     alignItems: "center",
 
-    gap: 12,
+    gap: 10,
 
   },
 
@@ -2979,7 +2740,7 @@ const styles = {
 
     borderRight: "1px solid rgba(15,23,42,.08)",
 
-    minHeight: 43,
+    minHeight: 42,
 
   },
 
@@ -2987,7 +2748,7 @@ const styles = {
 
     display: "block",
 
-    fontSize: 25,
+    fontSize: 22,
 
     fontWeight: 950,
 
@@ -3003,7 +2764,7 @@ const styles = {
 
     marginTop: 2,
 
-    fontSize: 10,
+    fontSize: 9.5,
 
     fontWeight: 800,
 
@@ -3015,121 +2776,11 @@ const styles = {
 
   progressMiniChart: {
 
-    minWidth: 95,
+    gridColumn: "1 / -1",
 
-  },
+    marginTop: 6,
 
-  bottomNav: {
-
-    position: "fixed",
-
-    left: 16,
-
-    right: 16,
-
-    bottom: 18,
-
-    zIndex: 20,
-
-    height: 83,
-
-    borderRadius: 999,
-
-    background: "rgba(255,255,255,.90)",
-
-    border: "1px solid rgba(15,23,42,.06)",
-
-    backdropFilter: "blur(24px)",
-
-    WebkitBackdropFilter: "blur(24px)",
-
-    boxShadow: "0 24px 70px rgba(15,23,42,.16)",
-
-    display: "grid",
-
-    gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-
-    alignItems: "center",
-
-    padding: "8px 10px",
-
-  },
-
-  navItem: {
-
-    height: 67,
-
-    border: "none",
-
-    background: "transparent",
-
-    display: "grid",
-
-    justifyItems: "center",
-
-    alignContent: "center",
-
-    gap: 4,
-
-    borderRadius: 999,
-
-    fontSize: 11,
-
-    fontWeight: 950,
-
-    letterSpacing: 0.5,
-
-    textTransform: "capitalize",
-
-  },
-
-  navActive: {
-
-    background: "linear-gradient(135deg, #FF6A00, #FF7A22)",
-
-    boxShadow: "0 18px 40px rgba(255,106,0,.32)",
-
-  },
-
-  navCenter: {
-
-    transform: "translateY(-22px)",
-
-    background: "#fff",
-
-    width: 76,
-
-    height: 76,
-
-    justifySelf: "center",
-
-    boxShadow: "0 18px 46px rgba(255,106,0,.16)",
-
-    border: "7px solid rgba(255,106,0,.08)",
-
-  },
-
-  navIcon: {
-
-    display: "grid",
-
-    placeItems: "center",
-
-  },
-
-  navCenterIcon: {
-
-    width: 56,
-
-    height: 56,
-
-    borderRadius: 999,
-
-    display: "grid",
-
-    placeItems: "center",
-
-    background: "linear-gradient(135deg, #FF6A00, #FF8A3D)",
+    minWidth: 0,
 
   },
 
