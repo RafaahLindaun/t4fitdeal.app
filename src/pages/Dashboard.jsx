@@ -154,7 +154,7 @@ function progressFromGoal(goal, weekly, streak) {
 
 function calcReadiness(lastWorkout) {
 
-  if (!lastWorkout) {
+  if (!lastWorkout?.completed_at) {
 
     return {
 
@@ -170,9 +170,7 @@ function calcReadiness(lastWorkout) {
 
   }
 
-  const rawDate = lastWorkout.completed_at || lastWorkout.created_at || lastWorkout.session_date;
-
-  const lastDate = new Date(rawDate);
+  const lastDate = new Date(lastWorkout.completed_at);
 
   const now = new Date();
 
@@ -180,7 +178,9 @@ function calcReadiness(lastWorkout) {
 
   const percent = clamp(Math.round((diffHours / 24) * 100), 0, 100);
 
-  if (diffHours < 12) {
+  const hoursText = diffHours < 1 ? "menos de 1h" : `${Math.floor(diffHours)}h`;
+
+  if (diffHours < 8) {
 
     return {
 
@@ -188,15 +188,15 @@ function calcReadiness(lastWorkout) {
 
       label: "Recuperando",
 
-      text: "Seu último treino foi recente.",
+      text: "Treino concluído recentemente.",
 
-      hoursText: `${Math.floor(diffHours)}h`,
+      hoursText,
 
     };
 
   }
 
-  if (diffHours < 20) {
+  if (diffHours < 18) {
 
     return {
 
@@ -204,9 +204,9 @@ function calcReadiness(lastWorkout) {
 
       label: "Quase pronto",
 
-      text: "Você já pode fazer um treino leve.",
+      text: "Seu corpo ainda está recuperando.",
 
-      hoursText: `${Math.floor(diffHours)}h`,
+      hoursText,
 
     };
 
@@ -220,7 +220,7 @@ function calcReadiness(lastWorkout) {
 
     text: "Seu corpo já teve uma boa recuperação.",
 
-    hoursText: `${Math.floor(diffHours)}h`,
+    hoursText,
 
   };
 
@@ -510,7 +510,11 @@ function ActionButton({ icon, label, onClick }) {
 
     >
 
-      <Icon name={icon} size={22} color={ORANGE} />
+      <div style={styles.actionIconWrap}>
+
+        <Icon name={icon} size={22} color={ORANGE} />
+
+      </div>
 
       <span>{label}</span>
 
@@ -698,9 +702,9 @@ async function loadLastWorkout(userId) {
 
       .eq("completed", true)
 
-      .order("completed_at", { ascending: false, nullsFirst: false })
+      .not("completed_at", "is", null)
 
-      .order("created_at", { ascending: false })
+      .order("completed_at", { ascending: false })
 
       .limit(1)
 
@@ -931,6 +935,58 @@ export default function Dashboard() {
   );
 
   const loadEvolution = useMemo(() => clamp(weekly * 2 + streak, 0, 18), [weekly, streak]);
+
+  const volumeStatus = useMemo(() => {
+
+    if (weekly >= weekGoal) return "Bom";
+
+    if (weekly >= Math.max(1, weekGoal - 1)) return "Ok";
+
+    return "Baixo";
+
+  }, [weekly, weekGoal]);
+
+  const progressStatus = useMemo(() => {
+
+    if (weekly >= weekGoal && streak >= 3) {
+
+      return {
+
+        label: "Progresso certo",
+
+        color: GREEN,
+
+        text: "Seu volume está bom e sua consistência está ajudando na evolução.",
+
+      };
+
+    }
+
+    if (weekly >= Math.max(1, weekGoal - 1)) {
+
+      return {
+
+        label: "Quase ideal",
+
+        color: ORANGE,
+
+        text: "Você está perto do volume ideal. Mais um treino melhora o ritmo da semana.",
+
+      };
+
+    }
+
+    return {
+
+      label: "Volume baixo",
+
+      color: ORANGE,
+
+      text: "Seu volume está abaixo do planejado. Priorize mais um treino para manter progresso.",
+
+    };
+
+  }, [weekly, weekGoal, streak]);
 
   const mainGoals = useMemo(() => {
 
@@ -1178,14 +1234,6 @@ export default function Dashboard() {
 
         }
 
-        @keyframes pulseLive {
-
-          0%,100% { transform: scale(1); opacity: 1; }
-
-          50% { transform: scale(1.18); opacity: .72; }
-
-        }
-
         button {
 
           font-family: inherit;
@@ -1249,54 +1297,6 @@ export default function Dashboard() {
         </button>
 
       </header>
-
-      <button
-
-        type="button"
-
-        style={styles.liveBar}
-
-        onClick={() => {
-
-          haptic();
-
-          nav("/treino-detalhe");
-
-        }}
-
-      >
-
-        <div style={styles.liveLeft}>
-
-          <span style={styles.liveDot} />
-
-          <b>Ao vivo</b>
-
-        </div>
-
-        <div style={styles.liveDivider} />
-
-        <div style={styles.liveWave}>
-
-          <span style={{ ...styles.liveWaveBar, height: 7 }} />
-
-          <span style={{ ...styles.liveWaveBar, height: 13 }} />
-
-          <span style={{ ...styles.liveWaveBar, height: 19 }} />
-
-          <span style={{ ...styles.liveWaveBar, height: 10 }} />
-
-        </div>
-
-        <div style={styles.liveText}>
-
-          {weekly}/{weekGoal} treinos nesta semana
-
-        </div>
-
-        <div style={styles.chev}>›</div>
-
-      </button>
 
       <section style={styles.hero}>
 
@@ -1716,7 +1716,15 @@ export default function Dashboard() {
 
           <h2 style={styles.cardTitle}>Registro de progresso</h2>
 
-          <span style={styles.cardLink}>Resumo</span>
+          <span style={styles.cardLink}>Análise</span>
+
+        </div>
+
+        <div style={styles.progressDiagnosis}>
+
+          <div style={styles.diagnosisBadge}>{progressStatus.label}</div>
+
+          <div style={styles.diagnosisText}>{progressStatus.text}</div>
 
         </div>
 
@@ -1726,7 +1734,7 @@ export default function Dashboard() {
 
             <strong style={styles.progressStrong}>{weekly}</strong>
 
-            <span style={styles.progressSpan}>treinos esta semana</span>
+            <span style={styles.progressSpan}>treinos na semana</span>
 
           </div>
 
@@ -1734,7 +1742,7 @@ export default function Dashboard() {
 
             <strong style={styles.progressStrong}>{adherence}%</strong>
 
-            <span style={styles.progressSpan}>adesão semanal</span>
+            <span style={styles.progressSpan}>adesão</span>
 
           </div>
 
@@ -1742,17 +1750,17 @@ export default function Dashboard() {
 
             <strong style={{ ...styles.progressStrong, color: GREEN }}>
 
-              +{loadEvolution}%
+              {volumeStatus}
 
             </strong>
 
-            <span style={styles.progressSpan}>evolução nas cargas</span>
+            <span style={styles.progressSpan}>volume</span>
 
           </div>
 
           <div style={styles.progressMiniChart}>
 
-            <TinyLine />
+            <TinyLine color={progressStatus.color} />
 
           </div>
 
@@ -1850,7 +1858,7 @@ const styles = {
 
     gap: 8,
 
-    marginBottom: 14,
+    marginBottom: 16,
 
   },
 
@@ -2003,146 +2011,6 @@ const styles = {
     background: ORANGE,
 
     boxShadow: "0 0 0 5px rgba(255,106,0,.11)",
-
-  },
-
-  liveBar: {
-
-    position: "relative",
-
-    zIndex: 2,
-
-    width: "100%",
-
-    minHeight: 48,
-
-    borderRadius: 999,
-
-    border: "1px solid rgba(15,23,42,.055)",
-
-    background: "rgba(255,255,255,.84)",
-
-    backdropFilter: "blur(20px)",
-
-    WebkitBackdropFilter: "blur(20px)",
-
-    boxShadow: "0 14px 34px rgba(15,23,42,.055)",
-
-    display: "flex",
-
-    alignItems: "center",
-
-    gap: 8,
-
-    padding: "0 12px",
-
-    marginBottom: 14,
-
-    textAlign: "left",
-
-    boxSizing: "border-box",
-
-  },
-
-  liveLeft: {
-
-    display: "inline-flex",
-
-    alignItems: "center",
-
-    gap: 7,
-
-    color: GREEN,
-
-    fontSize: 12,
-
-    fontWeight: 950,
-
-    whiteSpace: "nowrap",
-
-  },
-
-  liveDot: {
-
-    width: 9,
-
-    height: 9,
-
-    borderRadius: 999,
-
-    background: GREEN,
-
-    animation: "pulseLive 1.4s infinite",
-
-  },
-
-  liveDivider: {
-
-    width: 1,
-
-    height: 20,
-
-    background: "rgba(15,23,42,.08)",
-
-    flexShrink: 0,
-
-  },
-
-  liveWave: {
-
-    display: "inline-flex",
-
-    alignItems: "center",
-
-    gap: 3,
-
-    height: 20,
-
-    flexShrink: 0,
-
-  },
-
-  liveWaveBar: {
-
-    width: 3,
-
-    borderRadius: 999,
-
-    background: ORANGE,
-
-    display: "block",
-
-  },
-
-  liveText: {
-
-    flex: 1,
-
-    minWidth: 0,
-
-    fontSize: 12,
-
-    fontWeight: 850,
-
-    color: MUTED,
-
-    whiteSpace: "nowrap",
-
-    overflow: "hidden",
-
-    textOverflow: "ellipsis",
-
-  },
-
-  chev: {
-
-    fontSize: 24,
-
-    lineHeight: 1,
-
-    color: MUTED,
-
-    marginLeft: -2,
 
   },
 
@@ -2384,9 +2252,11 @@ const styles = {
 
     border: "1px solid rgba(15,23,42,.08)",
 
-    display: "grid",
+    display: "flex",
 
-    placeItems: "center",
+    alignItems: "center",
+
+    justifyContent: "center",
 
     zIndex: 2,
 
@@ -2398,15 +2268,23 @@ const styles = {
 
     height: 36,
 
+    minWidth: 36,
+
+    minHeight: 36,
+
     borderRadius: 999,
 
     background: "rgba(255,106,0,.10)",
 
-    display: "grid",
+    display: "flex",
 
-    placeItems: "center",
+    alignItems: "center",
+
+    justifyContent: "center",
 
     marginBottom: 13,
+
+    boxSizing: "border-box",
 
   },
 
@@ -2734,13 +2612,15 @@ const styles = {
 
     background: "transparent",
 
-    display: "grid",
+    display: "flex",
 
-    justifyItems: "center",
+    flexDirection: "column",
 
-    alignContent: "center",
+    alignItems: "center",
 
-    gap: 6,
+    justifyContent: "center",
+
+    gap: 7,
 
     color: MUTED,
 
@@ -2753,6 +2633,22 @@ const styles = {
     padding: "8px 3px",
 
     boxSizing: "border-box",
+
+    textAlign: "center",
+
+  },
+
+  actionIconWrap: {
+
+    width: 28,
+
+    height: 28,
+
+    display: "flex",
+
+    alignItems: "center",
+
+    justifyContent: "center",
 
   },
 
@@ -2866,17 +2762,25 @@ const styles = {
 
     height: 36,
 
+    minWidth: 36,
+
+    minHeight: 36,
+
     borderRadius: 13,
 
     border: "1px solid rgba(15,23,42,.08)",
 
     background: "#fff",
 
-    display: "grid",
+    display: "flex",
 
-    placeItems: "center",
+    alignItems: "center",
+
+    justifyContent: "center",
 
     flexShrink: 0,
+
+    boxSizing: "border-box",
 
   },
 
@@ -3069,6 +2973,52 @@ const styles = {
     gap: 12,
 
     marginBottom: 12,
+
+  },
+
+  progressDiagnosis: {
+
+    padding: 14,
+
+    borderRadius: 18,
+
+    background: "linear-gradient(135deg, rgba(255,106,0,.10), rgba(255,255,255,.82))",
+
+    border: "1px solid rgba(255,106,0,.14)",
+
+    marginBottom: 14,
+
+  },
+
+  diagnosisBadge: {
+
+    display: "inline-flex",
+
+    padding: "7px 10px",
+
+    borderRadius: 999,
+
+    background: "rgba(255,106,0,.12)",
+
+    color: ORANGE,
+
+    fontSize: 12,
+
+    fontWeight: 950,
+
+  },
+
+  diagnosisText: {
+
+    marginTop: 8,
+
+    fontSize: 13,
+
+    fontWeight: 800,
+
+    lineHeight: 1.35,
+
+    color: MUTED,
 
   },
 
