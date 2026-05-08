@@ -691,11 +691,44 @@ function GoalRow({ goal, progress, onClick }) {
   );
 
 }
-async function loadPaidStatus(userId) {
 
-  if (!userId) return false;
+async function loadPlanStatus(userId) {
+
+  if (!userId) {
+
+    return { paid: false, hasNutriPlus: false };
+
+  }
 
   try {
+
+    const { data: userSub, error: userSubError } = await supabase
+
+      .from("user_subscriptions")
+
+      .select("*")
+
+      .eq("user_id", userId)
+
+      .maybeSingle();
+
+    if (!userSubError && userSub) {
+
+      const status = String(userSub.status || "").toLowerCase();
+
+      const plan = String(userSub.plan || "").toLowerCase();
+
+      const planType = String(userSub.plan_type || "").toLowerCase();
+
+      const active = status === "active" || status === "trialing";
+
+      const isNutri = plan.includes("nutri") || planType.includes("nutri");
+
+      if (active && isNutri) return { paid: true, hasNutriPlus: true };
+
+      if (active) return { paid: true, hasNutriPlus: false };
+
+    }
 
     const { data: subRows } = await supabase
 
@@ -707,39 +740,53 @@ async function loadPaidStatus(userId) {
 
       .in("status", ["active", "trialing"]);
 
-    const hasActiveSub = (subRows || []).some((row) => {
+    const hasNutriPlus = (subRows || []).some((row) => {
 
       const plan = String(row?.plan || "").toLowerCase();
 
       const planType = String(row?.plan_type || "").toLowerCase();
 
-      return (
-
-        planType === "basic" ||
-
-        planType === "basico" ||
-
-        planType === "premium" ||
-
-        planType === "nutri_plus" ||
-
-        planType === "nutri+" ||
-
-        plan === "basic" ||
-
-        plan === "basico" ||
-
-        plan === "premium" ||
-
-        plan === "nutri_plus" ||
-
-        plan === "nutri+"
-
-      );
+      return plan.includes("nutri") || planType.includes("nutri");
 
     });
 
-    if (hasActiveSub) return true;
+    const paid =
+
+      hasNutriPlus ||
+
+      (subRows || []).some((row) => {
+
+        const plan = String(row?.plan || "").toLowerCase();
+
+        const planType = String(row?.plan_type || "").toLowerCase();
+
+        return (
+
+          plan.includes("basic") ||
+
+          plan.includes("basico") ||
+
+          plan.includes("premium") ||
+
+          plan.includes("nutri") ||
+
+          planType.includes("basic") ||
+
+          planType.includes("basico") ||
+
+          planType.includes("premium") ||
+
+          planType.includes("nutri")
+
+        );
+
+      });
+
+    if (paid || hasNutriPlus) {
+
+      return { paid: true, hasNutriPlus };
+
+    }
 
     const { data: profile } = await supabase
 
@@ -755,111 +802,38 @@ async function loadPaidStatus(userId) {
 
     const role = String(profile?.role || "").toLowerCase();
 
-    if (profile?.is_paid === true) return true;
+    const profileNutri =
 
-    if (profile?.nutri_plus === true) return true;
+      profile?.nutri_plus === true ||
 
-    if (profilePlan === "premium") return true;
+      profilePlan.includes("nutri") ||
 
-    if (profilePlan === "basic") return true;
+      role.includes("nutri");
 
-    if (profilePlan === "basico") return true;
+    const profilePaid =
 
-    if (profilePlan === "nutri_plus") return true;
+      profile?.is_paid === true ||
 
-    if (profilePlan === "nutri+") return true;
+      profileNutri ||
 
-    if (role === "nutri_plus") return true;
+      profilePlan.includes("basic") ||
 
-    if (role === "nutri+") return true;
+      profilePlan.includes("basico") ||
 
-    return false;
+      profilePlan.includes("premium");
 
-  } catch {
+    return { paid: profilePaid, hasNutriPlus: profileNutri };
 
-    return false;
+  } catch (err) {
 
-  }
+    console.error("loadPlanStatus:", err);
 
-}
-
-async function loadNutriStatus(userId) {
-
-  if (!userId) return false;
-
-  try {
-
-    const { data: subRows } = await supabase
-
-      .from("subscriptions")
-
-      .select("status, plan, plan_type")
-
-      .eq("user_id", userId)
-
-      .in("status", ["active", "trialing"]);
-
-    const hasNutriSub = (subRows || []).some((row) => {
-
-      const plan = String(row?.plan || "").toLowerCase();
-
-      const planType = String(row?.plan_type || "").toLowerCase();
-
-      return (
-
-        planType === "nutri_plus" ||
-
-        planType === "nutri+" ||
-
-        planType === "nutriplus" ||
-
-        plan.includes("nutri") ||
-
-        planType.includes("nutri")
-
-      );
-
-    });
-
-    if (hasNutriSub) return true;
-
-    const { data: profile } = await supabase
-
-      .from("profiles")
-
-      .select("nutri_plus, plan, role")
-
-      .eq("id", userId)
-
-      .maybeSingle();
-
-    const profilePlan = String(profile?.plan || "").toLowerCase();
-
-    const role = String(profile?.role || "").toLowerCase();
-
-    if (profile?.nutri_plus === true) return true;
-
-    if (profilePlan === "nutri_plus") return true;
-
-    if (profilePlan === "nutri+") return true;
-
-    if (profilePlan === "nutriplus") return true;
-
-    if (role === "nutri_plus") return true;
-
-    if (role === "nutri+") return true;
-
-    if (role === "nutriplus") return true;
-
-    return false;
-
-  } catch {
-
-    return false;
+    return { paid: false, hasNutriPlus: false };
 
   }
 
 }
+
 function getPlanInfo({ paid, hasNutriPlus }) {
 
   if (hasNutriPlus) {
@@ -1340,9 +1314,7 @@ export default function Dashboard() {
 
       const [
 
-        paidStatus,
-
-        nutriStatus,
+        planStatus,
 
         workoutDates,
 
@@ -1356,9 +1328,7 @@ export default function Dashboard() {
 
       ] = await Promise.all([
 
-        loadPaidStatus(user.id),
-
-        loadNutriStatus(user.id),
+        loadPlanStatus(user.id),
 
         loadCompletedWorkoutDates(user.id),
 
@@ -1374,9 +1344,9 @@ export default function Dashboard() {
 
       if (!active) return;
 
-      setPaid(paidStatus);
+      setPaid(planStatus.paid);
 
-      setHasNutriPlus(nutriStatus);
+      setHasNutriPlus(planStatus.hasNutriPlus);
 
       setWorkouts(workoutDates);
 
@@ -1493,6 +1463,62 @@ export default function Dashboard() {
           const nextWater = await loadHydration(user.id, today);
 
           setWaterMl(nextWater);
+
+        }
+
+      )
+
+      .on(
+
+        "postgres_changes",
+
+        {
+
+          event: "*",
+
+          schema: "public",
+
+          table: "user_subscriptions",
+
+          filter: `user_id=eq.${user.id}`,
+
+        },
+
+        async () => {
+
+          const nextPlan = await loadPlanStatus(user.id);
+
+          setPaid(nextPlan.paid);
+
+          setHasNutriPlus(nextPlan.hasNutriPlus);
+
+        }
+
+      )
+
+      .on(
+
+        "postgres_changes",
+
+        {
+
+          event: "*",
+
+          schema: "public",
+
+          table: "subscriptions",
+
+          filter: `user_id=eq.${user.id}`,
+
+        },
+
+        async () => {
+
+          const nextPlan = await loadPlanStatus(user.id);
+
+          setPaid(nextPlan.paid);
+
+          setHasNutriPlus(nextPlan.hasNutriPlus);
 
         }
 
@@ -1846,7 +1872,7 @@ export default function Dashboard() {
 
       ) : null}
 
-      {hydrationOpen ? (
+      {hydrationOpen && hasNutriPlus ? (
 
         <section style={styles.expandCard}>
 
