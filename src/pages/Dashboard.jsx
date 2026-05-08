@@ -701,7 +701,7 @@ async function loadPaidStatus(userId) {
 
       .from("subscriptions")
 
-      .select("status")
+      .select("status, plan, price_id, product_name")
 
       .eq("user_id", userId)
 
@@ -715,21 +715,33 @@ async function loadPaidStatus(userId) {
 
       .from("profiles")
 
-      .select("is_paid, plan, role")
+      .select("is_paid, plan, role, nutri_plus")
 
       .eq("id", userId)
 
       .maybeSingle();
 
+    const plan = String(profile?.plan || "").toLowerCase();
+
+    const role = String(profile?.role || "").toLowerCase();
+
     if (profile?.is_paid === true) return true;
 
-    const plan = String(profile?.plan || "").toLowerCase();
+    if (profile?.nutri_plus === true) return true;
 
     if (plan === "premium") return true;
 
     if (plan === "basic") return true;
 
     if (plan === "basico") return true;
+
+    if (plan === "nutri+") return true;
+
+    if (plan === "nutri_plus") return true;
+
+    if (plan === "nutriplus") return true;
+
+    if (role === "nutri+") return true;
 
     return false;
 
@@ -746,6 +758,38 @@ async function loadNutriStatus(userId) {
   if (!userId) return false;
 
   try {
+
+    const { data: subRows } = await supabase
+
+      .from("subscriptions")
+
+      .select("status, plan, price_id, product_name")
+
+      .eq("user_id", userId)
+
+      .in("status", ["active", "trialing"]);
+
+    const hasNutriSub = (subRows || []).some((row) => {
+
+      const plan = String(row?.plan || "").toLowerCase();
+
+      const product = String(row?.product_name || "").toLowerCase();
+
+      const price = String(row?.price_id || "").toLowerCase();
+
+      return (
+
+        plan.includes("nutri") ||
+
+        product.includes("nutri") ||
+
+        price.includes("nutri")
+
+      );
+
+    });
+
+    if (hasNutriSub) return true;
 
     const { data: profile } = await supabase
 
@@ -773,6 +817,8 @@ async function loadNutriStatus(userId) {
 
     if (role === "nutri_plus") return true;
 
+    if (role === "nutriplus") return true;
+
     return false;
 
   } catch {
@@ -782,7 +828,6 @@ async function loadNutriStatus(userId) {
   }
 
 }
-
 function getPlanInfo({ paid, hasNutriPlus }) {
 
   if (hasNutriPlus) {
