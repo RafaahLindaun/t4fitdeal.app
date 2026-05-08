@@ -680,81 +680,85 @@ async function loadPlanStatus(userId) {
 
   try {
 
-    const { data: userSub } = await supabase
+    const [{ data: userSubs }, { data: subRows }, { data: profile }] = await Promise.all([
 
-      .from("user_subscriptions")
+      supabase
 
-      .select("*")
+        .from("user_subscriptions")
 
-      .eq("user_id", userId);
+        .select("*")
 
-    const allUserSubs = Array.isArray(userSub) ? userSub : [];
+        .eq("user_id", userId),
 
-    const activeUserSubs = allUserSubs.filter((row) => {
+      supabase
 
-      const status = String(row?.status || "").toLowerCase();
+        .from("subscriptions")
 
-      return status === "active" || status === "trialing";
+        .select("*")
 
-    });
+        .eq("user_id", userId),
 
-    const userHasNutri = activeUserSubs.some((row) => {
+      supabase
 
-      const plan = String(row?.plan || "").toLowerCase();
+        .from("profiles")
 
-      const planType = String(row?.plan_type || "").toLowerCase();
+        .select("is_paid, plan, role, nutri_plus")
 
-      return plan.includes("nutri") || planType.includes("nutri");
+        .eq("id", userId)
 
-    });
+        .maybeSingle(),
 
-    if (userHasNutri) {
+    ]);
 
-      return {
+    const normalize = (value) => String(value || "").toLowerCase().trim();
 
-        paid: true,
+    const isActive = (row) => {
 
-        hasNutriPlus: true,
+      const status = normalize(row?.status);
 
-      };
+      // profile não tem status, então não pode ser bloqueado por isso
 
-    }
-
-    if (activeUserSubs.length > 0) {
-
-      return {
-
-        paid: true,
-
-        hasNutriPlus: false,
-
-      };
-
-    }
-
-    const { data: subRows } = await supabase
-
-      .from("subscriptions")
-
-      .select("*")
-
-      .eq("user_id", userId);
-
-    const activeSubs = (subRows || []).filter((row) => {
-
-      const status = String(row?.status || "").toLowerCase();
+      if (!("status" in (row || {}))) return true;
 
       return status === "active" || status === "trialing";
 
-    });
+    };
 
-    const hasNutriPlus = activeSubs.some((row) => {
+    const allRows = [
 
-      const plan = String(row?.plan || "").toLowerCase();
+      ...(Array.isArray(userSubs) ? userSubs : []),
 
-      const planType = String(row?.plan_type || "").toLowerCase();
+      ...(Array.isArray(subRows) ? subRows : []),
 
-      return plan.includes("nutri") || planType.includes("nutri");
+      profile,
+
+    ].filter(Boolean);
+
+    const hasNutriPlus = allRows.some((row) => {
+
+      if (!isActive(row)) return false;
+
+      const plan = normalize(row?.plan);
+
+      const planType = normalize(row?.plan_type);
+
+      const role = normalize(row?.role);
+
+      const productName = normalize(row?.product_name);
+
+      return (
+
+        row?.nutri_plus === true ||
+
+        plan.includes("nutri") ||
+
+        planType.includes("nutri") ||
+
+        role.includes("nutri") ||
+
+        productName.includes("nutri")
+
+      );
 
     });
 
@@ -770,13 +774,19 @@ async function loadPlanStatus(userId) {
 
     }
 
-    const hasPaidPlan = activeSubs.some((row) => {
+    const hasBasicOrPremium = allRows.some((row) => {
 
-      const plan = String(row?.plan || "").toLowerCase();
+      if (!isActive(row)) return false;
 
-      const planType = String(row?.plan_type || "").toLowerCase();
+      const plan = normalize(row?.plan);
+
+      const planType = normalize(row?.plan_type);
+
+      const role = normalize(row?.role);
 
       return (
+
+        row?.is_paid === true ||
 
         plan.includes("basic") ||
 
@@ -788,13 +798,15 @@ async function loadPlanStatus(userId) {
 
         planType.includes("basico") ||
 
-        planType.includes("premium")
+        planType.includes("premium") ||
+
+        role.includes("premium")
 
       );
 
     });
 
-    if (hasPaidPlan) {
+    if (hasBasicOrPremium) {
 
       return {
 
@@ -806,53 +818,9 @@ async function loadPlanStatus(userId) {
 
     }
 
-    const { data: profile } = await supabase
-
-      .from("profiles")
-
-      .select("is_paid, plan, role, nutri_plus")
-
-      .eq("id", userId)
-
-      .maybeSingle();
-
-    const profilePlan = String(profile?.plan || "").toLowerCase();
-
-    const profileRole = String(profile?.role || "").toLowerCase();
-
-    const profileNutri =
-
-      profile?.nutri_plus === true ||
-
-      profilePlan.includes("nutri") ||
-
-      profileRole.includes("nutri");
-
-    if (profileNutri) {
-
-      return {
-
-        paid: true,
-
-        hasNutriPlus: true,
-
-      };
-
-    }
-
-    const profilePaid =
-
-      profile?.is_paid === true ||
-
-      profilePlan.includes("basic") ||
-
-      profilePlan.includes("basico") ||
-
-      profilePlan.includes("premium");
-
     return {
 
-      paid: profilePaid,
+      paid: false,
 
       hasNutriPlus: false,
 
