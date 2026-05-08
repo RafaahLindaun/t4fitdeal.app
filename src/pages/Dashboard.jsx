@@ -701,15 +701,45 @@ async function loadPaidStatus(userId) {
 
       .from("subscriptions")
 
-      .select("status, plan, price_id, product_name")
+      .select("status, plan, plan_type")
 
       .eq("user_id", userId)
 
-      .in("status", ["active", "trialing"])
+      .in("status", ["active", "trialing"]);
 
-      .limit(1);
+    const hasActiveSub = (subRows || []).some((row) => {
 
-    if (Array.isArray(subRows) && subRows.length > 0) return true;
+      const plan = String(row?.plan || "").toLowerCase();
+
+      const planType = String(row?.plan_type || "").toLowerCase();
+
+      return (
+
+        planType === "basic" ||
+
+        planType === "basico" ||
+
+        planType === "premium" ||
+
+        planType === "nutri_plus" ||
+
+        planType === "nutri+" ||
+
+        plan === "basic" ||
+
+        plan === "basico" ||
+
+        plan === "premium" ||
+
+        plan === "nutri_plus" ||
+
+        plan === "nutri+"
+
+      );
+
+    });
+
+    if (hasActiveSub) return true;
 
     const { data: profile } = await supabase
 
@@ -721,7 +751,7 @@ async function loadPaidStatus(userId) {
 
       .maybeSingle();
 
-    const plan = String(profile?.plan || "").toLowerCase();
+    const profilePlan = String(profile?.plan || "").toLowerCase();
 
     const role = String(profile?.role || "").toLowerCase();
 
@@ -729,17 +759,17 @@ async function loadPaidStatus(userId) {
 
     if (profile?.nutri_plus === true) return true;
 
-    if (plan === "premium") return true;
+    if (profilePlan === "premium") return true;
 
-    if (plan === "basic") return true;
+    if (profilePlan === "basic") return true;
 
-    if (plan === "basico") return true;
+    if (profilePlan === "basico") return true;
 
-    if (plan === "nutri+") return true;
+    if (profilePlan === "nutri_plus") return true;
 
-    if (plan === "nutri_plus") return true;
+    if (profilePlan === "nutri+") return true;
 
-    if (plan === "nutriplus") return true;
+    if (role === "nutri_plus") return true;
 
     if (role === "nutri+") return true;
 
@@ -763,7 +793,7 @@ async function loadNutriStatus(userId) {
 
       .from("subscriptions")
 
-      .select("status, plan, price_id, product_name")
+      .select("status, plan, plan_type")
 
       .eq("user_id", userId)
 
@@ -773,17 +803,19 @@ async function loadNutriStatus(userId) {
 
       const plan = String(row?.plan || "").toLowerCase();
 
-      const product = String(row?.product_name || "").toLowerCase();
-
-      const price = String(row?.price_id || "").toLowerCase();
+      const planType = String(row?.plan_type || "").toLowerCase();
 
       return (
 
+        planType === "nutri_plus" ||
+
+        planType === "nutri+" ||
+
+        planType === "nutriplus" ||
+
         plan.includes("nutri") ||
 
-        product.includes("nutri") ||
-
-        price.includes("nutri")
+        planType.includes("nutri")
 
       );
 
@@ -801,21 +833,21 @@ async function loadNutriStatus(userId) {
 
       .maybeSingle();
 
-    const plan = String(profile?.plan || "").toLowerCase();
+    const profilePlan = String(profile?.plan || "").toLowerCase();
 
     const role = String(profile?.role || "").toLowerCase();
 
     if (profile?.nutri_plus === true) return true;
 
-    if (plan === "nutri+") return true;
+    if (profilePlan === "nutri_plus") return true;
 
-    if (plan === "nutri_plus") return true;
+    if (profilePlan === "nutri+") return true;
 
-    if (plan === "nutriplus") return true;
-
-    if (role === "nutri+") return true;
+    if (profilePlan === "nutriplus") return true;
 
     if (role === "nutri_plus") return true;
+
+    if (role === "nutri+") return true;
 
     if (role === "nutriplus") return true;
 
