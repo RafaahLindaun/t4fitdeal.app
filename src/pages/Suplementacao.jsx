@@ -527,7 +527,7 @@ export default function Suplementacao() {
           </div>
 
           <div style={S.kicker}>Suplementação</div>
-          <div style={S.title}>Seu protocolo no mesmo fluxo do app.</div>
+          <div style={S.title}>Seu plano de Suplementação.</div>
           <div style={S.sub}>
             Stack salvo no banco, calendário por dia e registro real de horário do que você tomou.
           </div>
