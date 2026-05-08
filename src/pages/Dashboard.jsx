@@ -312,6 +312,12 @@ function MotionWave({ points = [], color = ORANGE }) {
 
         style={{
 
+          strokeDasharray: 180,
+
+          strokeDashoffset: 0,
+
+          animation: "waveDraw .75s cubic-bezier(.2,.8,.2,1) both",
+
           transition: "d .45s ease, stroke .25s ease",
 
           filter: "drop-shadow(0 8px 12px rgba(255,106,0,.18))",
@@ -339,34 +345,6 @@ function MotionWave({ points = [], color = ORANGE }) {
         }}
 
       />
-
-    </svg>
-
-  );
-
-}
-
-function TinyLine({ color = ORANGE }) {
-
-  return (
-
-    <svg width="100%" height="38" viewBox="0 0 120 38" fill="none">
-
-      <path
-
-        d="M2 27 C14 35, 22 8, 36 20 C49 31, 56 9, 70 18 C83 27, 92 4, 118 10"
-
-        stroke={color}
-
-        strokeWidth="4"
-
-        strokeLinecap="round"
-
-        fill="none"
-
-      />
-
-      <circle cx="118" cy="10" r="4" fill={color} />
 
     </svg>
 
@@ -702,45 +680,25 @@ async function loadPlanStatus(userId) {
 
   try {
 
-    const { data: userSub, error: userSubError } = await supabase
+    const { data: userSub } = await supabase
 
       .from("user_subscriptions")
 
       .select("*")
 
-      .eq("user_id", userId)
+      .eq("user_id", userId);
 
-      .maybeSingle();
+    const allUserSubs = Array.isArray(userSub) ? userSub : [];
 
-    if (!userSubError && userSub) {
+    const activeUserSubs = allUserSubs.filter((row) => {
 
-      const status = String(userSub.status || "").toLowerCase();
+      const status = String(row?.status || "").toLowerCase();
 
-      const plan = String(userSub.plan || "").toLowerCase();
+      return status === "active" || status === "trialing";
 
-      const planType = String(userSub.plan_type || "").toLowerCase();
+    });
 
-      const active = status === "active" || status === "trialing";
-
-      const isNutri = plan.includes("nutri") || planType.includes("nutri");
-
-      if (active && isNutri) return { paid: true, hasNutriPlus: true };
-
-      if (active) return { paid: true, hasNutriPlus: false };
-
-    }
-
-    const { data: subRows } = await supabase
-
-      .from("subscriptions")
-
-      .select("status, plan, plan_type")
-
-      .eq("user_id", userId)
-
-      .in("status", ["active", "trialing"]);
-
-    const hasNutriPlus = (subRows || []).some((row) => {
+    const userHasNutri = activeUserSubs.some((row) => {
 
       const plan = String(row?.plan || "").toLowerCase();
 
@@ -750,41 +708,101 @@ async function loadPlanStatus(userId) {
 
     });
 
-    const paid =
+    if (userHasNutri) {
 
-      hasNutriPlus ||
+      return {
 
-      (subRows || []).some((row) => {
+        paid: true,
 
-        const plan = String(row?.plan || "").toLowerCase();
+        hasNutriPlus: true,
 
-        const planType = String(row?.plan_type || "").toLowerCase();
+      };
 
-        return (
+    }
 
-          plan.includes("basic") ||
+    if (activeUserSubs.length > 0) {
 
-          plan.includes("basico") ||
+      return {
 
-          plan.includes("premium") ||
+        paid: true,
 
-          plan.includes("nutri") ||
+        hasNutriPlus: false,
 
-          planType.includes("basic") ||
+      };
 
-          planType.includes("basico") ||
+    }
 
-          planType.includes("premium") ||
+    const { data: subRows } = await supabase
 
-          planType.includes("nutri")
+      .from("subscriptions")
 
-        );
+      .select("*")
 
-      });
+      .eq("user_id", userId);
 
-    if (paid || hasNutriPlus) {
+    const activeSubs = (subRows || []).filter((row) => {
 
-      return { paid: true, hasNutriPlus };
+      const status = String(row?.status || "").toLowerCase();
+
+      return status === "active" || status === "trialing";
+
+    });
+
+    const hasNutriPlus = activeSubs.some((row) => {
+
+      const plan = String(row?.plan || "").toLowerCase();
+
+      const planType = String(row?.plan_type || "").toLowerCase();
+
+      return plan.includes("nutri") || planType.includes("nutri");
+
+    });
+
+    if (hasNutriPlus) {
+
+      return {
+
+        paid: true,
+
+        hasNutriPlus: true,
+
+      };
+
+    }
+
+    const hasPaidPlan = activeSubs.some((row) => {
+
+      const plan = String(row?.plan || "").toLowerCase();
+
+      const planType = String(row?.plan_type || "").toLowerCase();
+
+      return (
+
+        plan.includes("basic") ||
+
+        plan.includes("basico") ||
+
+        plan.includes("premium") ||
+
+        planType.includes("basic") ||
+
+        planType.includes("basico") ||
+
+        planType.includes("premium")
+
+      );
+
+    });
+
+    if (hasPaidPlan) {
+
+      return {
+
+        paid: true,
+
+        hasNutriPlus: false,
+
+      };
 
     }
 
@@ -800,7 +818,7 @@ async function loadPlanStatus(userId) {
 
     const profilePlan = String(profile?.plan || "").toLowerCase();
 
-    const role = String(profile?.role || "").toLowerCase();
+    const profileRole = String(profile?.role || "").toLowerCase();
 
     const profileNutri =
 
@@ -808,13 +826,23 @@ async function loadPlanStatus(userId) {
 
       profilePlan.includes("nutri") ||
 
-      role.includes("nutri");
+      profileRole.includes("nutri");
+
+    if (profileNutri) {
+
+      return {
+
+        paid: true,
+
+        hasNutriPlus: true,
+
+      };
+
+    }
 
     const profilePaid =
 
       profile?.is_paid === true ||
-
-      profileNutri ||
 
       profilePlan.includes("basic") ||
 
@@ -822,13 +850,25 @@ async function loadPlanStatus(userId) {
 
       profilePlan.includes("premium");
 
-    return { paid: profilePaid, hasNutriPlus: profileNutri };
+    return {
+
+      paid: profilePaid,
+
+      hasNutriPlus: false,
+
+    };
 
   } catch (err) {
 
     console.error("loadPlanStatus:", err);
 
-    return { paid: false, hasNutriPlus: false };
+    return {
+
+      paid: false,
+
+      hasNutriPlus: false,
+
+    };
 
   }
 
@@ -1218,6 +1258,28 @@ export default function Dashboard() {
 
   }, [weekly, weekGoal, streak]);
 
+  const calorieWave = useMemo(() => {
+
+    return [
+
+      0.18,
+
+      0.26,
+
+      0.22,
+
+      0.34,
+
+      clamp(todayCalories / 400, 0.12, 1),
+
+      clamp(todayCalories / 320, 0.16, 1),
+
+      clamp(todayCalories / 260, 0.2, 1),
+
+    ];
+
+  }, [todayCalories]);
+
   const momentumWave = useMemo(() => {
 
     const base = [0.42, 0.48, 0.44, 0.55, 0.5, 0.62, 0.58];
@@ -1566,6 +1628,26 @@ export default function Dashboard() {
 
         }
 
+        @keyframes waveDraw {
+
+          from {
+
+            stroke-dashoffset: 180;
+
+            opacity: .35;
+
+          }
+
+          to {
+
+            stroke-dashoffset: 0;
+
+            opacity: 1;
+
+          }
+
+        }
+
         button {
 
           font-family: inherit;
@@ -1744,7 +1826,7 @@ export default function Dashboard() {
 
         >
 
-          <TinyLine />
+          <MotionWave points={calorieWave} color={ORANGE} />
 
         </StatCard>
 
@@ -1958,7 +2040,7 @@ export default function Dashboard() {
 
           label="Exercícios"
 
-          onClick={() => nav("/personalize")}
+          onClick={() => nav("/treino-personalize")}
 
         />
 
