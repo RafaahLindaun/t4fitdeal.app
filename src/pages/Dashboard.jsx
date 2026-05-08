@@ -232,6 +232,148 @@ function estimateKcal({ weightKg = 80, minutes = 45, met = 6 }) {
 
 }
 
+function buildWavePath(points = []) {
+
+  if (!points.length) return "M2 30 C20 25, 30 25, 45 25 C60 25, 75 25, 118 25";
+
+  const w = 120;
+
+  const minY = 6;
+
+  const maxY = 32;
+
+  const mapped = points.map((v, i) => {
+
+    const x = 2 + (i * (w - 4)) / Math.max(points.length - 1, 1);
+
+    const y = maxY - clamp(Number(v) || 0, 0, 1) * (maxY - minY);
+
+    return { x, y };
+
+  });
+
+  let d = `M${mapped[0].x} ${mapped[0].y}`;
+
+  for (let i = 1; i < mapped.length; i++) {
+
+    const prev = mapped[i - 1];
+
+    const curr = mapped[i];
+
+    const midX = (prev.x + curr.x) / 2;
+
+    d += ` C${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+
+  }
+
+  return d;
+
+}
+
+function MotionWave({ points = [], color = ORANGE }) {
+
+  const d = buildWavePath(points);
+
+  const last = points.length ? clamp(points[points.length - 1], 0, 1) : 0.5;
+
+  const cx = 118;
+
+  const cy = 32 - last * 26;
+
+  return (
+
+    <svg width="100%" height="42" viewBox="0 0 120 42" fill="none">
+
+      <path
+
+        d={d}
+
+        stroke="rgba(15,23,42,.08)"
+
+        strokeWidth="7"
+
+        strokeLinecap="round"
+
+        fill="none"
+
+      />
+
+      <path
+
+        d={d}
+
+        stroke={color}
+
+        strokeWidth="4"
+
+        strokeLinecap="round"
+
+        fill="none"
+
+        style={{
+
+          transition: "d .45s ease, stroke .25s ease",
+
+          filter: "drop-shadow(0 8px 12px rgba(255,106,0,.18))",
+
+        }}
+
+      />
+
+      <circle
+
+        cx={cx}
+
+        cy={cy}
+
+        r="4"
+
+        fill={color}
+
+        style={{
+
+          transition: "cx .45s ease, cy .45s ease",
+
+          filter: "drop-shadow(0 6px 10px rgba(255,106,0,.24))",
+
+        }}
+
+      />
+
+    </svg>
+
+  );
+
+}
+
+function TinyLine({ color = ORANGE }) {
+
+  return (
+
+    <svg width="100%" height="38" viewBox="0 0 120 38" fill="none">
+
+      <path
+
+        d="M2 27 C14 35, 22 8, 36 20 C49 31, 56 9, 70 18 C83 27, 92 4, 118 10"
+
+        stroke={color}
+
+        strokeWidth="4"
+
+        strokeLinecap="round"
+
+        fill="none"
+
+      />
+
+      <circle cx="118" cy="10" r="4" fill={color} />
+
+    </svg>
+
+  );
+
+}
+
 function TypeLogo({ text = "fitdeal" }) {
 
   const [count, setCount] = useState(0);
@@ -414,34 +556,6 @@ function Icon({ name, size = 20, color = TEXT }) {
 
 }
 
-function TinyLine({ color = ORANGE }) {
-
-  return (
-
-    <svg width="100%" height="38" viewBox="0 0 120 38" fill="none">
-
-      <path
-
-        d="M2 27 C14 35, 22 8, 36 20 C49 31, 56 9, 70 18 C83 27, 92 4, 118 10"
-
-        stroke={color}
-
-        strokeWidth="4"
-
-        strokeLinecap="round"
-
-        fill="none"
-
-      />
-
-      <circle cx="118" cy="10" r="4" fill={color} />
-
-    </svg>
-
-  );
-
-}
-
 function StatCard({ icon, value, sub, children, locked, onClick }) {
 
   return (
@@ -577,7 +691,6 @@ function GoalRow({ goal, progress, onClick }) {
   );
 
 }
-
 async function loadPaidStatus(userId) {
 
   if (!userId) return false;
@@ -610,11 +723,13 @@ async function loadPaidStatus(userId) {
 
     if (profile?.is_paid === true) return true;
 
-    if (String(profile?.plan || "").toLowerCase() === "premium") return true;
+    const plan = String(profile?.plan || "").toLowerCase();
 
-    if (String(profile?.plan || "").toLowerCase() === "basic") return true;
+    if (plan === "premium") return true;
 
-    if (String(profile?.plan || "").toLowerCase() === "basico") return true;
+    if (plan === "basic") return true;
+
+    if (plan === "basico") return true;
 
     return false;
 
@@ -636,17 +751,27 @@ async function loadNutriStatus(userId) {
 
       .from("profiles")
 
-      .select("nutri_plus, plan")
+      .select("nutri_plus, plan, role")
 
       .eq("id", userId)
 
       .maybeSingle();
 
+    const plan = String(profile?.plan || "").toLowerCase();
+
+    const role = String(profile?.role || "").toLowerCase();
+
     if (profile?.nutri_plus === true) return true;
 
-    if (String(profile?.plan || "").toLowerCase() === "nutri+") return true;
+    if (plan === "nutri+") return true;
 
-    if (String(profile?.plan || "").toLowerCase() === "nutri_plus") return true;
+    if (plan === "nutri_plus") return true;
+
+    if (plan === "nutriplus") return true;
+
+    if (role === "nutri+") return true;
+
+    if (role === "nutri_plus") return true;
 
     return false;
 
@@ -655,6 +780,54 @@ async function loadNutriStatus(userId) {
     return false;
 
   }
+
+}
+
+function getPlanInfo({ paid, hasNutriPlus }) {
+
+  if (hasNutriPlus) {
+
+    return {
+
+      key: "nutri_plus",
+
+      topLabel: "Nutri+",
+
+      cardTitle: "Nutri+ ativo • upgrade completo",
+
+      cardSub: "Treinos, Nutrição, hidratação e recursos premium liberados.",
+
+    };
+
+  }
+
+  if (paid) {
+
+    return {
+
+      key: "basic",
+
+      topLabel: "Básico",
+
+      cardTitle: "Básico ativo • R$12,99/mês",
+
+      cardSub: "Treinos liberados. Nutri+ é upgrade.",
+
+    };
+
+  }
+
+  return {
+
+    key: "free",
+
+    topLabel: "Free",
+
+    cardTitle: "Plano gratuito",
+
+    cardSub: "Assine para liberar treino completo.",
+
+  };
 
 }
 
@@ -918,6 +1091,14 @@ export default function Dashboard() {
 
   const readiness = useMemo(() => calcReadiness(lastWorkout), [lastWorkout]);
 
+  const planInfo = useMemo(
+
+    () => getPlanInfo({ paid, hasNutriPlus }),
+
+    [paid, hasNutriPlus]
+
+  );
+
   const momentum = useMemo(
 
     () => momentumLabel(weekly, weekGoal, streak),
@@ -933,8 +1114,6 @@ export default function Dashboard() {
     [weekly, weekGoal]
 
   );
-
-  const loadEvolution = useMemo(() => clamp(weekly * 2 + streak, 0, 18), [weekly, streak]);
 
   const volumeStatus = useMemo(() => {
 
@@ -987,6 +1166,56 @@ export default function Dashboard() {
     };
 
   }, [weekly, weekGoal, streak]);
+
+  const momentumWave = useMemo(() => {
+
+    const base = [0.42, 0.48, 0.44, 0.55, 0.5, 0.62, 0.58];
+
+    const weeklyBoost = clamp(weekly / Math.max(weekGoal, 1), 0, 1);
+
+    const streakBoost = clamp(streak / 7, 0, 1);
+
+    return base.map((v, i) => {
+
+      const trainingImpact =
+
+        i === base.length - 1 ? weeklyBoost * 0.34 + streakBoost * 0.18 : 0;
+
+      const weeklyCurve = i * 0.025;
+
+      return clamp(v + weeklyCurve + trainingImpact, 0.08, 0.96);
+
+    });
+
+  }, [weekly, weekGoal, streak]);
+
+  const progressWave = useMemo(() => {
+
+    const volume = clamp(weekly / Math.max(weekGoal, 1), 0, 1);
+
+    const consistency = clamp(streak / 7, 0, 1);
+
+    const adherenceScore = adherence / 100;
+
+    return [
+
+      0.3,
+
+      clamp(0.34 + volume * 0.18, 0, 1),
+
+      clamp(0.38 + consistency * 0.18, 0, 1),
+
+      clamp(0.42 + adherenceScore * 0.22, 0, 1),
+
+      clamp(0.46 + volume * 0.25, 0, 1),
+
+      clamp(0.5 + consistency * 0.22, 0, 1),
+
+      clamp(0.54 + adherenceScore * 0.3, 0, 1),
+
+    ];
+
+  }, [weekly, weekGoal, streak, adherence]);
 
   const mainGoals = useMemo(() => {
 
@@ -1288,11 +1517,25 @@ export default function Dashboard() {
 
         </div>
 
-        <button type="button" style={styles.proPill} onClick={() => nav("/planos")}>
+        <button
 
-          <span style={styles.proDot} />
+          type="button"
 
-          {paid ? "Pro" : "Free"}
+          style={{
+
+            ...styles.proPill,
+
+            ...(hasNutriPlus ? styles.proPillNutri : null),
+
+          }}
+
+          onClick={() => nav("/planos")}
+
+        >
+
+          <span style={hasNutriPlus ? styles.proDotNutri : styles.proDot} />
+
+          {planInfo.topLabel}
 
         </button>
 
@@ -1558,27 +1801,25 @@ export default function Dashboard() {
 
       ) : null}
 
-      <section style={styles.planCard}>
+      <section
+
+        style={{
+
+          ...styles.planCard,
+
+          ...(hasNutriPlus ? styles.planCardNutri : null),
+
+        }}
+
+      >
 
         <div>
 
           <div style={styles.planLabel}>Plano ativo</div>
 
-          <div style={styles.planName}>
+          <div style={styles.planName}>{planInfo.cardTitle}</div>
 
-            {paid ? "Básico ativo • R$12,99/mês" : "Plano gratuito"}
-
-          </div>
-
-          <div style={styles.planSub}>
-
-            {paid
-
-              ? "Treinos liberados. Nutri+ é upgrade."
-
-              : "Assine para liberar treino completo."}
-
-          </div>
+          <div style={styles.planSub}>{planInfo.cardSub}</div>
 
         </div>
 
@@ -1686,7 +1927,7 @@ export default function Dashboard() {
 
           <p style={styles.momentumText}>{momentumText(momentum)}</p>
 
-          <TinyLine />
+          <MotionWave points={momentumWave} color={ORANGE} />
 
           {momentumOpen ? (
 
@@ -1760,7 +2001,7 @@ export default function Dashboard() {
 
           <div style={styles.progressMiniChart}>
 
-            <TinyLine color={progressStatus.color} />
+            <MotionWave points={progressWave} color={progressStatus.color} />
 
           </div>
 
@@ -2000,6 +2241,18 @@ const styles = {
 
   },
 
+  proPillNutri: {
+
+    background: "#0B0B0C",
+
+    color: "#fff",
+
+    border: "1px solid rgba(255,106,0,.28)",
+
+    boxShadow: "0 14px 34px rgba(15,23,42,.16)",
+
+  },
+
   proDot: {
 
     width: 9,
@@ -2011,6 +2264,20 @@ const styles = {
     background: ORANGE,
 
     boxShadow: "0 0 0 5px rgba(255,106,0,.11)",
+
+  },
+
+  proDotNutri: {
+
+    width: 9,
+
+    height: 9,
+
+    borderRadius: 999,
+
+    background: ORANGE,
+
+    boxShadow: "0 0 0 5px rgba(255,106,0,.18)",
 
   },
 
@@ -2224,13 +2491,19 @@ const styles = {
 
     boxShadow: "0 14px 34px rgba(15,23,42,.07)",
 
-    padding: 11,
+    padding: "18px 11px 11px",
 
-    textAlign: "left",
+    textAlign: "center",
 
     overflow: "hidden",
 
     boxSizing: "border-box",
+
+    display: "flex",
+
+    flexDirection: "column",
+
+    alignItems: "center",
 
   },
 
@@ -2238,9 +2511,9 @@ const styles = {
 
     position: "absolute",
 
-    top: 8,
+    top: 10,
 
-    right: 8,
+    right: 10,
 
     width: 26,
 
@@ -2264,13 +2537,13 @@ const styles = {
 
   statIcon: {
 
-    width: 36,
+    width: 42,
 
-    height: 36,
+    height: 42,
 
-    minWidth: 36,
+    minWidth: 42,
 
-    minHeight: 36,
+    minHeight: 42,
 
     borderRadius: 999,
 
@@ -2282,13 +2555,15 @@ const styles = {
 
     justifyContent: "center",
 
-    marginBottom: 13,
+    margin: "0 auto 16px",
 
     boxSizing: "border-box",
 
   },
 
   statValue: {
+
+    width: "100%",
 
     fontSize: 22,
 
@@ -2300,9 +2575,13 @@ const styles = {
 
     lineHeight: 1,
 
+    textAlign: "center",
+
   },
 
   statSub: {
+
+    width: "100%",
 
     marginTop: 5,
 
@@ -2314,11 +2593,23 @@ const styles = {
 
     lineHeight: 1.2,
 
+    textAlign: "center",
+
   },
 
   statVisual: {
 
-    marginTop: 10,
+    width: "100%",
+
+    marginTop: "auto",
+
+    minHeight: 31,
+
+    display: "flex",
+
+    alignItems: "end",
+
+    justifyContent: "center",
 
   },
 
@@ -2328,9 +2619,11 @@ const styles = {
 
     alignItems: "center",
 
+    justifyContent: "center",
+
     gap: 12,
 
-    marginTop: 16,
+    width: "100%",
 
   },
 
@@ -2352,9 +2645,13 @@ const styles = {
 
     alignItems: "end",
 
+    justifyContent: "center",
+
     gap: 6,
 
     height: 31,
+
+    width: "100%",
 
   },
 
@@ -2372,13 +2669,13 @@ const styles = {
 
     height: 6,
 
+    width: "100%",
+
     borderRadius: 999,
 
     background: "rgba(29,155,240,.13)",
 
     overflow: "hidden",
-
-    marginTop: 21,
 
   },
 
@@ -2514,13 +2811,29 @@ const styles = {
 
   },
 
+  planCardNutri: {
+
+    background:
+
+      "radial-gradient(520px 180px at 90% 10%, rgba(255,106,0,.28), transparent 55%), linear-gradient(135deg, #0B0B0C, #151515)",
+
+    border: "1px solid rgba(255,106,0,.22)",
+
+    boxShadow: "0 22px 60px rgba(15,23,42,.18)",
+
+    color: "#fff",
+
+  },
+
   planLabel: {
 
     fontSize: 12,
 
     fontWeight: 850,
 
-    color: TEXT,
+    color: "inherit",
+
+    opacity: 0.82,
 
     marginBottom: 5,
 
@@ -2532,7 +2845,7 @@ const styles = {
 
     fontWeight: 950,
 
-    color: TEXT,
+    color: "inherit",
 
     letterSpacing: -0.3,
 
@@ -2548,7 +2861,9 @@ const styles = {
 
     fontWeight: 800,
 
-    color: MUTED,
+    color: "inherit",
+
+    opacity: 0.78,
 
     lineHeight: 1.3,
 
