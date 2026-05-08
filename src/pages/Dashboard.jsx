@@ -174,7 +174,13 @@ function calcReadiness(lastWorkout) {
 
   const now = new Date();
 
-  const diffHours = Math.max(0, (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60));
+  const diffHours = Math.max(
+
+    0,
+
+    (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60)
+
+  );
 
   const percent = clamp(Math.round((diffHours / 24) * 100), 0, 100);
 
@@ -714,11 +720,11 @@ async function loadPlanStatus(userId) {
 
     const isActive = (row) => {
 
-      const status = normalize(row?.status);
+      if (!row) return false;
 
-      // profile não tem status, então não pode ser bloqueado por isso
+      if (!Object.prototype.hasOwnProperty.call(row, "status")) return true;
 
-      if (!("status" in (row || {}))) return true;
+      const status = normalize(row.status);
 
       return status === "active" || status === "trialing";
 
@@ -738,17 +744,17 @@ async function loadPlanStatus(userId) {
 
       if (!isActive(row)) return false;
 
-      const plan = normalize(row?.plan);
+      const plan = normalize(row.plan);
 
-      const planType = normalize(row?.plan_type);
+      const planType = normalize(row.plan_type);
 
-      const role = normalize(row?.role);
+      const role = normalize(row.role);
 
-      const productName = normalize(row?.product_name);
+      const productName = normalize(row.product_name);
 
       return (
 
-        row?.nutri_plus === true ||
+        row.nutri_plus === true ||
 
         plan.includes("nutri") ||
 
@@ -778,15 +784,15 @@ async function loadPlanStatus(userId) {
 
       if (!isActive(row)) return false;
 
-      const plan = normalize(row?.plan);
+      const plan = normalize(row.plan);
 
-      const planType = normalize(row?.plan_type);
+      const planType = normalize(row.plan_type);
 
-      const role = normalize(row?.role);
+      const role = normalize(row.role);
 
       return (
 
-        row?.is_paid === true ||
+        row.is_paid === true ||
 
         plan.includes("basic") ||
 
@@ -806,21 +812,9 @@ async function loadPlanStatus(userId) {
 
     });
 
-    if (hasBasicOrPremium) {
-
-      return {
-
-        paid: true,
-
-        hasNutriPlus: false,
-
-      };
-
-    }
-
     return {
 
-      paid: false,
+      paid: hasBasicOrPremium,
 
       hasNutriPlus: false,
 
@@ -1228,25 +1222,33 @@ export default function Dashboard() {
 
   const calorieWave = useMemo(() => {
 
+    const kcalGoal = Math.max(250, peso * 4);
+
+    const kcalScore = clamp(todayCalories / kcalGoal, 0, 1);
+
+    const frequencyScore = clamp(weekly / Math.max(weekGoal, 1), 0, 1);
+
+    const streakScore = clamp(streak / 7, 0, 1);
+
     return [
 
       0.18,
 
-      0.26,
+      clamp(0.22 + frequencyScore * 0.14, 0, 1),
 
-      0.22,
+      clamp(0.20 + streakScore * 0.16, 0, 1),
 
-      0.34,
+      clamp(0.30 + kcalScore * 0.22, 0, 1),
 
-      clamp(todayCalories / 400, 0.12, 1),
+      clamp(0.26 + frequencyScore * 0.22, 0, 1),
 
-      clamp(todayCalories / 320, 0.16, 1),
+      clamp(0.34 + streakScore * 0.20, 0, 1),
 
-      clamp(todayCalories / 260, 0.2, 1),
+      clamp(0.38 + kcalScore * 0.34 + frequencyScore * 0.10, 0, 1),
 
     ];
 
-  }, [todayCalories]);
+  }, [todayCalories, peso, weekly, weekGoal, streak]);
 
   const momentumWave = useMemo(() => {
 
@@ -1579,6 +1581,20 @@ export default function Dashboard() {
     setWaterMl(next);
 
     await saveHydration(user.id, today, next);
+
+  }
+
+  function goToTreinoPersonalize() {
+
+    if (!paid && !hasNutriPlus) {
+
+      nav("/planos");
+
+      return;
+
+    }
+
+    nav("/treino/personalize");
 
   }
 
@@ -2008,7 +2024,7 @@ export default function Dashboard() {
 
           label="Exercícios"
 
-          onClick={() => nav("/treino-personalize")}
+          onClick={goToTreinoPersonalize}
 
         />
 
