@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -540,7 +540,57 @@ function Icon({ name, size = 20, color = TEXT }) {
 
 }
 
-function StatCard({ icon, value, sub, children, locked, onClick }) {
+function StatCard({ icon, value, sub, children, locked, onClick, onLongPress }) {
+
+  const timerRef = useRef(null);
+
+  const longPressedRef = useRef(false);
+
+  function startPress() {
+
+    longPressedRef.current = false;
+
+    if (!onLongPress) return;
+
+    timerRef.current = setTimeout(() => {
+
+      longPressedRef.current = true;
+
+      haptic();
+
+      onLongPress();
+
+    }, 520);
+
+  }
+
+  function endPress() {
+
+    if (timerRef.current) {
+
+      clearTimeout(timerRef.current);
+
+      timerRef.current = null;
+
+    }
+
+  }
+
+  function handleClick() {
+
+    if (longPressedRef.current) {
+
+      longPressedRef.current = false;
+
+      return;
+
+    }
+
+    haptic();
+
+    if (onClick) onClick();
+
+  }
 
   return (
 
@@ -548,13 +598,15 @@ function StatCard({ icon, value, sub, children, locked, onClick }) {
 
       type="button"
 
-      onClick={() => {
+      onPointerDown={startPress}
 
-        haptic();
+      onPointerUp={endPress}
 
-        if (onClick) onClick();
+      onPointerCancel={endPress}
 
-      }}
+      onPointerLeave={endPress}
+
+      onClick={handleClick}
 
       style={styles.statCard}
 
@@ -688,21 +740,9 @@ async function loadPlanStatus(userId) {
 
     const [{ data: userSubs }, { data: subRows }, { data: profile }] = await Promise.all([
 
-      supabase
+      supabase.from("user_subscriptions").select("*").eq("user_id", userId),
 
-        .from("user_subscriptions")
-
-        .select("*")
-
-        .eq("user_id", userId),
-
-      supabase
-
-        .from("subscriptions")
-
-        .select("*")
-
-        .eq("user_id", userId),
+      supabase.from("subscriptions").select("*").eq("user_id", userId),
 
       supabase
 
@@ -1244,7 +1284,7 @@ export default function Dashboard() {
 
       clamp(0.34 + streakScore * 0.20, 0, 1),
 
-      clamp(0.38 + kcalScore * 0.34 + frequencyScore * 0.10, 0, 1),
+      clamp(0.38 + kcalScore * 0.34 + frequencyScore * 0.1, 0, 1),
 
     ];
 
@@ -1528,34 +1568,6 @@ export default function Dashboard() {
 
       )
 
-      .on(
-
-        "postgres_changes",
-
-        {
-
-          event: "*",
-
-          schema: "public",
-
-          table: "subscriptions",
-
-          filter: `user_id=eq.${user.id}`,
-
-        },
-
-        async () => {
-
-          const nextPlan = await loadPlanStatus(user.id);
-
-          setPaid(nextPlan.paid);
-
-          setHasNutriPlus(nextPlan.hasNutriPlus);
-
-        }
-
-      )
-
       .subscribe();
 
     return () => {
@@ -1570,7 +1582,7 @@ export default function Dashboard() {
 
     if (!user?.id || !hasNutriPlus) {
 
-      nav("/planos");
+      nav("/nutricao");
 
       return;
 
@@ -1584,6 +1596,28 @@ export default function Dashboard() {
 
   }
 
+  function openHydrationArea() {
+
+    if (!hasNutriPlus) {
+
+      nav("/nutricao");
+
+      return;
+
+    }
+
+    nav("/nutricao", {
+
+      state: {
+
+        focus: "hidratacao",
+
+      },
+
+    });
+
+  }
+
   function goToTreinoPersonalize() {
 
     if (!paid && !hasNutriPlus) {
@@ -1594,7 +1628,7 @@ export default function Dashboard() {
 
     }
 
-    nav("/treino/personalize");
+    nav("/treino/personalizar");
 
   }
 
@@ -1888,11 +1922,19 @@ export default function Dashboard() {
 
           onClick={() => {
 
-            if (!hasNutriPlus) return nav("/planos");
+            if (!hasNutriPlus) {
+
+              nav("/nutricao");
+
+              return;
+
+            }
 
             setHydrationOpen((v) => !v);
 
           }}
+
+          onLongPress={openHydrationArea}
 
         >
 
