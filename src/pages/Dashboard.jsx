@@ -156,6 +156,7 @@ function rowDateKey(row) {
   const raw =
     row?.session_date ||
     row?.date_key ||
+    row?.day ||
     row?.completed_at ||
     row?.finished_at ||
     row?.ended_at ||
@@ -681,37 +682,84 @@ async function loadGoals(userId) {
   }
 }
 
-async function loadHydration(userId, dateKey) {
-  if (!userId || !dateKey) return 0;
+/* ---------------- HIDRATAÇÃO IGUAL À NUTRIÇÃO ---------------- */
+/* Tabela: hydration_daily | Campos: user_id, day, ml */
+
+async function loadHydration(userId, day) {
+  if (!userId || !day) return 0;
 
   try {
-    const { data } = await supabase
-      .from("daily_hydration")
-      .select("water_ml")
+    const { data, error } = await supabase
+      .from("hydration_daily")
+      .select("ml")
       .eq("user_id", userId)
-      .eq("date_key", dateKey)
+      .eq("day", day)
       .maybeSingle();
 
-    return Number(data?.water_ml || 0);
-  } catch {
+    if (error) {
+      console.error("loadHydration hydration_daily error:", error);
+      return 0;
+    }
+
+    return Number(data?.ml || 0);
+  } catch (err) {
+    console.error("loadHydration catch:", err);
     return 0;
   }
 }
 
-async function saveHydration(userId, dateKey, waterMl) {
-  if (!userId || !dateKey) return;
+async function saveHydration(userId, day, waterMl) {
+  if (!userId || !day) return 0;
+
+  const safeMl = Math.max(0, Number(waterMl) || 0);
 
   try {
-    await supabase.from("daily_hydration").upsert(
-      {
-        user_id: userId,
-        date_key: dateKey,
-        water_ml: Math.max(0, Number(waterMl) || 0),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,date_key" }
-    );
-  } catch {}
+    const { data: existing, error: findError } = await supabase
+      .from("hydration_daily")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("day", day)
+      .maybeSingle();
+
+    if (findError) {
+      console.error("saveHydration find error:", findError);
+    }
+
+    if (existing?.id) {
+      const { error: updateError } = await supabase
+        .from("hydration_daily")
+        .update({
+          ml: safeMl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("saveHydration update error:", updateError);
+        return 0;
+      }
+
+      return safeMl;
+    }
+
+    const { error: insertError } = await supabase.from("hydration_daily").insert({
+      user_id: userId,
+      day,
+      ml: safeMl,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      console.error("saveHydration insert error:", insertError);
+      return 0;
+    }
+
+    return safeMl;
+  } catch (err) {
+    console.error("saveHydration catch:", err);
+    return 0;
+  }
 }
 
 export default function Dashboard() {
@@ -942,7 +990,7 @@ export default function Dashboard() {
         {
           event: "*",
           schema: "public",
-          table: "daily_hydration",
+          table: "hydration_daily",
           filter: `user_id=eq.${user.id}`,
         },
         async () => {
@@ -981,7 +1029,9 @@ export default function Dashboard() {
 
     setWaterMl(next);
 
-    await saveHydration(user.id, today, next);
+    const saved = await saveHydration(user.id, today, next);
+
+    setWaterMl(saved);
   }
 
   function openHydrationArea() {
