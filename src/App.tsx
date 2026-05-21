@@ -42,6 +42,10 @@ import Calendario from "./pages/Calendario.jsx";
 
 import ComoFunciona from "./pages/ComoFunciona.jsx";
 
+import Suporte from "./pages/Suporte.jsx";
+
+import Politicas from "./pages/Politicas.jsx";
+
 import BottomMenu from "./components/BottomMenu";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -200,6 +204,12 @@ function BottomMenuGate() {
 
   if (pathname.startsWith("/treino/detalhe")) return null;
 
+  if (pathname.startsWith("/comofunciona")) return null;
+
+  if (pathname.startsWith("/suporte")) return null;
+
+  if (pathname.startsWith("/politicas")) return null;
+
   return <BottomMenu />;
 
 }
@@ -221,6 +231,12 @@ function CardioDockGate() {
   if (pathname.startsWith("/auth/callback")) return null;
 
   if (pathname.startsWith("/onboarding")) return null;
+
+  if (pathname.startsWith("/comofunciona")) return null;
+
+  if (pathname.startsWith("/suporte")) return null;
+
+  if (pathname.startsWith("/politicas")) return null;
 
   return <CardioMiniDock />;
 
@@ -299,6 +315,16 @@ function AppRoutes() {
         <Route path="/" element={<PublicHomeRoute />} />
 
         <Route path="/fitdeal-teaching" element={<FitdealTeaching />} />
+
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+        <Route path="/comofunciona" element={<ComoFunciona />} />
+
+        <Route path="/suporte" element={<Suporte />} />
+
+        <Route path="/politicas" element={<Politicas />} />
+
+        <Route path="/planos" element={<Planos />} />
 
         <Route
 
@@ -381,8 +407,6 @@ function AppRoutes() {
           }
 
         />
-
-        <Route path="/auth/callback" element={<AuthCallback />} />
 
         <Route
 
@@ -514,22 +538,6 @@ function AppRoutes() {
 
         <Route
 
-          path="/comofunciona"
-
-          element={
-
-            <ProtectedRoute>
-
-              <ComoFunciona />
-
-            </ProtectedRoute>
-
-          }
-
-        />
-
-        <Route
-
           path="/nutriplus"
 
           element={
@@ -569,22 +577,6 @@ function AppRoutes() {
             <ProtectedRoute>
 
               <Pagamentos />
-
-            </ProtectedRoute>
-
-          }
-
-        />
-
-        <Route
-
-          path="/planos"
-
-          element={
-
-            <ProtectedRoute>
-
-              <Planos />
 
             </ProtectedRoute>
 
