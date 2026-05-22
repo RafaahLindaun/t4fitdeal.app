@@ -374,6 +374,46 @@ function getRowMinutes(row, fallback = 0) {
 
 }
 
+function buildWeekCalendar(workouts = []) {
+
+  const workoutSet = new Set((workouts || []).filter(Boolean));
+
+  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  const today = new Date();
+
+  today.setHours(12, 0, 0, 0);
+
+  const days = [];
+
+  for (let i = 6; i >= 0; i--) {
+
+    const d = new Date(today);
+
+    d.setDate(today.getDate() - i);
+
+    const key = dateKeyFromDate(d);
+
+    days.push({
+
+      key,
+
+      label: labels[d.getDay()],
+
+      day: String(d.getDate()).padStart(2, "0"),
+
+      done: workoutSet.has(key),
+
+      isToday: key === todayKey(),
+
+    });
+
+  }
+
+  return days;
+
+}
+
 function buildWavePath(points = []) {
 
   if (!points.length) return "M2 30 C20 25, 30 25, 45 25 C60 25, 75 25, 118 25";
@@ -844,7 +884,7 @@ function GoalRow({ goal, progress, onClick }) {
 
         <div style={styles.goalSub}>
 
-          {goal?.type === "freq" ? "Meta anual" : "+12kg nas últimas semanas"}
+          {goal?.type === "freq" ? "Meta anual" : "Acompanhe sua evolução"}
 
         </div>
 
@@ -946,11 +986,7 @@ async function loadCompletedWorkoutDates(userId) {
 
     }
 
-    const dates = (data || [])
-
-      .map((row) => rowDateKey(row))
-
-      .filter(Boolean);
+    const dates = (data || []).map((row) => rowDateKey(row)).filter(Boolean);
 
     return [...new Set(dates)];
 
@@ -1010,33 +1046,35 @@ async function loadLastWorkout(userId) {
 
 }
 
-async function loadTodayCalories(userId, dateKey, weightKg = 80) {
+async function loadTodayCaloriesSummary(userId, dateKey, weightKg = 80) {
 
-  if (!userId || !dateKey) return 0;
+  const empty = {
+
+    total: 0,
+
+    workout: 0,
+
+    cardio: 0,
+
+    workoutCount: 0,
+
+    cardioCount: 0,
+
+    workoutEstimated: 0,
+
+    cardioEstimated: 0,
+
+  };
+
+  if (!userId || !dateKey) return empty;
 
   try {
 
     const [workoutRes, cardioRes] = await Promise.all([
 
-      supabase
+      supabase.from("workout_sessions").select("*").eq("user_id", userId).limit(160),
 
-        .from("workout_sessions")
-
-        .select("*")
-
-        .eq("user_id", userId)
-
-        .limit(160),
-
-      supabase
-
-        .from("cardio_sessions")
-
-        .select("*")
-
-        .eq("user_id", userId)
-
-        .limit(160),
+      supabase.from("cardio_sessions").select("*").eq("user_id", userId).limit(160),
 
     ]);
 
@@ -1094,6 +1132,8 @@ async function loadTodayCalories(userId, dateKey, weightKg = 80) {
 
     });
 
+    let workoutEstimated = 0;
+
     const workoutKcal = todayWorkoutRows.reduce((sum, row) => {
 
       const saved = getRowCalories(row);
@@ -1101,6 +1141,8 @@ async function loadTodayCalories(userId, dateKey, weightKg = 80) {
       if (saved > 0) return sum + saved;
 
       const minutes = getRowMinutes(row, 45);
+
+      workoutEstimated += 1;
 
       return sum + estimateKcal({
 
@@ -1114,6 +1156,8 @@ async function loadTodayCalories(userId, dateKey, weightKg = 80) {
 
     }, 0);
 
+    let cardioEstimated = 0;
+
     const cardioKcal = todayCardioRows.reduce((sum, row) => {
 
       const saved = getRowCalories(row);
@@ -1123,6 +1167,8 @@ async function loadTodayCalories(userId, dateKey, weightKg = 80) {
       const minutes = getRowMinutes(row, 0);
 
       if (!minutes) return sum;
+
+      cardioEstimated += 1;
 
       return sum + estimateKcal({
 
@@ -1136,13 +1182,29 @@ async function loadTodayCalories(userId, dateKey, weightKg = 80) {
 
     }, 0);
 
-    return Math.round(workoutKcal + cardioKcal);
+    return {
+
+      total: Math.round(workoutKcal + cardioKcal),
+
+      workout: Math.round(workoutKcal),
+
+      cardio: Math.round(cardioKcal),
+
+      workoutCount: todayWorkoutRows.length,
+
+      cardioCount: todayCardioRows.length,
+
+      workoutEstimated,
+
+      cardioEstimated,
+
+    };
 
   } catch (err) {
 
     console.error("loadTodayCalories catch:", err);
 
-    return 0;
+    return empty;
 
   }
 
@@ -1328,7 +1390,29 @@ export default function Dashboard() {
 
   const [todayCalories, setTodayCalories] = useState(0);
 
+  const [caloriesInfo, setCaloriesInfo] = useState({
+
+    total: 0,
+
+    workout: 0,
+
+    cardio: 0,
+
+    workoutCount: 0,
+
+    cardioCount: 0,
+
+    workoutEstimated: 0,
+
+    cardioEstimated: 0,
+
+  });
+
+  const [kcalOpen, setKcalOpen] = useState(false);
+
   const [consistencyOpen, setConsistencyOpen] = useState(false);
+
+  const [weekOpen, setWeekOpen] = useState(false);
 
   const [hydrationOpen, setHydrationOpen] = useState(false);
 
@@ -1344,19 +1428,15 @@ export default function Dashboard() {
 
   const streak = useMemo(() => calcStreak(workouts), [workouts]);
 
+  const weekCalendar = useMemo(() => buildWeekCalendar(workouts), [workouts]);
+
   const goalMl = useMemo(() => clamp(Math.round(peso * 35), 1800, 5000), [peso]);
 
   const waterPct = goalMl ? clamp(waterMl / goalMl, 0, 1) : 0;
 
   const readiness = useMemo(() => calcReadiness(lastWorkout), [lastWorkout]);
 
-  const planInfo = useMemo(
-
-    () => getPlanInfo({ paid, hasNutriPlus }),
-
-    [paid, hasNutriPlus]
-
-  );
+  const planInfo = useMemo(() => getPlanInfo({ paid, hasNutriPlus }), [paid, hasNutriPlus]);
 
   const momentum = useMemo(
 
@@ -1510,35 +1590,7 @@ export default function Dashboard() {
 
     if (goals.length) return goals.slice(0, 2);
 
-    return [
-
-      {
-
-        id: "demo-pr",
-
-        type: "pr",
-
-        value: 80,
-
-        exercise: "Agachamento",
-
-        progress: 0.76,
-
-      },
-
-      {
-
-        id: "demo-freq",
-
-        type: "freq",
-
-        value: 60,
-
-        progress: 0.58,
-
-      },
-
-    ];
+    return [];
 
   }, [goals]);
 
@@ -1562,7 +1614,7 @@ export default function Dashboard() {
 
         lastWorkoutRow,
 
-        todayKcal,
+        todayKcalInfo,
 
       ] = await Promise.all([
 
@@ -1576,7 +1628,7 @@ export default function Dashboard() {
 
         loadLastWorkout(user.id),
 
-        loadTodayCalories(user.id, today, peso),
+        loadTodayCaloriesSummary(user.id, today, peso),
 
       ]);
 
@@ -1594,7 +1646,9 @@ export default function Dashboard() {
 
       setLastWorkout(lastWorkoutRow);
 
-      setTodayCalories(todayKcal);
+      setCaloriesInfo(todayKcalInfo);
+
+      setTodayCalories(todayKcalInfo.total);
 
     }
 
@@ -1638,7 +1692,7 @@ export default function Dashboard() {
 
             loadCompletedWorkoutDates(user.id),
 
-            loadTodayCalories(user.id, today, peso),
+            loadTodayCaloriesSummary(user.id, today, peso),
 
             loadLastWorkout(user.id),
 
@@ -1646,7 +1700,9 @@ export default function Dashboard() {
 
           setWorkouts(nextWorkouts);
 
-          setTodayCalories(nextCalories);
+          setCaloriesInfo(nextCalories);
+
+          setTodayCalories(nextCalories.total);
 
           setLastWorkout(lastWorkoutRow);
 
@@ -1672,9 +1728,11 @@ export default function Dashboard() {
 
         async () => {
 
-          const nextCalories = await loadTodayCalories(user.id, today, peso);
+          const nextCalories = await loadTodayCaloriesSummary(user.id, today, peso);
 
-          setTodayCalories(nextCalories);
+          setCaloriesInfo(nextCalories);
+
+          setTodayCalories(nextCalories.total);
 
         }
 
@@ -1797,6 +1855,12 @@ export default function Dashboard() {
     }
 
     nav("/treino/personalizar");
+
+  }
+
+  function openWorkoutDetail() {
+
+    nav("/treino/detalhe");
 
   }
 
@@ -1942,7 +2006,7 @@ export default function Dashboard() {
 
               haptic();
 
-              nav("/treino-detalhe");
+              openWorkoutDetail();
 
             }}
 
@@ -1964,7 +2028,7 @@ export default function Dashboard() {
 
             haptic();
 
-            nav("/treino-detalhe");
+            openWorkoutDetail();
 
           }}
 
@@ -2008,7 +2072,15 @@ export default function Dashboard() {
 
           sub="kcal hoje"
 
-          onClick={() => nav("/treino-detalhe")}
+          onClick={() => {
+
+            setKcalOpen((v) => !v);
+
+            setConsistencyOpen(false);
+
+            setWeekOpen(false);
+
+          }}
 
         >
 
@@ -2024,7 +2096,15 @@ export default function Dashboard() {
 
           sub="Consistência"
 
-          onClick={() => setConsistencyOpen((v) => !v)}
+          onClick={() => {
+
+            setConsistencyOpen((v) => !v);
+
+            setKcalOpen(false);
+
+            setWeekOpen(false);
+
+          }}
 
         >
 
@@ -2048,7 +2128,15 @@ export default function Dashboard() {
 
           sub="Semana"
 
-          onClick={() => nav("/treino-detalhe")}
+          onClick={() => {
+
+            setWeekOpen((v) => !v);
+
+            setKcalOpen(false);
+
+            setConsistencyOpen(false);
+
+          }}
 
         >
 
@@ -2126,6 +2214,56 @@ export default function Dashboard() {
 
       </section>
 
+      {kcalOpen ? (
+
+        <section style={styles.expandCard}>
+
+          <div style={styles.expandTitle}>Kcal hoje</div>
+
+          <div style={styles.expandText}>
+
+            Total de {todayCalories} kcal somando treino concluído e cardio registrado hoje.
+
+          </div>
+
+          <div style={styles.kcalGrid}>
+
+            <div style={styles.kcalBox}>
+
+              <strong style={styles.kcalNumber}>{caloriesInfo.workout}</strong>
+
+              <span style={styles.kcalLabel}>treino</span>
+
+              <span style={styles.kcalMini}>{caloriesInfo.workoutCount} registro(s)</span>
+
+            </div>
+
+            <div style={styles.kcalBox}>
+
+              <strong style={styles.kcalNumber}>{caloriesInfo.cardio}</strong>
+
+              <span style={styles.kcalLabel}>cardio</span>
+
+              <span style={styles.kcalMini}>{caloriesInfo.cardioCount} registro(s)</span>
+
+            </div>
+
+          </div>
+
+          {caloriesInfo.workoutEstimated || caloriesInfo.cardioEstimated ? (
+
+            <div style={styles.kcalHint}>
+
+              Algumas calorias foram estimadas porque o registro não tinha kcal salva.
+
+            </div>
+
+          ) : null}
+
+        </section>
+
+      ) : null}
+
       {consistencyOpen ? (
 
         <section style={styles.expandCard}>
@@ -2134,15 +2272,59 @@ export default function Dashboard() {
 
           <div style={styles.expandText}>
 
-            Você está com {streak} dia(s) de sequência e {weekly}/{weekGoal} treinos nesta semana.
+            Você está com {streak} dia(s) de sequência. A consistência considera os dias em que
+
+            você concluiu treino e ajuda a medir seu ritmo real.
 
           </div>
 
-          <button style={styles.expandBtn} onClick={() => nav("/treino-detalhe")} type="button">
+        </section>
 
-            Ver histórico
+      ) : null}
 
-          </button>
+      {weekOpen ? (
+
+        <section style={styles.expandCard}>
+
+          <div style={styles.expandTitle}>Semana de treino</div>
+
+          <div style={styles.expandText}>
+
+            Você fez {weekly}/{weekGoal} treino(s) na semana. Os dias marcados em laranja já foram concluídos.
+
+          </div>
+
+          <div style={styles.weekCalendar}>
+
+            {weekCalendar.map((d) => (
+
+              <div
+
+                key={d.key}
+
+                style={{
+
+                  ...styles.weekDay,
+
+                  ...(d.done ? styles.weekDayDone : null),
+
+                  ...(d.isToday ? styles.weekDayToday : null),
+
+                }}
+
+              >
+
+                <span style={styles.weekLabel}>{d.label}</span>
+
+                <strong style={styles.weekNumber}>{d.day}</strong>
+
+                <span style={styles.weekDot}>{d.done ? "feito" : "—"}</span>
+
+              </div>
+
+            ))}
+
+          </div>
 
         </section>
 
@@ -2226,17 +2408,9 @@ export default function Dashboard() {
 
       <section style={styles.actions}>
 
-        <ActionButton icon="bolt" label="Treino" onClick={() => nav("/treino-detalhe")} />
+        <ActionButton icon="bolt" label="Treino" onClick={() => nav("/treino")} />
 
-        <ActionButton
-
-          icon="exercise"
-
-          label="Exercícios"
-
-          onClick={goToTreinoPersonalize}
-
-        />
+        <ActionButton icon="exercise" label="Exercícios" onClick={goToTreinoPersonalize} />
 
       </section>
 
@@ -2256,25 +2430,49 @@ export default function Dashboard() {
 
           </div>
 
-          <div style={styles.goalsList}>
+          {mainGoals.length ? (
 
-            {mainGoals.map((g) => (
+            <div style={styles.goalsList}>
 
-              <GoalRow
+              {mainGoals.map((g) => (
 
-                key={g.id}
+                <GoalRow
 
-                goal={g}
+                  key={g.id}
 
-                progress={progressFromGoal(g, weekly, streak)}
+                  goal={g}
 
-                onClick={() => nav("/metas")}
+                  progress={progressFromGoal(g, weekly, streak)}
 
-              />
+                  onClick={() => nav("/metas")}
 
-            ))}
+                />
 
-          </div>
+              ))}
+
+            </div>
+
+          ) : (
+
+            <div style={styles.emptyGoals}>
+
+              <div style={styles.emptyGoalsTitle}>Nenhuma meta ativa</div>
+
+              <div style={styles.emptyGoalsText}>
+
+                Crie uma meta para acompanhar frequência, peso ou evolução de carga.
+
+              </div>
+
+              <button type="button" style={styles.emptyGoalsBtn} onClick={() => nav("/metas")}>
+
+                Criar meta
+
+              </button>
+
+            </div>
+
+          )}
 
         </div>
 
@@ -2368,11 +2566,7 @@ export default function Dashboard() {
 
           <div>
 
-            <strong style={{ ...styles.progressStrong, color: GREEN }}>
-
-              {volumeStatus}
-
-            </strong>
+            <strong style={{ ...styles.progressStrong, color: GREEN }}>{volumeStatus}</strong>
 
             <span style={styles.progressSpan}>volume</span>
 
@@ -3112,23 +3306,167 @@ const styles = {
 
   },
 
-  expandBtn: {
+  kcalGrid: {
 
     marginTop: 12,
 
-    height: 38,
+    display: "grid",
 
-    padding: "0 14px",
+    gridTemplateColumns: "1fr 1fr",
 
-    borderRadius: 999,
+    gap: 10,
 
-    border: "none",
+  },
 
-    background: ORANGE,
+  kcalBox: {
 
-    color: "#fff",
+    borderRadius: 16,
+
+    background: "rgba(15,23,42,.035)",
+
+    border: "1px solid rgba(15,23,42,.06)",
+
+    padding: 12,
+
+    display: "grid",
+
+    gap: 4,
+
+  },
+
+  kcalNumber: {
+
+    fontSize: 22,
 
     fontWeight: 950,
+
+    color: TEXT,
+
+    letterSpacing: -0.5,
+
+  },
+
+  kcalLabel: {
+
+    fontSize: 12,
+
+    fontWeight: 900,
+
+    color: MUTED,
+
+  },
+
+  kcalMini: {
+
+    fontSize: 11,
+
+    fontWeight: 800,
+
+    color: MUTED,
+
+    opacity: 0.82,
+
+  },
+
+  kcalHint: {
+
+    marginTop: 10,
+
+    padding: 10,
+
+    borderRadius: 14,
+
+    background: "rgba(255,106,0,.08)",
+
+    border: "1px solid rgba(255,106,0,.12)",
+
+    color: MUTED,
+
+    fontSize: 11.5,
+
+    fontWeight: 800,
+
+    lineHeight: 1.35,
+
+  },
+
+  weekCalendar: {
+
+    marginTop: 12,
+
+    display: "grid",
+
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+
+    gap: 7,
+
+  },
+
+  weekDay: {
+
+    minHeight: 72,
+
+    borderRadius: 16,
+
+    background: "rgba(15,23,42,.035)",
+
+    border: "1px solid rgba(15,23,42,.06)",
+
+    display: "grid",
+
+    placeItems: "center",
+
+    alignContent: "center",
+
+    gap: 3,
+
+    padding: "8px 3px",
+
+    boxSizing: "border-box",
+
+  },
+
+  weekDayDone: {
+
+    background: "rgba(255,106,0,.12)",
+
+    border: "1px solid rgba(255,106,0,.22)",
+
+  },
+
+  weekDayToday: {
+
+    boxShadow: "0 0 0 2px rgba(255,106,0,.13)",
+
+  },
+
+  weekLabel: {
+
+    fontSize: 10,
+
+    fontWeight: 900,
+
+    color: MUTED,
+
+  },
+
+  weekNumber: {
+
+    fontSize: 15,
+
+    fontWeight: 950,
+
+    color: TEXT,
+
+  },
+
+  weekDot: {
+
+    fontSize: 9,
+
+    fontWeight: 900,
+
+    color: ORANGE,
 
   },
 
@@ -3427,6 +3765,62 @@ const styles = {
     display: "grid",
 
     gap: 13,
+
+  },
+
+  emptyGoals: {
+
+    borderRadius: 18,
+
+    padding: 14,
+
+    background: "rgba(15,23,42,.035)",
+
+    border: "1px solid rgba(15,23,42,.06)",
+
+  },
+
+  emptyGoalsTitle: {
+
+    fontSize: 14,
+
+    fontWeight: 950,
+
+    color: TEXT,
+
+  },
+
+  emptyGoalsText: {
+
+    marginTop: 5,
+
+    fontSize: 12,
+
+    fontWeight: 800,
+
+    color: MUTED,
+
+    lineHeight: 1.35,
+
+  },
+
+  emptyGoalsBtn: {
+
+    marginTop: 12,
+
+    height: 38,
+
+    padding: "0 14px",
+
+    borderRadius: 999,
+
+    border: "none",
+
+    background: ORANGE,
+
+    color: "#fff",
+
+    fontWeight: 950,
 
   },
 
