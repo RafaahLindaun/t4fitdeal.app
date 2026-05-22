@@ -226,6 +226,32 @@ export default function Login() {
 
   }, []);
 
+  function setAfterAuthRedirect(path) {
+
+    localStorage.setItem("fitdeal_after_auth_redirect", path);
+
+  }
+
+  async function waitForSession() {
+
+    for (let i = 0; i < 16; i += 1) {
+
+      const {
+
+        data: { session },
+
+      } = await supabase.auth.getSession();
+
+      if (session?.user) return session;
+
+      await new Promise((resolve) => setTimeout(resolve, 180));
+
+    }
+
+    return null;
+
+  }
+
   function onChange(e) {
 
     const { name, value } = e.target;
@@ -332,19 +358,39 @@ export default function Login() {
 
       }
 
+      setAfterAuthRedirect("/onboarding");
+
       const res = await signup({ ...form, email });
 
-      if (!res.ok) return setErro(res.msg);
+      if (!res.ok) {
 
-      return nav("/onboarding");
+        localStorage.removeItem("fitdeal_after_auth_redirect");
+
+        return setErro(res.msg);
+
+      }
+
+      await waitForSession();
+
+      return nav("/onboarding", { replace: true });
 
     }
 
+    setAfterAuthRedirect("/dashboard");
+
     const res = await loginWithEmail(email, form.senha);
 
-    if (!res.ok) return setErro(res.msg);
+    if (!res.ok) {
 
-    return nav("/dashboard");
+      localStorage.removeItem("fitdeal_after_auth_redirect");
+
+      return setErro(res.msg);
+
+    }
+
+    await waitForSession();
+
+    return nav("/dashboard", { replace: true });
 
   }
 
@@ -624,9 +670,25 @@ export default function Login() {
 
             setErro("");
 
+            if (isSignup) {
+
+              setAfterAuthRedirect("/onboarding");
+
+            } else {
+
+              setAfterAuthRedirect("/dashboard");
+
+            }
+
             const res = await loginWithGoogle();
 
-            if (!res?.ok) setErro(res?.msg || "Erro ao entrar com Google.");
+            if (!res?.ok) {
+
+              localStorage.removeItem("fitdeal_after_auth_redirect");
+
+              setErro(res?.msg || "Erro ao entrar com Google.");
+
+            }
 
           }}
 
