@@ -168,6 +168,38 @@ function AppBootSplash() {
 
 }
 
+function getAfterAuthRedirect() {
+
+  const saved = localStorage.getItem("fitdeal_after_auth_redirect");
+
+  if (!saved) return "";
+
+  const allowed = [
+
+    "/dashboard",
+
+    "/onboarding",
+
+    "/treino",
+
+    "/planos",
+
+    "/nutricao",
+
+    "/cardio",
+
+    "/conta",
+
+  ];
+
+  if (allowed.includes(saved)) return saved;
+
+  localStorage.removeItem("fitdeal_after_auth_redirect");
+
+  return "";
+
+}
+
 function PublicHomeRoute() {
 
   const { user, loading } = useAuth();
@@ -175,6 +207,16 @@ function PublicHomeRoute() {
   if (loading) return <AppBootSplash />;
 
   if (user) {
+
+    const afterAuth = getAfterAuthRedirect();
+
+    if (afterAuth) {
+
+      localStorage.removeItem("fitdeal_after_auth_redirect");
+
+      return <Navigate to={afterAuth} replace />;
+
+    }
 
     return <Navigate to="/dashboard" replace />;
 
