@@ -1,0 +1,24 @@
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import StaffShell from "../../components/StaffShell";
+import { Card } from "../../components/AppShell";
+import Icon from "../../components/Icon";
+import Modal from "../../components/Modal";
+import { InputField, SelectField, TextareaField } from "../../components/Field";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
+import type { ExerciseLibraryItem } from "../../lib/types";
+
+const blank:any={name:"",muscle_group:"",equipment:"",media_url:"",media_type:"gif",default_sets:3,default_reps_min:8,default_reps_max:12,default_rest_seconds:60,notes:"",visibility:"private"};
+export default function ExerciseLibraryManager(){
+ const {profile}=useAuth();const [items,setItems]=useState<ExerciseLibraryItem[]>([]);const [query,setQuery]=useState("");const [open,setOpen]=useState(false);const [form,setForm]=useState<any>(blank);const [editing,setEditing]=useState<string|null>(null);
+ async function load(){const {data}=await supabase.from("exercise_library").select("*").order("name");setItems((data||[]) as ExerciseLibraryItem[]);}useEffect(()=>{void load();},[]);
+ const visible=useMemo(()=>items.filter(x=>`${x.name} ${x.muscle_group} ${x.equipment}`.toLowerCase().includes(query.toLowerCase())),[items,query]);
+ function edit(item:ExerciseLibraryItem){setEditing(item.id);setForm({...item});setOpen(true);}function create(){setEditing(null);setForm(blank);setOpen(true);}
+ async function save(e:FormEvent){e.preventDefault();if(!profile)return;const payload={...form,created_by:form.created_by||profile.id};if(editing)await supabase.from("exercise_library").update(payload).eq("id",editing);else await supabase.from("exercise_library").insert(payload);setOpen(false);await load();}
+ async function remove(id:string){if(confirm("Excluir este exercício da biblioteca? Os treinos antigos continuarão com a cópia salva.")){await supabase.from("exercise_library").delete().eq("id",id);await load();}}
+ return <StaffShell title="Biblioteca de exercícios" subtitle="Use o botão + para cadastrar GIFs, vídeos e configurações padrão." right={<button className="button primary small" onClick={create}><Icon name="plus"/> Adicionar</button>}>
+  <label className="search-box"><Icon name="search"/><input placeholder="Buscar por nome, grupo ou equipamento" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+  <div className="library-grid">{visible.map(item=><Card key={item.id}><div className="library-media">{item.media_url?<img src={item.media_url}/>:<Icon name="dumbbell" size={45}/>}</div><div><strong>{item.name}</strong><small>{item.muscle_group||"Sem grupo"} · {item.equipment||"Livre"}</small><span>{item.default_sets} séries · {item.default_reps_min}–{item.default_reps_max} reps · {item.default_rest_seconds}s</span></div><div><button className="icon-button" onClick={()=>edit(item)}><Icon name="edit"/></button><button className="icon-button danger" onClick={()=>void remove(item.id)}><Icon name="trash"/></button></div></Card>)}</div>
+  <Modal open={open} title={editing?"Editar exercício":"Novo exercício"} onClose={()=>setOpen(false)} wide><form className="form-grid" onSubmit={save}><InputField label="Nome" required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/><InputField label="Grupo muscular" value={form.muscle_group} onChange={e=>setForm({...form,muscle_group:e.target.value})}/><InputField label="Equipamento" value={form.equipment} onChange={e=>setForm({...form,equipment:e.target.value})}/><SelectField label="Mídia" value={form.media_type} onChange={e=>setForm({...form,media_type:e.target.value})}><option value="gif">GIF</option><option value="image">Imagem</option><option value="video">Vídeo</option></SelectField><InputField label="URL da mídia" value={form.media_url||""} onChange={e=>setForm({...form,media_url:e.target.value})}/><SelectField label="Visibilidade" value={form.visibility} onChange={e=>setForm({...form,visibility:e.target.value})}><option value="private">Somente eu</option><option value="academy">Academia</option></SelectField><InputField label="Séries" type="number" value={form.default_sets} onChange={e=>setForm({...form,default_sets:Number(e.target.value)})}/><InputField label="Reps mínimas" type="number" value={form.default_reps_min} onChange={e=>setForm({...form,default_reps_min:Number(e.target.value)})}/><InputField label="Reps máximas" type="number" value={form.default_reps_max} onChange={e=>setForm({...form,default_reps_max:Number(e.target.value)})}/><InputField label="Descanso (s)" type="number" value={form.default_rest_seconds} onChange={e=>setForm({...form,default_rest_seconds:Number(e.target.value)})}/><TextareaField label="Orientações" value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/><button className="button primary span-2">Salvar exercício</button></form></Modal>
+ </StaffShell>;
+}
