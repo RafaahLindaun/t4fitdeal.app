@@ -1,0 +1,95 @@
+.accqua-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  place-items: center;
+  padding: clamp(24px, 5vw, 56px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(27, 111, 232, 0.18), transparent 34%),
+    linear-gradient(180deg, #031326 0%, #061b36 100%);
+}
+
+.accqua-loading::before {
+  content: "";
+  position: absolute;
+  width: min(70vw, 520px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(26, 111, 232, 0.12), transparent 68%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.accqua-loading__center {
+  position: relative;
+  z-index: 1;
+  width: min(72vw, 360px);
+  display: grid;
+  justify-items: center;
+  gap: clamp(12px, 2.4vw, 18px);
+}
+
+.accqua-loading__logo {
+  display: block;
+  width: min(88%, 300px);
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(0 14px 28px rgba(0, 85, 190, 0.18));
+  animation: accquaLogoFade 2.45s ease-in-out infinite;
+}
+
+.accqua-loading__line {
+  display: block;
+  width: 100%;
+  height: clamp(3px, 0.5vw, 5px);
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f7f000, #fff53d, #f7f000);
+  transform: scaleX(0);
+  transform-origin: center;
+  box-shadow: 0 0 18px rgba(247, 240, 0, 0.34);
+  animation: accquaLineOpen 2.45s cubic-bezier(.22,.8,.25,1) infinite;
+}
+
+.accqua-loading__line--bottom {
+  animation-delay: 0.08s;
+}
+
+.accqua-loading__text {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 max(12px, env(safe-area-inset-bottom));
+  color: rgba(255, 255, 255, 0.68);
+  font: 500 clamp(12px, 2.5vw, 14px)/1.4 Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.01em;
+  animation: accquaTextFade 2.45s ease-in-out infinite;
+}
+
+@keyframes accquaLogoFade {
+  0%, 100% { opacity: 0.16; transform: translateY(4px) scale(0.985); }
+  24%, 68% { opacity: 1; transform: translateY(0) scale(1); }
+  86% { opacity: 0.42; transform: translateY(-2px) scale(0.995); }
+}
+
+@keyframes accquaLineOpen {
+  0%, 10% { transform: scaleX(0); opacity: 0; }
+  38%, 70% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+
+@keyframes accquaTextFade {
+  0%, 100% { opacity: 0.36; }
+  35%, 70% { opacity: 0.88; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-loading__logo,
+  .accqua-loading__line,
+  .accqua-loading__text {
+    animation-duration: 4s;
+  }
+}
