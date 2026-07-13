@@ -1,0 +1,494 @@
+:root {
+  --menu-viewport-height: 100dvh;
+  --menu-yellow: #ffd128;
+  --menu-blue: #1e6fd1;
+  --menu-bg-top: #0a2a54;
+  --menu-bg-mid: #082346;
+  --menu-bg-bottom: #04162f;
+  --menu-panel: rgba(11, 39, 78, .78);
+  --menu-panel-strong: rgba(13, 48, 94, .9);
+  --menu-border: rgba(188, 217, 255, .17);
+  --menu-text: #f8fbff;
+  --menu-muted: rgba(237, 245, 255, .66);
+}
+
+.accqua-menu-screen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: var(--menu-viewport-height);
+  min-height: 590px;
+  overflow: hidden;
+  color: var(--menu-text);
+  background:
+    radial-gradient(circle at 82% 2%, rgba(56, 137, 255, .23), transparent 30%),
+    linear-gradient(180deg, var(--menu-bg-top) 0%, var(--menu-bg-mid) 50%, var(--menu-bg-bottom) 100%);
+  isolation: isolate;
+}
+
+.accqua-menu-background {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.accqua-menu-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.018), transparent 36%),
+    radial-gradient(circle at 45% 45%, transparent, rgba(1, 12, 28, .15) 78%);
+}
+
+.accqua-menu-orbit {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  border: 1px solid rgba(79, 153, 255, .10);
+}
+
+.accqua-menu-orbit.orbit-one {
+  width: min(470px, 96vw);
+  height: min(470px, 96vw);
+  right: min(-290px, -48vw);
+  top: 10%;
+}
+
+.accqua-menu-orbit.orbit-two {
+  width: min(560px, 118vw);
+  height: min(560px, 118vw);
+  left: min(-390px, -70vw);
+  bottom: -32%;
+}
+
+.accqua-menu-glow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  top: -170px;
+  left: 50%;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(33, 119, 241, .19), transparent 70%);
+  filter: blur(5px);
+}
+
+.accqua-menu-shell {
+  width: min(100%, 430px);
+  height: 100%;
+  margin-inline: auto;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    17px
+    max(12px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: clamp(8px, 1.15vh, 12px);
+}
+
+.accqua-menu-header {
+  position: relative;
+  min-height: 79px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accqua-menu-logo {
+  width: 205px;
+  transform: translateY(-1px);
+}
+
+.accqua-menu-logo .accqua-logo.is-compact {
+  width: 205px;
+  gap: 4px;
+}
+
+.accqua-menu-logo .accqua-logo-line {
+  height: 2px;
+}
+
+.accqua-menu-logo .accqua-logo img {
+  width: 82%;
+}
+
+.accqua-notification-button {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  width: 47px;
+  height: 47px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 5px 11px rgba(0,0,0,.2));
+  transition: transform .17s ease, color .17s ease;
+}
+
+.accqua-notification-button svg {
+  overflow: visible;
+}
+
+.accqua-notification-button:active {
+  transform: translateY(-50%) scale(.91);
+}
+
+.accqua-notification-button:hover {
+  color: rgba(255,255,255,.84);
+}
+
+.accqua-notification-dot {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  border: 2.5px solid #0a2a54;
+  border-radius: 50%;
+  background: var(--menu-yellow);
+  box-shadow: 0 0 0 2px rgba(255,209,40,.08), 0 0 11px rgba(255,209,40,.45);
+}
+
+.accqua-menu-welcome {
+  padding: 0 4px;
+}
+
+.accqua-menu-welcome h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 7.4vw, 2.25rem);
+  line-height: 1;
+  letter-spacing: -.045em;
+  font-weight: 850;
+}
+
+.accqua-menu-welcome p {
+  margin: 7px 0 0;
+  color: var(--menu-muted);
+  font-size: clamp(.78rem, 3.3vw, .93rem);
+}
+
+.accqua-membership-card {
+  min-height: 78px;
+  padding: 11px 14px;
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--menu-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(120deg, rgba(29, 81, 145, .34), transparent 72%),
+    var(--menu-panel);
+  box-shadow: 0 15px 38px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.045);
+  backdrop-filter: blur(15px);
+}
+
+.accqua-membership-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--menu-yellow);
+  background: rgba(255,255,255,.07);
+}
+
+.accqua-membership-card strong {
+  display: block;
+  color: var(--menu-yellow);
+  font-size: .94rem;
+  line-height: 1.1;
+  font-weight: 830;
+}
+
+.accqua-membership-card span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  color: rgba(255,255,255,.76);
+  font-size: .78rem;
+}
+
+.accqua-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  display: block;
+  border-radius: 50%;
+  background: var(--menu-yellow);
+  box-shadow: 0 0 9px rgba(255,209,40,.42);
+}
+
+.accqua-menu-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.accqua-menu-card {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 15px 36px 13px 17px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-content: stretch;
+  gap: 8px;
+  overflow: hidden;
+  text-align: left;
+  color: var(--menu-text);
+  border: 1px solid var(--menu-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(34, 89, 158, .2), transparent 65%),
+    rgba(9, 34, 70, .77);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 10px 28px rgba(0,0,0,.11);
+  backdrop-filter: blur(13px);
+  cursor: pointer;
+  transition: transform .17s ease, border-color .17s ease, background .17s ease;
+}
+
+.accqua-menu-card::after {
+  content: "";
+  position: absolute;
+  right: -21px;
+  bottom: -45px;
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(39, 120, 235, .14), transparent 67%);
+  pointer-events: none;
+}
+
+.accqua-menu-card:hover {
+  border-color: rgba(255, 210, 40, .28);
+  background:
+    linear-gradient(145deg, rgba(40, 101, 180, .27), transparent 64%),
+    rgba(10, 37, 76, .84);
+}
+
+.accqua-menu-card:active {
+  transform: scale(.975);
+}
+
+.accqua-menu-card-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  color: var(--menu-yellow);
+  filter: drop-shadow(0 0 8px rgba(255,209,40,.08));
+}
+
+.accqua-menu-card-icon svg {
+  width: auto;
+  height: auto;
+  max-width: 50px;
+  max-height: 45px;
+  overflow: visible;
+}
+
+.accqua-menu-card-treino .accqua-menu-card-icon svg {
+  max-width: 49px;
+  max-height: 41px;
+}
+
+.accqua-menu-card-dieta .accqua-menu-card-icon svg {
+  max-width: 43px;
+  max-height: 42px;
+}
+
+.accqua-menu-card-ranking .accqua-menu-card-icon svg {
+  max-width: 49px;
+  max-height: 46px;
+}
+
+.accqua-menu-card-personal .accqua-menu-card-icon svg {
+  max-width: 45px;
+  max-height: 42px;
+}
+
+.accqua-menu-card-loja .accqua-menu-card-icon svg {
+  max-width: 46px;
+  max-height: 42px;
+}
+
+.accqua-menu-card-configuracao .accqua-menu-card-icon svg {
+  max-width: 43px;
+  max-height: 43px;
+}
+
+.accqua-menu-card-copy {
+  min-width: 0;
+  align-self: end;
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+
+.accqua-menu-card-copy strong {
+  display: block;
+  font-size: .98rem;
+  line-height: 1.08;
+  font-weight: 820;
+}
+
+.accqua-menu-badge {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #0d1b31;
+  background: var(--menu-yellow);
+  font-size: .55rem;
+  line-height: 1;
+  font-weight: 860;
+  box-shadow: 0 6px 15px rgba(255,209,40,.13);
+}
+
+.accqua-menu-arrow {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  color: rgba(255,255,255,.48);
+}
+
+.accqua-menu-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 76px);
+  z-index: 10;
+  width: min(calc(100% - 34px), 396px);
+  padding: 11px 14px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 14px;
+  color: rgba(255,255,255,.86);
+  background: rgba(3, 19, 41, .92);
+  box-shadow: 0 16px 44px rgba(0,0,0,.28);
+  backdrop-filter: blur(16px);
+  text-align: center;
+  font-size: .76rem;
+  animation: accquaToastIn .2s ease-out;
+}
+
+@keyframes accquaToastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (max-height: 710px) {
+  .accqua-menu-shell {
+    padding-top: max(7px, env(safe-area-inset-top));
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  .accqua-menu-header {
+    min-height: 61px;
+  }
+
+  .accqua-menu-logo,
+  .accqua-menu-logo .accqua-logo.is-compact {
+    width: 171px;
+  }
+
+  .accqua-notification-button {
+    width: 39px;
+    height: 39px;
+  }
+
+  .accqua-menu-welcome h1 {
+    font-size: 1.55rem;
+  }
+
+  .accqua-menu-welcome p {
+    margin-top: 4px;
+    font-size: .73rem;
+  }
+
+  .accqua-membership-card {
+    min-height: 61px;
+    padding: 8px 11px;
+    grid-template-columns: 39px 1fr;
+    gap: 9px;
+  }
+
+  .accqua-membership-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .accqua-membership-card strong {
+    font-size: .82rem;
+  }
+
+  .accqua-membership-card span {
+    margin-top: 4px;
+    font-size: .68rem;
+  }
+
+  .accqua-menu-grid {
+    gap: 7px;
+  }
+
+  .accqua-menu-card {
+    padding: 10px 29px 9px 12px;
+    gap: 3px;
+    border-radius: 15px;
+  }
+
+  .accqua-menu-card-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .accqua-menu-card-icon svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .accqua-menu-card-ranking .accqua-menu-card-icon svg {
+    width: 37px;
+    height: 37px;
+  }
+
+  .accqua-menu-card-copy strong {
+    font-size: .84rem;
+  }
+
+  .accqua-menu-badge {
+    padding: 3px 6px;
+    font-size: .48rem;
+  }
+}
+
+@media (max-width: 365px) {
+  .accqua-menu-shell {
+    padding-inline: 12px;
+  }
+
+  .accqua-menu-logo,
+  .accqua-menu-logo .accqua-logo.is-compact {
+    width: 178px;
+  }
+
+  .accqua-menu-card {
+    padding-left: 10px;
+    padding-right: 26px;
+  }
+}
