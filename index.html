@@ -1,3 +1,6 @@
+<!doctype html>
+<html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
 
@@ -6,22 +9,43 @@
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
   />
 
+  <!-- Cor da barra do navegador no celular -->
   <meta name="theme-color" content="#061A37" />
+
+  <!-- Aparência no iPhone quando instalado como app -->
   <meta
     name="apple-mobile-web-app-status-bar-style"
     content="black-translucent"
   />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
 
+  <!-- Logo da Accqua usada como ícone -->
   <link
     rel="icon"
     type="image/png"
-    href="/accqua-logo-official.png"
+    href="/accqua-logo-full-clean-2048.png"
   />
 
+  <link
+    rel="apple-touch-icon"
+    href="/accqua-logo-full-clean-2048.png"
+  />
+
+  <!-- Nome da aba -->
   <title>Accqua Sports</title>
 
+  <!-- Descrição -->
   <meta
     name="description"
     content="Aplicativo oficial da Accqua Sports Academia"
   />
 </head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
