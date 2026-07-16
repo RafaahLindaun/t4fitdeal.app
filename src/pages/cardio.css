@@ -1,0 +1,847 @@
+
+:root {
+  --cardio-yellow: #ffd11e;
+  --cardio-yellow-2: #ffb800;
+  --cardio-bg: #020b1c;
+  --cardio-card: rgba(7, 23, 45, .82);
+  --cardio-card-strong: rgba(8, 27, 55, .9);
+  --cardio-border: rgba(170, 199, 236, .18);
+  --cardio-border-strong: rgba(190, 211, 240, .28);
+  --cardio-muted: rgba(235, 243, 255, .6);
+  --cardio-ease: cubic-bezier(.2, .76, .22, 1);
+}
+
+* { box-sizing: border-box; }
+
+.cardio-screen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% -18%, rgba(26, 96, 200, .18), transparent 36%),
+    linear-gradient(180deg, #020918 0%, #020d21 50%, #031225 100%);
+  isolation: isolate;
+}
+
+.cardio-background {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 35%, rgba(30, 92, 178, .08), transparent 25%),
+    radial-gradient(circle at 80% 74%, rgba(30, 92, 178, .07), transparent 30%);
+}
+
+.cardio-page {
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  padding:
+    max(10px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-rows: 58px minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+/* Topo igual ao conceito: limpo e sem elementos empilhados. */
+.cardio-topbar {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 108px;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardio-top-button {
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border: 1px solid rgba(212, 227, 248, .22);
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)),
+    rgba(6, 18, 36, .72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 22px rgba(0,0,0,.16);
+  transition: transform .18s var(--cardio-ease), border-color .18s ease, background .18s ease;
+}
+
+.cardio-top-button:active {
+  transform: scale(.94);
+  border-color: rgba(255,209,30,.52);
+  background: rgba(255,209,30,.06);
+}
+
+.cardio-top-button svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.cardio-header-brand {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(112px, 142px) 3px minmax(52px, 1fr);
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardio-header-brand img {
+  width: 100%;
+  max-width: 142px;
+  max-height: 42px;
+  display: block;
+  object-fit: contain;
+}
+
+.cardio-header-brand > i {
+  width: 3px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--cardio-yellow);
+  box-shadow: 0 0 12px rgba(255, 209, 30, .2);
+}
+
+.cardio-header-brand strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255,255,255,.94);
+  font-size: clamp(13px, 3.2vw, 15px);
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardio-top-actions {
+  width: 108px;
+  display: grid;
+  grid-template-columns: 48px 48px;
+  gap: 12px;
+  justify-content: end;
+}
+
+.cardio-top-switch {
+  color: var(--cardio-yellow);
+  border-color: rgba(255,209,30,.27);
+  background: rgba(255,209,30,.045);
+}
+
+/* Grade principal inspirada no Fitness: herói grande, timer sobreposto, controles separados. */
+.cardio-workspace {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows:
+    minmax(216px, 36dvh)
+    minmax(158px, 22dvh)
+    108px
+    60px
+    minmax(108px, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.cardio-hero-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(185, 211, 245, .24);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 78% 38%, rgba(45, 104, 178, .28), transparent 42%),
+    linear-gradient(145deg, #0b2445, #051528 76%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 18px 36px rgba(0,0,0,.18);
+}
+
+.cardio-hero-stage > img {
+  position: absolute;
+  right: 1%;
+  bottom: 0;
+  width: 56%;
+  height: 88%;
+  object-fit: contain;
+  object-position: right bottom;
+  filter:
+    drop-shadow(0 22px 24px rgba(0,0,0,.42))
+    saturate(1.03)
+    contrast(1.03);
+  transform: translateZ(0) scale(1);
+  transition: transform .44s var(--cardio-ease), filter .44s ease;
+  animation: cardioHeroIn .38s var(--cardio-ease) both;
+}
+
+@keyframes cardioHeroIn {
+  from { opacity: .2; transform: translateX(10px) scale(.985); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.cardio-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(2,12,28,.99) 0%, rgba(2,12,28,.84) 37%, rgba(2,12,28,.22) 68%, transparent 100%),
+    linear-gradient(180deg, transparent 54%, rgba(2,12,28,.38) 100%);
+}
+
+.cardio-hero-title {
+  position: absolute;
+  left: 18px;
+  top: 30%;
+  z-index: 2;
+  width: min(52%, 235px);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.cardio-mode-mark {
+  width: 38px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  color: var(--cardio-yellow);
+  position: relative;
+}
+
+.cardio-mode-mark::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--cardio-yellow);
+}
+
+.cardio-mode-mark svg {
+  width: 32px;
+  height: 32px;
+}
+
+.cardio-hero-title span {
+  display: block;
+  color: var(--cardio-yellow);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .11em;
+}
+
+.cardio-hero-title h1 {
+  margin: 5px 0 0;
+  color: #fff;
+  font-size: clamp(31px, 8.5vw, 45px);
+  line-height: .94;
+  letter-spacing: -.055em;
+  font-weight: 850;
+}
+
+.cardio-hero-title p {
+  margin: 8px 0 0;
+  color: rgba(235,243,255,.62);
+  font-size: 10px;
+}
+
+.cardio-hero-quick-settings {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,.92);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 50%;
+  background: rgba(5, 18, 36, .68);
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  transition: transform .18s var(--cardio-ease), border-color .18s ease, background .18s ease;
+}
+
+.cardio-hero-quick-settings:active {
+  transform: scale(.94);
+  border-color: rgba(255,209,30,.5);
+  background: rgba(255,209,30,.08);
+}
+
+.cardio-hero-quick-settings svg {
+  width: 19px;
+  height: 19px;
+  color: var(--cardio-yellow);
+}
+
+.cardio-status {
+  position: absolute;
+  left: 64px;
+  top: calc(30% + 92px);
+  z-index: 3;
+  height: 34px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: rgba(255,255,255,.86);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(7, 17, 31, .7);
+  backdrop-filter: blur(12px);
+}
+
+.cardio-status i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #48db57;
+  box-shadow: 0 0 9px rgba(72,219,87,.42);
+}
+
+.cardio-status.status-running i {
+  background: var(--cardio-yellow);
+  box-shadow: 0 0 10px rgba(255,209,30,.46);
+}
+
+.cardio-status.status-paused i { background: #ff9f43; }
+.cardio-status span { font-size: 11px; font-weight: 680; }
+
+/* Métricas com timer dominante e sem texto quebrado. */
+.cardio-live-stage {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(168px, 188px) minmax(100px, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: -64px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.cardio-live-card,
+.cardio-timer-ring { pointer-events: auto; }
+
+.cardio-live-card {
+  min-width: 0;
+  height: min(136px, 18dvh);
+  padding: 14px 10px 16px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  color: var(--cardio-yellow);
+  border: 1px solid rgba(185,211,245,.18);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(39, 106, 189, .11), transparent 60%),
+    rgba(8, 24, 47, .86);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02), 0 10px 24px rgba(0,0,0,.12);
+  transition: transform .4s var(--cardio-ease), opacity .3s ease;
+}
+
+.cardio-live-card svg { width: 31px; height: 31px; }
+.cardio-live-card span,
+.cardio-live-card strong,
+.cardio-live-card small {
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+}
+.cardio-live-card span {
+  margin-top: 10px;
+  color: rgba(238,246,255,.66);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.cardio-live-card strong {
+  margin-top: 8px;
+  color: #fff;
+  font-size: clamp(22px, 6.4vw, 32px);
+  line-height: .92;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+}
+.cardio-live-card small {
+  margin-top: 6px;
+  color: rgba(238,246,255,.62);
+  font-size: 11px;
+}
+
+.cardio-timer-ring {
+  --cardio-progress: 0deg;
+  position: relative;
+  width: min(42vw, 186px);
+  height: min(42vw, 186px);
+  min-width: 154px;
+  min-height: 154px;
+  justify-self: center;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 210deg, var(--cardio-yellow) 0deg var(--cardio-progress), rgba(255,255,255,.1) var(--cardio-progress) 360deg);
+  box-shadow:
+    0 0 0 1px rgba(255,209,30,.05),
+    0 0 44px rgba(255,209,30,.12),
+    0 18px 32px rgba(0,0,0,.2);
+  transition: transform .46s var(--cardio-ease), box-shadow .46s ease;
+}
+
+.cardio-timer-ring::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(32, 89, 151, .13), transparent 60%),
+    #041329;
+}
+
+.cardio-timer-ring > div {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+}
+
+.cardio-timer-ring span {
+  color: rgba(235,243,255,.64);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.cardio-timer-ring strong {
+  margin-top: 8px;
+  color: #fff;
+  font-size: clamp(40px, 10vw, 56px);
+  line-height: .92;
+  letter-spacing: -.065em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardio-timer-ring small {
+  margin-top: 9px;
+  color: var(--cardio-yellow);
+  font-size: 15px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+/* Slider premium estilo Apple Fitness. */
+.cardio-intensity-card {
+  min-width: 0;
+  padding: 16px 16px 14px;
+  border: 1px solid rgba(185,211,245,.17);
+  border-radius: 21px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(29,92,164,.09), transparent 58%),
+    rgba(7, 23, 45, .88);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+}
+
+.cardio-intensity-card > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  text-align: center;
+}
+
+.cardio-intensity-card > header strong {
+  display: block;
+  color: rgba(255,255,255,.7);
+  font-size: 13px;
+  font-weight: 740;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+
+.cardio-intensity-card > header small {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: rgba(235,243,255,.46);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardio-intensity-card > header b {
+  min-width: 82px;
+  color: #fff;
+  font-size: clamp(29px, 8vw, 42px);
+  line-height: .9;
+  letter-spacing: -.045em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardio-intensity-card > header b small {
+  display: block;
+  margin-top: 9px;
+  color: rgba(235,243,255,.64);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+
+.cardio-intensity-card > header b {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.cardio-intensity-card > header b small {
+  margin-top: 7px;
+  width: auto;
+  color: rgba(235,243,255,.64);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.cardio-intensity-controls {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 54px minmax(0,1fr) 54px;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardio-intensity-controls > button {
+  width: 54px;
+  height: 54px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border: 1px solid rgba(185,211,245,.18);
+  border-radius: 18px;
+  background: rgba(255,255,255,.045);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  transition: transform .18s var(--cardio-ease), border-color .18s ease, background .18s ease;
+}
+.cardio-intensity-controls > button:active:not(:disabled) {
+  transform: scale(.9);
+  border-color: rgba(255,209,30,.52);
+  background: rgba(255,209,30,.07);
+}
+.cardio-intensity-controls > button:disabled { opacity: .32; }
+.cardio-intensity-controls > button svg { width: 24px; height: 24px; }
+
+.cardio-intensity-controls input {
+  --slider-progress: 0%;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+}
+.cardio-intensity-controls input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cardio-yellow) 0 var(--slider-progress), rgba(255,255,255,.15) var(--slider-progress) 100%);
+}
+.cardio-intensity-controls input::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cardio-yellow);
+  box-shadow: 0 0 0 5px rgba(255,209,30,.09), 0 6px 12px rgba(0,0,0,.28);
+}
+.cardio-intensity-controls input::-moz-range-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,.15); }
+.cardio-intensity-controls input::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--cardio-yellow); }
+.cardio-intensity-controls input::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: var(--cardio-yellow); }
+
+.cardio-actions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.32fr) minmax(126px, .68fr);
+  gap: 10px;
+}
+.cardio-actions button {
+  min-width: 0;
+  height: 62px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 18px;
+  font-weight: 900;
+  transition: transform .18s var(--cardio-ease), opacity .18s ease, box-shadow .18s ease;
+}
+.cardio-actions button:active:not(:disabled) { transform: scale(.975); }
+.cardio-actions button:disabled { opacity: .35; }
+.cardio-primary-action {
+  color: #06152c;
+  border: 0;
+  background: linear-gradient(90deg, #ffc316, #ffdf52);
+  box-shadow: 0 14px 28px rgba(255,195,24,.12);
+}
+.cardio-primary-action svg { width: 28px; height: 28px; }
+.cardio-primary-action span { font-size: 14px; text-transform: uppercase; letter-spacing: .02em; }
+.cardio-secondary-action {
+  color: #fff;
+  border: 1.4px solid rgba(255,209,30,.76);
+  background: rgba(3,15,32,.74);
+}
+.cardio-secondary-action svg { width: 26px; height: 26px; }
+.cardio-secondary-action span { font-size: 13px; text-transform: uppercase; letter-spacing: .02em; }
+
+.cardio-mode-picker {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 26px minmax(0,1fr);
+  gap: 6px;
+  overflow: hidden;
+}
+.cardio-mode-picker > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 2px;
+}
+.cardio-mode-picker > header strong {
+  color: rgba(235,243,255,.7);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.cardio-mode-picker > header small { color: var(--cardio-yellow); font-size: 9px; font-weight: 760; }
+
+.cardio-mode-rail {
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.cardio-mode-rail::-webkit-scrollbar { display: none; }
+.cardio-mode-rail button {
+  position: relative;
+  flex: 0 0 84px;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: rgba(255,255,255,.82);
+  border: 1px solid rgba(185,211,245,.16);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(35,91,158,.22), transparent 58%),
+    #07172d;
+  scroll-snap-align: start;
+  transition: transform .18s var(--cardio-ease), border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.cardio-mode-rail button:active { transform: scale(.96); }
+.cardio-mode-rail button > img {
+  position: absolute;
+  inset: 2px 2px 20px;
+  width: calc(100% - 4px);
+  height: calc(100% - 22px);
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 7px 8px rgba(0,0,0,.28)) brightness(.82) saturate(.98);
+  transition: transform .2s var(--cardio-ease), filter .2s ease;
+}
+.cardio-mode-rail button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 36%, rgba(2,12,28,.94) 100%);
+}
+.cardio-mode-rail button > span {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 7px;
+  z-index: 2;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardio-mode-rail button > b {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: #06152c;
+  border-radius: 50%;
+  background: var(--cardio-yellow);
+  font-size: 11px;
+}
+.cardio-mode-rail button > small {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  z-index: 3;
+  padding: 2px 4px;
+  color: #06152c;
+  border-radius: 999px;
+  background: var(--cardio-yellow);
+  font-size: 4.5px;
+  font-weight: 900;
+}
+.cardio-mode-rail button.active {
+  color: var(--cardio-yellow);
+  border-color: rgba(255,209,30,.78);
+  box-shadow: inset 0 0 0 1px rgba(255,209,30,.08), 0 0 0 1px rgba(255,209,30,.03);
+}
+.cardio-mode-rail button.active > img {
+  transform: scale(1.04);
+  filter: drop-shadow(0 8px 9px rgba(0,0,0,.28)) brightness(1) saturate(1.05);
+}
+
+/* Ao iniciar: tela não desmonta; só respira como Apple Fitness. */
+.cardio-page.is-focus .cardio-hero-stage > img {
+  transform: scale(.99) translateY(2px);
+  filter: drop-shadow(0 20px 24px rgba(0,0,0,.4)) saturate(.98) brightness(.92);
+}
+.cardio-page.is-focus .cardio-live-card { transform: translateY(3px) scale(.985); opacity: .93; }
+.cardio-page.is-focus .cardio-timer-ring {
+  transform: scale(1.045);
+  box-shadow: 0 0 0 1px rgba(255,209,30,.08), 0 0 48px rgba(255,209,30,.15), 0 18px 32px rgba(0,0,0,.22);
+}
+.cardio-page.is-focus .cardio-intensity-card,
+.cardio-page.is-focus .cardio-mode-picker { opacity: .96; }
+
+
+.cardio-page.is-running .cardio-live-stage {
+  margin-top: -76px;
+}
+
+.cardio-page.is-running .cardio-timer-ring {
+  transform: translateY(-16px) scale(1.14);
+  box-shadow: 0 0 0 1px rgba(255,209,30,.09), 0 0 56px rgba(255,209,30,.18), 0 22px 38px rgba(0,0,0,.24);
+}
+
+.cardio-page.is-running .cardio-live-card {
+  transform: translateY(10px) scale(.95);
+  opacity: .84;
+}
+
+.cardio-page.is-paused .cardio-timer-ring,
+.cardio-page.is-completed .cardio-timer-ring {
+  transform: translateY(0) scale(1);
+}
+
+/* Modais existentes */
+.cardio-modal-overlay{position:fixed;inset:0;z-index:700;padding:16px;display:grid;place-items:center;background:rgba(0,7,18,.84);backdrop-filter:blur(13px)}
+.cardio-modal-backdrop{position:absolute;inset:0;border:0;background:transparent}
+.cardio-settings-sheet,.cardio-history-sheet,.cardio-finish-modal{position:relative;z-index:1;width:min(100%,430px);max-height:calc(100dvh - 32px);overflow-y:auto;padding:21px 18px 18px;border:1px solid rgba(211,225,245,.17);border-radius:23px;background:radial-gradient(circle at 75% 0%, rgba(32,116,235,.13), transparent 34%),linear-gradient(160deg,#0a2b55,#06182f 68%);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.cardio-settings-sheet>header,.cardio-history-sheet>header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.cardio-settings-sheet header span,.cardio-history-sheet header span,.cardio-finish-modal>span{color:var(--cardio-yellow);font-size:9px;font-weight:850;letter-spacing:.1em}
+.cardio-settings-sheet h2,.cardio-history-sheet h2{margin:6px 0 0;font-size:25px}.cardio-settings-sheet header p,.cardio-history-sheet header p{margin:7px 0 0;color:rgba(255,255,255,.52);font-size:10px}
+.cardio-settings-sheet>header>button,.cardio-history-sheet>header>button{flex:0 0 auto;width:43px;height:43px;padding:0;display:grid;place-items:center;color:#fff;border:1px solid rgba(255,255,255,.13);border-radius:50%;background:rgba(255,255,255,.05)}
+.cardio-close-icon{position:relative;width:18px;height:18px}.cardio-close-icon::before,.cardio-close-icon::after{content:"";position:absolute;left:50%;top:50%;width:17px;height:2px;border-radius:999px;background:currentColor}.cardio-close-icon::before{transform:translate(-50%,-50%) rotate(45deg)}.cardio-close-icon::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.cardio-setting-group{margin-top:17px}.cardio-setting-group>strong{display:block;margin-bottom:8px;font-size:12px}
+.cardio-segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.cardio-segmented.two{grid-template-columns:1fr 1fr}
+.cardio-segmented button{min-height:38px;padding:6px;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.025);font-size:9px}.cardio-segmented button.active{color:var(--cardio-yellow);border-color:rgba(255,209,30,.32);background:rgba(255,209,30,.06)}
+.cardio-stepper{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:10px}.cardio-stepper button{width:48px;height:48px;display:grid;place-items:center;color:var(--cardio-yellow);border:1px solid rgba(255,209,30,.24);border-radius:13px;background:rgba(255,209,30,.04)}.cardio-stepper span{text-align:center;color:#fff;font-size:28px;font-weight:750}
+.cardio-settings-confirm{width:100%;height:48px;margin-top:18px;color:#06152c;border:0;border-radius:14px;background:var(--cardio-yellow);font-weight:850}
+.cardio-history-list{margin-top:16px;display:grid;gap:8px}.cardio-history-list article{min-height:69px;padding:8px;display:grid;grid-template-columns:56px minmax(0,1fr) 24px;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.075);border-radius:14px;background:rgba(255,255,255,.03)}.cardio-history-list article>img{width:56px;height:52px;display:block;object-fit:contain;border-radius:10px;background:rgba(4,17,37,.72)}.cardio-history-list article strong,.cardio-history-list article span,.cardio-history-list article small{display:block}.cardio-history-list article strong{font-size:12px}.cardio-history-list article span{margin-top:4px;color:rgba(255,255,255,.53);font-size:9px}.cardio-history-list article small{margin-top:4px;color:rgba(255,255,255,.34);font-size:8px}.cardio-history-list article>svg{color:var(--cardio-yellow)}.cardio-history-empty{padding:25px 15px;color:rgba(255,255,255,.5);border:1px dashed rgba(255,255,255,.1);border-radius:14px;text-align:center;font-size:10px}
+.cardio-finish-modal{text-align:center}.cardio-finish-check{width:70px;height:70px;margin:0 auto 15px;display:grid;place-items:center;color:#06152c;border-radius:50%;background:var(--cardio-yellow)}.cardio-finish-modal h2{margin:7px 0 0;font-size:27px}.cardio-finish-modal>p{max-width:330px;margin:10px auto 0;color:rgba(255,255,255,.57);font-size:11px;line-height:1.45}.cardio-finish-summary{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.cardio-finish-summary article{padding:11px 7px;border:1px solid rgba(255,255,255,.075);border-radius:13px;background:rgba(255,255,255,.03)}.cardio-finish-summary span,.cardio-finish-summary strong{display:block}.cardio-finish-summary span{color:rgba(255,255,255,.42);font-size:8px}.cardio-finish-summary strong{margin-top:7px;color:#fff;font-size:12px}.cardio-finish-modal>button{width:100%;height:49px;margin-top:15px;color:#06152c;border:0;border-radius:14px;background:var(--cardio-yellow);font-weight:850}.cardio-finish-modal>button.secondary{margin-top:8px;color:rgba(255,255,255,.68);border:1px solid rgba(255,255,255,.1);background:transparent}
+.cardio-toast{position:fixed;left:50%;bottom:max(15px,env(safe-area-inset-bottom));z-index:850;width:min(calc(100% - 30px),410px);padding:11px 14px;transform:translateX(-50%);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(4,18,39,.96);box-shadow:0 15px 40px rgba(0,0,0,.28);text-align:center;font-size:10px;backdrop-filter:blur(14px)}
+
+@media (max-width: 390px) {
+  .cardio-page { padding-inline: 8px; grid-template-rows: 52px minmax(0, 1fr); gap: 6px; }
+  .cardio-topbar { grid-template-columns: 44px minmax(0,1fr) 96px; gap: 7px; }
+  .cardio-top-button { width: 44px; height: 44px; }
+  .cardio-top-actions { width: 96px; grid-template-columns: 44px 44px; gap: 8px; }
+  .cardio-header-brand { grid-template-columns: minmax(94px, 112px) 3px minmax(44px, 1fr); gap: 7px; }
+  .cardio-workspace { grid-template-rows: minmax(202px, 35dvh) minmax(148px, 22dvh) 96px 56px minmax(94px, 1fr); gap: 6px; }
+  .cardio-live-stage { grid-template-columns: minmax(92px,1fr) minmax(150px,166px) minmax(92px,1fr); gap: 8px; margin-top: -56px; }
+  .cardio-live-card { height: min(118px, 17dvh); border-radius: 17px; padding-inline: 8px; }
+  .cardio-live-card strong { font-size: clamp(22px, 6.2vw, 30px); }
+  .cardio-live-card small { font-size: 9px; }
+  .cardio-timer-ring { width: min(40vw, 164px); height: min(40vw, 164px); min-width: 140px; min-height: 140px; }
+  .cardio-timer-ring strong { font-size: clamp(36px, 9.8vw, 52px); }
+  .cardio-intensity-card { padding: 13px 14px 12px; }
+  .cardio-intensity-controls { grid-template-columns: 48px minmax(0,1fr) 48px; gap: 10px; }
+  .cardio-intensity-controls > button { width: 48px; height: 48px; }
+  .cardio-actions button { height: 56px; border-radius: 16px; }
+  .cardio-primary-action span, .cardio-secondary-action span { font-size: 12px; }
+  .cardio-mode-rail button { flex-basis: 80px; }
+}
+
+@media (max-height: 740px) {
+  .cardio-page { grid-template-rows: 48px minmax(0,1fr); gap: 5px; padding-top: max(5px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .cardio-top-button { width: 40px; height: 40px; }
+  .cardio-topbar { grid-template-columns: 40px minmax(0,1fr) 86px; }
+  .cardio-top-actions { width: 86px; grid-template-columns: 40px 40px; gap: 6px; }
+  .cardio-header-brand { grid-template-columns: minmax(88px, 103px) 3px minmax(42px,1fr); gap: 6px; }
+  .cardio-header-brand img { max-width: 103px; }
+  .cardio-workspace { grid-template-rows: minmax(172px, 32dvh) minmax(124px, 20dvh) 80px 48px minmax(76px, 1fr); gap: 5px; }
+  .cardio-hero-title { left: 14px; top: 28%; grid-template-columns: 32px minmax(0,1fr); gap: 8px; }
+  .cardio-mode-mark { width: 30px; height: 42px; }
+  .cardio-mode-mark svg { width: 25px; height: 25px; }
+  .cardio-hero-title h1 { font-size: clamp(25px, 7vw, 35px); }
+  .cardio-hero-quick-settings { width: 36px; height: 36px; top: 11px; right: 11px; }
+  .cardio-status { left: 47px; top: calc(28% + 72px); height: 29px; }
+  .cardio-live-stage { margin-top: -51px; gap: 6px; }
+  .cardio-live-card { height: min(98px, 16dvh); padding-block: 9px; }
+  .cardio-live-card svg { width: 23px; height: 23px; }
+  .cardio-live-card span { margin-top: 7px; font-size: 8px; }
+  .cardio-live-card strong { margin-top: 6px; font-size: clamp(20px, 5.8vw, 27px); }
+  .cardio-live-card small { margin-top: 5px; font-size: 8px; }
+  .cardio-timer-ring { width: min(36vw, 146px); height: min(36vw, 146px); min-width: 126px; min-height: 126px; }
+  .cardio-timer-ring strong { font-size: clamp(31px, 8.5vw, 42px); }
+  .cardio-timer-ring small { font-size: 11px; }
+  .cardio-intensity-card { padding: 9px 12px; border-radius: 17px; }
+  .cardio-intensity-card > header strong { font-size: 10px; }
+  .cardio-intensity-card > header b { min-width: 66px; font-size: 25px; }
+  .cardio-intensity-controls { margin-top: 7px; grid-template-columns: 42px minmax(0,1fr) 42px; gap: 9px; }
+  .cardio-intensity-controls > button { width: 42px; height: 42px; border-radius: 14px; }
+  .cardio-actions button { height: 48px; }
+  .cardio-mode-picker { grid-template-rows: 20px minmax(0,1fr); }
+  .cardio-mode-picker > header strong { font-size: 10px; }
+  .cardio-mode-rail button { flex-basis: 72px; border-radius: 13px; }
+  .cardio-mode-rail button > span { font-size: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardio-page *,
+  .cardio-page *::before,
+  .cardio-page *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
