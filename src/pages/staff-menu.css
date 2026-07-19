@@ -1,0 +1,133 @@
+/* Este arquivo afeta somente contas professor/recepção. */
+.accqua-staff-menu-card {
+  width: 100%;
+  padding: 13px;
+  display: grid;
+  gap: 11px;
+  border: 1px solid rgba(183, 214, 255, .15);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(255, 209, 40, .08), transparent 38%),
+    linear-gradient(145deg, rgba(13, 49, 96, .92), rgba(4, 25, 56, .94));
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, .2),
+    inset 0 1px 0 rgba(255, 255, 255, .045);
+}
+
+.accqua-staff-menu-heading {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+}
+
+.accqua-staff-menu-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--menu-yellow);
+  border: 1px solid rgba(255, 209, 40, .17);
+  border-radius: 15px;
+  background: rgba(255, 209, 40, .075);
+}
+
+.accqua-staff-menu-heading > div {
+  min-width: 0;
+}
+
+.accqua-staff-menu-heading small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--menu-yellow);
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: .14em;
+}
+
+.accqua-staff-menu-heading strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.accqua-staff-menu-heading p {
+  margin: 4px 0 0;
+  color: rgba(225, 238, 255, .55);
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+.accqua-staff-menu-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.accqua-staff-menu-actions button {
+  min-width: 0;
+  min-height: 55px;
+  padding: 9px 8px;
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) 17px;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  text-align: left;
+  border: 1px solid rgba(183, 214, 255, .13);
+  border-radius: 15px;
+  background: rgba(3, 22, 50, .62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.accqua-staff-menu-actions button:active {
+  transform: scale(.98);
+  border-color: rgba(255, 209, 40, .31);
+  background: rgba(8, 38, 77, .85);
+}
+
+.accqua-staff-menu-actions button > svg:first-child,
+.accqua-staff-menu-actions button > svg:last-child {
+  color: var(--menu-yellow);
+}
+
+.accqua-staff-menu-actions button > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.accqua-staff-menu-actions button strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 9px;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.accqua-staff-menu-actions button small {
+  overflow: hidden;
+  color: rgba(225, 238, 255, .48);
+  font-size: 6.6px;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 365px) {
+  .accqua-staff-menu-card {
+    padding: 11px;
+  }
+
+  .accqua-staff-menu-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .accqua-staff-menu-actions button {
+    min-height: 48px;
+  }
+}
