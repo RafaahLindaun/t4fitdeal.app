@@ -1,0 +1,1159 @@
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
+import AccquaLogo from "../components/AccquaLogo";
+import LoadingSplash from "../components/LoadingSplash";
+import {
+  AdminBackIcon,
+  AdminBoltIcon,
+  AdminCardioIcon,
+  AdminCheckIcon,
+  AdminChevronIcon,
+  AdminCloseIcon,
+  AdminDumbbellIcon,
+  AdminEditIcon,
+  AdminLockIcon,
+  AdminSearchIcon,
+  AdminShieldIcon,
+  AdminUserIcon,
+} from "../components/AdminIcons";
+import {
+  FALLBACK_EXERCISE_LIBRARY,
+  calculateStudentAge,
+  createBuilderExercise,
+  formatStudentDocument,
+  loadExerciseLibrary,
+  publishAdminProgram,
+  searchWorkoutStudents,
+  setWorkoutStudentAccess,
+  updateWorkoutStudentProfile,
+  type AdminCardioPrescription,
+  type AdminRoutine,
+  type ExerciseLibraryItem,
+  type StudentProfileUpdate,
+  type WorkoutStudent,
+} from "../lib/admin";
+import "./admin-entry.css";
+import "./admin-area.css";
+
+type StudentFilter = "all" | "pending" | "active" | "blocked";
+type QuickCode =
+  | "CARDIO"
+  | "FULL"
+  | "AB"
+  | "ABC"
+  | "ABCD"
+  | "ABCDE"
+  | "ABCDF"
+  | "ABCDEF";
+
+const QUICK_OPTIONS: Array<{
+  code: QuickCode;
+  title: string;
+  subtitle: string;
+}> = [
+  {
+    code: "CARDIO",
+    title: "Somente cardio",
+    subtitle: "Prescrição de esteira, bike, elíptico, escada, remo, caminhada ou natação.",
+  },
+  {
+    code: "FULL",
+    title: "Full body",
+    subtitle: "Um treino geral, simples e equilibrado.",
+  },
+  {
+    code: "AB",
+    title: "Treino AB",
+    subtitle: "Superior e inferior em dois treinos.",
+  },
+  {
+    code: "ABC",
+    title: "Treino ABC",
+    subtitle: "Empurrar, puxar e pernas.",
+  },
+  {
+    code: "ABCD",
+    title: "Treino ABCD",
+    subtitle: "Quatro divisões com volume moderado.",
+  },
+  {
+    code: "ABCDE",
+    title: "Treino ABCDE",
+    subtitle: "Cinco dias, foco muscular mais específico.",
+  },
+  {
+    code: "ABCDF",
+    title: "Treino ABCDF",
+    subtitle: "Cinco rotinas identificadas como A, B, C, D e F.",
+  },
+  {
+    code: "ABCDEF",
+    title: "Treino ABCDEF",
+    subtitle: "Seis rotinas para alunos avançados.",
+  },
+];
+
+const DEFAULT_CARDIO: AdminCardioPrescription = {
+  enabled: true,
+  activityType: "treadmill",
+  timing: "anytime",
+  durationMinutes: 30,
+  speedKmh: 0,
+  calories: 0,
+  notes: "",
+};
+
+const WEEK_SCHEDULES: Record<string, number[][]> = {
+  FULL: [[1, 3, 5]],
+  AB: [[1, 4], [2, 5]],
+  ABC: [[1, 4], [2, 5], [3, 6]],
+  ABCD: [[1], [2], [4], [5]],
+  ABCDE: [[1], [2], [3], [4], [5]],
+  ABCDF: [[1], [2], [3], [4], [5]],
+  ABCDEF: [[1], [2], [3], [4], [5], [6]],
+};
+
+const QUICK_GROUPS: Record<string, string[][]> = {
+  FULL: [["Peitoral", "Costas", "Quadríceps", "Posterior de coxa", "Ombros", "Abdômen"]],
+  AB: [
+    ["Peitoral", "Costas", "Ombros", "Bíceps", "Tríceps"],
+    ["Quadríceps", "Posterior de coxa", "Glúteos", "Panturrilhas", "Abdômen"],
+  ],
+  ABC: [
+    ["Peitoral", "Ombros", "Tríceps"],
+    ["Costas", "Bíceps", "Abdômen"],
+    ["Quadríceps", "Posterior de coxa", "Glúteos", "Panturrilhas"],
+  ],
+  ABCD: [
+    ["Peitoral", "Tríceps"],
+    ["Costas", "Bíceps"],
+    ["Quadríceps", "Posterior de coxa", "Glúteos", "Panturrilhas"],
+    ["Ombros", "Abdômen"],
+  ],
+  ABCDE: [
+    ["Peitoral"],
+    ["Costas"],
+    ["Quadríceps", "Posterior de coxa", "Glúteos"],
+    ["Ombros", "Abdômen"],
+    ["Bíceps", "Tríceps", "Panturrilhas"],
+  ],
+  ABCDF: [
+    ["Peitoral"],
+    ["Costas"],
+    ["Quadríceps", "Posterior de coxa", "Glúteos"],
+    ["Ombros", "Abdômen"],
+    ["Bíceps", "Tríceps", "Panturrilhas"],
+  ],
+  ABCDEF: [
+    ["Peitoral", "Tríceps"],
+    ["Costas", "Bíceps"],
+    ["Quadríceps"],
+    ["Ombros", "Abdômen"],
+    ["Posterior de coxa", "Glúteos"],
+    ["Bíceps", "Tríceps", "Panturrilhas"],
+  ],
+};
+
+function normalizeStatus(value: string) {
+  const status = value.trim().toLowerCase();
+  if (status === "active" || status === "ativo") return "active";
+  if (status === "blocked" || status === "bloqueado") return "blocked";
+  if (status === "inactive" || status === "inativo") return "inactive";
+  return "pending";
+}
+
+function studentInitials(name: string) {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "AL"
+  );
+}
+
+function statusLabel(status: string) {
+  const normalized = normalizeStatus(status);
+  if (normalized === "active") return "Autorizado";
+  if (normalized === "blocked") return "Bloqueado";
+  if (normalized === "inactive") return "Inativo";
+  return "Aguardando autorização";
+}
+
+function createQuickRoutines(
+  code: Exclude<QuickCode, "CARDIO">,
+  library: ExerciseLibraryItem[],
+): AdminRoutine[] {
+  const groups = QUICK_GROUPS[code] ?? QUICK_GROUPS.FULL;
+  const schedules = WEEK_SCHEDULES[code] ?? WEEK_SCHEDULES.FULL;
+  const used = new Set<string>();
+
+  return groups.map((routineGroups, routineIndex) => {
+    const selected: ExerciseLibraryItem[] = [];
+
+    routineGroups.forEach((group) => {
+      const matches = library.filter(
+        (item) => item.muscleGroup === group && !used.has(item.slug),
+      );
+      const amount = routineGroups.length <= 2 ? 3 : routineGroups.length <= 3 ? 2 : 1;
+      matches.slice(0, amount).forEach((item) => {
+        used.add(item.slug);
+        selected.push(item);
+      });
+    });
+
+    if (selected.length < 5) {
+      library
+        .filter((item) => !used.has(item.slug))
+        .slice(0, 5 - selected.length)
+        .forEach((item) => {
+          used.add(item.slug);
+          selected.push(item);
+        });
+    }
+
+    const codeLetter =
+      code === "ABCDF"
+        ? ["A", "B", "C", "D", "F"][routineIndex]
+        : String.fromCharCode(65 + routineIndex);
+    return {
+      code: codeLetter,
+      name: code === "FULL" ? "Treino Full Body" : `Treino ${codeLetter}`,
+      focus: routineGroups.join(", "),
+      weekDays: schedules[routineIndex] ?? [],
+      exercises: selected.slice(0, 8).map((item, index) =>
+        createBuilderExercise(item, index + 1),
+      ),
+    };
+  });
+}
+
+function studentToForm(student: WorkoutStudent): StudentProfileUpdate {
+  return {
+    fullName: student.fullName,
+    cpf: student.cpf,
+    rg: student.rg,
+    registrationCode: student.registrationCode,
+    email: student.email,
+    phone: student.phone,
+    emergencyPhone: student.emergencyPhone,
+    birthDate: student.birthDate.slice(0, 10),
+    objective: student.objective,
+  };
+}
+
+export default function AdminArea() {
+  const navigate = useNavigate();
+  const { user, profile, loading, landingPath } = useAuth();
+
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<StudentFilter>("all");
+  const [students, setStudents] = useState<WorkoutStudent[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [studentError, setStudentError] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<WorkoutStudent | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<StudentProfileUpdate | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickCode, setQuickCode] = useState<QuickCode>("ABC");
+  const [quickCardio, setQuickCardio] = useState(DEFAULT_CARDIO);
+  const [library, setLibrary] = useState<ExerciseLibraryItem[]>(
+    FALLBACK_EXERCISE_LIBRARY,
+  );
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
+
+  const canManageStudents =
+    profile?.role === "professor" || profile?.role === "reception";
+  const staffLabel =
+    profile?.role === "reception" ? "RECEPÇÃO" : "PROFESSOR";
+
+  useEffect(() => {
+    if (!user || !canManageStudents) return;
+    void loadExerciseLibrary().then(setLibrary);
+  }, [canManageStudents, user?.id]);
+
+  useEffect(() => {
+    if (!user || !canManageStudents) return;
+
+    const timer = window.setTimeout(async () => {
+      setStudentsLoading(true);
+      setStudentError("");
+
+      try {
+        setStudents(await searchWorkoutStudents(query));
+      } catch (error) {
+        setStudentError(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível consultar os alunos.",
+        );
+      } finally {
+        setStudentsLoading(false);
+      }
+    }, 260);
+
+    return () => window.clearTimeout(timer);
+  }, [canManageStudents, query, user?.id]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 2800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const status = normalizeStatus(student.status);
+      if (filter === "all") return true;
+      if (filter === "pending") {
+        return status === "pending" || status === "inactive";
+      }
+      return status === filter;
+    });
+  }, [filter, students]);
+
+  const pendingCount = useMemo(
+    () =>
+      students.filter((student) => {
+        const status = normalizeStatus(student.status);
+        return status === "pending" || status === "inactive";
+      }).length,
+    [students],
+  );
+
+  if (loading) return <LoadingSplash />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (landingPath !== "/menu-teste") {
+    return <Navigate to={landingPath} replace />;
+  }
+  if (!canManageStudents) return <Navigate to="/menu-teste" replace />;
+
+  const refreshStudent = (updated: WorkoutStudent) => {
+    setSelectedStudent(updated);
+    setStudents((current) =>
+      current.map((student) =>
+        student.id === updated.id ? updated : student,
+      ),
+    );
+  };
+
+  const authorizeStudent = async () => {
+    if (!selectedStudent || saving) return;
+    setSaving(true);
+
+    try {
+      const status = await setWorkoutStudentAccess(
+        selectedStudent.id,
+        "active",
+      );
+      refreshStudent({ ...selectedStudent, status });
+      setToast("Cadastro autorizado. O aluno já pode entrar no aplicativo.");
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível autorizar o cadastro.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const blockStudent = async () => {
+    if (!selectedStudent || saving) return;
+    setSaving(true);
+
+    try {
+      const status = await setWorkoutStudentAccess(
+        selectedStudent.id,
+        "blocked",
+      );
+      refreshStudent({ ...selectedStudent, status });
+      setToast("Acesso bloqueado.");
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível bloquear o acesso.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitEdit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedStudent || !editForm || saving) return;
+    setSaving(true);
+
+    try {
+      const updated = await updateWorkoutStudentProfile(
+        selectedStudent.id,
+        editForm,
+      );
+      refreshStudent(updated);
+      setEditing(false);
+      setToast("Perfil do aluno atualizado.");
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar o perfil.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const publishQuick = async () => {
+    if (!selectedStudent || !user || saving) return;
+    setSaving(true);
+
+    try {
+      const isCardioOnly = quickCode === "CARDIO";
+      const routines = isCardioOnly
+        ? []
+        : createQuickRoutines(quickCode, library);
+
+      await publishAdminProgram({
+        studentId: selectedStudent.id,
+        staffId: user.id,
+        programName:
+          quickCode === "CARDIO"
+            ? "Cardio"
+            : quickCode === "FULL"
+              ? "Treino Full Body"
+              : `Treino ${quickCode}`,
+        splitCode: quickCode,
+        notes:
+          quickCode === "CARDIO"
+            ? "Prescrição de cardio criada pela equipe ACCQUA Sports."
+            : "Treino rápido criado pela equipe ACCQUA Sports. Ajuste cargas conforme a evolução.",
+        reviewAt: "",
+        routines,
+        cardio: isCardioOnly ? quickCardio : null,
+      });
+
+      setQuickOpen(false);
+      setToast(
+        isCardioOnly
+          ? "Cardio publicado para o aluno."
+          : `Treino ${quickCode} publicado para o aluno.`,
+      );
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível publicar o treino.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedStatus = selectedStudent
+    ? normalizeStatus(selectedStudent.status)
+    : "pending";
+  const selectedAge = selectedStudent
+    ? calculateStudentAge(selectedStudent.birthDate)
+    : null;
+
+  return (
+    <div className="admin-area-screen">
+      <div className="admin-area-background" aria-hidden="true">
+        <span />
+        <i />
+      </div>
+
+      <main className="admin-area-shell">
+        <header className="admin-area-header">
+          <button
+            type="button"
+            onClick={() =>
+              selectedStudent
+                ? setSelectedStudent(null)
+                : navigate("/menu-teste")
+            }
+            aria-label="Voltar"
+          >
+            <AdminBackIcon />
+          </button>
+
+          <div className="admin-area-brand">
+            <AccquaLogo compact />
+            <div>
+              <small>{staffLabel}</small>
+              <strong>Área ACCQUA Sports</strong>
+            </div>
+          </div>
+
+          <span className="admin-area-pending">
+            {pendingCount}
+            <small>pendentes</small>
+          </span>
+        </header>
+
+        {!selectedStudent ? (
+          <>
+            <section className="admin-area-intro">
+              <span>
+                <AdminShieldIcon size={28} />
+              </span>
+              <div>
+                <small>ADMINISTRAÇÃO DE ALUNOS</small>
+                <h1>Busque, autorize e monte o treino</h1>
+                <p>
+                  Consulte o perfil completo por nome, CPF, RG, matrícula,
+                  telefone ou e-mail.
+                </p>
+              </div>
+            </section>
+
+            <section className="admin-area-search-wrap">
+              <label className="admin-area-search">
+                <AdminSearchIcon />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Nome, CPF, RG ou matrícula"
+                  inputMode="search"
+                  autoComplete="off"
+                />
+                {query ? (
+                  <button type="button" onClick={() => setQuery("")}>
+                    <AdminCloseIcon size={18} />
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </label>
+
+              <div className="admin-area-filters">
+                {[
+                  ["all", "Todos"],
+                  ["pending", "Pendentes"],
+                  ["active", "Autorizados"],
+                  ["blocked", "Bloqueados"],
+                ].map(([value, label]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={filter === value ? "is-active" : ""}
+                    onClick={() => setFilter(value as StudentFilter)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="admin-area-list" aria-live="polite">
+              {studentsLoading ? (
+                <div className="admin-area-state">
+                  <span className="admin-area-spinner" />
+                  <p>Buscando alunos...</p>
+                </div>
+              ) : null}
+
+              {!studentsLoading && studentError ? (
+                <div className="admin-area-state is-error">
+                  <AdminLockIcon size={28} />
+                  <strong>Não foi possível carregar</strong>
+                  <p>{studentError}</p>
+                </div>
+              ) : null}
+
+              {!studentsLoading &&
+              !studentError &&
+              !filteredStudents.length ? (
+                <div className="admin-area-state">
+                  <AdminSearchIcon size={29} />
+                  <strong>Nenhum aluno encontrado</strong>
+                  <p>Altere a busca ou selecione outro filtro.</p>
+                </div>
+              ) : null}
+
+              {!studentsLoading &&
+                !studentError &&
+                filteredStudents.map((student) => {
+                  const age = calculateStudentAge(student.birthDate);
+                  const status = normalizeStatus(student.status);
+
+                  return (
+                    <button
+                      type="button"
+                      className="admin-student-card"
+                      key={student.id}
+                      onClick={() => setSelectedStudent(student)}
+                    >
+                      <span className="admin-student-avatar">
+                        {studentInitials(student.fullName)}
+                      </span>
+
+                      <span className="admin-student-copy">
+                        <span>
+                          <strong>{student.fullName}</strong>
+                          <em className={`is-${status}`}>
+                            {statusLabel(student.status)}
+                          </em>
+                        </span>
+                        <small>
+                          {age !== null ? `${age} anos` : "Idade não informada"}
+                          {" · "}
+                          {student.registrationCode
+                            ? `Matrícula ${student.registrationCode}`
+                            : `CPF ${formatStudentDocument(student.cpf)}`}
+                        </small>
+                        <b>
+                          {student.objective || "Objetivo não informado"}
+                        </b>
+                      </span>
+
+                      <AdminChevronIcon />
+                    </button>
+                  );
+                })}
+            </section>
+          </>
+        ) : (
+          <section className="admin-profile-view">
+            <article className="admin-profile-hero">
+              <span className="admin-profile-avatar">
+                {studentInitials(selectedStudent.fullName)}
+              </span>
+
+              <div>
+                <small>PERFIL DO ALUNO</small>
+                <h1>{selectedStudent.fullName}</h1>
+                <p>
+                  {selectedAge !== null
+                    ? `${selectedAge} anos`
+                    : "Idade não informada"}
+                  {" · "}
+                  {selectedStudent.registrationCode
+                    ? `Matrícula ${selectedStudent.registrationCode}`
+                    : `CPF ${formatStudentDocument(selectedStudent.cpf)}`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditForm(studentToForm(selectedStudent));
+                  setEditing(true);
+                }}
+                aria-label="Editar perfil"
+              >
+                <AdminEditIcon />
+              </button>
+            </article>
+
+            <article className="admin-access-card">
+              <span
+                className={`admin-access-icon is-${selectedStatus}`}
+              >
+                {selectedStatus === "active" ? (
+                  <AdminShieldIcon size={27} />
+                ) : (
+                  <AdminLockIcon size={26} />
+                )}
+              </span>
+
+              <div>
+                <small>ACESSO AO APLICATIVO</small>
+                <strong>{statusLabel(selectedStudent.status)}</strong>
+                <p>
+                  {selectedStatus === "active"
+                    ? "O aluno consegue entrar normalmente no aplicativo."
+                    : "O aluno permanece na tela de espera até a autorização."}
+                </p>
+              </div>
+
+              {selectedStatus === "active" ? (
+                <button
+                  type="button"
+                  className="is-block"
+                  onClick={() => void blockStudent()}
+                  disabled={saving}
+                >
+                  Bloquear
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="is-authorize"
+                  onClick={() => void authorizeStudent()}
+                  disabled={saving}
+                >
+                  {saving ? "Liberando..." : "Autorizar"}
+                </button>
+              )}
+            </article>
+
+            <article className="admin-profile-data">
+              <header>
+                <div>
+                  <small>DADOS CADASTRAIS</small>
+                  <h2>Informações do aluno</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditForm(studentToForm(selectedStudent));
+                    setEditing(true);
+                  }}
+                >
+                  Editar
+                </button>
+              </header>
+
+              <div className="admin-profile-grid">
+                <span>
+                  <small>E-mail</small>
+                  <strong>{selectedStudent.email || "Não informado"}</strong>
+                </span>
+                <span>
+                  <small>Telefone</small>
+                  <strong>{selectedStudent.phone || "Não informado"}</strong>
+                </span>
+                <span>
+                  <small>CPF</small>
+                  <strong>
+                    {formatStudentDocument(selectedStudent.cpf) ||
+                      "Não informado"}
+                  </strong>
+                </span>
+                <span>
+                  <small>RG</small>
+                  <strong>{selectedStudent.rg || "Não informado"}</strong>
+                </span>
+                <span>
+                  <small>Nascimento</small>
+                  <strong>
+                    {selectedStudent.birthDate
+                      ? new Date(
+                          `${selectedStudent.birthDate.slice(0, 10)}T12:00:00`,
+                        ).toLocaleDateString("pt-BR")
+                      : "Não informado"}
+                  </strong>
+                </span>
+                <span>
+                  <small>Objetivo</small>
+                  <strong>
+                    {selectedStudent.objective || "Não informado"}
+                  </strong>
+                </span>
+              </div>
+            </article>
+
+            {selectedStatus === "active" ? (
+              <article className="admin-training-card">
+                <header>
+                  <div>
+                    <small>TREINO DO ALUNO</small>
+                    <h2>Escolha como deseja montar</h2>
+                    <p>
+                      O que for publicado ficará disponível para o aluno.
+                    </p>
+                  </div>
+                  <AdminDumbbellIcon size={29} />
+                </header>
+
+                <div className="admin-training-actions">
+                  <button
+                    type="button"
+                    onClick={() => setQuickOpen(true)}
+                  >
+                    <span className="is-quick">
+                      <AdminBoltIcon />
+                    </span>
+                    <div>
+                      <strong>Montar treino rápido</strong>
+                      <small>
+                        Cardio, Full Body, AB, ABC, ABCD, ABCDE, ABCDF ou ABCDEF.
+                      </small>
+                    </div>
+                    <AdminChevronIcon />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/area-accqua/montar?student=${selectedStudent.id}`,
+                      )
+                    }
+                  >
+                    <span className="is-complete">
+                      <AdminDumbbellIcon />
+                    </span>
+                    <div>
+                      <strong>Montar treino completo</strong>
+                      <small>
+                        Escolha cada exercício, série, repetição, carga e descanso.
+                      </small>
+                    </div>
+                    <AdminChevronIcon />
+                  </button>
+                </div>
+              </article>
+            ) : (
+              <article className="admin-training-locked">
+                <AdminLockIcon size={26} />
+                <div>
+                  <strong>Autorize o cadastro primeiro</strong>
+                  <p>
+                    Após a liberação, aparecerão as opções de treino rápido e completo.
+                  </p>
+                </div>
+              </article>
+            )}
+          </section>
+        )}
+      </main>
+
+      {editing && editForm && selectedStudent ? (
+        <div
+          className="admin-sheet-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) {
+              setEditing(false);
+            }
+          }}
+        >
+          <form className="admin-edit-sheet" onSubmit={submitEdit}>
+            <span className="admin-sheet-handle" />
+
+            <header>
+              <div>
+                <small>EDITAR PERFIL</small>
+                <h2>{selectedStudent.fullName}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                disabled={saving}
+              >
+                <AdminCloseIcon />
+              </button>
+            </header>
+
+            <div className="admin-edit-fields">
+              <label className="is-wide">
+                <span>Nome completo</span>
+                <input
+                  value={editForm.fullName}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      fullName: event.target.value,
+                    })
+                  }
+                  required
+                />
+              </label>
+
+              <label>
+                <span>Data de nascimento</span>
+                <input
+                  type="date"
+                  value={editForm.birthDate}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      birthDate: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                <span>Matrícula</span>
+                <input
+                  value={editForm.registrationCode}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      registrationCode: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                <span>CPF</span>
+                <input
+                  value={editForm.cpf}
+                  inputMode="numeric"
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      cpf: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                <span>RG</span>
+                <input
+                  value={editForm.rg}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      rg: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="is-wide">
+                <span>E-mail</span>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  readOnly
+                  aria-readonly="true"
+                  title="O e-mail de acesso não é alterado nesta tela."
+                />
+              </label>
+
+              <label>
+                <span>Telefone</span>
+                <input
+                  value={editForm.phone}
+                  inputMode="tel"
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      phone: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                <span>Telefone de emergência</span>
+                <input
+                  value={editForm.emergencyPhone}
+                  inputMode="tel"
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      emergencyPhone: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="is-wide">
+                <span>Objetivo</span>
+                <textarea
+                  value={editForm.objective}
+                  onChange={(event) =>
+                    setEditForm({
+                      ...editForm,
+                      objective: event.target.value,
+                    })
+                  }
+                  placeholder="Ex.: hipertrofia, emagrecimento, condicionamento..."
+                />
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              className="admin-edit-save"
+              disabled={saving}
+            >
+              <AdminCheckIcon />
+              {saving ? "Salvando..." : "Salvar alterações"}
+            </button>
+          </form>
+        </div>
+      ) : null}
+
+      {quickOpen && selectedStudent ? (
+        <div
+          className="admin-sheet-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) {
+              setQuickOpen(false);
+            }
+          }}
+        >
+          <section className="admin-quick-sheet">
+            <span className="admin-sheet-handle" />
+
+            <header>
+              <div>
+                <small>TREINO RÁPIDO</small>
+                <h2>{selectedStudent.fullName}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickOpen(false)}
+                disabled={saving}
+              >
+                <AdminCloseIcon />
+              </button>
+            </header>
+
+            <div className="admin-quick-options">
+              {QUICK_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  key={option.code}
+                  className={quickCode === option.code ? "is-active" : ""}
+                  onClick={() => setQuickCode(option.code)}
+                >
+                  <span>
+                    {option.code === "CARDIO" ? (
+                      <AdminCardioIcon />
+                    ) : (
+                      <AdminDumbbellIcon />
+                    )}
+                  </span>
+                  <div>
+                    <strong>{option.title}</strong>
+                    <small>{option.subtitle}</small>
+                  </div>
+                  {quickCode === option.code ? (
+                    <AdminCheckIcon />
+                  ) : null}
+                </button>
+              ))}
+            </div>
+
+            {quickCode === "CARDIO" ? (
+              <div className="admin-quick-cardio">
+                <label>
+                  <span>Modalidade</span>
+                  <select
+                    value={quickCardio.activityType}
+                    onChange={(event) =>
+                      setQuickCardio({
+                        ...quickCardio,
+                        activityType: event.target
+                          .value as AdminCardioPrescription["activityType"],
+                      })
+                    }
+                  >
+                    <option value="treadmill">Esteira</option>
+                    <option value="spinning">Spinning</option>
+                    <option value="elliptical">Elíptico</option>
+                    <option value="stairs">Escada</option>
+                    <option value="rowing">Remo</option>
+                    <option value="walk">Caminhada</option>
+                    <option value="swim">Natação</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Duração</span>
+                  <div>
+                    <input
+                      type="number"
+                      min="5"
+                      max="180"
+                      value={quickCardio.durationMinutes}
+                      onChange={(event) =>
+                        setQuickCardio({
+                          ...quickCardio,
+                          durationMinutes: Math.max(
+                            5,
+                            Number(event.target.value) || 5,
+                          ),
+                        })
+                      }
+                    />
+                    <small>min</small>
+                  </div>
+                </label>
+
+                <label>
+                  <span>Velocidade inicial</span>
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={quickCardio.speedKmh}
+                      onChange={(event) =>
+                        setQuickCardio({
+                          ...quickCardio,
+                          speedKmh: Math.max(
+                            0,
+                            Number(event.target.value) || 0,
+                          ),
+                        })
+                      }
+                    />
+                    <small>km/h</small>
+                  </div>
+                </label>
+
+                <label>
+                  <span>Meta de calorias</span>
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={quickCardio.calories}
+                      onChange={(event) =>
+                        setQuickCardio({
+                          ...quickCardio,
+                          calories: Math.max(
+                            0,
+                            Number(event.target.value) || 0,
+                          ),
+                        })
+                      }
+                    />
+                    <small>kcal</small>
+                  </div>
+                </label>
+              </div>
+            ) : (
+              <div className="admin-quick-preview">
+                <AdminBoltIcon size={23} />
+                <div>
+                  <strong>Geração automática segura</strong>
+                  <p>
+                    O aplicativo selecionará exercícios equilibrados por grupo muscular.
+                    Depois, o treino poderá ser substituído por um completo.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="admin-quick-publish"
+              onClick={() => void publishQuick()}
+              disabled={saving}
+            >
+              <AdminCheckIcon />
+              {saving ? "Publicando..." : "Publicar para o aluno"}
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div className="admin-area-toast" role="status">
+          {toast}
+        </div>
+      ) : null}
+    </div>
+  );
+}
