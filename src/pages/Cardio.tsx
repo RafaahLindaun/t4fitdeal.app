@@ -24,10 +24,6 @@ import {
   CardioStopIcon,
 } from "../components/CardioIcons";
 import { WorkoutBackIcon } from "../components/WorkoutIcons";
-import {
-  MenuDumbbellIcon,
-  NavHomeIcon,
-} from "../components/MenuIcons";
 import treadmillImage from "../assets/cardio/treadmill.png";
 import spinningImage from "../assets/cardio/spinning.png";
 import ellipticalImage from "../assets/cardio/elliptical.png";
@@ -869,9 +865,10 @@ export default function Cardio() {
               type="button"
               className="cardio-settings-chip"
               onClick={() => setSettingsOpen(true)}
+              aria-label={`Abrir configurações: ${timingLabels[timing]}`}
+              title="Configurações do cardio"
             >
               <CardioSettingsIcon />
-              <span>{timingLabels[timing]}</span>
             </button>
           </header>
 
@@ -909,12 +906,17 @@ export default function Cardio() {
           </section>
 
           <section className="cardio-live-panel">
-            <article className="cardio-live-stat">
+            <button
+              type="button"
+              className="cardio-live-stat"
+              onClick={() => setToast(`Calorias: ${calories} kcal`)}
+              aria-label={`Calorias: ${calories} kcal`}
+            >
               <CardioFlameIcon />
               <span>Calorias</span>
               <strong>{calories}</strong>
               <small>kcal</small>
-            </article>
+            </button>
 
             <div
               className="cardio-timer-ring"
@@ -935,12 +937,17 @@ export default function Cardio() {
               </div>
             </div>
 
-            <article className="cardio-live-stat">
+            <button
+              type="button"
+              className="cardio-live-stat"
+              onClick={() => setToast(`${metricTitle}: ${metricValue} ${metricUnit}`)}
+              aria-label={`${metricTitle}: ${metricValue} ${metricUnit}`}
+            >
               <CardioPulseIcon />
               <span>{metricTitle}</span>
               <strong>{metricValue}</strong>
               <small>{metricUnit}</small>
-            </article>
+            </button>
           </section>
 
           <section className="cardio-intensity-card">
@@ -1089,41 +1096,6 @@ export default function Cardio() {
             </div>
           </section>
         </section>
-
-        <nav className="cardio-bottom-dock" aria-label="Navegação do cardio">
-          <button
-            type="button"
-            onClick={() => navigate("/menu-teste")}
-          >
-            <NavHomeIcon />
-            <span>Menu</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/treino")}
-          >
-            <MenuDumbbellIcon />
-            <span>Treino</span>
-          </button>
-
-          <button
-            type="button"
-            className="is-active"
-            aria-current="page"
-          >
-            <CardioPulseIcon />
-            <span>Cardio</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setHistoryOpen(true)}
-          >
-            <CardioHistoryIcon />
-            <span>Histórico</span>
-          </button>
-        </nav>
       </main>
 
       {settingsOpen ? (
@@ -1391,8 +1363,13 @@ export default function Cardio() {
       ) : null}
 
       {toast ? (
-        <div className="cardio-toast" role="status">
-          {toast}
+        <div
+          key={toast}
+          className="cardio-toast"
+          role="status"
+          aria-live="polite"
+        >
+          <span>{toast}</span>
         </div>
       ) : null}
     </div>
