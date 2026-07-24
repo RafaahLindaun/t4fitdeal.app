@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 280" role="img" aria-labelledby="title desc">
+  <title id="title">ACCQUA Sports Academia</title>
+  <desc id="desc">Logo vetorial em azul da ACCQUA Sports Academia</desc>
+  <defs>
+    <linearGradient id="accquaBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#69b8ff"/>
+      <stop offset="0.48" stop-color="#2e7fd8"/>
+      <stop offset="1" stop-color="#1659a7"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-30%" width="140%" height="170%">
+      <feGaussianBlur stdDeviation="2.6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g fill="url(#accquaBlue)" text-anchor="middle" filter="url(#softGlow)">
+    <text x="450" y="118" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="116" font-weight="900" letter-spacing="5">ACCQUA</text>
+    <text x="450" y="204" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="72" font-weight="900" letter-spacing="18">SPORTS</text>
+  </g>
+  <text x="450" y="254" fill="#9bd0ff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="22">ACADEMIA</text>
+</svg>
