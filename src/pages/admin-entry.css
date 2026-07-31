@@ -1,0 +1,26 @@
+/* Apenas o cartão exibido para professor e recepção. */
+.accqua-admin-entry {
+  width: 100%;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  border-color: rgba(255, 209, 40, .22);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255, 209, 40, .08), transparent 38%),
+    linear-gradient(135deg, rgba(18, 61, 115, .88), rgba(5, 29, 62, .92));
+}
+
+.accqua-admin-entry:active {
+  transform: scale(.988);
+}
+
+.accqua-admin-entry .accqua-membership-icon {
+  color: var(--menu-yellow);
+  background: rgba(255, 209, 40, .08);
+}
+
+.accqua-admin-entry-arrow {
+  color: var(--menu-yellow);
+  opacity: .86;
+}
