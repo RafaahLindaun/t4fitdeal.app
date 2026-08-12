@@ -1,0 +1,571 @@
+
+.accqua-ranking-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--brand-blue) 18%, transparent), transparent 38%),
+    radial-gradient(circle at 100% 12%, color-mix(in srgb, var(--brand-blue) 16%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--surface-base), var(--surface-deep));
+}
+
+.accqua-ranking-shell {
+  width: min(100%, 520px);
+  height: 100%;
+  margin: 0 auto;
+  padding:
+    max(var(--space-2), env(safe-area-inset-top))
+    var(--space-3)
+    max(var(--space-2), env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.ranking-header {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: start;
+  padding-top: var(--space-1);
+}
+
+.ranking-header-logo {
+  justify-self: center;
+}
+
+.ranking-header-logo .accqua-logo {
+  width: 155px;
+}
+
+.ranking-icon-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-normal) var(--ease-standard);
+}
+
+.ranking-back {
+  font-size: var(--text-2xl);
+  line-height: 1;
+}
+
+.ranking-info {
+  justify-self: end;
+  color: var(--accent);
+}
+
+.ranking-info svg {
+  width: 34px;
+  height: 34px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+}
+
+.ranking-title {
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+.ranking-title h1 {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  line-height: 1.05;
+  letter-spacing: -.05em;
+}
+
+.ranking-title p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-lg);
+  line-height: 1.35;
+}
+
+.ranking-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-1) 0 var(--space-4);
+  scrollbar-width: none;
+}
+
+.ranking-content::-webkit-scrollbar { display: none; }
+
+.ranking-loading,
+.ranking-empty,
+.ranking-sheet-loading,
+.ranking-sheet-error {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.ranking-loading > span,
+.ranking-sheet-loading > span {
+  width: 34px;
+  height: 34px;
+  border: 3px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-top-color: var(--accent);
+  border-radius: var(--radius-full);
+  animation: rankingSpin .8s linear infinite;
+}
+
+.ranking-empty strong {
+  color: var(--text-primary);
+  font-size: var(--text-md);
+}
+
+.ranking-empty p,
+.ranking-sheet-error p,
+.ranking-sheet-loading p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.ranking-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.ranking-podium-card,
+.ranking-row {
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  color: var(--text-primary);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-overlay) 92%, var(--surface-base)), var(--surface-base));
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-normal) var(--ease-standard);
+}
+
+.ranking-podium-card {
+  min-height: 174px;
+  padding: var(--space-3) var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 24px;
+}
+
+.ranking-podium-card.is-position-1 {
+  min-height: 208px;
+  padding-top: var(--space-4);
+}
+
+.ranking-podium-card.is-position-2,
+.ranking-podium-card.is-position-3 {
+  min-height: 160px;
+}
+
+.ranking-podium-card.is-me,
+.ranking-row.is-me {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.ranking-podium-photo {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  overflow: visible;
+}
+
+.ranking-podium-photo span {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  font-weight: 900;
+  background: color-mix(in srgb, var(--brand-blue) 42%, var(--surface-raised));
+}
+
+.ranking-podium-photo.has-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-full);
+}
+
+.ranking-podium-photo.is-position-1 {
+  width: 118px;
+  height: 118px;
+  border: 4px solid var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ranking-podium-photo.is-position-2 {
+  width: 92px;
+  height: 92px;
+  border: 4px solid color-mix(in srgb, var(--text-primary) 46%, transparent);
+}
+
+.ranking-podium-photo.is-position-3 {
+  width: 92px;
+  height: 92px;
+  border: 4px solid var(--rank-bronze);
+}
+
+.ranking-medal {
+  position: absolute;
+  left: -8px;
+  bottom: -8px;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--surface-base) 72%, transparent);
+  border-radius: var(--radius-full);
+  color: var(--surface-base);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  box-shadow: var(--shadow-sm);
+}
+
+.ranking-medal-1 {
+  top: -18px;
+  left: calc(50% - 21px);
+  bottom: auto;
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent-pressed));
+}
+
+.ranking-medal-2 {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--text-primary) 86%, var(--surface-base)), color-mix(in srgb, var(--text-secondary) 82%, var(--surface-base)));
+}
+
+.ranking-medal-3 {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rank-bronze) 92%, white), var(--rank-bronze));
+}
+
+.ranking-podium-card strong {
+  margin-top: var(--space-3);
+  font-size: clamp(1.1rem, 4vw, 1.45rem);
+  line-height: 1.1;
+}
+
+.ranking-podium-card small {
+  margin-top: var(--space-1);
+  color: var(--accent);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ranking-podium-placeholder {
+  min-height: 160px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+
+.ranking-list {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.ranking-row {
+  width: 100%;
+  min-height: 76px;
+  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: 44px 50px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  border-radius: 20px;
+  text-align: left;
+}
+
+.ranking-row-position {
+  color: var(--text-primary);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  text-align: center;
+}
+
+.ranking-row-avatar {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--text-primary) 26%, transparent);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  background: color-mix(in srgb, var(--brand-blue) 42%, var(--surface-raised));
+}
+
+.ranking-row-avatar.has-photo img,
+.ranking-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ranking-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1rem, 3.9vw, 1.22rem);
+  line-height: 1.15;
+}
+
+.ranking-row small {
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font-size: clamp(.98rem, 3.3vw, 1.15rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.accqua-ranking-shell > .accqua-bottom-navigation {
+  border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.ranking-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: max(var(--space-6), env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--surface-deep) 72%, transparent);
+  backdrop-filter: blur(14px);
+  animation: rankingBackdropIn var(--duration-normal) var(--ease-standard);
+}
+
+.ranking-sheet {
+  position: relative;
+  width: min(100%, 520px);
+  max-height: min(80dvh, 660px);
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-4) max(var(--space-5), env(safe-area-inset-bottom));
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-bottom: 0;
+  border-radius: 28px 28px 0 0;
+  color: var(--text-primary);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-overlay) 92%, var(--surface-base)), var(--surface-base));
+  box-shadow: var(--shadow-lg);
+  animation: rankingSheetIn var(--duration-slow) var(--ease-spring);
+}
+
+.ranking-sheet-handle {
+  width: 44px;
+  height: 5px;
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-primary) 30%, transparent);
+}
+
+.ranking-sheet-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  font-size: var(--text-xl);
+  cursor: pointer;
+}
+
+.ranking-sheet-title,
+.ranking-sheet-header {
+  padding-right: 56px;
+}
+
+.ranking-sheet-title small,
+.ranking-sheet-header small {
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.ranking-sheet-title h2,
+.ranking-sheet-header h2 {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xl);
+  line-height: 1.15;
+}
+
+.ranking-sheet-title p,
+.ranking-sheet-header p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.ranking-info-list,
+.ranking-profile-grid {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ranking-info-list article,
+.ranking-profile-grid article {
+  min-height: 72px;
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+
+.ranking-info-list strong,
+.ranking-profile-grid strong {
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  line-height: 1.35;
+}
+
+.ranking-info-list p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.ranking-profile-grid span {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: 750;
+}
+
+.ranking-sheet-header {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ranking-profile-avatar-button {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ranking-profile-avatar {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 3px solid color-mix(in srgb, var(--accent) 44%, transparent);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--brand-blue) 42%, var(--surface-raised));
+  font-size: var(--text-lg);
+  font-weight: 900;
+}
+
+@media (hover: hover) {
+  .ranking-icon-button:hover,
+  .ranking-podium-card:hover,
+  .ranking-row:hover,
+  .ranking-sheet-close:hover,
+  .ranking-profile-avatar-button:hover {
+    opacity: var(--interactive-hover-opacity);
+  }
+}
+
+.ranking-icon-button:active,
+.ranking-podium-card:active,
+.ranking-row:active,
+.ranking-sheet-close:active,
+.ranking-profile-avatar-button:active {
+  transform: scale(var(--interactive-pressed-scale));
+}
+
+@media (max-width: 430px) {
+  .ranking-podium {
+    gap: var(--space-1);
+  }
+
+  .ranking-podium-card {
+    min-height: 160px;
+    padding-inline: var(--space-1);
+  }
+
+  .ranking-podium-card.is-position-1 {
+    min-height: 188px;
+  }
+
+  .ranking-podium-photo.is-position-1 {
+    width: 104px;
+    height: 104px;
+  }
+
+  .ranking-podium-photo.is-position-2,
+  .ranking-podium-photo.is-position-3 {
+    width: 82px;
+    height: 82px;
+  }
+
+  .ranking-podium-card small {
+    font-size: var(--text-md);
+  }
+
+  .ranking-row {
+    grid-template-columns: 38px 44px minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    padding-inline: var(--space-2);
+  }
+
+  .ranking-row-avatar {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@keyframes rankingSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rankingBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rankingSheetIn {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
