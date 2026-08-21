@@ -1,0 +1,43 @@
+import { useEffect, useState } from "react";
+import { Drawer } from "vaul";
+import type { DietProfile } from "../../lib/diet";
+import { DietCloseIcon } from "./DietIcons";
+
+export default function DietSettingsSheet({ open, onOpenChange, profile, busy, onSave }: { open: boolean; onOpenChange: (open: boolean) => void; profile: DietProfile; busy: boolean; onSave: (input: Partial<DietProfile>) => Promise<void> }) {
+  const [draft, setDraft] = useState(profile);
+  useEffect(() => { if (open) setDraft(profile); }, [open, profile]);
+
+  return (
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal>
+        <Drawer.Overlay className="diet-drawer-overlay" />
+        <Drawer.Content className="diet-settings-drawer" aria-describedby="diet-settings-description">
+          <div className="diet-drawer-handle" />
+          <header className="diet-drawer-header">
+            <div><Drawer.Title>Metas e dados</Drawer.Title><Drawer.Description id="diet-settings-description">Ajuste os dados usados nas sugestões de água e calorias.</Drawer.Description></div>
+            <button type="button" onClick={() => onOpenChange(false)} aria-label="Fechar configurações"><DietCloseIcon /></button>
+          </header>
+
+          <div className="diet-settings-form">
+            <div className="diet-settings-grid">
+              <label><span>Peso</span><div><input type="number" inputMode="decimal" value={draft.weightKg || ""} onChange={(e) => setDraft({ ...draft, weightKg: Number(e.target.value) || 0 })} /><small>kg</small></div></label>
+              <label><span>Altura</span><div><input type="number" inputMode="decimal" value={draft.heightCm || ""} onChange={(e) => setDraft({ ...draft, heightCm: Number(e.target.value) || 0 })} /><small>cm</small></div></label>
+            </div>
+
+            <label className="diet-settings-select"><span>Referência da fórmula metabólica</span><select value={draft.sexForFormula} onChange={(e) => setDraft({ ...draft, sexForFormula: e.target.value as DietProfile["sexForFormula"] })}><option value="unspecified">Não informar</option><option value="female">Fórmula feminina</option><option value="male">Fórmula masculina</option></select><small>Usado apenas para a sugestão de Mifflin-St Jeor.</small></label>
+
+            <div className="diet-settings-grid">
+              <label><span>Meta de calorias</span><div><input type="number" inputMode="numeric" value={draft.dailyCalorieTarget || ""} onChange={(e) => setDraft({ ...draft, dailyCalorieTarget: Number(e.target.value) || 0 })} /><small>kcal</small></div></label>
+              <label><span>Meta de água</span><div><input type="number" inputMode="numeric" value={draft.dailyWaterTargetMl || ""} onChange={(e) => setDraft({ ...draft, dailyWaterTargetMl: Number(e.target.value) || 0 })} /><small>ml</small></div></label>
+            </div>
+
+            <label className="diet-settings-select"><span>Fonte do gasto calórico</span><select value={draft.preferredCalorieSource} onChange={(e) => setDraft({ ...draft, preferredCalorieSource: e.target.value as DietProfile["preferredCalorieSource"] })}><option value="manual">Estimativa do app</option><option value="garmin">Garmin Connect (futuro)</option><option value="apple_health">Apple Health (futuro)</option><option value="google_fit">Google Fit (futuro)</option><option value="samsung_health">Samsung Health (futuro)</option></select><small>Fontes ainda não conectadas caem automaticamente para a estimativa do app.</small></label>
+
+            <p className="diet-settings-disclaimer">As metas sugeridas são estimativas gerais e não substituem avaliação nutricional individual.</p>
+            <button type="button" className="diet-settings-save" disabled={busy} onClick={async () => { try { await onSave(draft); onOpenChange(false); } catch { /* toast exibido pelo hook */ } }}>{busy ? "Salvando..." : "Salvar ajustes"}</button>
+          </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
+  );
+}
