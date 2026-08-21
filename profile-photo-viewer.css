@@ -1,0 +1,78 @@
+.profile-photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: max(54px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+  background: rgba(1, 10, 24, .93);
+  backdrop-filter: blur(18px);
+  animation: profilePhotoViewerIn .2s ease-out;
+}
+
+.profile-photo-viewer figure {
+  position: relative;
+  width: min(100%, 560px);
+  margin: 0;
+  padding-top: 60px;
+  display: grid;
+  gap: 13px;
+  justify-items: center;
+}
+
+
+.profile-photo-viewer img {
+  width: min(100%, 520px);
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .48);
+}
+
+.profile-photo-viewer figcaption {
+  color: rgba(255, 255, 255, .88);
+  font-size: .86rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.profile-photo-viewer-close {
+  position: absolute;
+  top: 0;
+  right: clamp(0px, 3.5vw, 20px);
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0 0 3px;
+  border: 2px solid #ffd128;
+  border-radius: 50%;
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(18, 61, 112, .98), rgba(5, 28, 61, .98));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, .38),
+    inset 0 1px 0 rgba(255, 255, 255, .14),
+    0 0 0 4px rgba(255, 209, 40, .08);
+  font-size: 1.72rem;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.profile-photo-viewer-close:active {
+  transform: scale(.94);
+}
+
+.profile-photo-viewer-close:focus-visible {
+  outline: 3px solid rgba(255, 209, 40, .32);
+  outline-offset: 3px;
+}
+
+
+
+@keyframes profilePhotoViewerIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
