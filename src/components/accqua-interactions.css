@@ -1,0 +1,61 @@
+.accqua-sonner-toast {
+  min-height: 52px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--white) !important;
+  background: color-mix(in srgb, var(--navy-bottom) 94%, transparent) !important;
+  box-shadow: var(--shadow-lg) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.accqua-sonner-title { color: var(--white) !important; font-weight: 850 !important; }
+.accqua-sonner-description { color: var(--muted) !important; }
+.accqua-sonner-action {
+  min-height: 40px !important;
+  color: var(--navy-bottom) !important;
+  background: var(--yellow) !important;
+  font-weight: 850 !important;
+}
+.accqua-sonner-cancel { min-height: 40px !important; }
+
+.accqua-pressable {
+  -webkit-tap-highlight-color: transparent;
+  transform: translateZ(0);
+  transform-origin: center;
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    opacity var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-normal) var(--ease-standard),
+    background-color var(--duration-normal) var(--ease-standard);
+}
+
+.accqua-pressable:active:not(:disabled) {
+  transform: scale(.975);
+}
+
+.accqua-pressable[data-impact="important"]:active:not(:disabled) {
+  transform: scale(.968);
+}
+
+.accqua-pressable:disabled {
+  opacity: var(--interactive-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.accqua-pressable:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .accqua-pressable:hover:not(:disabled) {
+    opacity: var(--interactive-hover-opacity);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-pressable {
+    transition-duration: 1ms !important;
+  }
+}
