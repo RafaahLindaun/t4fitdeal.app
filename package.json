@@ -8,7 +8,10 @@
     "dev": "vite --host 0.0.0.0",
     "prebuild": "node scripts/generate-exercise-media-manifest.mjs",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test:visual": "playwright test -c playwright.visual.config.ts",
+    "test:e2e": "playwright test -c playwright.real.config.ts",
+    "test:qa": "npm run test:visual && npm run test:e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -33,6 +36,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.21",
-    "@types/canvas-confetti": "^1.9.0"
+    "@types/canvas-confetti": "^1.9.0",
+    "@playwright/test": "^1.55.0"
   }
 }
