@@ -1,0 +1,4 @@
+.accqua-main-layout,.accqua-main-layout-content{width:100%;height:100%;min-height:100dvh}
+.accqua-main-layout-nav{position:fixed;z-index:140;left:50%;bottom:0;width:min(520px,100%);padding:7px max(12px,env(safe-area-inset-right)) max(7px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));transform:translateX(-50%);pointer-events:none;background:linear-gradient(180deg,transparent,rgba(2,12,31,.74) 30%,rgba(2,12,31,.94));}
+.accqua-main-layout-nav>.accqua-bottom-navigation{pointer-events:auto;width:100%}
+.accqua-main-layout-content .accqua-menu-scroll,.accqua-main-layout-content .diet-scroll-content,.accqua-main-layout-content .accqua-profile-content,.accqua-main-layout-content .ranking-scroll-area,.accqua-main-layout-content .store-scroll{padding-bottom:calc(104px + env(safe-area-inset-bottom))!important}
