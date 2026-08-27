@@ -1,0 +1,14 @@
+.accqua-swipe-item { position: relative; overflow: hidden; border-radius: inherit; touch-action: pan-y; }
+.accqua-swipe-delete { position: absolute; inset: 0 0 0 auto; width: 88px; display: flex; justify-content: flex-end; background: #c92d35; }
+.accqua-swipe-delete > button { width: 88px; height: 100%; padding: 0; display: grid; place-items: center; align-content: center; gap: 4px; color: #fff; border: 0; background: transparent; font-size: 10px; font-weight: 800; }
+.accqua-swipe-delete svg, .accqua-swipe-desktop-delete svg { width: 20px; height: 20px; }
+.accqua-swipe-content { position: relative; z-index: 1; min-width: 0; background: inherit; }
+.accqua-swipe-desktop-delete { display: none; position: absolute; top: 50%; right: 9px; width: 36px; height: 36px; transform: translateY(-50%); place-items: center; color: #ff7278; border: 1px solid rgba(255,100,108,.24); border-radius: 11px; background: rgba(94,17,24,.72); backdrop-filter: blur(8px); }
+@media (hover:hover) and (pointer:fine) {
+  .accqua-swipe-item { overflow: visible; }
+  .accqua-swipe-delete { display: none; }
+  .accqua-swipe-content { transform: none !important; }
+  .accqua-swipe-content:hover .accqua-swipe-desktop-delete,
+  .accqua-swipe-content:focus-within .accqua-swipe-desktop-delete { display: grid; }
+}
+@media (prefers-reduced-motion: reduce) { .accqua-swipe-content { transition: none !important; } }
