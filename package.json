@@ -4,14 +4,18 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node scripts/generate-exercise-media-manifest.mjs",
+    "predev": "node scripts/check-no-static-gifs.mjs",
     "dev": "vite --host 0.0.0.0",
-    "prebuild": "node scripts/generate-exercise-media-manifest.mjs",
+    "prebuild": "node scripts/check-no-static-gifs.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:e2e": "playwright test -c playwright.real.config.ts",
-    "test:qa": "npm run test:visual && npm run test:e2e"
+    "test:qa": "npm run test:visual && npm run test:e2e",
+    "media:normalize": "node scripts/normaliza-gifs.mjs public/gifs",
+    "media:migrate": "node scripts/migrate-exercise-gifs-to-storage.mjs public/gifs",
+    "media:check": "node scripts/check-exercise-gifs.mjs",
+    "media:cleanup": "node scripts/cleanup-static-gifs.mjs --yes"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
