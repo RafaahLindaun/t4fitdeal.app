@@ -1,0 +1,46 @@
+{
+  "name": "accqua-sports-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:visual": "playwright test -c playwright.visual.config.ts",
+    "test:e2e": "playwright test -c playwright.real.config.ts",
+    "test:qa": "npm run test:visual && npm run test:e2e",
+    "media:normalize": "node scripts/normaliza-gifs.mjs public/gifs",
+    "media:migrate": "node scripts/migrate-exercise-gifs-to-storage.mjs public/gifs",
+    "media:check": "node scripts/check-exercise-gifs.mjs",
+    "media:cleanup": "node scripts/cleanup-static-gifs.mjs --yes",
+    "media:guard": "node scripts/check-no-static-gifs.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@use-gesture/react": "10.3.1",
+    "clsx": "2.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "sonner": "2.0.7",
+    "vaul": "1.1.2",
+    "framer-motion": "^12.23.12",
+    "canvas-confetti": "^1.9.3",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "recharts": "^3.10.1",
+    "tesseract.js": "^7.0.0",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@tanstack/react-query": "^5.102.3",
+    "qrcode.react": "^4.2.0",
+    "browser-image-compression": "^2.0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.21",
+    "@types/canvas-confetti": "^1.9.0",
+    "@playwright/test": "^1.55.0"
+  }
+}
