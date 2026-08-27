@@ -1,0 +1,1895 @@
+/* ======================================================================
+   ACCQUA SPORTS — ADMIN DASHBOARD V11
+   Camada exclusivamente visual/responsiva para /area-accqua.
+   Não altera funções de dados, autorização, filtros ou persistência.
+   ====================================================================== */
+
+.admin-area-screen {
+  --color-brand-accent: var(--accent);
+  --color-state-active: var(--brand-blue);
+  --color-state-alert: var(--status-warning);
+  --color-state-success: var(--status-success);
+  --color-state-danger: var(--status-danger);
+}
+
+.admin-area-shell.is-dashboard {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding:
+    max(var(--space-3), env(safe-area-inset-top))
+    max(var(--space-3), env(safe-area-inset-right))
+    max(var(--space-7), calc(env(safe-area-inset-bottom) + var(--space-5)))
+    max(var(--space-3), env(safe-area-inset-left));
+}
+
+.admin-area-shell.is-dashboard .admin-area-content {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-area-shell.is-dashboard .admin-area-header { order: 0; }
+.admin-area-shell.is-dashboard .admin-dashboard-mobile-nav { order: 1; }
+.admin-area-shell.is-dashboard .admin-area-intro { order: 2; }
+.admin-area-shell.is-dashboard .admin-dashboard-search-wrap { order: 3; }
+.admin-area-shell.is-dashboard .admin-dashboard-statbar { order: 4; }
+.admin-area-shell.is-dashboard .admin-dashboard-roster-heading,
+.admin-area-shell.is-dashboard .admin-dashboard-resource { order: 5; }
+.admin-area-shell.is-dashboard .admin-dashboard-roster { order: 6; }
+
+/* ----------------------------------------------------------------------
+   Sidebar — desktop real, não um layout mobile esticado.
+   ---------------------------------------------------------------------- */
+
+.admin-dashboard-sidebar {
+  display: none;
+}
+
+.admin-dashboard-sidebar-brand {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.admin-dashboard-sidebar-brand .accqua-logo {
+  width: 142px;
+  margin: 0;
+  gap: 3px;
+}
+
+.admin-dashboard-sidebar-brand .accqua-logo img {
+  width: 90%;
+}
+
+.admin-dashboard-sidebar-brand .accqua-logo-line {
+  height: 2px;
+}
+
+.admin-dashboard-sidebar-brand > span {
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  font-weight: 750;
+}
+
+.admin-dashboard-sidebar nav {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.admin-dashboard-nav-item {
+  position: relative;
+  width: 100%;
+  min-height: 54px;
+  padding: var(--space-2) var(--space-3);
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+}
+
+.admin-dashboard-nav-item > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.admin-dashboard-nav-item > strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 760;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-dashboard-nav-item > b {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-style: normal;
+  font-weight: 900;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.admin-dashboard-nav-item.is-active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--color-state-active) 42%, var(--border-subtle));
+  background: color-mix(in srgb, var(--color-state-active) 13%, var(--surface-raised));
+  box-shadow: inset 3px 0 0 var(--color-state-active);
+}
+
+.admin-dashboard-nav-item.is-active > span {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-state-active) 24%, transparent);
+}
+
+.admin-dashboard-nav-item.has-alert > b {
+  color: var(--text-inverse);
+  border-color: transparent;
+  background: var(--color-state-alert);
+}
+
+.admin-dashboard-nav-item:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.admin-dashboard-sidebar-foot {
+  margin-top: auto;
+  padding: var(--space-4) var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised) 64%, transparent);
+}
+
+.admin-dashboard-sidebar-foot small {
+  color: var(--color-brand-accent);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.admin-dashboard-sidebar-foot strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-dashboard-sidebar-foot span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+/* ----------------------------------------------------------------------
+   Cabeçalho + navegação mobile.
+   ---------------------------------------------------------------------- */
+
+.admin-area-brand.admin-v10-brand {
+  min-width: 0;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+.admin-area-brand.admin-v10-brand .accqua-logo {
+  width: 112px;
+  flex: 0 0 auto;
+}
+
+.admin-area-brand-copy {
+  min-width: 0;
+  padding-left: var(--space-3);
+  display: grid;
+  gap: 3px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.admin-area-brand-copy small {
+  color: var(--color-brand-accent);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1;
+}
+
+.admin-area-brand-copy strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-area-header.is-dashboard-header {
+  height: 64px;
+  grid-template-columns: 44px minmax(0, 1fr) 72px;
+  margin: 0;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-deep) 99%, transparent) 0%,
+      color-mix(in srgb, var(--surface-deep) 96%, transparent) 82%,
+      transparent 100%
+    );
+}
+
+.admin-area-header.is-dashboard-header .admin-area-pending {
+  width: 72px;
+  min-width: 72px;
+  min-height: 46px;
+  height: 46px;
+  padding: var(--space-1) var(--space-2);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  cursor: pointer;
+}
+
+.admin-area-header.is-dashboard-header .admin-area-pending.has-pending {
+  color: var(--text-inverse);
+  border-color: transparent;
+  background: var(--color-state-alert);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-state-alert) 12%, transparent);
+}
+
+.admin-area-header.is-dashboard-header .admin-area-pending small {
+  color: currentColor;
+  font-size: var(--text-sm);
+  opacity: .82;
+}
+
+.admin-dashboard-mobile-nav {
+  width: 100%;
+  margin: var(--space-2) 0 var(--space-1);
+  padding: var(--space-1) 0 var(--space-2);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-dashboard-mobile-nav::-webkit-scrollbar { display: none; }
+
+.admin-dashboard-mobile-nav-item {
+  min-width: max-content;
+  min-height: 46px;
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--surface-raised) 68%, transparent);
+}
+
+.admin-dashboard-mobile-nav-item > span {
+  font-size: var(--text-md);
+  font-weight: 800;
+}
+
+.admin-dashboard-mobile-nav-item > b {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+.admin-dashboard-mobile-nav-item.is-active {
+  color: var(--text-inverse);
+  border-color: var(--color-brand-accent);
+  background: var(--color-brand-accent);
+}
+
+.admin-dashboard-mobile-nav-item.is-active > b {
+  color: var(--text-inverse);
+  background: color-mix(in srgb, var(--text-inverse) 10%, transparent);
+}
+
+.admin-dashboard-mobile-nav-item.has-alert:not(.is-active) > b {
+  color: var(--text-inverse);
+  background: var(--color-state-alert);
+}
+
+.admin-area-shell.is-dashboard .admin-area-intro {
+  display: none;
+}
+
+/* ----------------------------------------------------------------------
+   Busca persistente + filtros existentes.
+   ---------------------------------------------------------------------- */
+
+.admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+  position: sticky;
+  top: 64px;
+  z-index: 38;
+  margin: 0;
+  padding: var(--space-3) 0 var(--space-3);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-deep) 99%, transparent) 0%,
+      color-mix(in srgb, var(--surface-deep) 96%, transparent) 84%,
+      transparent 100%
+    );
+  backdrop-filter: blur(18px);
+}
+
+.admin-area-shell.is-dashboard .admin-area-search {
+  height: 54px;
+  padding: 0 var(--space-4);
+  grid-template-columns: 24px minmax(0, 1fr) 32px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised) 86%, var(--surface-deep));
+}
+
+.admin-area-shell.is-dashboard .admin-area-search input {
+  font-size: 0.95rem;
+  font-weight: 580;
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters {
+  margin-top: var(--space-3);
+  gap: var(--space-2);
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button {
+  min-height: 40px;
+  height: 40px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-md);
+  font-weight: 780;
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button.is-active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--color-state-active) 70%, transparent);
+  background: color-mix(in srgb, var(--color-state-active) 64%, var(--surface-raised));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-state-active) 13%, transparent);
+}
+
+/* ----------------------------------------------------------------------
+   StatBar — contraste entre OK e requer ação.
+   ---------------------------------------------------------------------- */
+
+.admin-area-shell.is-dashboard .admin-dashboard-statbar {
+  margin: var(--space-2) 0 var(--space-5);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-area-shell.is-dashboard .admin-work-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat {
+  min-width: 0;
+  min-height: 92px;
+  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  color: var(--text-primary);
+  text-align: left;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised) 76%, var(--surface-deep));
+  box-shadow: inset 0 1px color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+
+.admin-dashboard-stat-icon {
+  width: 42px;
+  height: 42px;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.admin-dashboard-stat-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.admin-dashboard-stat-copy strong {
+  color: var(--text-primary);
+  font-size: 1.55rem;
+  line-height: 1;
+  font-weight: 920;
+}
+
+.admin-dashboard-stat-copy small {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  font-weight: 740;
+}
+
+.admin-dashboard-stat > b {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 25px;
+  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 850;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.admin-dashboard-stat.is-zero {
+  border-color: color-mix(in srgb, var(--color-state-success) 20%, var(--border-subtle));
+}
+
+.admin-dashboard-stat.is-zero .admin-dashboard-stat-icon,
+.admin-dashboard-stat.is-zero > b {
+  color: var(--color-state-success);
+  background: color-mix(in srgb, var(--color-state-success) 9%, transparent);
+}
+
+.admin-dashboard-stat.has-value {
+  border-color: color-mix(in srgb, var(--color-state-alert) 30%, var(--border-subtle));
+}
+
+.admin-dashboard-stat.has-value .admin-dashboard-stat-icon,
+.admin-dashboard-stat.has-value > b {
+  color: var(--color-state-alert);
+  background: color-mix(in srgb, var(--color-state-alert) 10%, transparent);
+}
+
+.admin-dashboard-stat.is-urgent {
+  border-color: color-mix(in srgb, var(--color-state-alert) 58%, var(--border-subtle));
+  box-shadow:
+    inset 3px 0 0 var(--color-state-alert),
+    0 12px 26px color-mix(in srgb, var(--color-state-alert) 7%, transparent);
+}
+
+.admin-dashboard-stat.is-neutral .admin-dashboard-stat-icon {
+  color: var(--status-info);
+  background: color-mix(in srgb, var(--status-info) 9%, transparent);
+}
+
+.admin-dashboard-stat.is-active {
+  border-color: color-mix(in srgb, var(--color-state-active) 66%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-state-active) 12%, transparent),
+    var(--shadow-sm);
+}
+
+/* ----------------------------------------------------------------------
+   Roster — hierarquia de leitura e grid responsivo.
+   ---------------------------------------------------------------------- */
+
+.admin-dashboard-roster-heading {
+  margin: 0 0 var(--space-3);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-dashboard-roster-heading small,
+.admin-dashboard-resource > header small {
+  display: block;
+  color: var(--color-brand-accent);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.admin-dashboard-roster-heading h2,
+.admin-dashboard-resource > header h2 {
+  margin: var(--space-1) 0 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 850;
+}
+
+.admin-dashboard-roster-heading > span,
+.admin-dashboard-resource > header > span {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--surface-raised) 68%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-roster {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-roster > .admin-area-state {
+  grid-column: 1 / -1;
+}
+
+.admin-area-shell.is-dashboard .admin-student-card {
+  min-width: 0;
+  min-height: 138px;
+  padding: var(--space-4);
+  grid-template-columns: 56px minmax(0, 1fr) 22px;
+  align-items: start;
+  gap: var(--space-3);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface-raised) 86%, var(--surface-deep)),
+      color-mix(in srgb, var(--surface-overlay) 72%, var(--surface-deep))
+    );
+  box-shadow:
+    0 12px 26px color-mix(in srgb, var(--surface-deep) 18%, transparent),
+    inset 0 1px color-mix(in srgb, var(--text-primary) 3%, transparent);
+  cursor: pointer;
+  animation: adminDashboardCardIn var(--duration-normal) var(--ease-standard) both;
+}
+
+.admin-area-shell.is-dashboard .admin-student-card:nth-child(2) { animation-delay: 35ms; }
+.admin-area-shell.is-dashboard .admin-student-card:nth-child(3) { animation-delay: 70ms; }
+.admin-area-shell.is-dashboard .admin-student-card:nth-child(4) { animation-delay: 105ms; }
+.admin-area-shell.is-dashboard .admin-student-card:nth-child(n + 5) { animation-delay: 130ms; }
+
+.admin-area-shell.is-dashboard .admin-student-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card > svg {
+  margin-top: 4px;
+  color: var(--text-tertiary);
+}
+
+.admin-area-shell.is-dashboard .admin-student-copy {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card-title {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card-title > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 1.08rem;
+  line-height: 1.2;
+  font-weight: 880;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-area-shell.is-dashboard .admin-student-card-title > em {
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-style: normal;
+  font-weight: 850;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card-title > em.is-active {
+  color: var(--color-state-success);
+  border-color: color-mix(in srgb, var(--color-state-success) 28%, transparent);
+  background: color-mix(in srgb, var(--color-state-success) 8%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card-title > em.is-pending,
+.admin-area-shell.is-dashboard .admin-student-card-title > em.is-inactive {
+  color: var(--color-state-alert);
+  border-color: color-mix(in srgb, var(--color-state-alert) 32%, transparent);
+  background: color-mix(in srgb, var(--color-state-alert) 8%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card-title > em.is-blocked {
+  color: color-mix(in srgb, var(--color-state-danger) 74%, var(--text-primary));
+  border-color: color-mix(in srgb, var(--color-state-danger) 34%, transparent);
+  background: color-mix(in srgb, var(--color-state-danger) 10%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-student-meta {
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  line-height: 1.35;
+  font-weight: 560;
+}
+
+.admin-area-shell.is-dashboard .admin-student-objective {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  line-height: 1.3;
+  font-weight: 720;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: .9;
+}
+
+.admin-area-shell.is-dashboard .admin-student-flags {
+  margin-top: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-area-shell.is-dashboard .admin-student-flags i {
+  min-height: 30px;
+  max-width: 100%;
+  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-style: normal;
+  font-weight: 760;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--surface-deep) 44%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-student-flags i.is-linked,
+.admin-area-shell.is-dashboard .admin-student-flags i.is-workout {
+  color: color-mix(in srgb, var(--color-state-success) 78%, var(--text-primary));
+  border-color: color-mix(in srgb, var(--color-state-success) 20%, var(--border-subtle));
+}
+
+.admin-area-shell.is-dashboard .admin-student-flags i.is-unlinked,
+.admin-area-shell.is-dashboard .admin-student-flags i.is-no-workout {
+  color: color-mix(in srgb, var(--color-state-alert) 84%, var(--text-primary));
+  border-color: color-mix(in srgb, var(--color-state-alert) 24%, var(--border-subtle));
+}
+
+.admin-area-shell.is-dashboard .admin-student-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-state-active) 34%, var(--border-subtle));
+  box-shadow: var(--shadow-md);
+}
+
+.admin-area-shell.is-dashboard .admin-student-card:active {
+  transform: scale(.985);
+}
+
+/* ----------------------------------------------------------------------
+   Biblioteca e modelos — somente apresentação, usando loaders existentes.
+   ---------------------------------------------------------------------- */
+
+.admin-dashboard-resource {
+  min-width: 0;
+}
+
+.admin-dashboard-resource > header {
+  margin: 0 0 var(--space-4);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-dashboard-resource > header > span {
+  min-width: 42px;
+  justify-content: center;
+  color: var(--text-primary);
+}
+
+.admin-dashboard-resource-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.admin-dashboard-resource-card {
+  min-width: 0;
+  min-height: 92px;
+  padding: var(--space-4);
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-raised) 74%, var(--surface-deep));
+  animation: adminDashboardCardIn var(--duration-normal) var(--ease-standard) both;
+}
+
+.admin-dashboard-resource-card > span {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--color-brand-accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-brand-accent) 8%, transparent);
+}
+
+.admin-dashboard-resource-card > div {
+  min-width: 0;
+}
+
+.admin-dashboard-resource-card strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.98rem;
+  font-weight: 820;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-dashboard-resource-card small {
+  display: block;
+  margin-top: var(--space-1);
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-dashboard-resource-card > b {
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-brand-accent);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-brand-accent) 8%, transparent);
+}
+
+/* ----------------------------------------------------------------------
+   Motion — mesma linguagem do app: transform/opacity e easing já existente.
+   ---------------------------------------------------------------------- */
+
+.admin-area-shell.is-dashboard .admin-area-header,
+.admin-dashboard-mobile-nav,
+.admin-dashboard-statbar,
+.admin-dashboard-roster-heading,
+.admin-dashboard-resource {
+  animation: adminDashboardEnter var(--duration-normal) var(--ease-standard) both;
+}
+
+.admin-dashboard-statbar { animation-delay: 45ms; }
+.admin-dashboard-roster-heading,
+.admin-dashboard-resource { animation-delay: 80ms; }
+
+@keyframes adminDashboardEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes adminDashboardCardIn {
+  from { opacity: 0; transform: translateY(7px) scale(.992); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ----------------------------------------------------------------------
+   Breakpoints.
+   ---------------------------------------------------------------------- */
+
+@media (min-width: 680px) {
+  .admin-area-shell.is-dashboard .admin-dashboard-roster,
+  .admin-dashboard-resource-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-area-screen {
+    scroll-padding-top: 112px;
+  }
+
+  .admin-area-shell.is-dashboard {
+    min-height: 100%;
+    padding: var(--space-5);
+    display: grid;
+    grid-template-columns: 238px minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-5);
+  }
+
+  .admin-dashboard-sidebar {
+    position: sticky;
+    top: var(--space-5);
+    height: calc(100dvh - var(--space-8));
+    min-height: 580px;
+    padding: var(--space-5) var(--space-3) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--surface-raised) 72%, var(--surface-deep)),
+        color-mix(in srgb, var(--surface-overlay) 54%, var(--surface-deep))
+      );
+    box-shadow: var(--shadow-md);
+    animation: adminDashboardEnter var(--duration-normal) var(--ease-standard) both;
+  }
+
+  .admin-dashboard-mobile-nav {
+    display: none;
+  }
+
+  .admin-area-header.is-dashboard-header {
+    top: 0;
+    height: 82px;
+    grid-template-columns: 52px minmax(0, 1fr) 108px;
+    gap: var(--space-4);
+    padding: 0 var(--space-1);
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-top-button {
+    width: 48px;
+    height: 48px;
+  }
+
+  .admin-area-brand.admin-v10-brand .accqua-logo {
+    width: 128px;
+  }
+
+  .admin-area-brand-copy {
+    gap: 4px;
+  }
+
+  .admin-area-brand-copy small {
+    font-size: var(--text-sm);
+  }
+
+  .admin-area-brand-copy strong {
+    font-size: 1.18rem;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending {
+    width: 108px;
+    min-width: 108px;
+    height: 52px;
+    grid-template-columns: auto;
+    font-size: 1.1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending small {
+    font-size: var(--text-sm);
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+    top: 82px;
+    padding: var(--space-3) 0 var(--space-4);
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-search {
+    height: 58px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-statbar {
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-6);
+  }
+
+  .admin-area-shell.is-dashboard .admin-work-queue-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat {
+    min-height: 96px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .admin-dashboard-stat-copy {
+    display: grid;
+    gap: 3px;
+  }
+
+  .admin-dashboard-stat-copy strong {
+    font-size: 1.72rem;
+  }
+
+  .admin-dashboard-stat-copy small {
+    font-size: var(--text-md);
+  }
+
+  .admin-dashboard-roster-heading h2,
+  .admin-dashboard-resource > header h2 {
+    font-size: 1.35rem;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card {
+    min-height: 150px;
+    padding: var(--space-4);
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card-title > strong {
+    font-size: 1.12rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-area-shell.is-dashboard {
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: var(--space-6);
+    padding: var(--space-6);
+  }
+
+  .admin-dashboard-sidebar {
+    top: var(--space-6);
+    height: calc(100dvh - var(--space-9));
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-roster,
+  .admin-dashboard-resource-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1680px) {
+  .admin-area-shell.is-dashboard {
+    grid-template-columns: 268px minmax(0, 1fr);
+    gap: var(--space-7);
+    padding-inline: var(--space-7);
+  }
+
+}
+
+@media (max-width: 520px) {
+  .admin-area-shell.is-dashboard {
+    padding-inline: var(--space-3);
+  }
+
+  .admin-area-header.is-dashboard-header {
+    grid-template-columns: 42px minmax(0, 1fr) 66px;
+  }
+
+  .admin-area-brand.admin-v10-brand {
+    gap: var(--space-2);
+  }
+
+  .admin-area-brand.admin-v10-brand .accqua-logo {
+    width: 94px;
+  }
+
+  .admin-area-brand-copy {
+    padding-left: var(--space-2);
+  }
+
+  .admin-area-brand-copy small {
+    font-size: var(--text-sm);
+  }
+
+  .admin-area-brand-copy strong {
+    font-size: var(--text-md);
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending {
+    width: 66px;
+    min-width: 66px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+    top: 64px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-search {
+    height: 52px;
+    padding-inline: var(--space-3);
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-search input {
+    font-size: var(--text-md);
+  }
+
+  .admin-area-shell.is-dashboard .admin-work-queue-grid {
+    gap: var(--space-2);
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat {
+    min-height: 104px;
+    padding: var(--space-3);
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .admin-dashboard-stat-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .admin-dashboard-stat-copy {
+    display: grid;
+    gap: 3px;
+  }
+
+  .admin-dashboard-stat-copy strong {
+    font-size: 1.45rem;
+  }
+
+  .admin-dashboard-stat-copy small {
+    font-size: var(--text-sm);
+  }
+
+  .admin-dashboard-roster-heading {
+    align-items: center;
+  }
+
+  .admin-dashboard-roster-heading h2,
+  .admin-dashboard-resource > header h2 {
+    font-size: 1.12rem;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card {
+    min-height: 142px;
+    padding: var(--space-3);
+    grid-template-columns: 50px minmax(0, 1fr) 18px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-avatar {
+    width: 50px;
+    height: 50px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card-title {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card-title > strong {
+    font-size: 1rem;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card-title > em {
+    justify-self: start;
+  }
+
+  .admin-dashboard-resource-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .admin-dashboard-resource-card > b {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-area-shell.is-dashboard *,
+  .admin-dashboard-sidebar {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ======================================================================
+   V11.1 — correções pontuais de consistência e overflow.
+   Apenas apresentação; handlers/data layer permanecem intactos.
+   ====================================================================== */
+
+/* No dashboard a identidade já vive na sidebar: não duplicar a marca. */
+.admin-area-header.is-dashboard-header .admin-area-brand-copy {
+  min-width: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* Estrutura explícita evita qualquer herança do card legado que possa
+   sobrepor o número e o label, especialmente em "Sem professor". */
+@media (min-width: 1024px) {
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy {
+    min-width: 0;
+    align-self: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    align-items: start;
+    gap: 5px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > strong,
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > small {
+    position: static;
+    inset: auto;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    display: block;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > strong {
+    line-height: 1.05;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > small {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    line-height: 1.25;
+  }
+}
+
+/* Mobile: nenhum elemento do topo pode criar largura além do viewport. */
+@media (max-width: 520px) {
+  .admin-area-shell.is-dashboard,
+  .admin-area-shell.is-dashboard .admin-area-content,
+  .admin-area-shell.is-dashboard .admin-area-header.is-dashboard-header,
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap,
+  .admin-area-shell.is-dashboard .admin-dashboard-mobile-nav,
+  .admin-area-shell.is-dashboard .admin-area-filters {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .admin-area-header.is-dashboard-header {
+    width: 100%;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(58px, 68px);
+    gap: var(--space-2);
+    padding-inline: 0;
+    overflow: hidden;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-top-button {
+    width: 44px;
+    min-width: 44px;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-brand.admin-v10-brand {
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-brand-copy {
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-brand-copy small,
+  .admin-area-header.is-dashboard-header .admin-area-brand-copy strong {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending {
+    width: 100%;
+    min-width: 0;
+    max-width: 68px;
+    padding-inline: 5px;
+    justify-self: stretch;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending small {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-search {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    grid-template-columns: 24px minmax(0, 1fr) 32px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-search input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-filters {
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-filters > button {
+    width: auto;
+    min-width: max-content;
+    max-width: none;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: visible;
+    scroll-snap-align: start;
+  }
+}
+
+/* A navegação primária mobile também deve preservar a largura intrínseca
+   de cada chip; o hitbox global de 44px não pode comprimir os rótulos. */
+@media (max-width: 1023px) {
+  .admin-area-shell.is-dashboard .admin-dashboard-mobile-nav {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-mobile-nav-item {
+    width: auto;
+    min-width: max-content;
+    max-width: none;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-area-header.is-dashboard-header {
+    grid-template-columns: 44px minmax(0, 1fr) 76px;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending {
+    max-width: 76px;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-pending small {
+    font-size: 12px;
+    letter-spacing: 0;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+
+/* ======================================================================
+   V11.2.2 — integração suave do topo com o dashboard.
+   Somente apresentação: remove o bloco escuro abrupto do cabeçalho sem
+   alterar estrutura, handlers, filtros, busca ou dados.
+   ====================================================================== */
+
+/* Cabeçalho e busca passam a compartilhar a mesma superfície translúcida.
+   O tom parte do azul-base do app em vez de quase-preto e some aos poucos
+   sobre o fundo da área, evitando a faixa/recorte perceptível. */
+.admin-area-header.is-dashboard-header {
+  background: color-mix(in srgb, var(--surface-base) 72%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(108%);
+  backdrop-filter: blur(18px) saturate(108%);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-base) 72%, transparent) 0%,
+      color-mix(in srgb, var(--surface-base) 64%, transparent) 62%,
+      color-mix(in srgb, var(--surface-base) 38%, transparent) 84%,
+      transparent 100%
+    );
+  -webkit-backdrop-filter: blur(18px) saturate(108%);
+  backdrop-filter: blur(18px) saturate(108%);
+}
+
+/* O fade recebe um pouco mais de respiro no desktop para chegar nos cards
+   sem uma linha visual abrupta, mas sem aumentar o espaço morto. */
+@media (min-width: 1024px) {
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+    padding-bottom: calc(var(--space-4) + var(--space-1));
+  }
+}
+
+/* Em telas estreitas mantemos o mesmo tom, porém com fade mais curto para
+   não roubar altura útil da interface. */
+@media (max-width: 520px) {
+  .admin-area-header.is-dashboard-header {
+    background: color-mix(in srgb, var(--surface-base) 68%, transparent);
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--surface-base) 68%, transparent) 0%,
+        color-mix(in srgb, var(--surface-base) 58%, transparent) 68%,
+        color-mix(in srgb, var(--surface-base) 30%, transparent) 88%,
+        transparent 100%
+      );
+  }
+}
+
+/* ======================================================================
+   V11.2.3 — topo uniforme
+   O cabeçalho e a busca compartilham a mesma película translúcida; o fundo
+   contínuo da tela passa por baixo e elimina o retângulo escuro no canto.
+   ====================================================================== */
+.admin-area-header.is-dashboard-header,
+.admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+  background: color-mix(in srgb, var(--surface-deep) 26%, transparent);
+  background-image: none;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: none;
+}
+
+.admin-area-header.is-dashboard-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 30%, transparent);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 18%, transparent);
+}
+
+@media (max-width: 1023px) {
+  .admin-area-header.is-dashboard-header,
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap {
+    background: color-mix(in srgb, var(--surface-deep) 20%, transparent);
+  }
+}
+
+/* Build 1.3.6 — Biblioteca dinâmica */
+.admin-dashboard-resource-head-actions { display:flex; align-items:center; gap:9px; }
+.admin-dashboard-resource-head-actions > span { min-width:32px; text-align:center; }
+.admin-library-add { width:38px; height:38px; display:grid; place-items:center; color:#06162c; border:0; border-radius:50%; background:var(--accent,#ffd11e); font-size:24px; line-height:1; font-weight:800; box-shadow:0 8px 24px rgba(255,209,30,.18); }
+.admin-library-media { overflow:hidden; }
+.admin-library-media img { width:100%; height:100%; object-fit:cover; border-radius:inherit; }
+.admin-library-form { display:grid; gap:13px; }
+.admin-library-form label { display:grid; gap:6px; color:rgba(255,255,255,.64); font-size:11px; font-weight:760; }
+.admin-library-form input,.admin-library-form textarea { width:100%; min-height:43px; padding:10px 12px; color:#fff; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.04); }
+.admin-library-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.admin-library-form-grid.is-three { grid-template-columns:repeat(3,1fr); }
+.admin-library-save { min-height:46px; color:#07162d; border:0; border-radius:14px; background:var(--accent,#ffd11e); font-weight:850; }
+@media (max-width:560px){ .admin-library-form-grid,.admin-library-form-grid.is-three{grid-template-columns:1fr;} }
+
+/* ======================================================================
+   BUILD 1.3.8 — STAFF / ALUNOS RESPONSIVO NO DESKTOP
+   O StaffLayout já possui a coluna de navegação. A antiga sidebar interna
+   do dashboard foi removida do JSX na 1.3.7; portanto este shell NÃO pode
+   continuar reservando uma primeira coluna de 238/250px para ela.
+   ====================================================================== */
+
+@media (min-width: 1024px) {
+  /* Uma única coluna de conteúdo dentro da coluna fornecida pelo StaffLayout. */
+  .accqua-staff-route > .admin-area-screen .admin-area-shell.is-dashboard {
+    width: 100%;
+    max-width: 1600px;
+    margin-inline: auto;
+    padding: clamp(20px, 2vw, 32px);
+    display: block;
+    grid-template-columns: none;
+    gap: 0;
+  }
+
+  .accqua-staff-route > .admin-area-screen .admin-area-shell.is-dashboard .admin-area-content {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  /* A navegação Staff canônica vive em StaffLayout; nunca reservar espaço
+     ou reexibir a antiga sidebar interna do dashboard. */
+  .admin-area-shell.is-dashboard .admin-dashboard-sidebar {
+    display: none !important;
+  }
+
+  /* Header pode usar toda a largura e nunca cortar o título no meio. */
+  .admin-area-header.is-dashboard-header .admin-area-brand.admin-v10-brand,
+  .admin-area-header.is-dashboard-header .admin-area-brand-copy {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .admin-area-header.is-dashboard-header .admin-area-brand-copy strong {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    word-break: normal;
+  }
+
+  /* Busca ocupa toda a coluna útil. */
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap,
+  .admin-area-shell.is-dashboard .admin-area-search {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Em desktop os filtros quebram linha de forma previsível em vez de
+     competir por uma única faixa horizontal. */
+  .admin-area-shell.is-dashboard .admin-area-filters {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .admin-area-shell.is-dashboard .admin-area-filters button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  /* Em larguras desktop menores, 2x2 mantém os quatro resumos legíveis. */
+  .admin-area-shell.is-dashboard .admin-work-queue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 104px;
+    overflow: hidden;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy,
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > strong,
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > small,
+  .admin-area-shell.is-dashboard .admin-dashboard-stat > b {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-stat-copy > small,
+  .admin-area-shell.is-dashboard .admin-dashboard-stat > b {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+  }
+
+  /* Dois cards por linha preservam nome, status e flags mesmo quando existem
+     a sidebar principal do app + submenu Staff simultaneamente. */
+  .admin-area-shell.is-dashboard .admin-dashboard-roster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 154px;
+    overflow: visible;
+    align-content: start;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-copy,
+  .admin-area-shell.is-dashboard .admin-student-card-title {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card-title > strong {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-card-title > em {
+    flex: 0 0 auto;
+    max-width: 46%;
+    white-space: nowrap;
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-meta,
+  .admin-area-shell.is-dashboard .admin-student-objective {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* A partir de 1280px há largura suficiente para os quatro resumos numa linha,
+   mas a lista de alunos continua em duas colunas para preservar informação. */
+@media (min-width: 1280px) {
+  .admin-area-shell.is-dashboard .admin-work-queue-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .admin-area-shell.is-dashboard .admin-dashboard-roster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Em monitores realmente largos, três cards de aluno continuam confortáveis. */
+@media (min-width: 1680px) {
+  .admin-area-shell.is-dashboard .admin-dashboard-roster,
+  .admin-dashboard-resource-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ======================================================================
+   BUILD 1.4.2 — PERFIL DO ALUNO + HISTÓRICO + BIBLIOTECA
+   Desktop: o StaffLayout já entrega a coluna útil. O detalhe do aluno usa
+   essa largura como um dashboard compacto, sem uma longa página vertical.
+   ====================================================================== */
+
+.admin-student-history-head-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.admin-student-history-head-actions>span{
+  min-width:32px;
+  height:28px;
+  padding:0 8px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  color:#07162d;
+  background:var(--admin-yellow,#ffd11e);
+  font-size:11px;
+  font-weight:950;
+}
+.admin-student-history-head-actions>button{
+  min-width:0!important;
+  min-height:32px!important;
+  height:32px;
+  padding:0 11px;
+  color:var(--admin-yellow,#ffd11e);
+  border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);
+  border-radius:10px;
+  background:color-mix(in srgb,var(--accent) 6%,transparent);
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.responsive-dialog-content.admin-history-dialog-v142{
+  width:min(860px,calc(100vw - 48px));
+  max-height:min(780px,calc(100dvh - 56px));
+}
+.admin-history-dialog-body-v142{
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.admin-history-dialog-list-v142{display:grid;gap:8px}
+.admin-history-dialog-item-v142{
+  min-width:0;
+  padding:10px 11px;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) minmax(190px,auto) 24px;
+  align-items:center;
+  gap:10px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:13px;
+  background:rgba(255,255,255,.027);
+}
+.admin-history-dialog-item-v142>i{
+  width:38px;height:38px;display:grid;place-items:center;border-radius:11px;
+  color:var(--admin-yellow,#ffd11e);background:rgba(255,209,30,.06)
+}
+.admin-history-dialog-item-v142>i.is-cardio{color:#65bcff;background:rgba(60,150,255,.08)}
+.admin-history-dialog-item-v142>div{min-width:0}
+.admin-history-dialog-item-v142>div>strong,.admin-history-dialog-item-v142>div>small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-history-dialog-item-v142>div>strong{color:#fff;font-size:12px}
+.admin-history-dialog-item-v142>div>small{margin-top:3px;color:rgba(225,237,253,.5);font-size:10px}
+.admin-history-dialog-item-v142 dl{margin:0;display:flex;justify-content:flex-end;gap:12px}
+.admin-history-dialog-item-v142 dl>div{display:grid;gap:2px;text-align:right}
+.admin-history-dialog-item-v142 dt{color:rgba(225,237,253,.42);font-size:8px;font-weight:800;text-transform:uppercase}
+.admin-history-dialog-item-v142 dd{margin:0;color:#fff;font-size:10px;font-weight:800}
+.admin-history-dialog-item-v142>b{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;color:#65dc99;background:rgba(101,220,153,.08)}
+
+/* O editor é sempre um dialog centrado na viewport; nunca herda a posição do card. */
+.responsive-dialog-content.admin-edit-dialog-v142{
+  width:min(700px,calc(100vw - 48px));
+  max-height:min(760px,calc(100dvh - 56px));
+}
+.admin-edit-dialog-body-v142{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.admin-edit-dialog-form-v142{display:grid;gap:14px}
+.admin-edit-dialog-form-v142 .admin-edit-fields{margin:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-edit-dialog-form-v142 .admin-edit-fields .is-wide{grid-column:1/-1}
+.admin-edit-dialog-form-v142 .admin-edit-save{position:sticky;bottom:0;z-index:2;width:100%;margin:0;box-shadow:0 -10px 28px rgba(4,18,39,.42)}
+
+@media (max-width:680px){
+  .admin-history-dialog-item-v142{grid-template-columns:36px minmax(0,1fr) 22px}
+  .admin-history-dialog-item-v142 dl{grid-column:2/-1;justify-content:flex-start;flex-wrap:wrap}
+  .responsive-dialog-drawer.admin-edit-dialog-v142,.responsive-dialog-drawer.admin-history-dialog-v142{width:100%}
+  .admin-edit-dialog-form-v142 .admin-edit-fields{grid-template-columns:1fr}
+  .admin-edit-dialog-form-v142 .admin-edit-fields .is-wide{grid-column:auto}
+}
+
+@media (min-width:1024px){
+  /* Biblioteca: cabeçalho/estatísticas ficam estáveis e apenas a grade rola. */
+  .accqua-staff-route>.admin-area-screen .admin-area-shell.is-dashboard.is-library-view{
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+  }
+  .admin-area-shell.is-dashboard.is-library-view .admin-area-content{
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+  .admin-area-shell.is-dashboard.is-library-view .admin-dashboard-resource{
+    min-height:0;
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .admin-area-shell.is-dashboard.is-library-view .admin-dashboard-resource-grid{
+    min-height:0;
+    padding-right:5px;
+    padding-bottom:36px;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+    scrollbar-gutter:stable;
+  }
+  .admin-dashboard-resource-card .admin-library-media{
+    width:46px;height:46px;min-height:46px;border-radius:12px;background:#0a2449;
+  }
+}
+
+/* Dashboard compacto do aluno. Aplicado apenas a desktop com altura útil comum.
+   Em telas baixas o fluxo normal continua disponível para não cortar conteúdo. */
+@media (min-width:1180px) and (min-height:720px){
+  .accqua-staff-route>.admin-area-screen.is-student-detail-screen{
+    height:100dvh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .accqua-staff-route>.admin-area-screen .admin-area-shell.is-student-detail{
+    width:100%;
+    max-width:1600px;
+    height:100dvh;
+    min-height:0;
+    margin-inline:auto;
+    padding:14px clamp(16px,1.5vw,26px) 14px;
+    overflow:hidden;
+  }
+  .admin-area-shell.is-student-detail .admin-area-content{
+    height:100%;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .admin-area-shell.is-student-detail .admin-area-header{
+    position:relative;
+    top:auto;
+    flex:0 0 52px;
+    height:52px;
+    margin:0 0 8px;
+    grid-template-columns:42px minmax(0,1fr) 58px;
+    background:transparent;
+    backdrop-filter:none;
+  }
+  .admin-area-shell.is-student-detail .admin-profile-view{
+    width:100%;
+    max-width:none;
+    min-height:0;
+    flex:1 1 auto;
+    margin:0;
+    display:grid;
+    grid-template-columns:repeat(12,minmax(0,1fr));
+    grid-template-rows:auto auto auto minmax(0,1fr);
+    align-items:stretch;
+    gap:9px;
+    overflow:hidden;
+  }
+  .admin-area-shell.is-student-detail .admin-profile-view>article,
+  .admin-area-shell.is-student-detail .admin-profile-view>.admin-membership-card{
+    min-width:0;
+    min-height:0;
+    margin:0;
+    padding:10px 12px;
+    border-radius:15px;
+  }
+  .admin-area-shell.is-student-detail .admin-profile-hero{
+    grid-column:1/-1;
+    min-height:76px;
+    display:grid;
+    grid-template-columns:54px minmax(0,1fr) 40px;
+    gap:10px;
+  }
+  .admin-area-shell.is-student-detail .admin-profile-avatar{width:54px;height:54px;min-width:54px;min-height:54px}
+  .admin-area-shell.is-student-detail .admin-profile-hero h1{margin-top:2px;font-size:22px;line-height:1.05}
+  .admin-area-shell.is-student-detail .admin-profile-hero p{margin-top:3px;font-size:11px;line-height:1.25}
+  .admin-area-shell.is-student-detail .admin-profile-hero small{font-size:9px}
+  .admin-area-shell.is-student-detail .admin-profile-hero>button{min-width:38px!important;min-height:38px!important;width:38px;height:38px}
+
+  .admin-area-shell.is-student-detail .admin-student-journey{grid-column:span 5}
+  .admin-area-shell.is-student-detail .admin-student-history-card{grid-column:span 7}
+  .admin-area-shell.is-student-detail .admin-access-card{grid-column:span 4}
+  .admin-area-shell.is-student-detail .admin-membership-card{grid-column:span 8}
+  .admin-area-shell.is-student-detail .admin-coach-card{grid-column:span 4}
+  .admin-area-shell.is-student-detail .admin-profile-data{grid-column:span 4}
+  .admin-area-shell.is-student-detail .admin-training-card,
+  .admin-area-shell.is-student-detail .admin-training-locked{grid-column:span 4}
+
+  .admin-area-shell.is-student-detail .admin-student-journey>header,
+  .admin-area-shell.is-student-detail .admin-student-history-card>header{margin-bottom:6px}
+  .admin-area-shell.is-student-detail .admin-student-journey>header h2,
+  .admin-area-shell.is-student-detail .admin-student-history-card>header h2,
+  .admin-area-shell.is-student-detail .admin-profile-data h2,
+  .admin-area-shell.is-student-detail .admin-training-card h2,
+  .admin-area-shell.is-student-detail .admin-coach-card h2{font-size:14px!important;line-height:1.15}
+  .admin-area-shell.is-student-detail .admin-student-journey>header small,
+  .admin-area-shell.is-student-detail .admin-student-history-card>header small,
+  .admin-area-shell.is-student-detail .admin-profile-data small,
+  .admin-area-shell.is-student-detail .admin-training-card small,
+  .admin-area-shell.is-student-detail .admin-coach-card small{font-size:8px!important}
+
+  .admin-area-shell.is-student-detail .admin-student-journey>div{margin-top:6px;gap:5px}
+  .admin-area-shell.is-student-detail .admin-student-journey>div>span{min-height:42px;padding:6px 7px;gap:6px}
+  .admin-area-shell.is-student-detail .admin-student-journey>div>span>i{width:27px;height:27px}
+  .admin-area-shell.is-student-detail .admin-student-journey>div>span>b{font-size:10px}
+  .admin-area-shell.is-student-detail .admin-student-journey>div>span>small{font-size:9px!important}
+
+  .admin-area-shell.is-student-detail .admin-student-history-list{margin-top:6px;gap:4px}
+  .admin-area-shell.is-student-detail .admin-student-history-item{min-height:36px;padding:4px 6px;grid-template-columns:27px minmax(0,1fr) 20px;gap:6px}
+  .admin-area-shell.is-student-detail .admin-student-history-item>i{width:27px;height:27px}
+  .admin-area-shell.is-student-detail .admin-student-history-item strong{font-size:10px!important}
+  .admin-area-shell.is-student-detail .admin-student-history-item small{font-size:8px!important;line-height:1.2}
+  .admin-area-shell.is-student-detail .admin-student-history-state{margin-top:6px;padding:8px;font-size:9px}
+
+  .admin-area-shell.is-student-detail .admin-access-card{
+    grid-template-columns:42px minmax(0,1fr);
+    grid-template-rows:auto auto;
+    gap:7px 9px;
+    align-content:center;
+  }
+  .admin-area-shell.is-student-detail .admin-access-icon{width:42px;height:42px}
+  .admin-area-shell.is-student-detail .admin-access-card p{display:none}
+  .admin-area-shell.is-student-detail .admin-access-card strong{font-size:12px!important}
+  .admin-area-shell.is-student-detail .admin-access-action{grid-column:1/-1;min-height:34px!important;height:34px;font-size:9px}
+
+  .admin-area-shell.is-student-detail .admin-membership-card>header{grid-template-columns:38px minmax(0,1fr) auto;gap:7px}
+  .admin-area-shell.is-student-detail .admin-membership-icon{width:38px;height:38px}
+  .admin-area-shell.is-student-detail .admin-membership-card>header h2{font-size:14px}
+  .admin-area-shell.is-student-detail .admin-membership-card>header p{display:none}
+  .admin-area-shell.is-student-detail .admin-membership-current{margin-top:7px;gap:5px}
+  .admin-area-shell.is-student-detail .admin-membership-current span{padding:5px 7px;border-radius:9px}
+  .admin-area-shell.is-student-detail .admin-membership-current strong{font-size:9px}
+  .admin-area-shell.is-student-detail .admin-membership-form{margin-top:7px;grid-template-columns:1.15fr .55fr 1.15fr 1.4fr;gap:6px}
+  .admin-area-shell.is-student-detail .admin-membership-form label.is-wide{grid-column:auto}
+  .admin-area-shell.is-student-detail .admin-membership-form input{height:32px;border-radius:8px;font-size:9px}
+  .admin-area-shell.is-student-detail .admin-membership-actions{margin-top:7px;gap:6px}
+  .admin-area-shell.is-student-detail .admin-membership-actions button{min-height:33px!important;height:33px;padding:0 9px;font-size:9px}
+
+  .admin-area-shell.is-student-detail .admin-coach-card{grid-template-columns:37px minmax(0,1fr);grid-template-rows:auto auto;gap:6px 8px;align-content:start}
+  .admin-area-shell.is-student-detail .admin-coach-card-icon{width:37px;height:37px}
+  .admin-area-shell.is-student-detail .admin-coach-card-copy p{display:none}
+  .admin-area-shell.is-student-detail .admin-coach-card-copy strong{font-size:10px}
+  .admin-area-shell.is-student-detail .admin-coach-card-controls{grid-column:1/-1;min-width:0;gap:5px}
+  .admin-area-shell.is-student-detail .admin-coach-card-controls button,
+  .admin-area-shell.is-student-detail .admin-coach-confirmed{min-height:32px!important;height:32px;padding:0 8px;font-size:9px}
+  .admin-area-shell.is-student-detail .admin-coach-card-controls select{height:32px;font-size:9px}
+
+  .admin-area-shell.is-student-detail .admin-profile-data>header{margin-bottom:6px}
+  .admin-area-shell.is-student-detail .admin-profile-data>header button{min-height:30px!important;height:30px;padding:0 8px;font-size:9px}
+  .admin-area-shell.is-student-detail .admin-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .admin-area-shell.is-student-detail .admin-profile-grid>span{min-height:32px;padding:4px 6px;border-radius:8px}
+  .admin-area-shell.is-student-detail .admin-profile-grid>span small{font-size:7px!important}
+  .admin-area-shell.is-student-detail .admin-profile-grid>span strong{margin-top:1px;font-size:8px!important;line-height:1.15}
+  .admin-area-shell.is-student-detail .admin-profile-delete-account{min-height:30px!important;height:30px;margin-top:6px;padding:0 8px;font-size:8px}
+
+  .admin-area-shell.is-student-detail .admin-training-card>header{margin-bottom:6px}
+  .admin-area-shell.is-student-detail .admin-training-card>header p{display:none}
+  .admin-area-shell.is-student-detail .admin-current-program{margin-top:5px;padding:5px;gap:5px}
+  .admin-area-shell.is-student-detail .admin-current-program strong{font-size:9px}
+  .admin-area-shell.is-student-detail .admin-current-program small,
+  .admin-area-shell.is-student-detail .admin-current-program>span{font-size:8px}
+  .admin-area-shell.is-student-detail .admin-training-actions{margin-top:6px;grid-template-columns:1fr;gap:5px}
+  .admin-area-shell.is-student-detail .admin-training-action,
+  .admin-area-shell.is-student-detail .admin-training-action.is-complete-action{min-height:46px!important;padding:6px 7px;gap:6px}
+  .admin-area-shell.is-student-detail .admin-training-action strong{font-size:9px!important}
+  .admin-area-shell.is-student-detail .admin-training-action small{display:none}
+  .admin-area-shell.is-student-detail .admin-training-locked{align-content:center}
+}
