@@ -1,0 +1,41 @@
+/* Apenas o cartão exibido para professor e recepção. */
+.accqua-admin-entry {
+  width: 100%;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  background:
+    radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 38%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-raised) 88%, transparent), color-mix(in srgb, var(--surface-raised) 92%, transparent));
+}
+
+.accqua-admin-entry:active {
+  transform: scale(.988);
+}
+
+.accqua-admin-entry .accqua-membership-icon {
+  color: var(--menu-yellow);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.accqua-admin-entry-arrow {
+  color: var(--menu-yellow);
+  opacity: .86;
+}
+
+/* Área de entrada da equipe: mesma ergonomia dos controles administrativos. */
+.accqua-admin-entry {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .accqua-admin-entry:hover { opacity: var(--interactive-hover-opacity); }
+}
+
+.accqua-admin-entry:active { transform: scale(var(--interactive-pressed-scale)); }
