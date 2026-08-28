@@ -1,0 +1,8 @@
+.accqua-delete-overlay { position: fixed; inset: 0; z-index: 1800; background: rgba(1,8,20,.72); backdrop-filter: blur(8px); }
+.accqua-delete-dialog { position: fixed; z-index: 1801; top: 50%; left: 50%; width: min(calc(100vw - 32px), 430px); transform: translate(-50%,-50%); padding: 22px; color: #fff; border: 1px solid rgba(255,255,255,.13); border-radius: 20px; background: #071b36; box-shadow: 0 28px 90px rgba(0,0,0,.48); }
+.accqua-delete-dialog h2 { margin: 0; font-size: 1rem; }
+.accqua-delete-dialog p { margin: 9px 0 0; color: rgba(255,255,255,.62); font-size: .78rem; line-height: 1.5; }
+.accqua-delete-dialog-actions { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.accqua-delete-dialog-actions button { min-height: 44px; border-radius: 13px; font-weight: 800; }
+.accqua-delete-dialog-actions button:first-child { color: #fff; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); }
+.accqua-delete-dialog-actions button:last-child { color: #fff; border: 0; background: #c92d35; }

@@ -1,0 +1,14 @@
+.responsive-dialog-overlay{position:fixed;inset:0;z-index:var(--z-modal-overlay,10040);background:rgba(1,8,20,.76);backdrop-filter:blur(8px);animation:responsiveDialogFade .18s ease-out}
+.responsive-dialog-drawer,.responsive-dialog-content{z-index:var(--z-modal-content,10041);color:#f7fbff;background:linear-gradient(180deg,#0a2a54,#04162f 58%,#021024);border:1px solid rgba(190,218,255,.16);box-shadow:0 28px 80px rgba(0,0,0,.5);outline:none}
+.responsive-dialog-drawer{position:fixed;left:0;right:0;bottom:0;width:100%;max-height:92dvh;border-bottom:0;border-radius:28px 28px 0 0;padding:8px 16px calc(18px + env(safe-area-inset-bottom));overflow:hidden}
+.responsive-dialog-content{position:fixed;left:50%;top:50%;width:min(480px,calc(100vw - 36px));max-height:min(86dvh,760px);transform:translate(-50%,-50%);border-radius:26px;padding:18px;overflow:hidden;animation:responsiveDialogIn .2s cubic-bezier(.2,.8,.2,1)}
+.responsive-dialog-handle{width:42px;height:4px;margin:1px auto 12px;border-radius:999px;background:rgba(255,255,255,.18)}
+.responsive-dialog-header{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:start;gap:12px;flex:0 0 auto}
+.responsive-dialog-header h2,.responsive-dialog-header [data-radix-dialog-title],.responsive-dialog-header [data-vaul-drawer-title]{margin:0;font-size:1rem;line-height:1.2;letter-spacing:-.02em}
+.responsive-dialog-header p,.responsive-dialog-header [data-radix-dialog-description],.responsive-dialog-header [data-vaul-drawer-description]{margin:6px 0 0;color:rgba(235,244,255,.64);font-size:.68rem;line-height:1.5}
+.responsive-dialog-header>button{width:44px;height:44px;min-width:44px;min-height:44px;border:1px solid rgba(255,255,255,.11);border-radius:14px;display:grid;place-items:center;color:#f7fbff;background:rgba(255,255,255,.045);cursor:pointer}
+.responsive-dialog-body{min-height:0;max-height:calc(92dvh - 92px);overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.responsive-dialog-content .responsive-dialog-body{max-height:calc(min(86dvh,760px) - 92px)}
+@keyframes responsiveDialogFade{from{opacity:0}to{opacity:1}}
+@keyframes responsiveDialogIn{from{opacity:0;transform:translate(-50%,-47%) scale(.985)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media (prefers-reduced-motion:reduce){.responsive-dialog-overlay,.responsive-dialog-content{animation:none!important;transition:none!important}}
