@@ -1,0 +1,107 @@
+.accqua-primary-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: var(--z-sidebar, 145);
+  width: var(--app-sidebar-width);
+  min-width: var(--app-sidebar-width);
+  padding: 26px 20px 22px;
+  display: none;
+  flex-direction: column;
+  color: #f8fbff;
+  border-right: 1px solid rgba(255,255,255,.08);
+  background: rgba(4,20,43,.94);
+  box-shadow: 18px 0 48px rgba(0,0,0,.12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.accqua-primary-sidebar-brand {
+  width: 184px;
+  min-height: 70px;
+  margin: 0 auto 26px;
+  display: grid;
+  place-items: center;
+}
+
+.accqua-primary-sidebar-brand .accqua-logo.is-compact { width: 184px; }
+.accqua-primary-sidebar nav { display: grid; gap: 8px; }
+
+.accqua-primary-sidebar nav button {
+  width: 100%;
+  min-height: 54px;
+  padding: 7px 12px;
+  display: grid;
+  grid-template-columns: 40px minmax(0,1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  color: rgba(235,244,255,.68);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .16s cubic-bezier(.2,.9,.2,1.08);
+}
+
+.accqua-primary-sidebar nav button > span {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255,255,255,.035);
+}
+
+.accqua-primary-sidebar nav button strong { font-size: .88rem; font-weight: 780; }
+.accqua-primary-sidebar nav button:hover { color:#fff; background:rgba(255,255,255,.045); }
+.accqua-primary-sidebar nav button:active { transform:scale(.985); }
+.accqua-primary-sidebar nav button.is-active { color:#eff8ff; border-color:rgba(111,180,255,.18); background:rgba(65,142,231,.13); }
+.accqua-primary-sidebar nav button.is-active > span { color:#6fb4ff; background:rgba(111,180,255,.13); }
+.accqua-primary-sidebar nav button:focus-visible,
+.accqua-primary-sidebar-account:focus-visible { outline:2px solid #ffd128; outline-offset:2px; }
+
+.accqua-primary-sidebar-account {
+  width: 100%;
+  margin-top: auto;
+  padding: 13px;
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 17px;
+  color: inherit;
+  text-align: left;
+  background: rgba(255,255,255,.03);
+  cursor: pointer;
+}
+
+.accqua-primary-sidebar-avatar {
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  color:#eef7ff;
+  background:rgba(111,180,255,.16);
+  font-size:.78rem;
+  font-weight:850;
+}
+
+.accqua-primary-sidebar-account-copy { min-width:0; display:block; }
+.accqua-primary-sidebar-account-copy strong,
+.accqua-primary-sidebar-account-copy small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.accqua-primary-sidebar-account-copy strong { font-size:.78rem; }
+.accqua-primary-sidebar-account-copy small { margin-top:3px; color:rgba(235,244,255,.58); font-size:.68rem; }
+
+@media (min-width: 1024px) {
+  .accqua-primary-sidebar { display:flex; }
+}
+
+@media (min-width: 1440px) {
+  .accqua-primary-sidebar { padding-inline:24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-primary-sidebar nav button { transition:none; }
+}
