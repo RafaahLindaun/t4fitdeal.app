@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import "./staff-layout.css";
+import "./staff-layout-v1484.css";
 
 const STAFF_ROLES = ["professor", "reception", "admin"] as const;
 
