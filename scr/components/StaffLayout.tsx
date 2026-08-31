@@ -13,18 +13,16 @@ export default function StaffLayout() {
   const items = getStaffNavItems();
   const active = staffNavKeyForLocation(location.pathname, location.search);
   const mobileItemRefs = useRef<Partial<Record<StaffNavKey, HTMLButtonElement | null>>>({});
-
-  if (!user) return <Navigate to="/login" replace />;
-  if (!profile || profile.status !== "active") return <Navigate to="/aguardando" replace />;
-  if (!STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number])) {
-    return <Navigate to="/menu-teste" replace />;
-  }
-
-  const role = profile.role === "admin"
+  const isStaff = Boolean(
+    profile && STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number]),
+  );
+  const role = profile?.role === "admin"
     ? "ADMINISTRAÇÃO"
-    : profile.role === "reception"
+    : profile?.role === "reception"
       ? "RECEPÇÃO"
-      : "PROFESSOR";
+      : profile?.role === "professor"
+        ? "PROFESSOR"
+        : "EQUIPE";
 
   const usesDocumentScroll = ["students", "alerts", "approvals", "library", "templates"].includes(active);
 
@@ -36,6 +34,12 @@ export default function StaffLayout() {
       activeTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "auto" });
     });
   }, [active]);
+
+  // Guard central: subpaginas Staff nao dependem mais de lembrar de bloquear
+  // acesso individualmente. RLS continua sendo a barreira definitiva no banco.
+  if (!user) return <Navigate to="/login" replace />;
+  if (!profile || profile.status !== "active") return <Navigate to="/aguardando" replace />;
+  if (!isStaff) return <Navigate to="/menu-teste" replace />;
 
   return (
     <div className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""}`}>
