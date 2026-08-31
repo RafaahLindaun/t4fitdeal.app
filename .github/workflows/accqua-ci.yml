@@ -10,9 +10,8 @@ on:
     branches:
       - main
 
-# One-shot para materializar a migração idempotente de performance da Home.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: accqua-ci-${{ github.workflow }}-${{ github.ref }}
@@ -47,23 +46,6 @@ jobs:
         with:
           node-version: 24
           cache: npm
-
-      - name: Apply Build 1.4.6 Home performance migration
-        if: github.ref == 'refs/heads/feat/build-1.4.6'
-        run: node scripts/apply-build-1.4.6-home-performance.mjs
-
-      - name: Commit Home performance migration when needed
-        if: github.ref == 'refs/heads/feat/build-1.4.6'
-        shell: bash
-        run: |
-          if git diff --quiet -- scr/pages/TestMenu.tsx; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scr/pages/TestMenu.tsx
-          git commit -m "perf: remove artificial Home wait and redundant polling"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Test Build 1.4.6 classes SQL
         shell: bash
