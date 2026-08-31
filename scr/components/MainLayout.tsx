@@ -42,10 +42,12 @@ export default function MainLayout() {
     return () => media.removeEventListener("change", update);
   }, []);
 
-  // Cardio é uma tela operacional: no celular a navegação inferior some para
-  // deixar timer, pausa/retomada e finalizar sempre acessíveis. No desktop a
-  // navegação lateral continua disponível normalmente.
-  const routeFocusMode = mobileNavigation && location.pathname.startsWith("/cardio");
+  // Cardio e Área ACCQUA são telas operacionais no celular. A bottom nav some
+  // para liberar altura útil; cada fluxo mantém sua própria navegação interna.
+  const routeFocusMode = mobileNavigation && (
+    location.pathname.startsWith("/cardio") ||
+    location.pathname.startsWith("/area-accqua")
+  );
   const effectiveFocusMode = focusMode || routeFocusMode;
 
   const { handlers: swipeHandlers } = useTabSwipe({

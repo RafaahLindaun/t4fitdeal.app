@@ -23,6 +23,15 @@ function persistPreferredId(id: string) {
   }
 }
 
+function QrCheckinIcon({ size = 19 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
+      <path d="M14 14h2v2h-2zM18 14h2v4h-2zM14 18h4v2h-4zM20 20h.01" />
+    </svg>
+  );
+}
+
 export default function CheckInButton() {
   const [open, setOpen] = useState(false);
   const [preferredId, setPreferredId] = useState(readPreferredId);
@@ -55,24 +64,13 @@ export default function CheckInButton() {
         <button
           type="button"
           className="accqua-checkin-button"
-          aria-label={preferred ? `Check-in com ${preferred.name}` : "Escolher parceiro para check-in"}
-          title={preferred ? `Check-in com ${preferred.name}` : "Check-in"}
-          onClick={() => preferred ? launch(preferred) : setOpen(true)}
+          aria-label={preferred ? `Abrir opções de check-in. Preferido: ${preferred.name}` : "Abrir opções de check-in"}
+          title={preferred ? `Check-in · ${preferred.name}` : "Check-in"}
+          onClick={() => setOpen(true)}
         >
-          <MenuCheckinIcon size={20} />
+          <QrCheckinIcon />
           <span>Check-in</span>
         </button>
-        {preferred ? (
-          <button
-            type="button"
-            className="accqua-checkin-change"
-            aria-label="Trocar parceiro de check-in"
-            title="Trocar parceiro"
-            onClick={() => setOpen(true)}
-          >
-            <span aria-hidden="true">⌄</span>
-          </button>
-        ) : null}
       </div>
 
       <ResponsiveDialog
