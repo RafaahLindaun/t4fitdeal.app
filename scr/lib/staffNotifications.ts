@@ -27,7 +27,6 @@ export async function showWorkoutRequiredNotification(
     icon: "/accqua-logo-header.png",
     badge: "/accqua-logo-header.png",
     tag: `accqua-workout-${alert.studentId}`,
-    renotify: true,
     data: { url },
   };
 

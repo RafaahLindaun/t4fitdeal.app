@@ -151,9 +151,9 @@ function fallbackProfile(user: User): AppProfile {
   };
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms = 6500): Promise<T> {
+async function withTimeout<T>(promise: PromiseLike<T>, ms = 6500): Promise<T> {
   return await Promise.race([
-    promise,
+    Promise.resolve(promise),
     new Promise<T>((_, reject) =>
       window.setTimeout(() => reject(new Error("timeout")), ms),
     ),

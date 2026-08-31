@@ -24,8 +24,11 @@ const REENCODE_THRESHOLD_BYTES = 4 * 1024 * 1024;
 const DIRECT_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export class MealImageError extends Error {
-  constructor(public code: "invalid_file" | "too_large" | "unsupported_format" | "upload_failed", message: string) {
+  code: "invalid_file" | "too_large" | "unsupported_format" | "upload_failed";
+
+  constructor(code: "invalid_file" | "too_large" | "unsupported_format" | "upload_failed", message: string) {
     super(message);
+    this.code = code;
     this.name = "MealImageError";
   }
 }

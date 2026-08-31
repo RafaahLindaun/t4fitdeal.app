@@ -264,7 +264,7 @@ async function loadRecipeRows() {
     result = await supabase.from("recipes").select("*").eq("ativo", true).eq("imagem_validada", true).order("title", { ascending: true }).limit(150);
   }
   // Em produção, receita sem controle visual não entra no catálogo.
-  if (result.error && /imagem_validada/i.test(result.error.message)) return { data: [], error: result.error } as typeof result;
+  if (result.error && /imagem_validada/i.test(result.error.message)) return { ...result, data: [] };
   return result;
 }
 
