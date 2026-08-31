@@ -1,0 +1,292 @@
+/*
+ * ACCQUA Sports — Build 1.4.5 hardening
+ * Camada de correcoes de layout/controle. Mantida separada para evitar
+ * continuar empilhando versoes no CSS legado e facilitar consolidacao futura.
+ */
+
+:where(button, [role="button"]) {
+  box-sizing: border-box;
+}
+
+:where(button) > svg,
+:where(a) > svg {
+  flex: 0 0 auto;
+}
+
+:where(
+  .accqua-action-button,
+  .accqua-filter-pill,
+  .login-primary-button,
+  .first-access-button,
+  .concept-enter-button,
+  .concept-first-access,
+  .onboarding-primary,
+  .auth-flow-form > button,
+  .complete-profile-exit
+) {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
+}
+
+:where(
+  .accqua-icon-button,
+  .accqua-modal-close-button,
+  .password-toggle,
+  .onboarding-back,
+  .onboarding-close
+) {
+  padding: 0;
+  line-height: 1;
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent, #ffd128);
+  outline-offset: 2px;
+}
+
+/* O login original e um artboard mobile de 450x780. Em desktop ele ficava
+ * apenas ampliado no centro da tela. A partir daqui o mesmo markup recebe
+ * composicao desktop real, sem alterar o layout mobile existente. */
+@media (min-width: 900px) and (min-height: 620px) {
+  .concept-login.login-screen {
+    --login-artboard-scale: 1;
+    width: 100vw;
+    height: 100dvh;
+  }
+
+  .concept-login .login-water-overlay {
+    background-position: right center;
+    background-size: auto 112%;
+    opacity: .46;
+  }
+
+  .concept-login.login-screen::before {
+    background:
+      linear-gradient(90deg, rgba(3, 17, 39, .22) 0%, rgba(3, 17, 39, .05) 52%, rgba(3, 17, 39, .32) 100%),
+      radial-gradient(circle at 72% 34%, rgba(31, 112, 210, .12), transparent 34%),
+      linear-gradient(180deg, rgba(255, 255, 255, .02), rgba(1, 11, 25, .18));
+  }
+
+  .concept-login .login-artboard {
+    left: 50%;
+    top: 50%;
+    width: min(1120px, calc(100vw - 72px));
+    height: min(700px, calc(100dvh - 58px));
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+  }
+
+  .concept-login .concept-logo {
+    left: 62px;
+    top: 42px;
+    width: 290px;
+    height: 116px;
+  }
+
+  .concept-login .concept-logo .accqua-logo {
+    width: 290px;
+  }
+
+  .concept-login .concept-logo .accqua-logo img {
+    width: 88%;
+  }
+
+  .concept-login .concept-intro {
+    left: 62px;
+    top: 184px;
+    width: 440px;
+    text-align: left;
+  }
+
+  .concept-login .concept-intro h1 {
+    font-size: clamp(34px, 3vw, 43px);
+    line-height: 1.04;
+    letter-spacing: -1.4px;
+  }
+
+  .concept-login .concept-intro p {
+    margin-top: 16px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .concept-login .concept-access-banner {
+    left: 62px;
+    top: 342px;
+    width: 442px;
+    min-height: 92px;
+    height: auto;
+    padding: 15px 17px;
+    grid-template-columns: 54px minmax(0, 1fr);
+    border-radius: 20px;
+  }
+
+  .concept-login .concept-access-banner .access-banner-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .concept-login .concept-access-banner strong {
+    font-size: 13.5px;
+  }
+
+  .concept-login .concept-access-banner span {
+    margin-top: 6px;
+    font-size: 11.5px;
+  }
+
+  .concept-login .concept-feature-section {
+    left: 62px;
+    top: 466px;
+    width: 470px;
+    height: 142px;
+  }
+
+  .concept-login .concept-feature-title p {
+    font-size: 12px;
+  }
+
+  .concept-login .concept-feature-grid {
+    gap: 9px;
+  }
+
+  .concept-login .concept-feature-grid article {
+    height: 108px;
+    padding: 11px 7px 8px;
+  }
+
+  .concept-login .concept-feature-grid strong {
+    font-size: 11.5px;
+  }
+
+  .concept-login .concept-feature-grid p {
+    font-size: 8.5px;
+    line-height: 1.3;
+  }
+
+  .concept-login .concept-reception-link {
+    left: 62px;
+    top: auto;
+    bottom: 24px;
+    width: 470px;
+    height: 24px;
+    justify-content: flex-start;
+    font-size: 11px;
+  }
+
+  .concept-login .concept-login-form {
+    left: auto;
+    right: 66px;
+    top: 148px;
+    width: 408px;
+    padding: 30px;
+    display: grid;
+    grid-template-rows: 54px 54px 20px 50px 50px;
+    gap: 12px;
+    border: 1px solid rgba(194, 219, 255, .18);
+    border-radius: 28px;
+    background: linear-gradient(155deg, rgba(15, 50, 96, .88), rgba(5, 27, 59, .94));
+    box-shadow: 0 28px 72px rgba(0, 0, 0, .30), inset 0 1px 0 rgba(255, 255, 255, .05);
+    backdrop-filter: blur(22px);
+  }
+
+  .concept-login .concept-login-form::before {
+    content: "Acesse sua conta";
+    position: absolute;
+    left: 2px;
+    top: -57px;
+    color: #f8fbff;
+    font-size: 24px;
+    line-height: 1.1;
+    font-weight: 850;
+    letter-spacing: -.6px;
+  }
+
+  .concept-login .concept-login-form::after {
+    content: "Use os dados cadastrados na ACCQUA Sports";
+    position: absolute;
+    left: 2px;
+    top: -28px;
+    color: rgba(235, 244, 255, .62);
+    font-size: 11.5px;
+    line-height: 1.3;
+    font-weight: 560;
+  }
+
+  .concept-login .concept-login-field,
+  .concept-login .concept-enter-button,
+  .concept-login .concept-first-access {
+    width: 100%;
+  }
+
+  .concept-login .concept-login-field {
+    height: 54px;
+    padding-inline: 16px;
+    border-radius: 15px;
+  }
+
+  .concept-login .concept-login-field input {
+    font-size: 15px;
+  }
+
+  .concept-login .concept-forgot-below {
+    min-height: 20px;
+    padding-inline: 2px;
+    font-size: 11px;
+    line-height: 20px;
+  }
+
+  .concept-login .concept-enter-button,
+  .concept-login .concept-first-access {
+    height: 50px;
+    border-radius: 15px;
+    font-size: 14px;
+  }
+
+  .concept-login .concept-google-link {
+    left: auto;
+    right: 188px;
+    top: 532px;
+    width: 170px;
+    height: 28px;
+    gap: 7px;
+    font-size: 11px;
+  }
+
+  .concept-login .concept-feedback {
+    left: auto;
+    right: 96px;
+    top: 82px;
+    width: 348px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+  }
+}
+
+@media (min-width: 1280px) and (min-height: 680px) {
+  .concept-login .login-artboard {
+    width: min(1180px, calc(100vw - 96px));
+  }
+
+  .concept-login .concept-login-form {
+    right: 78px;
+  }
+
+  .concept-login .concept-google-link {
+    right: 205px;
+  }
+
+  .concept-login .concept-feedback {
+    right: 108px;
+  }
+}
+
+@media (max-width: 899px) {
+  .concept-login .concept-login-form::before,
+  .concept-login .concept-login-form::after {
+    content: none;
+  }
+}

@@ -1,13 +1,15 @@
 {
   "name": "accqua-sports-app",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.4.5",
   "type": "module",
   "scripts": {
     "predev": "node scripts/generate-exercise-media-manifest.mjs",
     "dev": "vite --host 0.0.0.0",
     "prebuild": "node scripts/generate-exercise-media-manifest.mjs",
     "build": "vite build",
+    "typecheck": "tsc -b --pretty false",
+    "validate": "npm run typecheck && npm run build",
     "preview": "vite preview --host 0.0.0.0",
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:e2e": "playwright test -c playwright.real.config.ts",
