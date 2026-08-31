@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Typecheck, SQL and build
+    name: Typecheck, visual contracts, SQL and build
     runs-on: ubuntu-latest
     timeout-minutes: 18
 
@@ -66,6 +66,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Visual contracts
+        run: npm run visual:contracts
 
       - name: TypeScript
         id: typecheck
