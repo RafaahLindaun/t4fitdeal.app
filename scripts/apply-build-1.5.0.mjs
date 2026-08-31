@@ -51,7 +51,7 @@ function ReorderGestureHandle({
     <button
       type="button"
       className="admin-builder-reorder-handle accqua-pressable"
-      aria-label={\`Arrastar para reordenar ${label}\`}
+      aria-label={\`Arrastar para reordenar \${label}\`}
       title="Segure e arraste para reordenar"
       onPointerDown={(event) => {
         event.preventDefault();
@@ -101,7 +101,7 @@ replaceOnce(
 replaceOnce(
   'mobile story progress',
   `        </header>\n\n        <div className="admin-builder-guided-sticky">`,
-  `        </header>\n\n        <section className="admin-builder-mobile-progress" aria-label="Progresso da montagem">\n          <div className="admin-builder-story-segments">\n            {BUILDER_STEPS.map((step, index) => {\n              const presentation = stepPresentation[step.key];\n              return (\n                <button\n                  type="button"\n                  key={step.key}\n                  className={clsx(\n                    index === activeStepIndex && "is-active",\n                    presentation.state === "complete" && "is-complete",\n                  )}\n                  onClick={() => showBuilderSection(step.key)}\n                  aria-label={\`${step.label}: ${presentation.label}\`}\n                >\n                  <i />\n                </button>\n              );\n            })}\n          </div>\n          <div className="admin-builder-progress-copy">\n            <small>Etapa {activeStepMeta.number} de {BUILDER_STEPS.length}</small>\n            <strong>{activeStepMeta.label}</strong>\n          </div>\n        </section>\n\n        <div className="admin-builder-guided-sticky">`,
+  `        </header>\n\n        <section className="admin-builder-mobile-progress" aria-label="Progresso da montagem">\n          <div className="admin-builder-story-segments">\n            {BUILDER_STEPS.map((step, index) => {\n              const presentation = stepPresentation[step.key];\n              return (\n                <button\n                  type="button"\n                  key={step.key}\n                  className={clsx(\n                    index === activeStepIndex && "is-active",\n                    presentation.state === "complete" && "is-complete",\n                  )}\n                  onClick={() => showBuilderSection(step.key)}\n                  aria-label={\`\${step.label}: \${presentation.label}\`}\n                >\n                  <i />\n                </button>\n              );\n            })}\n          </div>\n          <div className="admin-builder-progress-copy">\n            <small>Etapa {activeStepMeta.number} de {BUILDER_STEPS.length}</small>\n            <strong>{activeStepMeta.label}</strong>\n          </div>\n        </section>\n\n        <div className="admin-builder-guided-sticky">`,
 );
 
 replaceOnce(
@@ -154,7 +154,320 @@ replaceOnce(
 
 fs.writeFileSync(tsxPath, source);
 
-const css = `/* ACCQUA Sports — Build 1.5.0\n   Mobile workout-builder information architecture. */\n\n.admin-builder-mobile-progress,\n.admin-builder-mobile-footer {\n  display: none;\n}\n\n.admin-builder-reorder-item {\n  min-width: 0;\n}\n\n@media (max-width: 1023px) {\n  .admin-builder-screen {\n    height: 100dvh;\n    min-height: 0;\n    overflow: hidden;\n  }\n\n  .admin-builder-shell {\n    height: 100%;\n    min-height: 0;\n    overflow-x: hidden;\n    overflow-y: auto;\n    overscroll-behavior-y: contain;\n    -webkit-overflow-scrolling: touch;\n    padding-bottom: max(118px, calc(env(safe-area-inset-bottom) + 108px));\n  }\n\n  .admin-builder-header {\n    position: sticky;\n    top: 0;\n    z-index: 110;\n    background: var(--surface-deep);\n  }\n\n  .admin-builder-mobile-progress {\n    position: sticky;\n    top: 56px;\n    z-index: 108;\n    display: grid;\n    gap: 7px;\n    padding: 8px 16px 10px;\n    border-bottom: 1px solid color-mix(in srgb, var(--builder-line) 72%, transparent);\n    background: color-mix(in srgb, var(--surface-deep) 96%, transparent);\n    backdrop-filter: blur(18px);\n    -webkit-backdrop-filter: blur(18px);\n  }\n\n  .admin-builder-story-segments {\n    display: grid;\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n    gap: 6px;\n  }\n\n  .admin-builder-story-segments button {\n    min-width: 0;\n    height: 14px;\n    padding: 5px 0;\n    border: 0;\n    background: transparent;\n  }\n\n  .admin-builder-story-segments button i {\n    display: block;\n    width: 100%;\n    height: 4px;\n    border-radius: 999px;\n    background: color-mix(in srgb, var(--text-tertiary) 34%, transparent);\n    transition: background 180ms ease, transform 180ms ease;\n  }\n\n  .admin-builder-story-segments button.is-complete i {\n    background: var(--status-success);\n  }\n\n  .admin-builder-story-segments button.is-active i {\n    background: var(--accent);\n    transform: scaleY(1.35);\n  }\n\n  .admin-builder-progress-copy {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 12px;\n  }\n\n  .admin-builder-progress-copy small {\n    color: var(--text-tertiary);\n    font-size: 10px;\n    font-weight: 800;\n    letter-spacing: .08em;\n    text-transform: uppercase;\n  }\n\n  .admin-builder-progress-copy strong {\n    color: var(--text-primary);\n    font-size: 13px;\n    font-weight: 800;\n  }\n\n  /* P1: remove every competing progress representation on mobile. */\n  .admin-builder-context-bar,\n  .admin-builder-step-nav,\n  .admin-builder-mobile-step-controls,\n  .admin-builder-readiness {\n    display: none !important;\n  }\n\n  .admin-builder-guided-sticky {\n    position: static;\n  }\n\n  /* P2: yellow is reserved for current progress + the one primary action. */\n  .admin-builder-guide-button {\n    color: var(--text-primary) !important;\n    border: 1px solid var(--builder-line) !important;\n    background: color-mix(in srgb, var(--surface-raised) 56%, transparent) !important;\n    box-shadow: none !important;\n  }\n\n  .admin-builder-program-heading > span,\n  .admin-builder-program-heading small,\n  .admin-builder-routine-card header small,\n  .admin-builder-selected header small,\n  .admin-builder-cardio-toggle small {\n    color: var(--text-secondary);\n  }\n\n  .admin-builder-split-options button.is-active,\n  .admin-builder-routine-tabs button.is-active,\n  .admin-builder-groups button.is-active,\n  .admin-builder-week-days button.is-active {\n    color: #fff !important;\n    border-color: var(--brand-blue) !important;\n    background: color-mix(in srgb, var(--brand-blue) 82%, var(--surface-raised)) !important;\n  }\n\n  /* P3: swipeable split selector. */\n  .admin-builder-split-options {\n    width: calc(100% + 32px);\n    margin-inline: -16px;\n    padding: 4px 16px 10px;\n    display: flex !important;\n    gap: 12px;\n    overflow-x: auto;\n    overflow-y: visible;\n    scroll-snap-type: x mandatory;\n    scroll-padding-inline: 16px;\n    overscroll-behavior-inline: contain;\n    scrollbar-width: none;\n  }\n\n  .admin-builder-split-options::-webkit-scrollbar { display: none; }\n\n  .admin-builder-split-options button {\n    flex: 0 0 88px;\n    min-width: 88px;\n    scroll-snap-align: center;\n    border-radius: 16px;\n    background: color-mix(in srgb, var(--surface-raised) 68%, var(--surface-deep));\n    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;\n  }\n\n  .admin-builder-split-options button.is-active {\n    transform: scale(1.05);\n  }\n\n  /* P4: one contextual footer action. */\n  .admin-builder-footer {\n    position: fixed;\n    left: 12px;\n    right: 12px;\n    bottom: calc(12px + env(safe-area-inset-bottom));\n    z-index: 140;\n    padding: 10px 12px;\n    border-radius: 22px;\n    background: color-mix(in srgb, var(--surface-base) 97%, transparent);\n    box-shadow: 0 18px 46px rgba(0, 0, 0, .32);\n    backdrop-filter: blur(20px);\n    -webkit-backdrop-filter: blur(20px);\n  }\n\n  .admin-builder-footer-summary,\n  .admin-builder-footer-actions {\n    display: none !important;\n  }\n\n  .admin-builder-mobile-footer {\n    display: grid;\n    grid-template-columns: minmax(0, 1fr) auto;\n    align-items: center;\n    gap: 12px;\n  }\n\n  .admin-builder-mobile-footer-copy {\n    min-width: 0;\n    display: grid;\n    gap: 1px;\n  }\n\n  .admin-builder-mobile-footer-copy > small {\n    color: var(--text-tertiary);\n    font-size: 9px;\n    font-weight: 850;\n    letter-spacing: .08em;\n  }\n\n  .admin-builder-mobile-footer-copy > strong {\n    overflow: hidden;\n    color: var(--text-primary);\n    font-size: 14px;\n    font-weight: 850;\n    white-space: nowrap;\n    text-overflow: ellipsis;\n  }\n\n  .admin-builder-mobile-save-template {\n    width: max-content;\n    padding: 2px 0;\n    color: var(--text-secondary);\n    border: 0;\n    background: transparent;\n    font-size: 11px;\n    font-weight: 700;\n    text-decoration: underline;\n    text-underline-offset: 3px;\n  }\n\n  .admin-builder-mobile-primary {\n    min-width: 116px;\n    min-height: 48px;\n    padding: 0 16px;\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    gap: 7px;\n    color: #07162d;\n    border: 1px solid var(--accent);\n    border-radius: 15px;\n    background: var(--accent);\n    font-size: 13px;\n    font-weight: 900;\n    box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 18%, transparent);\n  }\n\n  .admin-builder-save-warning {\n    position: fixed;\n    left: 16px;\n    right: 16px;\n    bottom: calc(92px + env(safe-area-inset-bottom));\n    z-index: 142;\n  }\n\n  /* P5: real vertical drag/reorder with a dedicated 44px handle. */\n  .admin-builder-reorder-item {\n    position: relative;\n    min-width: 0;\n    list-style: none;\n  }\n\n  .admin-builder-reorder-handle {\n    width: 44px !important;\n    min-width: 44px !important;\n    height: 44px !important;\n    min-height: 44px !important;\n    display: inline-flex !important;\n    align-items: center;\n    justify-content: center;\n    border: 1px solid var(--builder-line);\n    border-radius: 12px;\n    background: color-mix(in srgb, var(--surface-deep) 74%, var(--surface-raised));\n    cursor: grab;\n    touch-action: none;\n  }\n\n  .admin-builder-reorder-handle:active { cursor: grabbing; }\n\n  .admin-builder-reorder-handle > span {\n    font-size: 20px;\n    line-height: 1;\n    letter-spacing: -4px;\n    transform: rotate(90deg);\n  }\n\n  .admin-builder-exercise-summary {\n    grid-template-columns: 44px minmax(0, 1fr) auto !important;\n  }\n\n  .admin-builder-exercise-summary > .admin-builder-selected-gif {\n    display: none;\n  }\n\n  .admin-builder-exercise-summary > .admin-builder-reorder-handle {\n    grid-column: 1;\n    grid-row: 1 / span 2;\n  }\n\n  .admin-builder-exercise-copy {\n    grid-column: 2;\n  }\n\n  .admin-builder-quick-tune {\n    grid-column: 2 / -1;\n  }\n\n  .admin-builder-exercise-controls {\n    display: none !important;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .admin-builder-story-segments button i,\n  .admin-builder-split-options button {\n    transition-duration: 1ms !important;\n  }\n}\n`;
+const css = `/* ACCQUA Sports — Build 1.5.0
+   Mobile workout-builder information architecture. */
+
+.admin-builder-mobile-progress,
+.admin-builder-mobile-footer {
+  display: none;
+}
+
+.admin-builder-reorder-item {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .admin-builder-screen {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .admin-builder-shell {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(118px, calc(env(safe-area-inset-bottom) + 108px));
+  }
+
+  .admin-builder-header {
+    position: sticky;
+    top: 0;
+    z-index: 110;
+    background: var(--surface-deep);
+  }
+
+  .admin-builder-mobile-progress {
+    position: sticky;
+    top: 56px;
+    z-index: 108;
+    display: grid;
+    gap: 7px;
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--builder-line) 72%, transparent);
+    background: color-mix(in srgb, var(--surface-deep) 96%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .admin-builder-story-segments {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .admin-builder-story-segments button {
+    min-width: 0;
+    height: 14px;
+    padding: 5px 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .admin-builder-story-segments button i {
+    display: block;
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-tertiary) 34%, transparent);
+    transition: background 180ms ease, transform 180ms ease;
+  }
+
+  .admin-builder-story-segments button.is-complete i {
+    background: var(--status-success);
+  }
+
+  .admin-builder-story-segments button.is-active i {
+    background: var(--accent);
+    transform: scaleY(1.35);
+  }
+
+  .admin-builder-progress-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .admin-builder-progress-copy small {
+    color: var(--text-tertiary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .admin-builder-progress-copy strong {
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .admin-builder-context-bar,
+  .admin-builder-step-nav,
+  .admin-builder-mobile-step-controls,
+  .admin-builder-readiness {
+    display: none !important;
+  }
+
+  .admin-builder-guided-sticky {
+    position: static;
+  }
+
+  .admin-builder-guide-button {
+    color: var(--text-primary) !important;
+    border: 1px solid var(--builder-line) !important;
+    background: color-mix(in srgb, var(--surface-raised) 56%, transparent) !important;
+    box-shadow: none !important;
+  }
+
+  .admin-builder-program-heading > span,
+  .admin-builder-program-heading small,
+  .admin-builder-routine-card header small,
+  .admin-builder-selected header small,
+  .admin-builder-cardio-toggle small {
+    color: var(--text-secondary);
+  }
+
+  .admin-builder-split-options button.is-active,
+  .admin-builder-routine-tabs button.is-active,
+  .admin-builder-groups button.is-active,
+  .admin-builder-week-days button.is-active {
+    color: #fff !important;
+    border-color: var(--brand-blue) !important;
+    background: color-mix(in srgb, var(--brand-blue) 82%, var(--surface-raised)) !important;
+  }
+
+  .admin-builder-split-options {
+    width: calc(100% + 32px);
+    margin-inline: -16px;
+    padding: 4px 16px 10px;
+    display: flex !important;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .admin-builder-split-options::-webkit-scrollbar { display: none; }
+
+  .admin-builder-split-options button {
+    flex: 0 0 88px;
+    min-width: 88px;
+    scroll-snap-align: center;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--surface-raised) 68%, var(--surface-deep));
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+  }
+
+  .admin-builder-split-options button.is-active {
+    transform: scale(1.05);
+  }
+
+  .admin-builder-footer {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 140;
+    padding: 10px 12px;
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--surface-base) 97%, transparent);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, .32);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .admin-builder-footer-summary,
+  .admin-builder-footer-actions {
+    display: none !important;
+  }
+
+  .admin-builder-mobile-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .admin-builder-mobile-footer-copy {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
+  }
+
+  .admin-builder-mobile-footer-copy > small {
+    color: var(--text-tertiary);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: .08em;
+  }
+
+  .admin-builder-mobile-footer-copy > strong {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 850;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .admin-builder-mobile-save-template {
+    width: max-content;
+    padding: 2px 0;
+    color: var(--text-secondary);
+    border: 0;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .admin-builder-mobile-primary {
+    min-width: 116px;
+    min-height: 48px;
+    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: #07162d;
+    border: 1px solid var(--accent);
+    border-radius: 15px;
+    background: var(--accent);
+    font-size: 13px;
+    font-weight: 900;
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .admin-builder-save-warning {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    z-index: 142;
+  }
+
+  .admin-builder-reorder-item {
+    position: relative;
+    min-width: 0;
+    list-style: none;
+  }
+
+  .admin-builder-reorder-handle {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--builder-line);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-deep) 74%, var(--surface-raised));
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .admin-builder-reorder-handle:active { cursor: grabbing; }
+
+  .admin-builder-reorder-handle > span {
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: -4px;
+    transform: rotate(90deg);
+  }
+
+  .admin-builder-exercise-summary {
+    grid-template-columns: 44px minmax(0, 1fr) auto !important;
+  }
+
+  .admin-builder-exercise-summary > .admin-builder-selected-gif {
+    display: none;
+  }
+
+  .admin-builder-exercise-summary > .admin-builder-reorder-handle {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .admin-builder-exercise-copy {
+    grid-column: 2;
+  }
+
+  .admin-builder-quick-tune {
+    grid-column: 2 / -1;
+  }
+
+  .admin-builder-exercise-controls {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-builder-story-segments button i,
+  .admin-builder-split-options button {
+    transition-duration: 1ms !important;
+  }
+}
+`;
 
 fs.writeFileSync(cssPath, css);
 
