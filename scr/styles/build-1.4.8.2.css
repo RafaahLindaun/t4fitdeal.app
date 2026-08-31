@@ -1,0 +1,99 @@
+/*
+ * ACCQUA Sports — Build 1.4.8.2
+ * B1 — Staff > Alunos desktop: uma única área rolável no painel direito.
+ */
+
+@media (min-width: 1024px) {
+  /* O shell do Staff prende a viewport; somente o painel de conteúdo rola. */
+  .accqua-staff-layout {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh;
+    overflow: hidden !important;
+  }
+
+  .accqua-staff-sidebar {
+    height: 100dvh;
+    min-height: 0 !important;
+    max-height: 100dvh;
+  }
+
+  .accqua-staff-content {
+    flex: 1 1 auto;
+    width: auto !important;
+    height: 100dvh;
+    min-width: 0;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .accqua-staff-route {
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    min-height: 100%;
+    overflow: visible !important;
+  }
+
+  /* A página de alunos não cria um segundo scroll nem corta o roster. */
+  .accqua-staff-route > .admin-area-screen {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .accqua-staff-route > .admin-area-screen .admin-area-shell.is-dashboard {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+
+  .accqua-staff-route > .admin-area-screen .admin-area-content {
+    min-height: 0;
+    overflow: visible;
+  }
+
+  /* Mantém o contexto de navegação e busca visível dentro do mesmo scroll. */
+  .accqua-staff-route > .admin-area-screen .admin-area-header.is-dashboard-header {
+    position: sticky;
+    top: 0;
+    z-index: 44;
+  }
+
+  .accqua-staff-route > .admin-area-screen .admin-dashboard-search-wrap {
+    position: sticky;
+    top: 64px;
+    z-index: 43;
+  }
+
+  /* Scrollbar discreta, mas visível para deixar claro que há mais alunos. */
+  .accqua-staff-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(117, 174, 240, .34) rgba(2, 14, 32, .22);
+  }
+
+  .accqua-staff-content::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .accqua-staff-content::-webkit-scrollbar-track {
+    background: rgba(2, 14, 32, .22);
+  }
+
+  .accqua-staff-content::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(117, 174, 240, .34);
+    background-clip: padding-box;
+  }
+
+  .accqua-staff-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(117, 174, 240, .5);
+    background-clip: padding-box;
+  }
+}
