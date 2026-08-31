@@ -1,5 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
+// Idempotente: algumas correções podem existir em mais de um fallback legado;
+// cada execução substitui somente uma ocorrência exata e nunca reescreve o arquivo inteiro.
 const fixes = [
   {
     file: "scr/auth/AuthProvider.tsx",
