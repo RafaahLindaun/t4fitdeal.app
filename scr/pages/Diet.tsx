@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
 import PageHeader from "../components/PageHeader";
+import IconButton from "../components/IconButton";
 import CalorieRing from "../components/diet/CalorieRing";
 import WaterWidget from "../components/diet/WaterWidget";
 import MealList from "../components/diet/MealList";
@@ -26,6 +27,7 @@ import {
 import { isPerfilNutricionalCompleto, recipeAlternative, type Recipe } from "../lib/diet";
 import { useDietDashboard } from "../hooks/useDietDashboard";
 import "./diet.css";
+import "./diet-header-v1487.css";
 
 function safeKcal(value: unknown) {
   const number = Number(value ?? 0);
@@ -56,7 +58,6 @@ export default function Diet() {
   const strengthCalories = safeKcal(data.burn.strengthCalories);
   const calorieTarget = safeKcal(data.calorieTarget);
 
-
   const handleRecipeRegister = (recipe: Recipe) => {
     if (recipe.healthLevel === "menos_saudavel") {
       const alternative = recipeAlternative(recipe, data.recipes);
@@ -86,9 +87,51 @@ export default function Diet() {
     <div className="diet-screen">
       <div className="diet-background" aria-hidden="true"><i /><i /></div>
       <main className="diet-shell">
-        <PageHeader className="diet-topbar" ariaLabel="Cabeçalho Minha dieta"
-          left={<div className="diet-header-primary"><button type="button" className="diet-round-button" aria-label="Voltar para início" onClick={() => navigate("/menu-teste")}><DietBackIcon /></button><div className="diet-title"><span>ACCQUA NUTRIÇÃO</span><h1>Minha dieta</h1></div></div>}
-          right={<div className="diet-topbar-side is-right"><button type="button" className="diet-round-button" aria-label="Informações sobre Minha dieta" onClick={() => setInfoOpen(true)}><DietInfoIcon /></button>{profileComplete ? <button type="button" className="diet-round-button" aria-label="Abrir cronograma sugerido de refeições" onClick={() => setScheduleOpen(true)}><DietClockIcon /></button> : <span className="diet-topbar-spacer"/>}<button type="button" className="diet-round-button" aria-label="Configurar metas da dieta" onClick={() => setSettingsOpen(true)}><DietEditIcon /></button></div>}
+        <PageHeader
+          className="diet-topbar"
+          ariaLabel="Cabeçalho Minha dieta"
+          left={
+            <div className="diet-header-primary">
+              <IconButton
+                className="diet-round-button"
+                aria-label="Voltar para início"
+                onClick={() => navigate("/menu-teste")}
+              >
+                <DietBackIcon />
+              </IconButton>
+              <div className="diet-title">
+                <span>ACCQUA NUTRIÇÃO</span>
+                <h1>Minha dieta</h1>
+              </div>
+            </div>
+          }
+          right={
+            <div className="diet-topbar-side is-right">
+              <IconButton
+                className="diet-round-button"
+                aria-label="Informações sobre Minha dieta"
+                onClick={() => setInfoOpen(true)}
+              >
+                <DietInfoIcon />
+              </IconButton>
+              {profileComplete ? (
+                <IconButton
+                  className="diet-round-button"
+                  aria-label="Abrir cronograma sugerido de refeições"
+                  onClick={() => setScheduleOpen(true)}
+                >
+                  <DietClockIcon />
+                </IconButton>
+              ) : null}
+              <IconButton
+                className="diet-round-button"
+                aria-label="Configurar metas da dieta"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <DietEditIcon />
+              </IconButton>
+            </div>
+          }
         />
 
         <div className="diet-scroll-content">
