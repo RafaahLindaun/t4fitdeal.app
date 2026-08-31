@@ -1,0 +1,381 @@
+/*
+ * ACCQUA Sports — Build 1.4.8.1
+ * Correções globais de layout/interação aplicadas depois das camadas 1.4.5–1.4.8.
+ */
+
+/* ========================================================================== */
+/* A1 — Staff desktop: sidebar independente, sem grid-template mutável         */
+/* ========================================================================== */
+
+@media (min-width: 1024px) {
+  .accqua-staff-layout {
+    --staff-sidebar-expanded-width: 238px;
+    --staff-sidebar-collapsed-width: 72px;
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: stretch;
+  }
+
+  .accqua-staff-sidebar {
+    flex: 0 0 auto;
+    width: var(--staff-sidebar-expanded-width);
+    min-width: 0;
+    transition:
+      width 200ms ease-in-out,
+      padding 200ms ease-in-out,
+      box-shadow 200ms ease-in-out;
+    will-change: width;
+  }
+
+  .accqua-staff-content {
+    flex: 1 1 auto;
+    grid-column: auto !important;
+    width: auto !important;
+    min-width: 0;
+  }
+
+  .accqua-staff-sidebar-toggle {
+    width: 100%;
+    min-height: 42px;
+    padding: 5px 8px;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, .66);
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .035);
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      border-color 160ms ease,
+      background 160ms ease;
+  }
+
+  .accqua-staff-sidebar-toggle:hover,
+  .accqua-staff-sidebar-toggle:focus-visible {
+    color: #fff;
+    border-color: rgba(255, 209, 30, .24);
+    background: rgba(255, 209, 30, .07);
+  }
+
+  .accqua-staff-sidebar-toggle:focus-visible {
+    outline: 2px solid #ffd11e;
+    outline-offset: 2px;
+  }
+
+  .accqua-staff-sidebar-toggle-icon {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: #ffd11e;
+    background: rgba(255, 209, 30, .075);
+  }
+
+  .accqua-staff-sidebar-toggle-icon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 200ms ease-in-out;
+  }
+
+  .accqua-staff-sidebar-toggle-icon svg.is-collapsed {
+    transform: rotate(180deg);
+  }
+
+  .accqua-staff-sidebar-toggle > strong,
+  .accqua-staff-sidebar-heading,
+  .accqua-staff-sidebar nav button > strong,
+  .accqua-staff-sidebar-account {
+    transition:
+      opacity 140ms ease,
+      max-width 180ms ease,
+      transform 180ms ease;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar {
+    width: var(--staff-sidebar-collapsed-width);
+    padding-inline: 10px;
+    gap: 14px;
+    box-shadow: 10px 0 28px rgba(0, 0, 0, .12);
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar-toggle {
+    padding-inline: 9px;
+    grid-template-columns: 32px;
+    justify-content: center;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar-toggle > strong {
+    width: 0;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateX(-4px);
+    pointer-events: none;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar-heading {
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    border-bottom-color: transparent;
+    pointer-events: none;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar nav {
+    gap: 7px;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar nav button {
+    min-height: 48px;
+    padding: 0;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar nav button > span {
+    width: 36px;
+    height: 36px;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar nav button > strong {
+    width: 0;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar nav button.is-active {
+    box-shadow: inset 0 -3px 0 #ffd11e;
+  }
+
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar-account {
+    max-height: 0;
+    margin-top: auto;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    border-color: transparent;
+    pointer-events: none;
+  }
+}
+
+/* ========================================================================== */
+/* A2 — estados interativos com superfície própria e contraste AA             */
+/* ========================================================================== */
+
+.admin-area-screen {
+  --surface-active: #123f72;
+  --text-on-active: #ffffff;
+  --border-active: #ffd128;
+  --surface-hover: #0e315b;
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button,
+.admin-area-shell.is-dashboard .admin-dashboard-stat {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button:hover:not(.is-active),
+.admin-area-shell.is-dashboard .admin-area-filters button:focus-visible:not(.is-active) {
+  color: var(--text-on-active);
+  border-color: rgba(255, 209, 40, .34);
+  background: var(--surface-hover);
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button:active,
+.admin-area-shell.is-dashboard .admin-area-filters button.is-active,
+.admin-area-shell.is-dashboard .admin-area-filters button[aria-pressed="true"],
+.admin-area-shell.is-dashboard .admin-area-filters button[aria-selected="true"] {
+  color: var(--text-on-active) !important;
+  border-color: var(--border-active) !important;
+  background: var(--surface-active) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 209, 40, .16),
+    0 8px 20px rgba(0, 0, 0, .16) !important;
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button:active {
+  transform: scale(.97);
+}
+
+.admin-area-shell.is-dashboard .admin-area-filters button:focus-visible {
+  outline: 2px solid var(--border-active);
+  outline-offset: 2px;
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat:hover:not(.is-active),
+.admin-area-shell.is-dashboard .admin-dashboard-stat:focus-visible:not(.is-active) {
+  border-color: rgba(255, 209, 40, .28);
+  background: var(--surface-hover);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"],
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] {
+  color: var(--text-on-active) !important;
+  border-color: var(--border-active) !important;
+  background: var(--surface-active) !important;
+  box-shadow:
+    inset 3px 0 0 var(--border-active),
+    0 0 0 1px rgba(255, 209, 40, .12),
+    0 12px 26px rgba(0, 0, 0, .16) !important;
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active {
+  transform: scale(.985);
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat:focus-visible {
+  outline: 2px solid var(--border-active);
+  outline-offset: 3px;
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active .admin-dashboard-stat-copy strong,
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active .admin-dashboard-stat-copy small,
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active > b,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active .admin-dashboard-stat-copy strong,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active .admin-dashboard-stat-copy small,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active > b,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] .admin-dashboard-stat-copy strong,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] .admin-dashboard-stat-copy small,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] > b,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] .admin-dashboard-stat-copy strong,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] .admin-dashboard-stat-copy small,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] > b {
+  color: var(--text-on-active) !important;
+}
+
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat:active > b,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat.is-active > b,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] > b,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] .admin-dashboard-stat-icon,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-selected="true"] > b {
+  background: rgba(255, 255, 255, .09) !important;
+}
+
+/* ========================================================================== */
+/* A3 — BottomNavigation global: pill única, recorte e safe-area canônicos    */
+/* ========================================================================== */
+
+@media (max-width: 1023.98px) {
+  :root {
+    --app-bottomnav-offset: calc(100px + env(safe-area-inset-bottom));
+  }
+
+  .accqua-main-layout-nav {
+    position: fixed !important;
+    z-index: var(--z-bottomnav, 140);
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    min-height: calc(96px + env(safe-area-inset-bottom));
+    padding:
+      0
+      max(12px, env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left)) !important;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transform: none !important;
+    pointer-events: none;
+    background: transparent !important;
+  }
+
+  .accqua-main-layout-nav::before {
+    content: "";
+    position: absolute;
+    left: max(20px, env(safe-area-inset-left));
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    height: 72px;
+    border-radius: 32px;
+    background: rgba(0, 7, 20, .48);
+    filter: blur(18px);
+    opacity: .72;
+    pointer-events: none;
+  }
+
+  .accqua-main-layout-nav > .accqua-bottom-navigation {
+    width: min(520px, 100%) !important;
+    margin: 0 !important;
+    pointer-events: auto;
+  }
+
+  .accqua-bottom-navigation {
+    min-height: 72px !important;
+    padding: 8px 8px 7px !important;
+    overflow: visible;
+    border: 1px solid rgba(180, 209, 244, .15) !important;
+    border-radius: 28px !important;
+    background:
+      linear-gradient(180deg, rgba(18, 39, 69, .76), rgba(5, 19, 41, .9)) !important;
+    box-shadow:
+      0 18px 46px rgba(0, 0, 0, .34),
+      0 0 0 1px rgba(75, 137, 215, .025),
+      inset 0 1px 0 rgba(255, 255, 255, .08),
+      inset 0 -1px 0 rgba(255, 255, 255, .025) !important;
+    backdrop-filter: blur(30px) saturate(160%);
+    -webkit-backdrop-filter: blur(30px) saturate(160%);
+  }
+
+  .accqua-bottom-navigation::before {
+    inset: 1px !important;
+    border-radius: 26px !important;
+  }
+
+  .accqua-bottom-item {
+    min-height: 54px !important;
+    border-radius: 17px !important;
+  }
+
+  .accqua-bottom-item::before {
+    border-radius: 15px !important;
+  }
+
+  /* Evita que regras antigas de telas baixas mudem o recorte da barra. */
+  @media (max-height: 710px) {
+    .accqua-bottom-navigation {
+      min-height: 68px !important;
+      border-radius: 28px !important;
+    }
+
+    .accqua-bottom-navigation::before {
+      border-radius: 26px !important;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-staff-sidebar,
+  .accqua-staff-sidebar-toggle-icon svg,
+  .admin-area-shell.is-dashboard .admin-area-filters button,
+  .admin-area-shell.is-dashboard .admin-dashboard-stat {
+    transition: none !important;
+  }
+}
