@@ -10,8 +10,10 @@ on:
     branches:
       - main
 
+# One-shot permission used only to materialize the exact, idempotent 1.4.6 UI
+# migration below. It is reverted to read-only immediately after the bot commit.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: accqua-ci-${{ github.workflow }}-${{ github.ref }}
@@ -32,6 +34,23 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      - name: Apply Build 1.4.6 UI migration
+        if: github.ref == 'refs/heads/feat/build-1.4.6'
+        run: node scripts/apply-build-1.4.6-ui-fixes.mjs
+
+      - name: Commit Build 1.4.6 UI migration when needed
+        if: github.ref == 'refs/heads/feat/build-1.4.6'
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scr/pages/Profile.tsx scr/pages/Ranking.tsx
+          git commit -m "fix: align Profile and Ranking UX for Build 1.4.6"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
