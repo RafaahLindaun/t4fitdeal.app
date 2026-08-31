@@ -42,8 +42,14 @@ export default function MainLayout() {
     return () => media.removeEventListener("change", update);
   }, []);
 
+  // Cardio é uma tela operacional: no celular a navegação inferior some para
+  // deixar timer, pausa/retomada e finalizar sempre acessíveis. No desktop a
+  // navegação lateral continua disponível normalmente.
+  const routeFocusMode = mobileNavigation && location.pathname.startsWith("/cardio");
+  const effectiveFocusMode = focusMode || routeFocusMode;
+
   const { handlers: swipeHandlers } = useTabSwipe({
-    disabled: focusMode || !mobileNavigation,
+    disabled: effectiveFocusMode || !mobileNavigation,
     onNavigate: (direction) => setRouteDirection(direction),
     onBoundary: (direction) => {
       if (reduceMotion) return;
@@ -74,11 +80,17 @@ export default function MainLayout() {
       ? "staff"
       : location.pathname;
 
+  const layoutClassName = [
+    "accqua-main-layout",
+    effectiveFocusMode ? "is-focus-mode" : "",
+    routeFocusMode ? "is-route-focus-mode" : "",
+  ].filter(Boolean).join(" ");
+
   return (
     <FocusModeProvider focusMode={focusMode} setFocusMode={setFocusMode}>
       <BottomNavTreinoTargetProvider value={treinoTargetRef}>
-        <div className={focusMode ? "accqua-main-layout is-focus-mode" : "accqua-main-layout"}>
-          {!focusMode ? (
+        <div className={layoutClassName}>
+          {!effectiveFocusMode ? (
             <div className="accqua-main-layout-sidebar">
               <PrimarySidebar items={items} activeKey={activeKey} onSelect={(item) => void onSelect(item)} />
             </div>
@@ -87,7 +99,7 @@ export default function MainLayout() {
           <motion.main
             className="accqua-main-layout-content"
             animate={edgeControls}
-            {...(!focusMode ? swipeHandlers : {})}
+            {...(!effectiveFocusMode ? swipeHandlers : {})}
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
@@ -104,7 +116,7 @@ export default function MainLayout() {
             </AnimatePresence>
           </motion.main>
 
-          {!focusMode ? (
+          {!effectiveFocusMode ? (
             <div className="accqua-main-layout-nav">
               <BottomNavigation items={items} activeKey={activeKey} onSelect={(item) => void onSelect(item)} />
             </div>
