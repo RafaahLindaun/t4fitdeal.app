@@ -22,9 +22,10 @@
 }
 
 .accqua-status-badge.is-warning {
-  color: #ffe479;
-  border-color: rgba(255, 209, 40, .38);
-  background: rgba(255, 209, 40, .12);
+  color: #07162d;
+  border-color: #ffd128;
+  background: #ffd128;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .26);
 }
 
 .accqua-status-badge.is-danger {

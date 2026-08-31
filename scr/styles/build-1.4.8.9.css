@@ -1,0 +1,164 @@
+/*
+ * ACCQUA Sports — Build 1.4.8.9
+ * Mobile Staff hardening: roster flags/background, sticky student header and compact profile app-grid.
+ */
+
+@media (max-width: 1023.98px) {
+  /* M1 / L — "Sem treino" usa um flag local, não StatusBadge. Corrige no seletor exato. */
+  .admin-area-shell.is-dashboard .admin-student-flags i.is-no-workout {
+    color: #07162d !important;
+    border-color: #ffd128 !important;
+    background: #ffd128 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 5px 14px rgba(255, 209, 40, .12);
+  }
+
+  .admin-area-shell.is-dashboard .admin-student-flags i.is-no-workout svg {
+    color: #07162d !important;
+    stroke: currentColor !important;
+  }
+
+  /* M2 / K — na listagem de alunos a decoração antiga é removida, não reposicionada. */
+  .admin-area-screen:has(.admin-dashboard-roster) .admin-area-background {
+    background: linear-gradient(
+      180deg,
+      var(--surface-base) 0%,
+      var(--surface-deep) 48%,
+      var(--surface-deep) 100%
+    ) !important;
+  }
+
+  .admin-area-screen:has(.admin-dashboard-roster) .admin-area-background span,
+  .admin-area-screen:has(.admin-dashboard-roster) .admin-area-background i {
+    display: none !important;
+  }
+
+  /* M3 / I — header sticky totalmente sólido, acima dos cards, com backplate da cor da página. */
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-area-shell.is-student-detail .admin-area-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 90 !important;
+    isolation: isolate;
+    overflow: visible !important;
+    background: var(--surface-deep) !important;
+    border-radius: 16px !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .045),
+      0 10px 24px rgba(0, 0, 0, .18) !important;
+  }
+
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-area-shell.is-student-detail .admin-area-header::before {
+    content: "";
+    position: absolute;
+    inset: -12px -16px -9px;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--surface-deep);
+  }
+
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen .admin-profile-view,
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen .admin-student-action-tiles,
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen .admin-student-summary-list {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* N — seis atalhos viram um grupo de apps compacto somente no mobile. */
+  .admin-profile-view .admin-student-summary-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item {
+    aspect-ratio: 1 / 1 !important;
+    min-height: 0 !important;
+    padding: 12px 8px 10px !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-icon {
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important;
+    border-radius: 12px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-icon svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item strong {
+    display: -webkit-box !important;
+    max-width: 100%;
+    overflow: hidden;
+    color: #f8fbff !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    line-height: 1.22 !important;
+    text-align: center !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item p,
+  .admin-profile-view .admin-student-summary-list .profile-menu-item > svg {
+    display: none !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid rgba(4, 24, 52, .92);
+    border-radius: 999px;
+    background: #7f97b5;
+    box-sizing: border-box;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item[data-subtitle-tone="success"]::after {
+    background: #4dda85;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item[data-subtitle-tone="warning"]::after {
+    background: #ffd128;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item[data-subtitle-tone="danger"]::after {
+    background: #ff5b69;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item[data-subtitle-tone="muted"]::after {
+    background: #718198;
+  }
+}
+
+@media (max-width: 374px) {
+  .admin-profile-view .admin-student-summary-list {
+    gap: 8px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item {
+    padding-inline: 6px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item strong {
+    font-size: 11.5px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-icon {
+    width: 36px !important;
+    height: 36px !important;
+    flex-basis: 36px !important;
+  }
+}
