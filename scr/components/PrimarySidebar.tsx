@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import type { PrimaryNavItem, PrimaryNavKey } from "../lib/navigation";
 import { useAuth } from "../auth/AuthProvider";
+import { loadResolvedAvatarsByUserIds } from "../lib/profileAvatar";
 import AccquaLogo from "./AccquaLogo";
 import "./primary-sidebar.css";
 
@@ -28,6 +30,17 @@ export default function PrimarySidebar({ items, activeKey, onSelect }: PrimarySi
   const { profile, user } = useAuth();
   const displayName = profile?.fullName?.trim() || user?.email?.split("@")[0] || "ACCQUA Sports";
   const profileItem = items.find((item) => item.key === "perfil");
+  const avatarQuery = useQuery({
+    queryKey: ["primary-sidebar-avatar", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return "";
+      const avatars = await loadResolvedAvatarsByUserIds([user.id]);
+      return avatars.get(user.id) ?? "";
+    },
+    enabled: Boolean(user?.id),
+    staleTime: 5 * 60_000,
+  });
+  const avatarUrl = avatarQuery.data ?? "";
 
   return (
     <aside className="accqua-primary-sidebar" aria-label="Navegação principal" data-testid="desktop-sidebar">
@@ -51,7 +64,9 @@ export default function PrimarySidebar({ items, activeKey, onSelect }: PrimarySi
         })}
       </nav>
       <button className="accqua-primary-sidebar-account" type="button" onClick={() => { if (profileItem) onSelect(profileItem); }}>
-        <span className="accqua-primary-sidebar-avatar">{initials(displayName)}</span>
+        <span className="accqua-primary-sidebar-avatar">
+          {avatarUrl ? <img src={avatarUrl} alt="" aria-hidden="true" /> : initials(displayName)}
+        </span>
         <span className="accqua-primary-sidebar-account-copy">
           <strong>{displayName}</strong>
           <small>{roleLabel(profile?.role ?? "student")}</small>
