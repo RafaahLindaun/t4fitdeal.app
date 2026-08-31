@@ -1,0 +1,346 @@
+/* ACCQUA Sports — Build 1.4.8.6
+   Progressive disclosure for the Staff workout builder.
+   Keeps the existing data layer and handlers intact. */
+
+.admin-builder-screen {
+  --builder-step-surface: color-mix(in srgb, var(--surface-raised) 54%, transparent);
+}
+
+/* Compact step indicator: state is visible without four large permanent cards. */
+.admin-builder-step-nav {
+  padding: 4px;
+  gap: 4px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-base) 92%, transparent);
+}
+
+.admin-builder-step-nav button {
+  min-height: 40px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.admin-builder-step-nav button > span {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.admin-builder-step-nav button > strong {
+  width: auto;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.admin-builder-step-nav button > em {
+  display: none;
+}
+
+.admin-builder-step-nav button:not(.is-active) {
+  opacity: .72;
+}
+
+.admin-builder-step-nav button.is-complete:not(.is-active) {
+  border-color: color-mix(in srgb, var(--status-success) 18%, transparent);
+  background: color-mix(in srgb, var(--status-success) 5%, transparent);
+}
+
+.admin-builder-step-nav button.is-active {
+  opacity: 1;
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--builder-active) 42%, var(--builder-line));
+  background: color-mix(in srgb, var(--builder-active) 18%, var(--surface-raised));
+}
+
+.admin-builder-step-nav button.is-active > span {
+  color: var(--text-inverse);
+  border-color: var(--builder-active);
+  background: var(--builder-active);
+}
+
+/* Preparation is useful on demand, not as a permanently expanded panel. */
+.admin-builder-readiness {
+  margin-bottom: 12px;
+}
+
+.admin-builder-readiness-summary {
+  min-height: 56px;
+  padding: 9px 12px;
+  grid-template-columns: 56px minmax(0, 1fr) 20px;
+  gap: 10px;
+}
+
+.admin-builder-readiness-summary[aria-expanded="false"] .admin-builder-readiness-copy p {
+  display: none;
+}
+
+.admin-builder-readiness-summary[aria-expanded="false"] .admin-builder-readiness-copy {
+  gap: 2px;
+}
+
+.admin-builder-readiness-score {
+  width: 56px;
+}
+
+.admin-builder-readiness-copy small {
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+
+.admin-builder-readiness-copy strong {
+  font-size: 13px;
+}
+
+/* Exercise-library metrics are secondary metadata, not a headline. */
+.admin-builder-library-header-actions > span,
+.admin-v11-library-count > span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 650;
+  opacity: .78;
+}
+
+/* Only the active major stage is visible in the primary workspace. */
+.admin-builder-screen:not(.is-step-programa) .admin-builder-program-card,
+.admin-builder-screen:not(.is-step-rotina) .admin-builder-routines,
+.admin-builder-screen:not(.is-step-exercicios) .admin-builder-selected,
+.admin-builder-screen:not(.is-step-cardio) .admin-builder-cardio {
+  display: none;
+}
+
+/* Desktop library belongs exclusively to the exercise-selection stage. */
+.admin-builder-screen:not(.is-step-exercicios) .admin-builder-library {
+  display: none;
+}
+
+/* Saving remains continuously available and separated from scrollable content. */
+.admin-builder-footer {
+  z-index: 120;
+  border: 1px solid color-mix(in srgb, var(--builder-line) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-base) 94%, transparent);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .24);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+/* Mobile back/next navigation is independent from publish actions. */
+.admin-builder-mobile-step-controls {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .admin-builder-step-nav {
+    width: max-content;
+    max-width: 100%;
+    justify-self: center;
+    grid-template-columns: none;
+    display: inline-flex;
+  }
+
+  .admin-builder-step-nav button {
+    min-width: 118px;
+  }
+
+  .admin-builder-readiness {
+    max-width: 760px;
+    justify-self: center;
+  }
+
+  /* When the left library is hidden, let the active stage use its space. */
+  .admin-builder-screen:not(.is-step-exercicios) .admin-builder-program-card,
+  .admin-builder-screen:not(.is-step-exercicios) .admin-builder-routines,
+  .admin-builder-screen:not(.is-step-exercicios) .admin-builder-cardio {
+    grid-column: 1 / 3;
+    min-width: 0;
+  }
+
+  .admin-builder-screen:not(.is-step-exercicios) .admin-builder-desktop-aside {
+    grid-column: 3;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-library {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .admin-builder-shell {
+    padding-bottom: max(174px, calc(env(safe-area-inset-bottom) + 164px));
+  }
+
+  .admin-builder-step-nav {
+    position: sticky;
+    top: 56px;
+    z-index: 84;
+    width: 100%;
+    overflow: visible;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .admin-builder-step-nav button {
+    min-width: 0;
+    padding-inline: 5px;
+  }
+
+  .admin-builder-step-nav button > strong {
+    max-width: 74px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-builder-mobile-step-controls {
+    min-height: 54px;
+    margin: -4px 0 10px;
+    padding: 6px;
+    display: grid;
+    grid-template-columns: minmax(84px, auto) minmax(0, 1fr) minmax(84px, auto);
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--builder-line);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface-raised) 48%, transparent);
+  }
+
+  .admin-builder-mobile-step-controls > button {
+    min-height: 42px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--text-primary);
+    border: 1px solid var(--builder-line);
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--surface-deep) 58%, transparent);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .admin-builder-mobile-step-controls > button:last-child {
+    color: var(--text-inverse);
+    border-color: var(--builder-brand);
+    background: var(--builder-brand);
+  }
+
+  .admin-builder-mobile-step-controls > button:disabled {
+    opacity: .36;
+  }
+
+  .admin-builder-mobile-step-controls > span {
+    min-width: 0;
+    display: grid;
+    justify-items: center;
+    gap: 1px;
+    text-align: center;
+  }
+
+  .admin-builder-mobile-step-controls small {
+    color: var(--text-tertiary);
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: .08em;
+  }
+
+  .admin-builder-mobile-step-controls strong {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 13px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Progressive disclosure for the mobile tools around each stage. */
+  .admin-builder-screen.is-step-programa .admin-builder-mobile-tools,
+  .admin-builder-screen.is-step-cardio .admin-builder-mobile-tools {
+    display: none;
+  }
+
+  .admin-builder-screen.is-step-rotina .admin-builder-mobile-actions,
+  .admin-builder-screen.is-step-rotina .admin-builder-mobile-search,
+  .admin-builder-screen.is-step-rotina .admin-builder-mobile-search-results,
+  .admin-builder-screen.is-step-rotina .admin-builder-add-confirmation {
+    display: none;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-mobile-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-mobile-actions > button:first-child {
+    display: none;
+  }
+
+  .admin-builder-readiness {
+    margin-bottom: 10px;
+  }
+
+  .admin-builder-readiness-summary {
+    min-height: 52px;
+    grid-template-columns: 50px minmax(0, 1fr) 18px;
+  }
+
+  /* One stage per screen. Library remains a drawer, never another stacked block. */
+  .admin-builder-program-card,
+  .admin-builder-routines,
+  .admin-builder-selected,
+  .admin-builder-cardio {
+    margin-top: 0;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-selected {
+    display: block;
+  }
+
+  .admin-builder-screen.is-step-programa .admin-builder-program-card,
+  .admin-builder-screen.is-step-rotina .admin-builder-routines,
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio {
+    display: block;
+  }
+
+  .admin-builder-desktop-aside {
+    display: none !important;
+  }
+
+  .admin-builder-footer-summary {
+    margin-bottom: 6px;
+  }
+
+  .admin-builder-footer-summary > i {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-builder-mobile-step-controls {
+    grid-template-columns: 76px minmax(0, 1fr) 76px;
+    padding: 5px;
+  }
+
+  .admin-builder-mobile-step-controls > button {
+    min-width: 0;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+
+  .admin-builder-step-nav button > strong {
+    display: none;
+  }
+
+  .admin-builder-step-nav button {
+    min-height: 38px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-builder-mobile-step-controls,
+  .admin-builder-step-nav button {
+    transition-duration: 1ms !important;
+  }
+}
