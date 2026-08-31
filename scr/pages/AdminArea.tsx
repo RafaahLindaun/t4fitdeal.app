@@ -6,6 +6,7 @@ import {
 } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
+import * as Popover from "@radix-ui/react-popover";
 import { toast as notify } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
@@ -17,6 +18,7 @@ import SwipeableListItem from "../components/SwipeableListItem";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import EmptyState from "../components/EmptyState";
 import StudentMembershipEditor from "../components/StudentMembershipEditor";
+import StatusBadge from "../components/StatusBadge";
 import ExerciseMedia from "../components/ExerciseMedia";
 import {
   AdminBackIcon,
@@ -70,6 +72,7 @@ import "./admin-entry.css";
 import "./admin-area.css";
 import "./professor-v10.css";
 import "./admin-dashboard-v11.css";
+import "./admin-area-v1483.css";
 
 type AdminDashboardView = "students" | "library" | "templates";
 type StudentDetailView = "journey" | "history" | "access" | "membership" | "coach" | "profile" | null;
@@ -986,26 +989,18 @@ export default function AdminArea() {
               </span>
             </div>
 
-            <button
-              type="button"
-              className={clsx("admin-area-pending", pendingCount > 0 && "has-pending")}
-              onClick={() => {
-                if (selectedStudent) {
-                  setReloadKey((current) => current + 1);
-                  return;
-                }
-                selectPrimarySection("approvals");
-              }}
-              aria-label={
-                selectedStudent
-                  ? "Atualizar lista de cadastros"
-                  : `${pendingCount} cadastros pendentes. Mostrar aprovações.`
-              }
-              title={selectedStudent ? "Atualizar cadastros" : "Ver aprovações pendentes"}
-            >
-              {pendingCount}
-              <small>pendentes</small>
-            </button>
+            {!selectedStudent ? (
+              <button
+                type="button"
+                className={clsx("admin-area-pending", pendingCount > 0 && "has-pending")}
+                onClick={() => selectPrimarySection("approvals")}
+                aria-label={String(pendingCount) + " cadastros pendentes. Mostrar aprovações."}
+                title="Ver aprovações pendentes"
+              >
+                {pendingCount}
+                <small>pendentes</small>
+              </button>
+            ) : null}
           </header>
 
         {!selectedStudent ? (
@@ -1411,25 +1406,141 @@ export default function AdminArea() {
             </article>
 
             <div className="admin-student-quick-status" aria-label="Resumo rápido do aluno">
-              <span className={selectedJourneyDoneCount === 4 ? "is-success" : "is-warning"}>{selectedJourneyDoneCount}/4 etapas</span>
-              <span className={`is-${selectedMembershipHealth}`}>{selectedMembershipHealth === "ativa" ? "Matrícula ativa" : selectedMembershipHealth === "vencendo" ? "Matrícula vencendo" : "Matrícula inativa"}</span>
-              <span className={selectedStatus === "active" ? "is-success" : selectedStatus === "blocked" ? "is-danger" : "is-warning"}>{selectedStatus === "active" ? "Acesso autorizado" : selectedStatus === "blocked" ? "Acesso bloqueado" : "Acesso pendente"}</span>
-              <span className="is-neutral">{studentActivitiesLoading ? "Registros…" : `${studentActivities.length} registro${studentActivities.length === 1 ? "" : "s"}`}</span>
+              <StatusBadge variant={selectedJourneyDoneCount === 4 ? "success" : "warning"}>
+                {selectedJourneyDoneCount}/4 etapas
+              </StatusBadge>
+              <StatusBadge
+                variant={selectedMembershipHealth === "ativa" ? "success" : selectedMembershipHealth === "vencendo" ? "warning" : "danger"}
+              >
+                {selectedMembershipHealth === "ativa" ? "Matrícula ativa" : selectedMembershipHealth === "vencendo" ? "Matrícula vencendo" : "Matrícula inativa"}
+              </StatusBadge>
+              <StatusBadge variant={selectedStatus === "active" ? "success" : selectedStatus === "blocked" ? "danger" : "warning"}>
+                {selectedStatus === "active" ? "Acesso autorizado" : selectedStatus === "blocked" ? "Acesso bloqueado" : "Acesso pendente"}
+              </StatusBadge>
+              <StatusBadge variant="neutral">
+                {studentActivitiesLoading ? "Registros…" : studentActivities.length + " registro" + (studentActivities.length === 1 ? "" : "s")}
+              </StatusBadge>
             </div>
 
             <section className="admin-student-action-tiles" aria-label="Ações de treino">
-              <button
-                type="button"
-                className="admin-training-action is-quick-action"
-                onClick={() => selectedStatus === "active" ? void openQuickTraining() : setStudentDetailView("access")}
+              <Popover.Root
+                open={quickOpen}
+                onOpenChange={(open) => {
+                  if (!open && !saving) setQuickOpen(false);
+                }}
               >
-                <span className="is-quick"><AdminBoltIcon /></span>
-                <div>
-                  <strong>Montar treino rápido</strong>
-                  <small>{selectedStatus === "active" ? "Publique um modelo salvo em poucos passos." : "Autorize o acesso do aluno para liberar esta ação."}</small>
-                </div>
-                <AdminChevronIcon />
-              </button>
+                <Popover.Anchor asChild>
+                  <button
+                    type="button"
+                    className="admin-training-action is-quick-action"
+                    aria-haspopup="dialog"
+                    aria-expanded={quickOpen}
+                    onClick={() => selectedStatus === "active" ? void openQuickTraining() : setStudentDetailView("access")}
+                  >
+                    <span className="is-quick"><AdminBoltIcon /></span>
+                    <div>
+                      <strong>Montar treino rápido</strong>
+                      <small>{selectedStatus === "active" ? "Publique um modelo salvo em poucos passos." : "Autorize o acesso do aluno para liberar esta ação."}</small>
+                    </div>
+                    <AdminChevronIcon />
+                  </button>
+                </Popover.Anchor>
+
+                <Popover.Portal>
+                  <Popover.Content
+                    className="admin-quick-popover-v1483"
+                    side="bottom"
+                    align="start"
+                    sideOffset={8}
+                    collisionPadding={16}
+                    avoidCollisions
+                    onEscapeKeyDown={() => { if (!saving) setQuickOpen(false); }}
+                  >
+                    <header>
+                      <div>
+                        <small>MONTAR TREINO RÁPIDO</small>
+                        <h2>{selectedStudent.fullName}</h2>
+                        <p>Escolha um treino que você já salvou com nome.</p>
+                      </div>
+                      <button type="button" onClick={() => setQuickOpen(false)} disabled={saving} aria-label="Fechar treino rápido">
+                        <AdminCloseIcon />
+                      </button>
+                    </header>
+
+                    {quickTemplatesLoading ? (
+                      <div className="admin-quick-template-loading">
+                        <span className="admin-area-spinner" />
+                        <p>Carregando seus treinos salvos...</p>
+                      </div>
+                    ) : !quickTemplates.length ? (
+                      <div className="admin-quick-template-empty">
+                        <span><AdminBoltIcon size={27} /></span>
+                        <strong>Nenhum treino rápido salvo</strong>
+                        <p>Essa biblioteca fica vazia até você montar um treino completo e tocar em “Salvar modelo”.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickOpen(false);
+                            void openCompleteTraining();
+                          }}
+                        >
+                          <AdminSparkIcon />
+                          Criar primeiro modelo
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="admin-quick-template-list">
+                          {quickTemplates.map((template) => {
+                            const exerciseCount = template.payload.routines.reduce(
+                              (total, routine) => total + routine.exercises.length,
+                              0,
+                            );
+                            const selected = template.id === selectedQuickTemplateId;
+
+                            return (
+                              <button
+                                type="button"
+                                key={template.id}
+                                className={selected ? "is-active" : ""}
+                                aria-pressed={selected}
+                                onClick={() => setSelectedQuickTemplateId(template.id)}
+                              >
+                                <span><AdminDumbbellIcon /></span>
+                                <div>
+                                  <strong>{template.name}</strong>
+                                  <small>
+                                    {template.splitCode} · {template.payload.routines.length} rotina
+                                    {template.payload.routines.length === 1 ? "" : "s"} · {exerciseCount} exercício
+                                    {exerciseCount === 1 ? "" : "s"}
+                                  </small>
+                                </div>
+                                {selected ? <AdminCheckIcon /> : <AdminChevronIcon />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="admin-quick-template-note">
+                          <AdminBoltIcon size={21} />
+                          <p>O modelo será copiado para este aluno e continuará salvo para ser usado novamente.</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="admin-quick-publish"
+                          onClick={() => void publishQuick()}
+                          disabled={saving || !selectedQuickTemplateId}
+                        >
+                          <AdminCheckIcon />
+                          {saving ? "Publicando..." : "Publicar treino salvo"}
+                        </button>
+                      </>
+                    )}
+                    <Popover.Arrow className="admin-quick-popover-arrow-v1483" width={18} height={9} />
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
 
               <button
                 type="button"
@@ -1956,113 +2067,6 @@ export default function AdminArea() {
 
           </form>
         </ResponsiveDialog>
-      ) : null}
-
-      {quickOpen && selectedStudent ? (
-        <div
-          className="admin-sheet-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving) {
-              setQuickOpen(false);
-            }
-          }}
-        >
-          <section className="admin-quick-sheet is-template-library">
-            <span className="admin-sheet-handle" />
-
-            <header>
-              <div>
-                <small>MONTAR TREINO RÁPIDO</small>
-                <h2>{selectedStudent.fullName}</h2>
-                <p>Escolha um treino que você já salvou com nome.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setQuickOpen(false)}
-                disabled={saving}
-              >
-                <AdminCloseIcon />
-              </button>
-            </header>
-
-            {quickTemplatesLoading ? (
-              <div className="admin-quick-template-loading">
-                <span className="admin-area-spinner" />
-                <p>Carregando seus treinos salvos...</p>
-              </div>
-            ) : !quickTemplates.length ? (
-              <div className="admin-quick-template-empty">
-                <span>
-                  <AdminBoltIcon size={27} />
-                </span>
-                <strong>Nenhum treino rápido salvo</strong>
-                <p>
-                  Essa biblioteca fica vazia até você montar um treino completo e tocar em “Salvar modelo”.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickOpen(false);
-                    void openCompleteTraining();
-                  }}
-                >
-                  <AdminSparkIcon />
-                  Criar primeiro modelo
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="admin-quick-template-list">
-                  {quickTemplates.map((template) => {
-                    const exerciseCount = template.payload.routines.reduce(
-                      (total, routine) => total + routine.exercises.length,
-                      0,
-                    );
-                    const selected = template.id === selectedQuickTemplateId;
-
-                    return (
-                      <button
-                        type="button"
-                        key={template.id}
-                        className={selected ? "is-active" : ""}
-                        aria-pressed={selected}
-                        onClick={() => setSelectedQuickTemplateId(template.id)}
-                      >
-                        <span>
-                          <AdminDumbbellIcon />
-                        </span>
-                        <div>
-                          <strong>{template.name}</strong>
-                          <small>
-                            {template.splitCode} · {template.payload.routines.length} rotina
-                            {template.payload.routines.length === 1 ? "" : "s"} · {exerciseCount} exercício
-                            {exerciseCount === 1 ? "" : "s"}
-                          </small>
-                        </div>
-                        {selected ? <AdminCheckIcon /> : <AdminChevronIcon />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="admin-quick-template-note">
-                  <AdminBoltIcon size={21} />
-                  <p>O modelo será copiado para este aluno e continuará salvo para ser usado novamente.</p>
-                </div>
-
-                <button
-                  type="button"
-                  className="admin-quick-publish"
-                  onClick={() => void publishQuick()}
-                  disabled={saving || !selectedQuickTemplateId}
-                >
-                  <AdminCheckIcon />
-                  {saving ? "Publicando..." : "Publicar treino salvo"}
-                </button>
-              </>
-            )}
-          </section>
-        </div>
       ) : null}
 
       <ResponsiveDialog open={exerciseDialogOpen} onOpenChange={(open) => { setExerciseDialogOpen(open); if (!open) resetExerciseDraft(); }} title="Novo exercício" description="Cadastre o exercício e envie o GIF diretamente para o Storage da ACCQUA.">

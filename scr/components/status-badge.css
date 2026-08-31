@@ -1,0 +1,40 @@
+.accqua-status-badge {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.accqua-status-badge.is-success {
+  color: #a4f0c1;
+  border-color: rgba(77, 218, 133, .34);
+  background: rgba(34, 164, 96, .18);
+}
+
+.accqua-status-badge.is-warning {
+  color: #ffe479;
+  border-color: rgba(255, 209, 40, .38);
+  background: rgba(255, 209, 40, .12);
+}
+
+.accqua-status-badge.is-danger {
+  color: #ffadb5;
+  border-color: rgba(255, 91, 105, .36);
+  background: rgba(255, 91, 105, .13);
+}
+
+.accqua-status-badge.is-neutral {
+  color: rgba(239, 246, 255, .76);
+  border-color: rgba(181, 207, 238, .18);
+  background: rgba(181, 207, 238, .08);
+}
