@@ -1878,7 +1878,7 @@ export default function AdminWorkoutBuilder() {
           </button>
         </div>
 
-        <section className="admin-builder-readiness">
+        <section className={clsx("admin-builder-readiness", !nextReadinessIssue && "is-complete")}>
           <button
             type="button"
             className="admin-builder-readiness-summary"

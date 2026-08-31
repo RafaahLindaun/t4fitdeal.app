@@ -102,9 +102,24 @@
 
   .admin-builder-context-bar,
   .admin-builder-step-nav,
-  .admin-builder-mobile-step-controls,
+  .admin-builder-mobile-step-controls {
+    display: none !important;
+  }
+
   .admin-builder-readiness {
     display: none !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-readiness:not(.is-complete) {
+    display: block !important;
+    margin: 10px 16px 12px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--surface-raised) 70%, var(--surface-deep));
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-readiness:not(.is-complete) .admin-builder-readiness-summary {
+    min-height: 52px;
+    padding: 10px 12px;
   }
 
   .admin-builder-guided-sticky {
