@@ -9,6 +9,7 @@ import "./styles/build-1.4.5-hardening.css";
 import "./styles/build-1.4.6.css";
 import "./styles/build-1.4.7.css";
 import "./styles/build-1.4.8.css";
+import "./styles/build-1.4.8.1.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
