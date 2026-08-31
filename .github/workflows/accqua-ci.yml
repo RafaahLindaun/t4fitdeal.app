@@ -19,9 +19,23 @@ concurrency:
 
 jobs:
   validate:
-    name: Typecheck and build
+    name: Typecheck, SQL and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
 
     steps:
       - name: Checkout
@@ -32,6 +46,23 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      - name: Test Build 1.4.6 classes SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_psql() {
+            docker run --rm --network host \
+              -e PGPASSWORD=postgres \
+              -v "${GITHUB_WORKSPACE}:/workspace" \
+              -w /workspace \
+              postgres:16 \
+              psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 "$@"
+          }
+
+          run_psql -f supabase/tests/build_1_4_6_classes_fixture.sql
+          run_psql -f supabase/migrations/20260831023000_build_1_4_6_fix_classes_status_ambiguity.sql
+          run_psql -f supabase/tests/build_1_4_6_classes_verify.sql
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
