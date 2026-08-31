@@ -14,12 +14,14 @@ import {
   type CardioSnapshot,
 } from "../lib/cardio";
 import {
+  deleteSyncQueueItem,
   listSyncQueue,
   putSyncQueueItem,
   type CardioSyncQueueItem,
   type SyncStatus,
 } from "../lib/cardioSyncQueue";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../auth/AuthProvider";
 
 type SyncState = {
   status: "idle" | SyncStatus;
@@ -43,12 +45,23 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
 
+function localDateKey(value?: string | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function emitDailySummaryInvalidation(item: CardioSyncQueueItem) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("accqua:daily-summary-invalidated", {
     detail: {
       userId: item.session.studentId,
-      date: item.snapshot.status === "completed" ? new Date().toISOString().slice(0, 10) : "",
+      date: item.snapshot.status === "completed"
+        ? localDateKey(item.session.completedAt || item.session.startedAt)
+        : "",
       source: "cardio",
     },
   }));
@@ -56,6 +69,8 @@ function emitDailySummaryInvalidation(item: CardioSyncQueueItem) {
 
 export function SyncQueueProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [states, setStates] = useState<Record<string, SyncState>>({});
   const inFlight = useRef(new Set<string>());
 
@@ -65,6 +80,13 @@ export function SyncQueueProvider({ children }: { children: ReactNode }) {
 
   const syncItem = useCallback(async (item: CardioSyncQueueItem) => {
     const key = item.idempotency_key;
+
+    // Nunca sincroniza dados locais pertencentes a outra sessão autenticada.
+    if (!userId || item.session.studentId !== userId) return;
+    if (item.sync_status === "synced") {
+      await deleteSyncQueueItem(item.id);
+      return;
+    }
     if (inFlight.current.has(key)) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setSyncState(key, { status: "pending", validForRanking: false });
@@ -88,13 +110,24 @@ export function SyncQueueProvider({ children }: { children: ReactNode }) {
         try {
           const result = await syncQueuedCardioCompletion(current.session, current.snapshot);
           if (result.saved) {
-            const synced: CardioSyncQueueItem = { ...current, sync_status: "synced", updated_at: new Date().toISOString() };
-            await putSyncQueueItem(synced);
+            const synced: CardioSyncQueueItem = {
+              ...current,
+              sync_status: "synced",
+              updated_at: new Date().toISOString(),
+            };
+
+            // Depois da confirmação remota, a fila deixa de ser histórico local.
+            // O histórico canônico passa a ser o Supabase.
+            await deleteSyncQueueItem(synced.id);
             setSyncState(key, { status: "synced", validForRanking: result.validForRanking });
             emitDailySummaryInvalidation(synced);
             if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("accqua:cardio-synced", { detail: { userId: synced.session.studentId, idempotencyKey: key } }));
-              window.dispatchEvent(new CustomEvent("accqua:cardio-sync-state", { detail: { idempotencyKey: key, status: "synced" } }));
+              window.dispatchEvent(new CustomEvent("accqua:cardio-synced", {
+                detail: { userId: synced.session.studentId, idempotencyKey: key },
+              }));
+              window.dispatchEvent(new CustomEvent("accqua:cardio-sync-state", {
+                detail: { idempotencyKey: key, status: "synced" },
+              }));
             }
             void queryClient.invalidateQueries({ queryKey: ["cardio-history", synced.session.studentId] });
             void queryClient.invalidateQueries({ queryKey: ["diet-dashboard", synced.session.studentId] });
@@ -115,33 +148,56 @@ export function SyncQueueProvider({ children }: { children: ReactNode }) {
       };
       await putSyncQueueItem(failed);
       setSyncState(key, { status: "failed", validForRanking: false });
-      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("accqua:cardio-sync-state", { detail: { idempotencyKey: key, status: "failed" } }));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("accqua:cardio-sync-state", {
+          detail: { idempotencyKey: key, status: "failed" },
+        }));
+      }
     } finally {
       inFlight.current.delete(key);
     }
-  }, [queryClient, setSyncState]);
+  }, [queryClient, setSyncState, userId]);
 
   const syncAll = useCallback(async () => {
+    if (!userId) return;
     const items = await listSyncQueue();
-    await Promise.all(items.filter((item) => item.sync_status !== "synced").map((item) => syncItem(item)));
-  }, [syncItem]);
+    const ownedItems = items.filter((item) => item.session.studentId === userId);
+
+    await Promise.all(
+      ownedItems
+        .filter((item) => item.sync_status === "synced")
+        .map((item) => deleteSyncQueueItem(item.id)),
+    );
+
+    await Promise.all(
+      ownedItems
+        .filter((item) => item.sync_status !== "synced")
+        .map((item) => syncItem(item)),
+    );
+  }, [syncItem, userId]);
 
   useEffect(() => {
     let mounted = true;
+
+    if (!userId) {
+      setStates({});
+      return () => {
+        mounted = false;
+      };
+    }
+
     void listSyncQueue().then((items) => {
       if (!mounted) return;
-      if (items.length) {
-        setStates((previous) => {
-          const next = { ...previous };
-          for (const item of items) {
-            next[item.idempotency_key] = {
-              status: item.sync_status,
-              validForRanking: false,
-            };
-          }
-          return next;
-        });
+      const ownedItems = items.filter((item) => item.session.studentId === userId);
+      const next: Record<string, SyncState> = {};
+      for (const item of ownedItems) {
+        if (item.sync_status === "synced") continue;
+        next[item.idempotency_key] = {
+          status: item.sync_status,
+          validForRanking: false,
+        };
       }
+      setStates(next);
       if (typeof navigator === "undefined" || navigator.onLine) void syncAll();
     });
 
@@ -156,7 +212,7 @@ export function SyncQueueProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [syncAll]);
+  }, [syncAll, userId]);
 
   const enqueueCardioCompletion = useCallback(async (
     session: CardioSessionRecord,
@@ -164,6 +220,12 @@ export function SyncQueueProvider({ children }: { children: ReactNode }) {
   ) => {
     const now = new Date().toISOString();
     const key = session.idempotencyKey;
+
+    if (!userId || session.studentId !== userId) {
+      setSyncState(key, { status: "failed", validForRanking: false });
+      return key;
+    }
+
     const item: CardioSyncQueueItem = {
       id: `cardio:${key}`,
       kind: "cardio_completion",
@@ -179,20 +241,32 @@ export function SyncQueueProvider({ children }: { children: ReactNode }) {
     // Write-ahead: armazenamento local acontece antes de qualquer tentativa remota.
     await putSyncQueueItem(item);
     setSyncState(key, { status: "pending", validForRanking: false });
-    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("accqua:cardio-sync-state", { detail: { idempotencyKey: key, status: "pending" } }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("accqua:cardio-sync-state", {
+        detail: { idempotencyKey: key, status: "pending" },
+      }));
+    }
     void queryClient.invalidateQueries({ queryKey: ["cardio-history", session.studentId] });
     return key;
-  }, [queryClient, setSyncState]);
+  }, [queryClient, setSyncState, userId]);
 
   const retryCardio = useCallback((idempotencyKey: string) => {
-    if (!idempotencyKey) return;
+    if (!idempotencyKey || !userId) return;
     void listSyncQueue().then((items) => {
-      const item = items.find((current) => current.idempotency_key === idempotencyKey);
+      const item = items.find((current) =>
+        current.idempotency_key === idempotencyKey &&
+        current.session.studentId === userId
+      );
       if (!item) return;
-      const pending = { ...item, attempts: 0, sync_status: "pending" as const, updated_at: new Date().toISOString() };
+      const pending = {
+        ...item,
+        attempts: 0,
+        sync_status: "pending" as const,
+        updated_at: new Date().toISOString(),
+      };
       void putSyncQueueItem(pending).then(() => syncItem(pending));
     });
-  }, [syncItem]);
+  }, [syncItem, userId]);
 
   const getSyncState = useCallback((idempotencyKey?: string | null) => {
     if (!idempotencyKey) return idleState;

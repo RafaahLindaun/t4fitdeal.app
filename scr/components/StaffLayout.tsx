@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import "./staff-layout.css";
+
+const STAFF_ROLES = ["professor", "reception", "admin"] as const;
 
 export default function StaffLayout() {
   const { profile, user } = useAuth();
@@ -11,9 +13,16 @@ export default function StaffLayout() {
   const items = getStaffNavItems();
   const active = staffNavKeyForLocation(location.pathname, location.search);
   const mobileItemRefs = useRef<Partial<Record<StaffNavKey, HTMLButtonElement | null>>>({});
-  const role = profile?.role === "admin"
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!profile || profile.status !== "active") return <Navigate to="/aguardando" replace />;
+  if (!STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number])) {
+    return <Navigate to="/menu-teste" replace />;
+  }
+
+  const role = profile.role === "admin"
     ? "ADMINISTRAÇÃO"
-    : profile?.role === "reception"
+    : profile.role === "reception"
       ? "RECEPÇÃO"
       : "PROFESSOR";
 
@@ -52,7 +61,7 @@ export default function StaffLayout() {
         </nav>
         <div className="accqua-staff-sidebar-account">
           <small>{role}</small>
-          <strong>{profile?.fullName || user?.email || "Equipe ACCQUA"}</strong>
+          <strong>{profile.fullName || user.email || "Equipe ACCQUA"}</strong>
           <span>Gestão operacional</span>
         </div>
       </aside>

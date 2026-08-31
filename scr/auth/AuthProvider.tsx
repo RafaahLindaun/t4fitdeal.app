@@ -61,28 +61,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const normalizeDigits = (value: string) => value.replace(/\D/g, "");
 
-function roleFromEmail(email?: string | null): AppRole | null {
-  const normalized = String(email ?? "").trim().toLowerCase();
-  const domain = normalized.split("@")[1] ?? "";
-
-  if (domain.includes("professor") || domain.includes("personal")) {
-    return "professor";
-  }
-
-  if (
-    domain.includes("recepcao") ||
-    domain.includes("reception") ||
-    domain.includes("atendimento")
-  ) {
-    return "reception";
-  }
-
-  if (domain.includes("admin")) return "admin";
-  return null;
-}
-
-function normalizeRole(value: unknown, email?: string | null): AppRole {
-  const role = String(value ?? "").toLowerCase();
+/**
+ * Papel de acesso nunca deve ser inferido de e-mail ou user_metadata.
+ * O perfil persistido/RPC e, em ultimo caso, app_metadata (server-controlled)
+ * sao as unicas fontes aceitas pelo cliente.
+ */
+function normalizeRole(value: unknown): AppRole {
+  const role = String(value ?? "").trim().toLowerCase();
 
   if (
     role === "professor" ||
@@ -97,7 +82,7 @@ function normalizeRole(value: unknown, email?: string | null): AppRole {
   }
 
   if (role === "admin") return "admin";
-  return roleFromEmail(email) ?? "student";
+  return "student";
 }
 
 function normalizeStatus(value: unknown, role: AppRole): MembershipStatus {
@@ -129,7 +114,7 @@ function approvalToMembershipStatus(
 
 function normalizeProfile(raw: Record<string, unknown>, user: User): AppProfile {
   const email = String(raw.email ?? user.email ?? "");
-  const role = normalizeRole(raw.role, email);
+  const role = normalizeRole(raw.role);
   return {
     id: String(raw.id ?? user.id),
     email,
@@ -146,7 +131,7 @@ function normalizeProfile(raw: Record<string, unknown>, user: User): AppProfile 
 
 function fallbackProfile(user: User): AppProfile {
   const email = user.email ?? "";
-  const role = normalizeRole(user.user_metadata?.role, email);
+  const role = normalizeRole(user.app_metadata?.role);
   return {
     id: user.id,
     email,
@@ -164,15 +149,6 @@ function fallbackProfile(user: User): AppProfile {
       role,
     ),
   };
-}
-
-function profileIsComplete(profile: AppProfile | null) {
-  return Boolean(
-    profile?.fullName &&
-      profile.cpf &&
-      profile.phone &&
-      profile.emergencyPhone,
-  );
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms = 6500): Promise<T> {
@@ -382,8 +358,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: "O acesso está temporariamente indisponível. Tente novamente em instantes." };
     }
 
-    const requestedRole = roleFromEmail(input.email) ?? "student";
-    const isTeamAccount = requestedRole !== "student";
+    // Cadastro público nunca escolhe papel privilegiado. Promoção para
+    // professor/recepção/admin deve acontecer apenas pelo backend/gestão.
     const metadata = {
       full_name: input.fullName.trim(),
       nome: input.fullName.trim(),
@@ -392,8 +368,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       emergency_phone: normalizeDigits(input.emergencyPhone),
       birth_date: input.birthDate,
       objective: input.objective,
-      requested_role: requestedRole,
-      role: requestedRole,
       status: "pending",
     };
 
@@ -427,9 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return {
-      message: isTeamAccount
-        ? "Conta criada. Um professor, a administração ou a recepção precisa liberar a entrada no aplicativo."
-        : "Cadastro enviado. Um professor, a administração ou a recepção precisa liberar seu acesso.",
+      message: "Cadastro enviado. Um professor, a administração ou a recepção precisa liberar seu acesso.",
     };
   };
 
