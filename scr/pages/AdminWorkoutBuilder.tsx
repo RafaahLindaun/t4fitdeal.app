@@ -1683,7 +1683,7 @@ export default function AdminWorkoutBuilder() {
                     onClick={() => {
                       setActiveRoutineIndex(index);
                       setExpandedExercise(null);
-                      setMobileStep("rotina");
+                      setMobileStep((current) => current === "exercicios" ? "exercicios" : "rotina");
                     }}
                   >
                     <span>{routine.code}</span>
