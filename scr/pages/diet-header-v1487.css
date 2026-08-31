@@ -1,0 +1,95 @@
+/* ACCQUA Sports — Build 1.4.8.7
+   H1 — header Minha dieta: IconButtons canônicos, sem sobreposição. */
+
+.diet-topbar {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.diet-topbar > .accqua-page-header-slot.is-left {
+  min-width: 0;
+}
+
+.diet-topbar > .accqua-page-header-center {
+  display: none !important;
+}
+
+.diet-topbar > .accqua-page-header-slot.is-right {
+  min-width: 0;
+}
+
+.diet-header-primary {
+  width: 100%;
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.diet-title {
+  min-width: 0;
+  text-align: left !important;
+}
+
+.diet-title span,
+.diet-title h1 {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.diet-topbar-side.is-right {
+  width: auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+}
+
+.diet-round-button.accqua-icon-button {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, .08) !important;
+}
+
+.diet-round-button.accqua-icon-button > svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 20px;
+}
+
+@media (max-width: 390px) {
+  .diet-topbar {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    gap: 8px !important;
+  }
+
+  .diet-header-primary {
+    gap: 8px !important;
+  }
+
+  .diet-topbar-side.is-right {
+    gap: 12px !important;
+  }
+
+  .diet-title span {
+    font-size: .5rem;
+  }
+
+  .diet-title h1 {
+    font-size: .98rem !important;
+  }
+}
