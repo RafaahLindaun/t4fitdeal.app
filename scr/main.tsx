@@ -11,6 +11,7 @@ import "./styles/build-1.4.7.css";
 import "./styles/build-1.4.8.css";
 import "./styles/build-1.4.8.1.css";
 import "./styles/build-1.4.8.2.css";
+import "./styles/build-1.4.8.9.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
