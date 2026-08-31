@@ -1,0 +1,69 @@
+/* ACCQUA Sports — Build 1.4.8.7
+   J — BottomNavigation flutua sobre a própria página, sem faixa retangular. */
+
+@media (max-width: 1023.98px) {
+  /* O wrapper só posiciona e respeita safe-area. Ele nunca pinta uma superfície. */
+  .accqua-main-layout > .accqua-main-layout-nav {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    min-height: calc(96px + env(safe-area-inset-bottom)) !important;
+    padding:
+      0
+      max(12px, env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left)) !important;
+    justify-content: center !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav::before,
+  .accqua-main-layout > .accqua-main-layout-nav::after {
+    content: none !important;
+    display: none !important;
+    background: transparent !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
+    width: min(520px, 100%) !important;
+    margin: 0 !important;
+    border-radius: 28px !important;
+    overflow: hidden !important;
+  }
+
+  /* A tela visual continua até o fim da viewport. O espaço de toque/scroll
+     é reservado dentro das áreas roláveis, não por uma faixa do AppShell. */
+  .accqua-main-layout:not(.is-focus-mode) > .accqua-main-layout-content {
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+    background: transparent !important;
+  }
+
+  .accqua-main-layout:not(.is-focus-mode) .accqua-route-transition {
+    min-height: 100dvh;
+  }
+
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .accqua-menu-screen,
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .workout-screen,
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .diet-screen,
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .classes-screen,
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .accqua-profile-screen,
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .store-screen,
+  .accqua-main-layout:not(.is-focus-mode) .accqua-main-layout-content > .accqua-route-transition > .accqua-ranking-screen {
+    bottom: 0 !important;
+    min-height: 100dvh !important;
+  }
+
+  /* Somente o conteúdo rolável termina antes dos controles. */
+  .accqua-main-layout-content .accqua-menu-scroll,
+  .accqua-main-layout-content .diet-scroll-content,
+  .accqua-main-layout-content .accqua-profile-content,
+  .accqua-main-layout-content .ranking-scroll-area,
+  .accqua-main-layout-content .store-scroll,
+  .accqua-main-layout-content .classes-scroll {
+    padding-bottom: calc(24px + var(--app-bottomnav-offset)) !important;
+  }
+}

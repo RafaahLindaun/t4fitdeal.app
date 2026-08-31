@@ -10,6 +10,7 @@ import { BottomNavTreinoTargetProvider } from "./BottomNavTargetContext";
 import { FocusModeProvider } from "./FocusModeContext";
 import { PRIMARY_TAB_ROUTES, useTabSwipe } from "../hooks/useTabSwipe";
 import "./main-layout.css";
+import "./main-layout-v1487.css";
 
 const SWIPE_KEY_ORDER: PrimaryNavKey[] = ["inicio", "treino", "aulas", "perfil"];
 
