@@ -32,7 +32,6 @@ function dateLabel(value: string) {
   return new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(date);
 }
 
-
 function dayPillLabel(value: string) {
   const label = dateLabel(value);
   if (label === "Hoje" || label === "Amanhã") return label;
@@ -79,6 +78,10 @@ function buttonCopy(item: ClassAgendaItem, reserving: boolean) {
   return "Marcar";
 }
 
+function classKey(item: ClassAgendaItem) {
+  return `${item.scheduleId}-${item.date}`;
+}
+
 export default function Aulas() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -86,6 +89,7 @@ export default function Aulas() {
   const { user } = useAuth();
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedDate, setSelectedDate] = useState(() => localDateKey());
+  const [nearestTarget, setNearestTarget] = useState<string | null>(null);
 
   const agendaQuery = useQuery({
     queryKey: ["classes-agenda", user?.id, localDateKey()],
@@ -123,6 +127,13 @@ export default function Aulas() {
     [items, typeFilter],
   );
 
+  const nextClass = useMemo(() => {
+    const now = Date.now();
+    return [...filtered]
+      .filter((item) => classDateTime(item.date, item.startTime).getTime() > now)
+      .sort((a, b) => classDateTime(a.date, a.startTime).getTime() - classDateTime(b.date, b.startTime).getTime())[0] ?? null;
+  }, [filtered]);
+
   const groups = useMemo(() => {
     const selectedItems = filtered
       .filter((item) => item.date === selectedDate)
@@ -139,6 +150,28 @@ export default function Aulas() {
       return localDateKey(date);
     });
   }, []);
+
+  const goToNextClass = () => {
+    if (!nextClass) {
+      toast.info("Não há outras aulas cadastradas nos próximos dias.");
+      return;
+    }
+
+    const key = classKey(nextClass);
+    setNearestTarget(key);
+    setSelectedDate(nextClass.date);
+
+    window.setTimeout(() => {
+      document.getElementById(`class-card-${key}`)?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    }, 90);
+
+    window.setTimeout(() => {
+      setNearestTarget((current) => current === key ? null : current);
+    }, 1800);
+  };
 
   return (
     <div className="classes-screen">
@@ -191,7 +224,22 @@ export default function Aulas() {
           ) : agendaQuery.isError ? (
             <section className="classes-state is-error"><strong>Não foi possível carregar as aulas.</strong><p>Confirme se a migration da Build 1.3.4 já foi aplicada no Supabase.</p><button type="button" onClick={() => void agendaQuery.refetch()}>Tentar novamente</button></section>
           ) : groups.length === 0 ? (
-            <section className="classes-state"><strong>Nenhuma aula em {dateLabel(selectedDate)}</strong><p>Escolha outro dia ou aguarde novos horários cadastrados pela equipe.</p></section>
+            <section className="classes-state classes-empty-state">
+              <strong>Nenhuma aula em {dateLabel(selectedDate)}</strong>
+              <p>Escolha outro dia ou vá direto para a próxima aula disponível.</p>
+              {nextClass ? (
+                <motion.button
+                  type="button"
+                  className="classes-nearest-button"
+                  whileTap={reduceMotion ? undefined : { scale: 0.975 }}
+                  onClick={goToNextClass}
+                >
+                  <NavCalendarIcon size={18} />
+                  <span>Ver aula mais próxima</span>
+                  <small>{dateLabel(nextClass.date)} · {timeLabel(nextClass.startTime)}</small>
+                </motion.button>
+              ) : null}
+            </section>
           ) : (
             <div className="classes-groups">
               {groups.map(([date, dayItems]) => (
@@ -207,8 +255,13 @@ export default function Aulas() {
                       const blocked = !item.canReserve && !reserved;
                       const busy = reserveMutation.isPending && reserveMutation.variables?.scheduleId === item.scheduleId && reserveMutation.variables?.date === item.date;
                       const requirement = classRequirementLabel(item.requiresMembership, item.acceptsGympass);
+                      const key = classKey(item);
                       return (
-                        <article className={`class-card ${reserved ? "is-reserved" : ""} ${blocked ? "is-blocked" : ""}`} key={`${item.scheduleId}-${item.date}`}>
+                        <article
+                          id={`class-card-${key}`}
+                          className={`class-card ${reserved ? "is-reserved" : ""} ${blocked ? "is-blocked" : ""} ${nearestTarget === key ? "is-nearest-target" : ""}`.trim()}
+                          key={key}
+                        >
                           <div className="class-card-accent" style={{ background: item.accentColor || "#F2C230" }} />
                           <div className="class-card-top">
                             <span className="class-card-icon"><ClassGlyph icon={item.icon} /></span>
