@@ -1,0 +1,57 @@
+.accqua-icon-button {
+  flex: 0 0 auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.accqua-icon-button.is-md {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.accqua-icon-button > svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 20px;
+  display: block;
+}
+
+.accqua-icon-button:hover {
+  color: #fff;
+  border-color: rgba(255, 209, 40, .24);
+  background: rgba(255, 255, 255, .11);
+}
+
+.accqua-icon-button:active:not(:disabled) {
+  transform: scale(.96);
+}
+
+.accqua-icon-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.accqua-icon-button:disabled {
+  opacity: .42;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-icon-button {
+    transition: none;
+  }
+}
