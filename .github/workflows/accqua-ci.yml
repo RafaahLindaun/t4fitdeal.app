@@ -48,7 +48,7 @@ jobs:
           cache: npm
 
       - name: Materialize Build 1.5.0
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/build-1.5.0' && !contains(github.event.head_commit.message, 'materialize Build 1.5.0')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/build-1.5.0' && !contains(github.event.head_commit.message, 'feat: materialize Build 1.5.0 workout builder')
         shell: bash
         run: |
           set -euo pipefail
