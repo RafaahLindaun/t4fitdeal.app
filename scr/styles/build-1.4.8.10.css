@@ -1,0 +1,149 @@
+/*
+ * ACCQUA Sports — Build 1.4.8.10
+ * Mobile Staff: remove bottom-nav ghost space and lock profile shortcuts to compact fixed-height tiles.
+ */
+
+@media (max-width: 1023.98px) {
+  /* -----------------------------------------------------------------------
+     O — /area-accqua is route focus mode on mobile, so there is NO global
+     BottomNavigation. Remove every legacy reservation of --app-bottomnav-offset
+     from the Staff shell and its operational screens.
+     ----------------------------------------------------------------------- */
+  .accqua-main-layout.is-route-focus-mode > .accqua-main-layout-content {
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-route-transition {
+    min-height: 100dvh !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-layout {
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-layout.uses-document-scroll {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route > .admin-area-screen {
+    min-height: calc(100dvh - var(--staff-mobile-nav-height, 56px)) !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-layout.uses-document-scroll
+    .accqua-staff-route > .admin-area-screen {
+    min-height: 100% !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route > .classes-admin-screen,
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route > .store-admin-screen,
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route > .admin-builder-screen {
+    height: calc(100dvh - var(--staff-mobile-nav-height, 56px)) !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route .classes-admin-scroll,
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route .store-admin-scroll,
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route .admin-builder-scroll,
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-route .admin-builder-body {
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+  }
+
+  /* -----------------------------------------------------------------------
+     N v2 — fixed-size app group. No aspect-ratio, no viewport-relative height.
+     Three columns are intentional for 360–430px so labels remain readable.
+     ----------------------------------------------------------------------- */
+  .admin-profile-view .admin-student-summary-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: 84px !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    align-items: start !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item {
+    width: 100% !important;
+    height: 84px !important;
+    min-height: 84px !important;
+    max-height: 84px !important;
+    aspect-ratio: auto !important;
+    padding: 8px 6px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-icon {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 30px !important;
+    border-radius: 10px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-icon svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item > div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item strong {
+    display: -webkit-box !important;
+    width: 100% !important;
+    max-height: 27px !important;
+    overflow: hidden !important;
+    color: #f8fbff !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.22 !important;
+    text-align: center !important;
+    text-overflow: ellipsis !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item p,
+  .admin-profile-view .admin-student-summary-list .profile-menu-item > svg {
+    display: none !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item::after {
+    top: 7px !important;
+    right: 7px !important;
+    width: 7px !important;
+    height: 7px !important;
+    border-width: 1px !important;
+  }
+}
+
+@media (max-width: 374px) {
+  .admin-profile-view .admin-student-summary-list {
+    gap: 8px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item {
+    height: 84px !important;
+    min-height: 84px !important;
+    max-height: 84px !important;
+    padding-inline: 4px !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list .profile-menu-item strong {
+    font-size: 10px !important;
+  }
+}
