@@ -7,6 +7,7 @@ import {
 } from "react";
 import clsx from "clsx";
 import { useDrag } from "@use-gesture/react";
+import { Reorder, useDragControls } from "framer-motion";
 import { Drawer } from "vaul";
 import { toast as notify } from "sonner";
 import {
@@ -69,6 +70,7 @@ import "./admin-workout-builder.css";
 import "./admin-workout-builder-v10.css";
 import "./admin-workout-builder-v11.css";
 import "./admin-workout-builder-v1486.css";
+import "./admin-workout-builder-v150.css";
 
 type SplitCode =
   | "FULL"
@@ -100,7 +102,7 @@ const BUILDER_STEPS: Array<{
   { key: "programa", number: 1, label: "Programa" },
   { key: "rotina", number: 2, label: "Dias" },
   { key: "exercicios", number: 3, label: "Exercícios" },
-  { key: "cardio", number: 4, label: "Cardio" },
+  { key: "cardio", number: 4, label: "Revisão" },
 ];
 
 type CustomExerciseDraft = CreateExerciseLibraryInput;
@@ -586,43 +588,53 @@ function SwipeToRemove({ children, label, onRemove }: SwipeToRemoveProps) {
 }
 
 type ReorderGestureHandleProps = {
-  index: number;
-  total: number;
   label: string;
-  onMove: (direction: -1 | 1) => void;
+  dragControls: ReturnType<typeof useDragControls>;
 };
 
 function ReorderGestureHandle({
-  index,
-  total,
   label,
-  onMove,
+  dragControls,
 }: ReorderGestureHandleProps) {
-  const [dragging, setDragging] = useState(false);
-  const bind = useDrag(
-    ({ first, last, movement: [, movementY] }) => {
-      if (first) setDragging(true);
-      if (!last) return;
-      setDragging(false);
-      if (Math.abs(movementY) < 34) return;
-      if (movementY < 0 && index > 0) onMove(-1);
-      if (movementY > 0 && index < total - 1) onMove(1);
-    },
-    { axis: "y", filterTaps: true },
-  );
-
   return (
     <button
-      {...bind()}
       type="button"
-      className={clsx("admin-builder-reorder-handle", "accqua-pressable", dragging && "is-dragging")}
+      className="admin-builder-reorder-handle accqua-pressable"
       aria-label={`Arrastar para reordenar ${label}`}
-      title="Arraste para cima ou para baixo"
+      title="Segure e arraste para reordenar"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dragControls.start(event);
+      }}
       onClick={(event) => event.stopPropagation()}
       style={{ touchAction: "none" }}
     >
-      <span aria-hidden="true">≡</span>
+      <span aria-hidden="true">⋮⋮</span>
     </button>
+  );
+}
+
+type ReorderExerciseItemProps = {
+  exercise: BuilderExercise;
+  children: (dragControls: ReturnType<typeof useDragControls>) => ReactNode;
+};
+
+function ReorderExerciseItem({ exercise, children }: ReorderExerciseItemProps) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={exercise}
+      dragListener={false}
+      dragControls={dragControls}
+      className="admin-builder-reorder-item"
+      whileDrag={{ scale: 1.018, boxShadow: "0 18px 40px rgba(0, 0, 0, 0.28)" }}
+      transition={{ duration: 0.18 }}
+    >
+      {children(dragControls)}
+    </Reorder.Item>
   );
 }
 
@@ -1474,6 +1486,12 @@ export default function AdminWorkoutBuilder() {
     });
   };
 
+  const reorderActiveRoutineExercises = (nextExercises: BuilderExercise[]) => {
+    updateRoutine(activeRoutineIndex, {
+      exercises: reorder(nextExercises),
+    });
+  };
+
   const toggleWeekDay = (day: number) => {
     const exists = activeRoutine.weekDays.includes(day);
     updateRoutine(activeRoutineIndex, {
@@ -1659,6 +1677,32 @@ export default function AdminWorkoutBuilder() {
             <AdminLayersIcon />
           </button>
         </header>
+
+        <section className="admin-builder-mobile-progress" aria-label="Progresso da montagem">
+          <div className="admin-builder-story-segments">
+            {BUILDER_STEPS.map((step, index) => {
+              const presentation = stepPresentation[step.key];
+              return (
+                <button
+                  type="button"
+                  key={step.key}
+                  className={clsx(
+                    index === activeStepIndex && "is-active",
+                    presentation.state === "complete" && "is-complete",
+                  )}
+                  onClick={() => showBuilderSection(step.key)}
+                  aria-label={`${step.label}: ${presentation.label}`}
+                >
+                  <i />
+                </button>
+              );
+            })}
+          </div>
+          <div className="admin-builder-progress-copy">
+            <small>Etapa {activeStepMeta.number} de {BUILDER_STEPS.length}</small>
+            <strong>{activeStepMeta.label}</strong>
+          </div>
+        </section>
 
         <div className="admin-builder-guided-sticky">
           <section className="admin-builder-context-bar" aria-live="polite">
@@ -1969,7 +2013,6 @@ export default function AdminWorkoutBuilder() {
                   className={splitCode === option.code ? "is-active" : ""}
                   aria-pressed={splitCode === option.code}
                   onClick={() => {
-                    setMobileStep("rotina");
                     changeSplit(option.code);
                   }}
                 >
@@ -2160,14 +2203,21 @@ export default function AdminWorkoutBuilder() {
               </button>
             </div>
           ) : (
-            <div className="admin-builder-exercise-list">
+            <Reorder.Group
+              as="div"
+              axis="y"
+              values={activeRoutine.exercises}
+              onReorder={reorderActiveRoutineExercises}
+              className="admin-builder-exercise-list"
+            >
               {activeRoutine.exercises.map((exercise, index) => {
                 const expanded =
                   expandedExercise === exercise.draftId;
 
                 return (
+                  <ReorderExerciseItem key={exercise.draftId} exercise={exercise}>
+                    {(dragControls) => (
                   <SwipeToRemove
-                    key={exercise.draftId}
                     label={exercise.name}
                     onRemove={() => {
                       removeExercise(exercise.draftId);
@@ -2232,10 +2282,8 @@ export default function AdminWorkoutBuilder() {
                       </span>
 
                       <ReorderGestureHandle
-                        index={index}
-                        total={activeRoutine.exercises.length}
                         label={exercise.name}
-                        onMove={(direction) => moveExercise(index, direction)}
+                        dragControls={dragControls}
                       />
 
                       <span className="admin-builder-exercise-controls">
@@ -2488,9 +2536,11 @@ export default function AdminWorkoutBuilder() {
                     ) : null}
                     </article>
                   </SwipeToRemove>
+                    )}
+                  </ReorderExerciseItem>
                 );
               })}
-            </div>
+            </Reorder.Group>
           )}
         </section>
 
@@ -2602,7 +2652,7 @@ export default function AdminWorkoutBuilder() {
               <AdminCardioIcon size={24} />
             </span>
             <div>
-              <small>CARDIO OPCIONAL</small>
+              <small>REVISÃO · CARDIO OPCIONAL</small>
               <strong>Adicionar cardio ao programa</strong>
               <p>
                 A prescrição aparecerá dentro da aba Cardio do aluno.
@@ -2774,6 +2824,45 @@ export default function AdminWorkoutBuilder() {
         </aside>
 
         <footer className="admin-builder-footer">
+          <div className="admin-builder-mobile-footer">
+            <div className="admin-builder-mobile-footer-copy">
+              <small>ETAPA ATUAL</small>
+              <strong>{activeStepMeta.label}</strong>
+              <button
+                type="button"
+                className="admin-builder-mobile-save-template"
+                onClick={openTemplateName}
+                disabled={saving}
+              >
+                Salvar modelo
+              </button>
+            </div>
+
+            {activeStepIndex < BUILDER_STEPS.length - 1 ? (
+              <button
+                type="button"
+                className="admin-builder-mobile-primary"
+                onClick={() => {
+                  const next = BUILDER_STEPS[activeStepIndex + 1];
+                  if (next) showBuilderSection(next.key);
+                }}
+              >
+                Próximo
+                <AdminChevronIcon size={17} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="admin-builder-mobile-primary"
+                onClick={() => void publish()}
+                disabled={saving}
+              >
+                <AdminCheckIcon size={17} />
+                {saving ? "Salvando..." : "Salvar treino"}
+              </button>
+            )}
+          </div>
+
           {saveAttempted && nextReadinessIssue ? (
             <div className="admin-builder-save-warning" role="alert">
               <AdminWarningIcon size={20} />
