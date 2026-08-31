@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local environment files. Nunca commitar service_role, Stripe secrets ou outros segredos.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

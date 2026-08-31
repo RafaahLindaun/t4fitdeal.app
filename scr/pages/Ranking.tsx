@@ -368,7 +368,14 @@ export default function Ranking() {
             <AccquaLogo compact />
           </div>
 
-          <span className="ranking-header-balance" aria-hidden="true" />
+          <button
+            type="button"
+            className="ranking-info-fab"
+            onClick={() => setInfoOpen(true)}
+            aria-label="Como funciona o ranking"
+          >
+            <InfoIcon />
+          </button>
         </header>
 
         <section className="ranking-title">
@@ -457,14 +464,6 @@ export default function Ranking() {
 
       </main>
 
-      <button
-        type="button"
-        className="ranking-info-fab"
-        onClick={() => setInfoOpen(true)}
-        aria-label="Como funciona o ranking"
-      >
-        <InfoIcon />
-      </button>
 
       <RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)} />
 

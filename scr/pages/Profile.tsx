@@ -453,6 +453,8 @@ export default function Profile() {
   if (loading) return <LoadingSplash />;
   if (!user) return <Navigate to="/login" replace />;
   if (landingPath !== "/menu-teste") return <Navigate to={landingPath} replace />;
+  // Build 1.4.6: Perfil usa o mesmo loading global das demais rotas.
+  if (loadingDashboard) return <LoadingSplash />;
 
   const details = dashboard.details;
   const active = details.status === "active" || profile?.status === "active";
@@ -540,6 +542,7 @@ export default function Profile() {
       return;
     }
     await reload();
+    await queryClient.invalidateQueries({ queryKey: ["primary-sidebar-avatar", user.id] });
     setMessage("Foto de perfil atualizada.");
   };
 
@@ -640,14 +643,6 @@ export default function Profile() {
           className={`accqua-profile-content ${view === "main" ? "is-main-view" : "is-subview"}`}
           ref={contentRef}
         >
-          {loadingDashboard ? (
-            <div className="accqua-profile-loading" role="status" aria-live="polite">
-              <img src="/accqua-logo-loading-oficial.png" alt="ACCQUA Sports Academia" />
-              <span />
-              <p>Carregando perfil</p>
-            </div>
-          ) : null}
-
           {!loadingDashboard && view === "main" ? (
             <>
               <section className="profile-identity-card">

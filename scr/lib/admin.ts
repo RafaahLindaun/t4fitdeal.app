@@ -809,13 +809,6 @@ async function applyCanonicalAccessStatus(
   }));
 }
 
-async function applyCanonicalAccessToStudent(
-  student: WorkoutStudent | null,
-): Promise<WorkoutStudent | null> {
-  if (!student) return null;
-  const [resolved] = await applyCanonicalAccessStatus([student]);
-  return resolved ?? student;
-}
 
 async function applyStudentAvatars(
   students: WorkoutStudent[],
@@ -1684,9 +1677,9 @@ export async function loadStudentActivityHistory(
       calories: Math.max(0, Number(row.calories ?? 0)),
       completionPercentage: Math.max(0, Number(row.completion_percentage ?? 0)),
       validForRanking: Boolean(row.valid_for_ranking),
-      exerciseCount: Math.max(0, Number(row.exercise_count ?? row.total_exercises ?? 0)),
-      completedSets: Math.max(0, Number(row.completed_sets ?? row.series_completed ?? 0)),
-      totalSets: Math.max(0, Number(row.total_sets ?? row.series_total ?? 0)),
+      exerciseCount: 0,
+      completedSets: 0,
+      totalSets: 0,
     }));
   }
 
@@ -1714,9 +1707,9 @@ export async function loadStudentActivityHistory(
       calories: Math.max(0, Number(row.calories ?? 0)),
       completionPercentage: Math.max(0, Number(row.completion_percentage ?? 0)),
       validForRanking: Boolean(row.valid_for_ranking),
-      exerciseCount: Math.max(0, Number(row.exercise_count ?? row.total_exercises ?? 0)),
-      completedSets: Math.max(0, Number(row.completed_sets ?? row.series_completed ?? 0)),
-      totalSets: Math.max(0, Number(row.total_sets ?? row.series_total ?? 0)),
+      exerciseCount: 0,
+      completedSets: 0,
+      totalSets: 0,
     }));
   }
 
@@ -1749,9 +1742,9 @@ export async function loadStudentActivityHistory(
       calories: Math.max(0, Number(row.calories ?? 0)),
       completionPercentage: Math.max(0, Number(row.completion_percentage ?? 0)),
       validForRanking: Boolean(row.valid_for_ranking),
-      exerciseCount: Math.max(0, Number(row.exercise_count ?? row.total_exercises ?? 0)),
-      completedSets: Math.max(0, Number(row.completed_sets ?? row.series_completed ?? 0)),
-      totalSets: Math.max(0, Number(row.total_sets ?? row.series_total ?? 0)),
+      exerciseCount: 0,
+      completedSets: 0,
+      totalSets: 0,
     }));
   }
 

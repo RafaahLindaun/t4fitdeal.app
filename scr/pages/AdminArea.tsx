@@ -883,9 +883,6 @@ export default function AdminArea() {
   const selectedHasProfessor = Boolean(
     selectedStudent?.linkedProfessorId,
   );
-  const canBuildSelectedTraining = Boolean(
-    selectedStudent && selectedStatus === "active",
-  );
   const selectedJourneyDoneCount = [
     selectedProfileComplete,
     selectedStatus === "active",

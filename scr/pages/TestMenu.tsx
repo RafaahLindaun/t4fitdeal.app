@@ -67,14 +67,6 @@ export default function TestMenu() {
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion();
   const { user, profile, loading, landingPath } = useAuth();
-  const [showSplash, setShowSplash] = useState(() => {
-    const skipNextSplash = window.sessionStorage.getItem("accqua:skip-next-menu-splash");
-    if (skipNextSplash === "1") {
-      window.sessionStorage.removeItem("accqua:skip-next-menu-splash");
-      return false;
-    }
-    return true;
-  });
   const [message, setMessage] = useState("");
   const [workoutAlerts, setWorkoutAlerts] = useState<WorkoutRequiredAlert[]>([]);
   const [isDesktop, setIsDesktop] = useState(() => window.matchMedia("(min-width: 768px)").matches);
@@ -89,7 +81,6 @@ export default function TestMenu() {
     queryKey: ["home-dashboard", user?.id],
     queryFn: () => loadHomeDashboard(user!.id),
     enabled: Boolean(user?.id),
-    refetchInterval: 30_000,
   });
 
   const treinoStatus = useTreinoStatus(user?.id ?? "", { periodo: "hoje" });
@@ -98,7 +89,6 @@ export default function TestMenu() {
     queryKey: ["unread-notifications", user?.id],
     queryFn: () => loadUnreadNotificationCount(user!.id),
     enabled: Boolean(user?.id),
-    refetchInterval: 45_000,
   });
 
   useEffect(() => {
@@ -123,12 +113,6 @@ export default function TestMenu() {
     media.addEventListener("change", syncDesktop);
     return () => media.removeEventListener("change", syncDesktop);
   }, []);
-
-  useEffect(() => {
-    if (!showSplash) return;
-    const timer = window.setTimeout(() => setShowSplash(false), 1650);
-    return () => window.clearTimeout(timer);
-  }, [showSplash]);
 
   useEffect(() => {
     if (!message) return;
@@ -164,8 +148,7 @@ export default function TestMenu() {
 
     const activityChannel = supabase
       .channel(`home-activity-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "workout_sessions" }, invalidateHome)
-      .on("postgres_changes", { event: "*", schema: "public", table: "workout_set_logs" }, invalidateHome)
+      .on("postgres_changes", { event: "*", schema: "public", table: "workout_sessions", filter: `student_id=eq.${user.id}` }, invalidateHome)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, invalidateHome)
       .subscribe();
 
@@ -188,7 +171,6 @@ export default function TestMenu() {
   if (loading) return <LoadingSplash />;
   if (!user) return <Navigate to="/login" replace />;
   if (landingPath !== "/menu-teste") return <Navigate to={landingPath} replace />;
-  if (showSplash) return <LoadingSplash />;
 
   const dashboard = homeQuery.data;
   const workout = dashboard?.workout;

@@ -56,11 +56,6 @@ export default function Diet() {
   const strengthCalories = safeKcal(data.burn.strengthCalories);
   const calorieTarget = safeKcal(data.calorieTarget);
 
-  const handleNavigation = (label: string) => {
-    if (label === "Início") navigate("/menu-teste");
-    else if (label === "Treino") navigate("/treino");
-    else if (label === "Perfil") navigate("/perfil");
-  };
 
   const handleRecipeRegister = (recipe: Recipe) => {
     if (recipe.healthLevel === "menos_saudavel") {

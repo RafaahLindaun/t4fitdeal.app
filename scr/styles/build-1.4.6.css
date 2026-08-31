@@ -1,0 +1,518 @@
+/*
+ * ACCQUA Sports — Build 1.4.6
+ * Polimento visual e responsivo consolidado sobre a Build 1.4.5.
+ */
+
+/* --------------------------------------------------------------------------
+   Sidebar desktop — avatar real com fallback para iniciais
+   -------------------------------------------------------------------------- */
+.accqua-primary-sidebar-avatar {
+  overflow: hidden;
+  border: 1px solid rgba(126, 188, 255, .13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.accqua-primary-sidebar-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* --------------------------------------------------------------------------
+   Ranking — ação de informação pertence ao cabeçalho, não ao viewport
+   -------------------------------------------------------------------------- */
+.ranking-info-fab {
+  position: static;
+  inset: auto;
+  justify-self: end;
+  align-self: start;
+  margin: 0;
+  z-index: auto;
+  width: calc(var(--space-9) - var(--space-1));
+  height: calc(var(--space-9) - var(--space-1));
+}
+
+/* --------------------------------------------------------------------------
+   Loja desktop — shell largo e grid coerente com o restante do app
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .store-screen {
+    overflow: hidden;
+  }
+
+  .store-shell,
+  .store-screen .store-shell {
+    width: min(1180px, calc(100% - 72px));
+    max-width: 1180px;
+    margin-inline: auto;
+  }
+
+  .store-header {
+    min-height: 86px;
+    padding: 18px 2px 10px;
+    background: linear-gradient(180deg, rgba(4, 19, 42, .9), rgba(4, 19, 42, .54), transparent);
+  }
+
+  .store-scroll {
+    padding: 14px 2px 42px;
+  }
+
+  .store-hero {
+    max-width: 760px;
+    padding: 28px 2px 20px;
+  }
+
+  .store-hero h1 {
+    font-size: clamp(2.8rem, 4.2vw, 4.5rem);
+    line-height: .94;
+  }
+
+  .store-hero p {
+    max-width: 650px;
+    font-size: .9rem;
+  }
+
+  .store-filter-row {
+    padding-bottom: 20px;
+  }
+
+  .store-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 320px));
+    grid-auto-rows: auto;
+    gap: 18px;
+    justify-content: start;
+    align-items: start;
+  }
+
+  .store-card {
+    width: 100%;
+    min-height: 520px;
+    border-radius: 24px;
+  }
+
+  .store-product-art {
+    aspect-ratio: 1.12 / 1;
+  }
+
+  .store-card-body {
+    min-height: 238px;
+    padding: 15px;
+  }
+
+  .store-card-copy {
+    min-height: 96px;
+  }
+
+  .store-card h2 {
+    font-size: 1.02rem;
+  }
+
+  .store-card p {
+    font-size: .76rem;
+  }
+
+  .store-price > strong {
+    font-size: 1rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Treino — toast central, compacto e com linha temporal amarela
+   -------------------------------------------------------------------------- */
+.workout-toast {
+  position: fixed !important;
+  z-index: 180 !important;
+  left: 16px !important;
+  right: 16px !important;
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+  width: min(420px, calc(100vw - 32px)) !important;
+  min-height: 48px;
+  margin-inline: auto !important;
+  padding: 13px 18px 15px !important;
+  overflow: hidden;
+  border: 1px solid rgba(178, 207, 243, .18) !important;
+  border-radius: 17px !important;
+  color: #f8fbff !important;
+  text-align: center !important;
+  background: linear-gradient(155deg, rgba(8, 31, 61, .97), rgba(3, 17, 37, .98)) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255, 255, 255, .04) !important;
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  font-size: .82rem !important;
+  font-weight: 780 !important;
+  line-height: 1.3 !important;
+}
+
+.workout-toast::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: #ffd128;
+  transform-origin: left center;
+  animation: accquaToastCountdown 2.8s linear forwards;
+  box-shadow: 0 0 10px rgba(255, 209, 40, .34);
+}
+
+@keyframes accquaToastCountdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* --------------------------------------------------------------------------
+   Bottom navigation mobile — vidro mais limpo, recorte e flutuação reais
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+  .accqua-main-layout-nav {
+    bottom: 4px;
+    padding:
+      0 max(14px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
+    background: transparent;
+  }
+
+  .accqua-main-layout-nav::before {
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: max(3px, env(safe-area-inset-bottom));
+    height: 78%;
+    border-radius: 30px;
+    background: rgba(0, 6, 18, .42);
+    filter: blur(18px);
+    opacity: .72;
+    pointer-events: none;
+  }
+
+  .accqua-bottom-navigation {
+    min-height: 72px;
+    padding: 8px 8px 7px;
+    border: 1px solid rgba(180, 209, 244, .15);
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(18, 39, 69, .72), rgba(5, 19, 41, .82));
+    box-shadow:
+      0 18px 46px rgba(0, 0, 0, .34),
+      0 0 0 1px rgba(75, 137, 215, .025),
+      inset 0 1px 0 rgba(255, 255, 255, .08),
+      inset 0 -1px 0 rgba(255, 255, 255, .025);
+    backdrop-filter: blur(30px) saturate(160%);
+    -webkit-backdrop-filter: blur(30px) saturate(160%);
+  }
+
+  .accqua-bottom-navigation::before {
+    inset: 1px;
+    border-radius: 22px;
+    background:
+      radial-gradient(circle at 50% -40%, rgba(81, 150, 236, .16), transparent 55%),
+      linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .006));
+  }
+
+  .accqua-bottom-item {
+    min-height: 54px;
+    border-radius: 17px;
+  }
+
+  .accqua-bottom-item::before {
+    inset: 4px 3px 2px;
+    border: 1px solid rgba(255, 209, 40, .045);
+    border-radius: 15px;
+    background:
+      radial-gradient(circle at 50% 18%, rgba(255, 209, 40, .11), transparent 62%),
+      rgba(255, 209, 40, .025);
+  }
+
+  .accqua-bottom-slider {
+    top: 1px;
+    height: 3px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Cardio mobile — painel operacional inteiro na viewport, sem rolagem
+   -------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .accqua-main-layout-content .cardio-scroll-area {
+    padding-bottom: 4px !important;
+  }
+
+  .cardio-page {
+    padding:
+      max(5px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      4px
+      max(10px, env(safe-area-inset-left));
+    grid-template-rows: 42px minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .cardio-topbar {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    gap: 6px;
+  }
+
+  .cardio-top-button {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+  }
+
+  .cardio-context-tabs [role="tablist"] {
+    width: min(100%, 220px);
+    height: 36px;
+  }
+
+  .cardio-scroll-area {
+    min-height: 0;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overscroll-behavior: none;
+  }
+
+  .cardio-title-row {
+    flex: 0 0 auto;
+    min-height: 48px;
+    padding: 2px 2px 3px;
+    align-items: center;
+  }
+
+  .cardio-title-row h1 {
+    margin-top: 2px;
+    font-size: clamp(23px, 7vw, 28px);
+  }
+
+  .cardio-title-row p {
+    max-width: 190px;
+    margin-top: 3px;
+    font-size: 7.5px;
+  }
+
+  .cardio-settings-chip {
+    height: 30px;
+    max-width: 126px;
+    padding-inline: 9px;
+  }
+
+  .cardio-settings-chip span {
+    font-size: 6.6px;
+  }
+
+  .cardio-activity-carousel {
+    flex: 0 0 78px;
+    width: calc(100% + 4px);
+    height: 78px;
+    margin: 0 -2px;
+    padding: 1px calc(50% - 55px) 3px;
+    gap: 8px;
+  }
+
+  .cardio-activity-card {
+    flex-basis: 110px;
+    min-width: 110px;
+    height: 74px;
+    padding: 5px;
+    border-radius: 16px;
+  }
+
+  .cardio-activity-media {
+    height: 42px;
+    border-radius: 11px;
+  }
+
+  .cardio-activity-card > span {
+    margin: 3px 2px 0;
+    font-size: 8.5px;
+  }
+
+  .cardio-activity-card > small {
+    display: none;
+  }
+
+  .cardio-session-hero {
+    flex: 1 1 250px;
+    min-height: 220px;
+    max-height: 325px;
+    padding: 7px 8px 7px;
+    gap: 6px;
+    border-radius: 22px;
+  }
+
+  .cardio-activity-ring {
+    width: min(42vw, 174px);
+    max-height: 174px;
+  }
+
+  .cardio-ring-track,
+  .cardio-ring-progress {
+    stroke-width: 10;
+  }
+
+  .cardio-ring-content > span {
+    font-size: 6px;
+  }
+
+  .cardio-ring-content > strong {
+    margin-top: 2px;
+    font-size: clamp(29px, 8.2vw, 37px);
+  }
+
+  .cardio-ring-live-metric {
+    margin-top: 6px;
+  }
+
+  .cardio-ring-live-metric b {
+    font-size: clamp(17px, 4.6vw, 21px);
+  }
+
+  .cardio-ring-content > em {
+    margin-top: 3px;
+    font-size: 6px;
+  }
+
+  .cardio-quick-stats {
+    gap: 6px;
+  }
+
+  .cardio-quick-stats article {
+    min-height: 46px;
+    padding: 6px 8px;
+    grid-template-columns: 17px minmax(0, 1fr);
+    column-gap: 6px;
+    border-radius: 14px;
+  }
+
+  .cardio-quick-stats svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .cardio-quick-stats strong {
+    font-size: 12px;
+  }
+
+  /* O gráfico detalhado permanece disponível no histórico/resumo; durante a
+     sessão a prioridade é leitura rápida sem exigir scroll. */
+  .cardio-chart-card {
+    display: none !important;
+  }
+
+  .cardio-intensity-card {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding: 7px 9px;
+    border-radius: 17px;
+  }
+
+  .cardio-intensity-card header strong {
+    font-size: 8px;
+  }
+
+  .cardio-intensity-card header small {
+    display: none;
+  }
+
+  .cardio-intensity-card header > b {
+    font-size: 15px;
+  }
+
+  .cardio-intensity-controls {
+    margin-top: 6px;
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    gap: 7px;
+  }
+
+  .cardio-intensity-controls button {
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+  }
+
+  .cardio-intensity-controls button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .cardio-actions {
+    flex: 0 0 auto;
+    margin-top: 0;
+    gap: 5px;
+  }
+
+  .cardio-primary-action,
+  .cardio-finish-action {
+    min-height: 46px;
+    height: 46px;
+    border-radius: 15px;
+    font-size: 9px;
+  }
+
+  .cardio-laps-card {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding: 7px 9px;
+  }
+
+  .cardio-toast {
+    bottom: calc(var(--app-bottomnav-offset) + 10px);
+  }
+}
+
+@media (max-width: 767.98px) and (max-height: 760px) {
+  .cardio-title-row {
+    min-height: 42px;
+  }
+
+  .cardio-title-row > div > span,
+  .cardio-title-row p {
+    display: none;
+  }
+
+  .cardio-activity-carousel {
+    flex-basis: 68px;
+    height: 68px;
+    padding-inline: calc(50% - 48px);
+  }
+
+  .cardio-activity-card {
+    flex-basis: 96px;
+    min-width: 96px;
+    height: 64px;
+  }
+
+  .cardio-activity-media {
+    height: 36px;
+  }
+
+  .cardio-session-hero {
+    min-height: 195px;
+    max-height: 270px;
+  }
+
+  .cardio-activity-ring {
+    width: min(36vw, 148px);
+  }
+
+  .cardio-quick-stats article {
+    min-height: 42px;
+  }
+
+  .cardio-primary-action,
+  .cardio-finish-action {
+    min-height: 42px;
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workout-toast::after {
+    animation: none;
+  }
+}

@@ -1,13 +1,15 @@
 {
   "name": "accqua-sports-app",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.4.6",
   "type": "module",
   "scripts": {
     "predev": "node scripts/generate-exercise-media-manifest.mjs",
     "dev": "vite --host 0.0.0.0",
     "prebuild": "node scripts/generate-exercise-media-manifest.mjs",
     "build": "vite build",
+    "typecheck": "tsc -b --pretty false",
+    "validate": "npm run typecheck && npm run build",
     "preview": "vite preview --host 0.0.0.0",
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:e2e": "playwright test -c playwright.real.config.ts",
@@ -42,6 +44,8 @@
     "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.21",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@types/canvas-confetti": "^1.9.0",
     "@playwright/test": "^1.55.0"
   }
