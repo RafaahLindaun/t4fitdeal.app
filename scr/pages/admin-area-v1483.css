@@ -1,0 +1,145 @@
+/* ACCQUA Sports — Build 1.4.8.3 */
+
+/* C2 — semantic status row */
+.admin-profile-view .admin-student-quick-status {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: visible;
+}
+
+.admin-profile-view .admin-student-quick-status > .accqua-status-badge {
+  min-height: 30px !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.1 !important;
+}
+
+@media (min-width: 1024px) {
+  .admin-profile-view .admin-student-quick-status {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .admin-profile-view .admin-student-quick-status {
+    flex-wrap: wrap;
+  }
+}
+
+/* C3 — anchored quick-training popover with Radix collision detection */
+.admin-quick-popover-v1483 {
+  z-index: 220;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(620px, calc(100dvh - 32px));
+  padding: 18px;
+  overflow-y: auto;
+  color: #f8fbff;
+  border: 1px solid rgba(151, 194, 238, .18);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(15, 49, 88, .98), rgba(4, 22, 48, .985));
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, .42),
+    inset 0 1px 0 rgba(255, 255, 255, .06);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: accqua-popover-in-v1483 150ms ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 209, 40, .45) transparent;
+}
+
+.admin-quick-popover-v1483:focus {
+  outline: none;
+}
+
+.admin-quick-popover-v1483 > header {
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: start;
+  gap: 12px;
+}
+
+.admin-quick-popover-v1483 > header > div {
+  min-width: 0;
+}
+
+.admin-quick-popover-v1483 > header small {
+  color: #ffd128;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.admin-quick-popover-v1483 > header h2 {
+  margin: 4px 0 3px;
+  font-size: 1.22rem;
+  line-height: 1.15;
+}
+
+.admin-quick-popover-v1483 > header p {
+  margin: 0;
+  color: rgba(226, 238, 252, .62);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.admin-quick-popover-v1483 > header > button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, .74);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .045);
+}
+
+.admin-quick-popover-v1483 > header > button:hover,
+.admin-quick-popover-v1483 > header > button:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 209, 40, .28);
+  background: rgba(255, 209, 40, .08);
+}
+
+.admin-quick-popover-arrow-v1483 {
+  fill: #0d3158;
+  filter: drop-shadow(0 -1px 0 rgba(151, 194, 238, .16));
+}
+
+.admin-quick-popover-v1483 .admin-quick-template-list {
+  max-height: 310px;
+  overflow-y: auto;
+}
+
+.admin-quick-popover-v1483 .admin-quick-template-note {
+  margin-top: 12px;
+}
+
+.admin-quick-popover-v1483 .admin-quick-publish {
+  width: 100%;
+  margin-top: 14px;
+}
+
+@keyframes accqua-popover-in-v1483 {
+  from { opacity: 0; transform: translateY(-4px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 640px) {
+  .admin-quick-popover-v1483 {
+    width: calc(100vw - 24px);
+    max-height: min(72dvh, 620px);
+    padding: 16px;
+    border-radius: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-quick-popover-v1483 { animation: none; }
+}
