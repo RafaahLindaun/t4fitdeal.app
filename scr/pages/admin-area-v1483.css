@@ -143,3 +143,42 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-quick-popover-v1483 { animation: none; }
 }
+
+/* ======================================================================
+   Build 1.4.8.7 — I/C1: header do perfil individual sem recorte/coluna vazia
+   ====================================================================== */
+.admin-area-shell.is-student-detail .admin-area-header {
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+}
+
+@media (max-width: 1023.98px) {
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-area-shell.is-student-detail .admin-area-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 58px !important;
+    height: auto !important;
+    margin: 0 0 10px !important;
+    padding: 6px 8px !important;
+    box-sizing: border-box;
+    overflow: visible !important;
+    clip-path: none !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 16px !important;
+    background: color-mix(in srgb, var(--surface-base) 88%, transparent) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .admin-area-shell.is-student-detail .admin-area-brand.admin-v10-brand {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start !important;
+  }
+
+  .admin-area-shell.is-student-detail .admin-area-brand-copy {
+    width: 100%;
+    min-width: 0;
+  }
+}
