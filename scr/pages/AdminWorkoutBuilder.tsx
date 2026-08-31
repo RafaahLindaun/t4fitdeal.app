@@ -68,6 +68,7 @@ import { loadRankingProfileSummary, type RankingProfileSummary } from "../lib/ra
 import "./admin-workout-builder.css";
 import "./admin-workout-builder-v10.css";
 import "./admin-workout-builder-v11.css";
+import "./admin-workout-builder-v1486.css";
 
 type SplitCode =
   | "FULL"
@@ -676,7 +677,7 @@ export default function AdminWorkoutBuilder() {
   const [mobileStep, setMobileStep] = useState<BuilderStep>(
     "programa",
   );
-  const [checklistOpen, setChecklistOpen] = useState(true);
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const [saveAttempted, setSaveAttempted] = useState(false);
   const [recentlyAddedExercise, setRecentlyAddedExercise] = useState<{
     draftId: string;
@@ -899,6 +900,7 @@ export default function AdminWorkoutBuilder() {
 
   const activeStepMeta =
     BUILDER_STEPS.find((step) => step.key === mobileStep) ?? BUILDER_STEPS[0];
+  const activeStepIndex = Math.max(0, BUILDER_STEPS.findIndex((step) => step.key === mobileStep));
 
   const groups = useMemo(() => {
     const values = Array.from(
@@ -1629,7 +1631,7 @@ export default function AdminWorkoutBuilder() {
 
 
   return (
-    <div className="admin-builder-screen">
+    <div className={clsx("admin-builder-screen", `is-step-${mobileStep}`)}>
       <div className="admin-builder-background" aria-hidden="true" />
 
       <main className="admin-builder-shell">
@@ -1681,7 +1683,7 @@ export default function AdminWorkoutBuilder() {
                     onClick={() => {
                       setActiveRoutineIndex(index);
                       setExpandedExercise(null);
-                      setMobileStep("rotina");
+                      setMobileStep((current) => current === "exercicios" ? "exercicios" : "rotina");
                     }}
                   >
                     <span>{routine.code}</span>
@@ -1800,6 +1802,37 @@ export default function AdminWorkoutBuilder() {
             );
           })}
         </nav>
+
+        <div className="admin-builder-mobile-step-controls" aria-label="Navegação entre etapas">
+          <button
+            type="button"
+            disabled={activeStepIndex === 0}
+            onClick={() => {
+              const previous = BUILDER_STEPS[activeStepIndex - 1];
+              if (previous) showBuilderSection(previous.key);
+            }}
+          >
+            <AdminBackIcon size={16} />
+            Voltar
+          </button>
+
+          <span>
+            <small>ETAPA {activeStepMeta.number} DE {BUILDER_STEPS.length}</small>
+            <strong>{activeStepMeta.label}</strong>
+          </span>
+
+          <button
+            type="button"
+            disabled={activeStepIndex >= BUILDER_STEPS.length - 1}
+            onClick={() => {
+              const next = BUILDER_STEPS[activeStepIndex + 1];
+              if (next) showBuilderSection(next.key);
+            }}
+          >
+            Próximo
+            <AdminChevronIcon size={16} />
+          </button>
+        </div>
 
         <section className="admin-builder-readiness">
           <button
