@@ -21,6 +21,10 @@ const replacements = [
     to: `    <div className={clsx("admin-builder-screen", \`is-step-\${mobileStep}\`)}>`,
   },
   {
+    from: `                      setActiveRoutineIndex(index);\n                      setExpandedExercise(null);\n                      setMobileStep("rotina");`,
+    to: `                      setActiveRoutineIndex(index);\n                      setExpandedExercise(null);\n                      setMobileStep((current) => current === "exercicios" ? "exercicios" : "rotina");`,
+  },
+  {
     from: `        </nav>\n\n        <section className="admin-builder-readiness">`,
     to: `        </nav>\n\n        <div className="admin-builder-mobile-step-controls" aria-label="Navegação entre etapas">\n          <button\n            type="button"\n            disabled={activeStepIndex === 0}\n            onClick={() => {\n              const previous = BUILDER_STEPS[activeStepIndex - 1];\n              if (previous) showBuilderSection(previous.key);\n            }}\n          >\n            <AdminBackIcon size={16} />\n            Voltar\n          </button>\n\n          <span>\n            <small>ETAPA {activeStepMeta.number} DE {BUILDER_STEPS.length}</small>\n            <strong>{activeStepMeta.label}</strong>\n          </span>\n\n          <button\n            type="button"\n            disabled={activeStepIndex >= BUILDER_STEPS.length - 1}\n            onClick={() => {\n              const next = BUILDER_STEPS[activeStepIndex + 1];\n              if (next) showBuilderSection(next.key);\n            }}\n          >\n            Próximo\n            <AdminChevronIcon size={16} />\n          </button>\n        </div>\n\n        <section className="admin-builder-readiness">`,
   },
