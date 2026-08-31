@@ -8,6 +8,7 @@ import WorkoutQrDialog from "../components/home/WorkoutQrDialog";
 import TreinoHojeCard from "../components/home/TreinoHojeCard";
 import MembershipShield from "../components/home/MembershipShield";
 import CheckInButton from "../components/home/CheckInButton";
+import NotificationsSheet from "../components/home/NotificationsSheet";
 import {
   MenuAppleIcon,
   MenuArrowIcon,
@@ -73,6 +74,7 @@ export default function TestMenu() {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrSessionId, setQrSessionId] = useState<string | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const canManageStudents =
     profile?.role === "professor" || profile?.role === "reception" || profile?.role === "admin";
@@ -232,27 +234,8 @@ export default function TestMenu() {
   };
 
   const openNotifications = async () => {
-    const firstAlert = workoutAlerts[0];
-    if (canManageStudents && firstAlert) {
-      await markWorkoutRequiredAlertRead(firstAlert.id);
-      navigate(`/area-accqua?student=${firstAlert.studentId}`);
-      return;
-    }
-
-    if (unreadNotifications > 0) {
-      setMessage(`${unreadNotifications} notificaç${unreadNotifications === 1 ? "ão não lida" : "ões não lidas"}.`);
-      return;
-    }
-
-    if (canManageStudents) {
-      const permission = await requestStaffNotificationPermission();
-      if (permission === "granted") setMessage("Alertas da ACCQUA ativados no celular.");
-      else if (permission === "denied") setMessage("As notificações estão bloqueadas no navegador.");
-      else setMessage("Você não possui novas notificações.");
-      return;
-    }
-
-    setMessage("Você não possui novas notificações.");
+    setNotificationsOpen(true);
+    if (canManageStudents) void requestStaffNotificationPermission();
   };
 
   const openArea = async (title: string) => {
@@ -400,6 +383,19 @@ export default function TestMenu() {
 
         </motion.div>
       </main>
+
+      <NotificationsSheet
+        userId={user.id}
+        open={notificationsOpen}
+        onOpenChange={setNotificationsOpen}
+        staffAlerts={workoutAlerts}
+        onStaffAlertClick={async (alert) => {
+          await markWorkoutRequiredAlertRead(alert.id);
+          setWorkoutAlerts((current) => current.filter((item) => item.id !== alert.id));
+          setNotificationsOpen(false);
+          navigate(`/area-accqua?student=${alert.studentId}`);
+        }}
+      />
 
       <WorkoutQrDialog
         open={qrOpen}
