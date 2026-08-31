@@ -1,10 +1,25 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import "./staff-layout.css";
 
 const STAFF_ROLES = ["professor", "reception", "admin"] as const;
+
+function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="19"
+      height="19"
+      aria-hidden="true"
+      focusable="false"
+      className={collapsed ? "is-collapsed" : ""}
+    >
+      <path d="M14.5 6.5 9 12l5.5 5.5" />
+    </svg>
+  );
+}
 
 export default function StaffLayout() {
   const { profile, user } = useAuth();
@@ -13,6 +28,7 @@ export default function StaffLayout() {
   const items = getStaffNavItems();
   const active = staffNavKeyForLocation(location.pathname, location.search);
   const mobileItemRefs = useRef<Partial<Record<StaffNavKey, HTMLButtonElement | null>>>({});
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isStaff = Boolean(
     profile && STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number]),
   );
@@ -42,8 +58,28 @@ export default function StaffLayout() {
   if (!isStaff) return <Navigate to="/menu-teste" replace />;
 
   return (
-    <div className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""}`}>
-      <aside className="accqua-staff-sidebar" aria-label="Navegação da Área ACCQUA" data-testid="staff-sidebar">
+    <div
+      className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+    >
+      <aside
+        className={`accqua-staff-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}
+        aria-label="Navegação da Área ACCQUA"
+        data-testid="staff-sidebar"
+      >
+        <button
+          type="button"
+          className="accqua-staff-sidebar-toggle"
+          onClick={() => setSidebarCollapsed((current) => !current)}
+          aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+          aria-expanded={!sidebarCollapsed}
+          title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+        >
+          <span className="accqua-staff-sidebar-toggle-icon">
+            <SidebarToggleIcon collapsed={sidebarCollapsed} />
+          </span>
+          <strong>{sidebarCollapsed ? "Mostrar barra" : "Ocultar barra lateral"}</strong>
+        </button>
+
         <div className="accqua-staff-sidebar-heading">
           <small>ÁREA ACCQUA</small>
           <strong>Gestão da equipe</strong>
@@ -56,6 +92,8 @@ export default function StaffLayout() {
               type="button"
               className={active === item.key ? "is-active" : ""}
               aria-current={active === item.key ? "page" : undefined}
+              aria-label={sidebarCollapsed ? item.label : undefined}
+              title={sidebarCollapsed ? item.label : undefined}
               onClick={() => navigate(item.href)}
             >
               <span>{item.icon}</span>
@@ -63,7 +101,7 @@ export default function StaffLayout() {
             </button>
           ))}
         </nav>
-        <div className="accqua-staff-sidebar-account">
+        <div className="accqua-staff-sidebar-account" aria-hidden={sidebarCollapsed ? "true" : undefined}>
           <small>{role}</small>
           <strong>{profile.fullName || user.email || "Equipe ACCQUA"}</strong>
           <span>Gestão operacional</span>
