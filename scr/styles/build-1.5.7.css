@@ -1,0 +1,179 @@
+/* ACCQUA Sports — Build 1.5.7
+   Final incremental layer over 1.5.6. */
+
+/* Login: feedback stays in the form column; feature cards are centered and calm. */
+.concept-login .concept-feedback,
+.concept-feedback {
+  left: 58px !important;
+  top: 334px !important;
+  width: 334px !important;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px !important;
+  text-align: left !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+.concept-feature-grid article {
+  justify-content: center !important;
+  text-align: center !important;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease !important;
+}
+.concept-feature-grid article > * { margin-inline: auto; }
+@media (hover:hover) and (pointer:fine) {
+  .concept-feature-grid article:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,209,40,.28) !important;
+    box-shadow: 0 12px 24px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.07) !important;
+  }
+}
+.concept-google-link { margin-top: 0 !important; }
+
+/* Home header: membership and bell share the same compact opaque card language. */
+.accqua-menu-header-actions .accqua-membership-shield,
+.accqua-menu-header-actions .accqua-notification-button {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  border: 1px solid rgba(190,218,255,.17) !important;
+  border-radius: 12px !important;
+  background: #0a2a54 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.16) !important;
+}
+.accqua-menu-header-actions .accqua-notification-button svg { width: 22px !important; height: 22px !important; }
+
+/* Global loading: transform + opacity only; no width/position animation. */
+.splash-screen .accqua-logo.is-animated img {
+  animation: accqua-loading-pulse-v157 .72s cubic-bezier(.4,0,.2,1) infinite alternate !important;
+}
+.splash-screen .accqua-logo.is-animated .accqua-logo-line {
+  animation: accqua-loading-line-v157 .72s cubic-bezier(.4,0,.2,1) infinite alternate !important;
+}
+@keyframes accqua-loading-pulse-v157 {
+  from { opacity: .52; transform: translateY(2px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes accqua-loading-line-v157 {
+  from { opacity: .42; transform: scaleX(.32); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+/* Shared Staff back header. */
+.staff-subpage-header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.staff-subpage-header > div { min-width: 0; }
+.staff-subpage-header small { color: var(--accent); font-size: 10px; font-weight: 850; letter-spacing: .11em; }
+.staff-subpage-header h1 { margin: 3px 0 0; color: var(--text-primary); font-size: clamp(24px,3vw,32px); line-height: 1.05; }
+.staff-subpage-header p { margin: 6px 0 0; max-width: 720px; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+.staff-subpage-back {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-raised) 72%, var(--surface-base));
+}
+.staff-subpage-back svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.classes-admin-v155-page { min-height: 0; }
+
+/* Sidebar hover feedback — subtle and GPU-friendly. */
+.accqua-staff-sidebar nav button > span { transform-origin: 50% 60%; }
+.accqua-staff-sidebar nav button strong { position: relative; }
+.accqua-staff-sidebar nav button strong::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+}
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .accqua-staff-sidebar nav button:hover > span { animation: accqua-sidebar-wiggle-v157 .35s ease; }
+  .accqua-staff-sidebar nav button:hover strong::after { animation: accqua-sidebar-underline-v157 .35s ease forwards; }
+}
+@keyframes accqua-sidebar-wiggle-v157 { 0%,100%{transform:rotate(0)} 35%{transform:rotate(-8deg)} 70%{transform:rotate(8deg)} }
+@keyframes accqua-sidebar-underline-v157 { from{transform:scaleX(0);opacity:0} to{transform:scaleX(1);opacity:.8} }
+
+/* Method cards: descriptions appear on hover/focus on desktop, remain readable on touch. */
+@media (min-width:1024px) and (hover:hover) {
+  .workout-entry-methods button p {
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+  .workout-entry-methods button:hover p,
+  .workout-entry-methods button:focus-visible p { opacity: 1; transform: none; }
+}
+
+/* Student profile quick actions: icons stay yellow, subtitles stay in palette. */
+.admin-area-shell.is-student-detail .admin-training-action > span,
+.admin-area-shell.is-student-detail .admin-training-action > span svg { color: var(--accent) !important; stroke: currentColor !important; }
+.admin-area-shell.is-student-detail .admin-training-action small { color: var(--text-secondary) !important; }
+
+/* Reservation history v1.5.7 replaces only the old reservation block visually. */
+.profile-reservations-section.has-v157-panel > .profile-section-heading,
+.profile-reservations-section.has-v157-panel > .profile-reservation-list,
+.profile-reservations-section.has-v157-panel > .profile-reservation-empty { display: none !important; }
+.profile-reservations-v157 { display: grid; gap: 12px; }
+.profile-reservations-v157 .profile-reservation-copy { min-width: 0; display: grid; gap: 3px; }
+.profile-reservations-v157 .profile-reservation-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-reservation-delete-v157 {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid rgba(255,112,122,.22) !important;
+  border-radius: 11px !important;
+  color: #ff8b95 !important;
+  background: rgba(212,54,78,.10) !important;
+}
+.profile-reservation-delete-v157 svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.profile-reservations-v157 article.is-cancelado { opacity: .78; }
+.profile-reservations-v157 article.is-cancelado .profile-reservation-copy span { color: var(--text-tertiary); }
+
+/* Workout builder footer: never covers the program-name field after AI prefill. */
+@media (max-width:1023px) {
+  .admin-builder-shell { padding-bottom: max(138px, calc(env(safe-area-inset-bottom) + 128px)) !important; }
+  .admin-builder-footer {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+  .admin-builder-mobile-footer { min-width: 0 !important; grid-template-columns: minmax(0,1fr) minmax(108px,auto) !important; }
+  .admin-builder-mobile-footer-copy { min-width: 0 !important; }
+  .admin-builder-mobile-footer-copy > strong {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.2 !important;
+  }
+  .admin-builder-mobile-primary { min-width: 108px !important; max-width: 46vw !important; white-space: normal !important; line-height: 1.15 !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .concept-feature-grid article,
+  .workout-entry-methods button p { transition-duration: 1ms !important; }
+  .accqua-staff-sidebar nav button:hover > span,
+  .accqua-staff-sidebar nav button:hover strong::after { animation: none !important; }
+}
