@@ -1,0 +1,320 @@
+/* ACCQUA Sports — Build 1.5.4
+   Regression hardening applied AFTER Build 1.5.3.
+   Rules intentionally target the real components that regressed. */
+
+/* --------------------------------------------------------------------------
+   Staff: title contrast + exact no-workout flag
+   -------------------------------------------------------------------------- */
+.admin-area-shell.is-student-detail .admin-training-action strong,
+.admin-area-shell.is-student-detail .admin-training-action.is-complete-action strong,
+.admin-area-shell.is-student-detail .admin-training-action.is-quick-action strong {
+  color: #f8fbff !important;
+  opacity: 1 !important;
+  font-weight: 800 !important;
+}
+
+.admin-area-shell.is-dashboard .admin-student-flags i.is-no-workout {
+  color: #07162d !important;
+  border-color: #ffd128 !important;
+  background: #ffd128 !important;
+}
+
+.admin-area-shell.is-dashboard .admin-student-flags i.is-no-workout svg {
+  color: #07162d !important;
+  stroke: currentColor !important;
+}
+
+/* StatusBadge is the canonical semantic pair; never inherit text color. */
+.accqua-status-badge.is-warning {
+  color: #07162d !important;
+  border-color: #ffd128 !important;
+  background: #ffd128 !important;
+}
+.accqua-status-badge.is-success { color: #a4f0c1 !important; }
+.accqua-status-badge.is-danger { color: #ffadb5 !important; }
+.accqua-status-badge.is-neutral { color: rgba(239, 246, 255, .82) !important; }
+
+/* Interactive state gets a dedicated surface, never the page background. */
+.admin-area-screen {
+  --surface-active: #123f72;
+  --text-on-active: #ffffff;
+  --border-active: #ffd128;
+}
+.admin-area-shell.is-dashboard .admin-area-filters button:is(:hover, :active, .is-active),
+.admin-area-shell.is-dashboard .admin-area-filters button[aria-pressed="true"],
+.admin-area-shell.is-dashboard .admin-dashboard-stat:is(:hover, :active, .is-active),
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] {
+  color: var(--text-on-active) !important;
+  border-color: var(--border-active) !important;
+  background: var(--surface-active) !important;
+}
+.admin-area-shell.is-dashboard .admin-dashboard-stat:is(:hover, :active, .is-active) *,
+.admin-area-shell.is-dashboard .admin-dashboard-stat[aria-pressed="true"] * {
+  color: var(--text-on-active) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Staff desktop: sidebar independent + single scrollable content panel
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .accqua-staff-layout {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: stretch;
+  }
+  .accqua-staff-sidebar {
+    flex: 0 0 auto !important;
+    width: var(--staff-sidebar-expanded-width, 238px) !important;
+    transition: width 200ms ease-in-out, padding 200ms ease-in-out !important;
+  }
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar {
+    width: var(--staff-sidebar-collapsed-width, 72px) !important;
+  }
+  .accqua-staff-content {
+    flex: 1 1 auto !important;
+    grid-column: auto !important;
+    min-width: 0 !important;
+  }
+
+  .accqua-staff-layout.uses-document-scroll {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .accqua-staff-layout.uses-document-scroll .accqua-staff-sidebar {
+    height: 100dvh !important;
+  }
+  .accqua-staff-layout.uses-document-scroll .accqua-staff-content {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain;
+  }
+  .accqua-staff-layout.uses-document-scroll .accqua-staff-route,
+  .accqua-staff-layout.uses-document-scroll .admin-area-screen,
+  .accqua-staff-layout.uses-document-scroll .admin-area-shell,
+  .accqua-staff-layout.uses-document-scroll .admin-area-content {
+    min-height: 0 !important;
+  }
+
+  /* Biblioteca: lixeira flutua fora do card e não cobre séries/repetições. */
+  .admin-area-shell.is-library-view .accqua-swipe-item,
+  .admin-area-shell.is-library-view .accqua-swipe-content {
+    overflow: visible !important;
+  }
+  .admin-area-shell.is-library-view .accqua-swipe-desktop-delete {
+    top: -9px !important;
+    right: -9px !important;
+    width: 30px !important;
+    height: 30px !important;
+    transform: none !important;
+    border-radius: 999px !important;
+    z-index: 20 !important;
+  }
+  .admin-area-shell.is-library-view .accqua-swipe-desktop-delete svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Bottom navigation: only the pill paints a surface; modals always win.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+  .accqua-main-layout-nav {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .accqua-main-layout-nav > .accqua-bottom-navigation {
+    border-radius: 28px !important;
+    overflow: visible !important;
+  }
+
+  body[data-accqua-modal-open="true"] .accqua-main-layout-nav,
+  body:has([aria-modal="true"]) .accqua-main-layout-nav {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .responsive-dialog-overlay,
+  .ranking-sheet-backdrop { z-index: 10040 !important; }
+  .responsive-dialog-content,
+  .responsive-dialog-drawer,
+  .ranking-sheet { z-index: 10041 !important; }
+}
+
+/* --------------------------------------------------------------------------
+   Student detail mobile: solid header, unclipped urgent badge, app-grid v2,
+   and no ghost spacer for a bottom nav that is not rendered in Staff focus.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+  .accqua-main-layout.is-route-focus-mode > .accqua-main-layout-content,
+  .accqua-main-layout.is-route-focus-mode .accqua-route-transition,
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-layout {
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+  }
+
+  .accqua-main-layout.is-route-focus-mode .accqua-staff-layout.uses-document-scroll {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-area-shell.is-student-detail .admin-area-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 90 !important;
+    width: 100% !important;
+    overflow: visible !important;
+    border-radius: 16px !important;
+    background: var(--surface-deep, #03162f) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-area-shell.is-student-detail .admin-area-header::before {
+    content: "";
+    position: absolute;
+    inset: -10px -16px -8px;
+    z-index: -1;
+    background: var(--surface-deep, #03162f) !important;
+    pointer-events: none;
+  }
+
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-training-action.is-build-urgent {
+    position: relative !important;
+    overflow: visible !important;
+    padding-top: 34px !important;
+  }
+  .accqua-staff-route > .admin-area-screen.is-student-detail-screen
+    .admin-training-action.is-build-urgent::after {
+    top: 8px !important;
+    right: 8px !important;
+    max-width: calc(100% - 16px) !important;
+  }
+
+  .admin-profile-view .admin-student-summary-list {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: 84px !important;
+    gap: 12px !important;
+    padding: 0 !important;
+  }
+  .admin-profile-view .admin-student-summary-list .profile-menu-item {
+    width: 100% !important;
+    height: 84px !important;
+    min-height: 84px !important;
+    max-height: 84px !important;
+    aspect-ratio: auto !important;
+    padding: 8px 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    overflow: hidden !important;
+    border-radius: 16px !important;
+  }
+  .admin-profile-view .admin-student-summary-list .profile-menu-icon {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 30px !important;
+  }
+  .admin-profile-view .admin-student-summary-list .profile-menu-item strong {
+    color: #f8fbff !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.22 !important;
+    text-align: center !important;
+  }
+  .admin-profile-view .admin-student-summary-list .profile-menu-item p,
+  .admin-profile-view .admin-student-summary-list .profile-menu-item > svg {
+    display: none !important;
+  }
+
+  /* Roster: remove the broken decorative blob instead of repositioning it. */
+  .admin-area-screen:has(.admin-dashboard-roster) .admin-area-background {
+    background: linear-gradient(180deg, var(--surface-base, #061d3e), var(--surface-deep, #03162f)) !important;
+  }
+  .admin-area-screen:has(.admin-dashboard-roster) .admin-area-background span,
+  .admin-area-screen:has(.admin-dashboard-roster) .admin-area-background i {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Membership sheet: readable hierarchy + 44px touch targets.
+   -------------------------------------------------------------------------- */
+@media (max-width: 680px) {
+  .admin-membership-current span > small,
+  .admin-membership-form label > span {
+    color: var(--text-secondary, rgba(239,246,255,.66)) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+  }
+  .admin-membership-current span > strong {
+    color: var(--text-primary, #f8fbff) !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+  }
+  .admin-membership-form {
+    gap: 16px !important;
+  }
+  .admin-membership-form input,
+  .admin-membership-form select,
+  .admin-membership-form button {
+    min-height: 44px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Store product detail: mobile reserve CTA must not depend on desktop media.
+   -------------------------------------------------------------------------- */
+.store-product-detail-main-image > img,
+.store-product-detail-thumbs img {
+  transform: none !important;
+  rotate: 0deg !important;
+}
+.store-product-detail-main-image { position: relative !important; }
+.store-product-detail-discount {
+  position: absolute !important;
+  top: 12px !important;
+  left: 12px !important;
+  right: auto !important;
+  z-index: 4 !important;
+}
+.store-product-detail-reserve:not(:disabled) {
+  color: #07152a !important;
+  border-color: #ffd128 !important;
+  background: linear-gradient(135deg, #ffd128, #ffe36a) !important;
+  box-shadow: 0 12px 30px rgba(255, 209, 40, .16) !important;
+}
+.store-product-detail-reserve:not(:disabled) strong,
+.store-product-detail-reserve:not(:disabled) small {
+  color: #07152a !important;
+  opacity: 1 !important;
+}
+@media (max-width: 767.98px) {
+  .store-product-detail-reserve {
+    width: 100% !important;
+    min-height: 60px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-staff-sidebar { transition: none !important; }
+}
