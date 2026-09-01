@@ -41,7 +41,18 @@ export default function StaffLayout() {
         ? "PROFESSOR"
         : "EQUIPE";
 
-  const usesDocumentScroll = ["students", "alerts", "approvals", "library", "templates"].includes(active);
+  // Build 1.5.6: todas as subpáginas que usam o fluxo documental do Staff
+  // compartilham o mesmo painel rolável. Ranking/Notificações não mantêm mais
+  // um scroll próprio que perde min-height:0.
+  const usesDocumentScroll = [
+    "students",
+    "alerts",
+    "approvals",
+    "library",
+    "templates",
+    "ranking",
+    "notifications",
+  ].includes(active);
 
   useEffect(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
