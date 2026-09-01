@@ -12,6 +12,11 @@ function requireMatch(id, file, pattern, note) {
   if (!pattern.test(read(file))) failures.push(`${id} — ${note} (${file})`);
   else passes.push(id);
 }
+function requireAll(id, file, patterns, note) {
+  const source = read(file);
+  if (!patterns.every((pattern) => pattern.test(source))) failures.push(`${id} — ${note} (${file})`);
+  else passes.push(id);
+}
 function requireAbsent(id, file, pattern, note) {
   if (pattern.test(read(file))) failures.push(`${id} — ${note} (${file})`);
   else passes.push(id);
@@ -61,7 +66,7 @@ requireMatch("154/store-reserve-color", css, /\.store-product-detail-reserve:not
 requireMatch("154/builder-progress", "scr/pages/admin-workout-builder-v150.css", /admin-builder-story-segments[\s\S]*?repeat\(4/, "progresso segmentado foi removido");
 requireMatch("154/builder-carousel", "scr/pages/admin-workout-builder-v150.css", /scroll-snap-type:\s*x mandatory[\s\S]*?min-width:\s*88px/, "divisão deixou de ser carrossel arrastável");
 requireMatch("154/builder-one-primary", "scr/pages/admin-workout-builder-v150.css", /admin-builder-footer-actions[\s\S]*?display:\s*none\s*!important[\s\S]*?admin-builder-mobile-primary/, "footer mobile voltou a competir com múltiplas ações");
-requireMatch("154/builder-reorder", "scr/pages/AdminWorkoutBuilder.tsx", /<Reorder\.Group[\s\S]*?<Reorder\.Item/, "lista de exercícios deixou de ser reordenável");
+requireAll("154/builder-reorder", "scr/pages/AdminWorkoutBuilder.tsx", [/<Reorder\.Group/, /<Reorder\.Item/, /reorderActiveRoutineExercises/], "lista de exercícios deixou de ser reordenável/persistente");
 
 // Versionamento/cascade final.
 requireMatch("154/version", "package.json", /"version":\s*"1\.5\.4"/, "package ainda não está em 1.5.4");
