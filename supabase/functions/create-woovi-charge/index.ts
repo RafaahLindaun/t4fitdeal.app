@@ -137,7 +137,11 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("create-woovi-charge", error instanceof Error ? error.message : String(error));
     if (heldCorrelation && admin) {
-      await admin.rpc("cancel_pix_payment_hold_v1_5_2", { p_correlation_id: heldCorrelation }).catch(() => undefined);
+      try {
+        await admin.rpc("cancel_pix_payment_hold_v1_5_2", { p_correlation_id: heldCorrelation });
+      } catch {
+        console.error("create-woovi-charge: failed to release payment hold");
+      }
     }
     return json({ error: "pix_payment_creation_failed" }, 500);
   }
