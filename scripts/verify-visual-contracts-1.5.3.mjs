@@ -16,6 +16,12 @@ function requireMatch(id, file, pattern, note) {
   else passes.push(id);
 }
 
+function requireAll(id, file, patterns, note) {
+  const content = read(file);
+  if (!patterns.every((pattern) => pattern.test(content))) failures.push(`${id} — ${note} (${file})`);
+  else passes.push(id);
+}
+
 function collectFiles(dir) {
   const absolute = path.join(root, dir);
   return fs.readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
@@ -48,36 +54,36 @@ const serviceWorker = "public/accqua-notifications-sw.js";
 requireMatch("S/ranking-rpc", rankingLib, /get_accqua_monthly_ranking_v1_5_3/, "Ranking deixou de usar a RPC mensal 1.5.3");
 requireMatch("S/ranking-canonical", migration, /get_accqua_monthly_workout_ranking_v9_7/, "RPC 1.5.3 deixou de envolver a fonte canônica mensal");
 requireMatch("S/prize-table", migration, /create table if not exists public\.ranking_premios/, "tabela de prêmio mensal não está versionada");
-requireMatch("S/prize-student", rankingStudent, /Prêmio deste mês[\s\S]*?treinosToLeader|Prêmio deste mês[\s\S]*?workoutsToLeader/, "aluno perdeu contexto do prêmio/distância do líder");
-requireMatch("S/prize-staff", rankingStaff, /Prêmio do período[\s\S]*?saveRankingPrize/, "Staff perdeu editor do prêmio mensal");
+requireAll("S/prize-student", rankingStudent, [/Prêmio deste mês/, /workoutsToLeader/], "aluno perdeu contexto do prêmio/distância do líder");
+requireAll("S/prize-staff", rankingStaff, [/Prêmio do período/, /saveRankingPrize/], "Staff perdeu editor do prêmio mensal");
 requireMatch("S/race-close", rankingStaff, /Disputa acirrada/, "badge de disputa acirrada foi removido");
 
 // Receitas: IA cria rascunho, TACO calcula macro e aprovação continua humana.
 requireMatch("T/ai-entry", storeAdmin, /Criar receita com IA/, "entrada Criar receita com IA foi removida");
-requireMatch("T/ai-draft", storeAdmin, /generateRecipeWithAI[\s\S]*?setRecipeForm/, "IA não volta mais para o mesmo editor manual");
+requireAll("T/ai-draft", storeAdmin, [/generateRecipeWithAI/, /setRecipeForm/], "IA não volta mais para o mesmo editor manual");
 requireMatch("T/taco-source", recipeFn, /nepa\.unicamp\.br\/publicacoes\/tabela-taco-excel\//, "fonte oficial TACO deixou de ser usada");
 requireMatch("T/no-llm-macros", recipeFn, /NÃO calcule e NÃO retorne kcal/, "LLM voltou a poder inventar macros");
 requireMatch("T/taco-match-warning", recipeFn, /macrosEstimatedAi:!allMatched/, "ingrediente sem match deixou de exigir revisão");
-requireMatch("T/image-human-review", imageFn, /requires_human_review:true[\s\S]*?imagem_validada:false/, "imagem sugerida pela IA pode voltar aprovada automaticamente");
-requireMatch("T/image-replace-confirm", imageFn, /confirmation_required[\s\S]*?409/, "substituição de imagem aprovada perdeu confirmação");
+requireAll("T/image-human-review", imageFn, [/requires_human_review:true/, /imagem_validada:false/], "imagem sugerida pela IA pode voltar aprovada automaticamente");
+requireAll("T/image-replace-confirm", imageFn, [/confirmation_required/, /status:409/], "substituição de imagem aprovada perdeu confirmação");
 
 // Notificações: público segmentado, preferência mestre, soft delete e Web Push real.
-requireMatch("U/staff-audiences", notificationsStaff, /todos[\s\S]*?matriculados[\s\S]*?gympass[\s\S]*?totalpass/, "segmentação de público ficou incompleta");
+requireAll("U/staff-audiences", notificationsStaff, [/todos/, /matriculados/, /gympass/, /totalpass/], "segmentação de público ficou incompleta");
 requireMatch("U/recipient-preference", migration, /coalesce\(p\.notificacoes_ativas, true\) = true/, "backend deixou de respeitar a preferência geral do aluno");
-requireMatch("U/master-toggle", notificationBridge, /Notificações ativas[\s\S]*?setMyNotificationsEnabled/, "Perfil perdeu o toggle geral de notificações");
+requireAll("U/master-toggle", notificationBridge, [/Notificações ativas/, /setMyNotificationsEnabled/], "Perfil perdeu o toggle geral de notificações");
 requireMatch("U/ios-install", notificationBridge, /Tela de Início/, "orientação de push no iPhone foi removida");
 requireMatch("U/soft-delete", notificationsLib, /excluida:\s*true/, "swipe delete deixou de ser exclusão individual/soft delete");
-requireMatch("U/push-subscribe", notificationsLib, /pushManager\.subscribe[\s\S]*?push_subscriptions/, "cliente deixou de registrar assinatura Web Push");
-requireMatch("U/sw-push", serviceWorker, /addEventListener\("push"[\s\S]*?showNotification/, "Service Worker não exibe push real");
+requireAll("U/push-subscribe", notificationsLib, [/pushManager\.subscribe/, /push_subscriptions/], "cliente deixou de registrar assinatura Web Push");
+requireAll("U/sw-push", serviceWorker, [/addEventListener\("push"/, /showNotification/], "Service Worker não exibe push real");
 requireMatch("U/push-send", sendFn, /webpush\.sendNotification/, "Edge Function deixou de enviar Web Push");
-requireMatch("U/push-expired-cleanup", sendFn, /status === 404 \|\| status === 410[\s\S]*?push_subscriptions/, "assinaturas expiradas deixaram de ser limpas");
+requireAll("U/push-expired-cleanup", sendFn, [/status === 404 \|\| status === 410/, /push_subscriptions/], "assinaturas expiradas deixaram de ser limpas");
 requireMatch("U/public-vapid-only", pushConfigFn, /publicKey: row\.public_key/, "endpoint de config deixou de retornar somente chave pública");
 requireAbsentInTree("U/no-private-vapid-client", "scr", /get_push_vapid_config_v1_5_3|accqua_vapid_private_1_5_3/, "chave privada/VAPID RPC apareceu no bundle React");
 
 // PWA/iOS: push exige app instalável em standalone.
 requireMatch("U/pwa-manifest", "public/manifest.webmanifest", /"display":\s*"standalone"/, "manifest deixou de ser instalável");
 requireMatch("U/pwa-index", "index.html", /rel="manifest" href="\/manifest\.webmanifest"/, "manifest não está ligado ao HTML");
-requireMatch("U/pwa-ios", "index.html", /apple-mobile-web-app-capable/, "metadados de instalação iOS foram removovidos");
+requireMatch("U/pwa-ios", "index.html", /apple-mobile-web-app-capable/, "metadados de instalação iOS foram removidos");
 
 // Versionamento final.
 requireMatch("VERSION/1.5.3", "package.json", /"version":\s*"1\.5\.3"/, "package ainda não está marcado como 1.5.3");
