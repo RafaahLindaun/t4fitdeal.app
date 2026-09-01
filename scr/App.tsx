@@ -7,6 +7,8 @@ import StaffWorkoutAlerts from "./components/StaffWorkoutAlerts";
 import EngagementNotifications from "./components/EngagementNotifications";
 import WelcomeOnboarding from "./components/WelcomeOnboarding";
 import NotificationPreferenceBridge from "./components/NotificationPreferenceBridge";
+import ProfileReservations157 from "./components/ProfileReservations157";
+import Build157UiBridge from "./components/Build157UiBridge";
 import AccquaToaster from "./components/AccquaToaster";
 import { SyncQueueProvider } from "./hooks/useSyncQueue";
 import MainLayout from "./components/MainLayout";
@@ -45,6 +47,8 @@ export default function App() {
         <EngagementNotifications />
         <WelcomeOnboarding />
         <NotificationPreferenceBridge />
+        <ProfileReservations157 />
+        <Build157UiBridge />
         <AccquaToaster />
         <LayoutGroup id="accqua-workout-shared-layout">
           <Suspense fallback={<LoadingSplash />}>
