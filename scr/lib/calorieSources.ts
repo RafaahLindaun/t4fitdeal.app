@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { loadCardioStats } from "./cardioStats";
 
 export type CalorieSourceKey = "manual" | "garmin" | "apple_health" | "google_fit" | "samsung_health";
 
@@ -59,10 +60,6 @@ function belongsToLocalDay(row: Row, target: Date, candidates: string[]) {
 }
 
 async function rowsByIdentity(table: string, userId: string, identityColumns: string[], limit = 500): Promise<Row[]> {
-  // Algumas tabelas legadas coexistem com mais de uma coluna de identidade
-  // (ex.: student_id + user_id). Consultar apenas a primeira coluna válida pode
-  // retornar [] mesmo quando os registros reais estão na segunda. Mesclamos todas
-  // as consultas que existem no schema e deduplicamos pelo id.
   const merged = new Map<string, Row>();
   let successfulQuery = false;
 
@@ -104,6 +101,15 @@ function cardioCaloriesFrom(row: Row) {
   return 0;
 }
 
+async function loadLegacyCardioCalories(userId: string, date: Date) {
+  const cardioRows = await rowsByIdentity("cardio_sessions", userId, ["student_id", "user_id", "aluno_id"], 500);
+  return cardioRows.reduce((total, row) => {
+    if (!completedCardio(row)) return total;
+    if (!belongsToLocalDay(row, date, ["completed_at", "finished_at", "updated_at", "started_at", "created_at"])) return total;
+    return total + Math.max(0, cardioCaloriesFrom(row));
+  }, 0);
+}
+
 async function loadStrengthHistoryDurations(userId: string, date: Date) {
   const rows = await rowsByIdentity("accqua_activity_history", userId, ["student_id", "user_id", "aluno_id"], 300);
   const map = new Map<string, number>();
@@ -124,7 +130,6 @@ function durationFromExecutions(executions: Row[]) {
     .filter(Number.isFinite)
     .sort((a, b) => a - b);
   if (timestamps.length >= 2) {
-    // Inclui uma janela curta para a última série sem transformar pausas longas em treino ativo.
     const spreadSeconds = Math.max(0, (timestamps[timestamps.length - 1] - timestamps[0]) / 1000);
     return Math.min(3 * 60 * 60, Math.max(executions.length * 35, spreadSeconds + 45));
   }
@@ -135,17 +140,12 @@ export class ManualEstimateSource implements CalorieSource {
   key: CalorieSourceKey = "manual";
 
   async getDailyBurn(userId: string, date: Date, weightKg = 70): Promise<DailyBurnResult> {
-    const cardioRows = await rowsByIdentity("cardio_sessions", userId, ["student_id", "user_id", "aluno_id"], 500);
-    const cardioCalories = cardioRows.reduce((total, row) => {
-      if (!completedCardio(row)) return total;
-      if (!belongsToLocalDay(row, date, ["completed_at", "finished_at", "updated_at", "started_at", "created_at"])) return total;
-      return total + Math.max(0, cardioCaloriesFrom(row));
-    }, 0);
+    // Build 1.5.6: kcal de cardio vem da mesma RPC usada por qualquer resumo
+    // diário/mensal. O cálculo local permanece somente como fallback para um
+    // ambiente ainda sem a migration, evitando quebrar instalações antigas.
+    const canonicalCardio = await loadCardioStats(userId, "day", date).catch(() => null);
+    const cardioCalories = canonicalCardio?.calories ?? await loadLegacyCardioCalories(userId, date);
 
-    // A Build 1.3 consolida as duas fontes de séries que coexistem no app:
-    // - serie_execucoes (fluxo novo)
-    // - workout_set_logs (Treino clássico preservado)
-    // O filtro de "hoje" é sempre feito pelo fuso local do aparelho.
     const [allExecutions, allWorkoutSessions] = await Promise.all([
       rowsByIdentity("serie_execucoes", userId, ["aluno_id", "student_id", "user_id"], 1500),
       rowsByIdentity("workout_sessions", userId, ["student_id", "user_id", "aluno_id"], 500),
@@ -185,7 +185,6 @@ export class ManualEstimateSource implements CalorieSource {
     for (const row of classicLogs) {
       const sessionId = text(row.session_id) || `classic-${text(row.id)}`;
       const bucket = activityBySession.get(sessionId) ?? [];
-      // Se a mesma sessão já possui serie_execucoes, não duplicamos séries legadas.
       if (!bucket.some((entry) => Boolean(entry.exercicio_id ?? entry.sessao_id))) bucket.push(row);
       activityBySession.set(sessionId, bucket);
     }
