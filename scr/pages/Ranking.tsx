@@ -68,7 +68,7 @@ function PodiumEntry({ entry, position, currentUserId, onSelect }: { entry: Rank
       </span>
       <strong>{isMe ? "Você" : entry.firstName}</strong>
       {isMe ? <em className="ranking-you-badge">Você</em> : null}
-      <small>{entry.points} treino{entry.points === 1 ? "" : "s"}</small>
+      <small>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"}</small>
     </button>
   );
 }
@@ -79,7 +79,8 @@ function RankingInfoSheet({ open, onClose }: { open: boolean; onClose: () => voi
   return (
     <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Como funciona" description="Entenda como sua posição no Ranking ACCQUA é calculada." className="ranking-info-responsive-dialog" bodyClassName="ranking-info-dialog-body" closeButton={<button type="button" className="ranking-sheet-close" aria-label="Fechar">×</button>}>
       <div className="ranking-info-list">
-        <article><strong>Treinos do mês</strong><p>Sua posição usa a mesma contagem mensal oficial dos treinos concluídos no ACCQUA.</p></article>
+        <article><strong>Dias treinados do mês</strong><p>Cada dia válido conta no máximo uma vez no ranking, mesmo que você registre mais de um treino no mesmo dia.</p></article>
+        <article><strong>Presença com lastro</strong><p>O dia só entra na disputa quando há matrícula válida naquela data ou presença registrada em uma aula.</p></article>
         <article><strong>Prêmio para o 1º lugar</strong><p>Quem terminar o mês em primeiro lugar ganha: {prizeName}.</p></article>
         <article><strong>Todo mês começa do zero</strong><p>No primeiro dia de cada mês começa um novo período de disputa.</p></article>
       </div>
@@ -103,7 +104,7 @@ function PrizeDialog({ open, onClose, prize, entry }: { open: boolean; onClose: 
           {prize.imageUrl ? <img className="ranking-prize-image" src={prize.imageUrl} alt={prize.name}/> : <div className="ranking-prize-image-placeholder"><GiftIcon/></div>}
           <div><h3>{prize.name}</h3>{prize.description ? <p>{prize.description}</p> : null}</div>
           <div className="ranking-prize-progress">
-            {!entry ? <p>Faça seu primeiro treino do mês para entrar na disputa.</p> : entry.position === 1 ? <p>🏆 Você está em <strong>1º lugar</strong>! Continue treinando para garantir.</p> : <p>Você está em <strong>{entry.position}º lugar</strong> — faltam <strong>{entry.workoutsToLeader} treino{entry.workoutsToLeader === 1 ? "" : "s"}</strong> para alcançar o líder.</p>}
+            {!entry ? <p>Faça seu primeiro treino do mês para entrar na disputa.</p> : entry.position === 1 ? <p>🏆 Você está em <strong>1º lugar</strong>! Continue treinando para garantir.</p> : <p>Você está em <strong>{entry.position}º lugar</strong> — faltam <strong>{entry.daysToLeader} dia{entry.daysToLeader === 1 ? "" : "s"} treinado{entry.daysToLeader === 1 ? "" : "s"}</strong> para alcançar o líder.</p>}
           </div>
           <small>⏳ Faltam {daysToMonthEnd()} dias para o fim do período. O ranking reinicia todo mês.</small>
         </div>
@@ -136,7 +137,7 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry
         <span className="ranking-sheet-handle" aria-hidden="true"/><ModalCloseButton className="ranking-sheet-close" onClick={onClose} ariaLabel="Fechar perfil resumido"/>
         <header className="ranking-profile-header">
           {entry.avatarUrl ? <button type="button" className="ranking-profile-avatar-button" onClick={() => onPhoto(entry)}><span className="ranking-profile-avatar has-photo"><img src={entry.avatarUrl} alt={`Foto de ${displayName}`}/></span></button> : <span className="ranking-profile-avatar" aria-hidden="true">{initials(entry.firstName)}</span>}
-          <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{entry.points} treino{entry.points === 1 ? "" : "s"} neste mês</p></div>
+          <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"} neste mês</p></div>
         </header>
         {loading ? <div className="ranking-sheet-loading"><span/><p>Carregando perfil...</p></div> : !summary ? <div className="ranking-sheet-error"><p>Não foi possível carregar os detalhes deste perfil agora.</p></div> : <div className="ranking-profile-data">
           <article><span>Idade</span><strong>{summary.ageYears === null ? "Não informada" : `${summary.ageYears} anos`}</strong></article>
@@ -156,7 +157,7 @@ export default function Ranking() {
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<RankingEntry | null>(null);
   const [photo, setPhoto] = useState<RankingEntry | null>(null);
-  const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.3"], queryFn: loadAccquaRanking, staleTime: 20_000 });
+  const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6"], queryFn: loadAccquaRanking, staleTime: 20_000 });
   const prizeQuery = useQuery({ queryKey: ["ranking-prize", "current"], queryFn: () => loadRankingPrize(), staleTime: 60_000 });
   const entries = rankingQuery.data ?? [];
   const podium = useMemo(() => entries.slice(0, 3), [entries]);
@@ -178,11 +179,11 @@ export default function Ranking() {
           <button type="button" className="ranking-info-fab" onClick={() => setInfoOpen(true)} aria-label="Como funciona o ranking"><InfoIcon/></button>
         </div>
       </header>
-      <section className="ranking-title"><h1>Ranking</h1><p>Alunos com mais treinos</p></section>
+      <section className="ranking-title"><h1>Ranking</h1><p>Alunos com mais dias treinados</p></section>
       <section className="ranking-content">
-        {rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro treino do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <>
+        {rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <>
           <section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section>
-          <div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} treino{entry.points === 1 ? "" : "s"}</small></button>; })}</div>
+          <div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></button>; })}</div>
         </>}
       </section>
     </main>

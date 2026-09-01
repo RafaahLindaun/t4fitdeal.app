@@ -88,6 +88,21 @@ type Row = Record<string, unknown>;
 function n(value: unknown) { const x = Number(value ?? 0); return Number.isFinite(x) ? x : 0; }
 function t(value: unknown) { return String(value ?? "").trim(); }
 
+async function edgeFunctionMessage(error: unknown, fallback: string) {
+  const context = (error as { context?: unknown } | null)?.context as { clone?: () => Response; json?: () => Promise<unknown> } | undefined;
+  try {
+    const response = typeof context?.clone === "function" ? context.clone() : context;
+    if (response && typeof response.json === "function") {
+      const payload = await response.json() as { message?: unknown; error?: unknown };
+      const safe = t(payload?.message);
+      if (safe) return safe;
+    }
+  } catch {
+    // FunctionsHttpError pode ter um body já consumido. Mantém fallback seguro.
+  }
+  return fallback;
+}
+
 const CATEGORY_ALIASES: Record<string, string> = {
   camisa: "camisas", camisas: "camisas", camiseta: "camisas", camisetas: "camisas",
   suplemento: "suplementos", suplementos: "suplementos",
@@ -168,7 +183,12 @@ export async function loadRecipeImageReviewQueue():Promise<RecipeImageReview[]>{
 
 export async function validateRecipeImageWithAI(recipe:RecipeImageReview,replaceApproved=false){const{data,error}=await supabase.functions.invoke("validate-recipe-image",{body:{recipe_id:recipe.id,replace_approved:replaceApproved}});if(error){const context=(error as any)?.context;const status=Number(context?.status??0);if(status===409)return{status:"confirmation_required"as const,match:false,score:0,reason:"Substituir imagem já aprovada?",imageUrl:"",source:""};throw error;}return{status:t(data?.status)||"ok",match:Boolean(data?.match),score:Math.max(0,Math.min(1,n(data?.score))),reason:t(data?.reason),imageUrl:t(data?.imageUrl),source:t(data?.source)};}
 
-export async function generateRecipeWithAI(description:string):Promise<RecipeAiDraft>{const{data,error}=await supabase.functions.invoke("generate-recipe-ai",{body:{descricao:description.trim()}});if(error)throw error;const raw=data??{};const source=t(raw.imageSource);return{name:t(raw.name)||description.trim(),ingredients:Array.isArray(raw.ingredients)?raw.ingredients:[],instructions:t(raw.instructions),portionDescription:t(raw.portionDescription)||"1 porção",objectiveCategories:Array.isArray(raw.objectiveCategories)?raw.objectiveCategories.map(t).filter(Boolean):[],mealCategory:t(raw.mealCategory)||"almoco",dayPeriod:(["manha","tarde","noite"].includes(t(raw.dayPeriod))?t(raw.dayPeriod):"")as RecipeAiDraft["dayPeriod"],healthLevel:(["saudavel","moderado","menos_saudavel"].includes(t(raw.healthLevel))?t(raw.healthLevel):"saudavel")as RecipeAiDraft["healthLevel"],kcal:Math.max(0,n(raw.kcal)),protein:Math.max(0,n(raw.protein)),carbs:Math.max(0,n(raw.carbs)),fat:Math.max(0,n(raw.fat)),macrosEstimatedAi:Boolean(raw.macrosEstimatedAi),macroVerification:Array.isArray(raw.macroVerification)?raw.macroVerification:[],nutritionSource:t(raw.nutritionSource),imageUrl:t(raw.imageUrl),imageConfidence:raw.imageConfidence==null?null:n(raw.imageConfidence),imageSource:(["ia_unsplash","ia_catalogo"].includes(source)?source:"")as RecipeAiDraft["imageSource"],imageReason:t(raw.imageReason)};}
+export async function generateRecipeWithAI(description:string):Promise<RecipeAiDraft>{
+  const{data,error}=await supabase.functions.invoke("generate-recipe-ai",{body:{descricao:description.trim()}});
+  if(error) throw new Error(await edgeFunctionMessage(error,"Não foi possível gerar a receita agora. Tente novamente."));
+  const raw=data??{};const source=t(raw.imageSource);
+  return{name:t(raw.name)||description.trim(),ingredients:Array.isArray(raw.ingredients)?raw.ingredients:[],instructions:t(raw.instructions),portionDescription:t(raw.portionDescription)||"1 porção",objectiveCategories:Array.isArray(raw.objectiveCategories)?raw.objectiveCategories.map(t).filter(Boolean):[],mealCategory:t(raw.mealCategory)||"almoco",dayPeriod:(["manha","tarde","noite"].includes(t(raw.dayPeriod))?t(raw.dayPeriod):"")as RecipeAiDraft["dayPeriod"],healthLevel:(["saudavel","moderado","menos_saudavel"].includes(t(raw.healthLevel))?t(raw.healthLevel):"saudavel")as RecipeAiDraft["healthLevel"],kcal:Math.max(0,n(raw.kcal)),protein:Math.max(0,n(raw.protein)),carbs:Math.max(0,n(raw.carbs)),fat:Math.max(0,n(raw.fat)),macrosEstimatedAi:Boolean(raw.macrosEstimatedAi),macroVerification:Array.isArray(raw.macroVerification)?raw.macroVerification:[],nutritionSource:t(raw.nutritionSource),imageUrl:t(raw.imageUrl),imageConfidence:raw.imageConfidence==null?null:n(raw.imageConfidence),imageSource:(["ia_unsplash","ia_catalogo"].includes(source)?source:"")as RecipeAiDraft["imageSource"],imageReason:t(raw.imageReason)};
+}
 
 export async function deleteStoreProductStaff(id:string):Promise<{action:"deleted"|"deactivated";reservations:number}>{const{data,error}=await supabase.rpc("accqua_staff_delete_product_v1_3_6",{p_product_id:id});if(error)throw new Error(error.message);const raw=(Array.isArray(data)?data[0]:data??{})as Row;return{action:t(raw.action)==="deleted"?"deleted":"deactivated",reservations:Math.max(0,n(raw.reservations))};}
 export async function deleteRecipeStaff(id:string):Promise<void>{const{error}=await supabase.rpc("accqua_staff_delete_recipe_v1_3_6",{p_recipe_id:id});if(error)throw new Error(error.message);}

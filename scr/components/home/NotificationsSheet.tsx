@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ResponsiveDialog from "../ResponsiveDialog";
 import SwipeableListItem from "../SwipeableListItem";
@@ -95,32 +96,35 @@ export default function NotificationsSheet({
     >
       <div className="accqua-notifications-toolbar">
         <small>{totalCount ? `${totalCount} ${totalCount === 1 ? "aviso" : "avisos"}` : "Tudo em dia"}</small>
-        {unreadCount ? (
-          <button type="button" onClick={() => void markAll()}>Marcar todas como lidas</button>
-        ) : null}
+        {unreadCount ? <button type="button" onClick={() => void markAll()}>Marcar todas como lidas</button> : null}
       </div>
 
       {notificationsQuery.isLoading ? (
-        <div className="accqua-notifications-empty">
-          <strong>Carregando notificações...</strong>
-        </div>
+        <div className="accqua-notifications-empty"><strong>Carregando notificações...</strong></div>
       ) : totalCount ? (
         <div className="accqua-notifications-list">
-          {staffAlerts.map((alert) => (
-            <button
-              key={`staff-${alert.id}`}
-              type="button"
-              className="accqua-notification-row is-unread"
-              onClick={() => void onStaffAlertClick(alert)}
-            >
-              <span className="accqua-notification-icon is-alert" aria-hidden="true">⚠️</span>
-              <span>
-                <strong>{alert.title || "Aluno precisa de atenção"}</strong>
-                <p>{alert.message || `${alert.studentName} precisa de uma ação da equipe.`}</p>
-              </span>
-              <time>{formatNotificationTime(alert.deliveredAt || alert.createdAt)}</time>
-            </button>
-          ))}
+          <AnimatePresence initial={false} mode="popLayout">
+            {staffAlerts.map((alert) => (
+              <motion.button
+                layout
+                key={`staff-${alert.id}`}
+                type="button"
+                className="accqua-notification-row is-unread"
+                initial={{ opacity: 0, x: 12, scale: 0.98 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 38, scale: 0.96 }}
+                transition={{ duration: 0.36, ease: [0.2, 0.8, 0.2, 1] }}
+                onClick={() => void onStaffAlertClick(alert)}
+              >
+                <span className="accqua-notification-icon is-alert" aria-hidden="true">⚠️</span>
+                <span>
+                  <strong>{alert.title || "Aluno precisa de atenção"}</strong>
+                  <p>{alert.message || `${alert.studentName} precisa de uma ação da equipe.`}</p>
+                </span>
+                <time>{formatNotificationTime(alert.deliveredAt || alert.createdAt)}</time>
+              </motion.button>
+            ))}
+          </AnimatePresence>
 
           {notifications.map((notification) => {
             const expanded = expandedId === notification.receiptId;
@@ -136,13 +140,8 @@ export default function NotificationsSheet({
                   aria-expanded={expanded}
                   onClick={() => void openNotification(notification.receiptId, notification.read)}
                 >
-                  <span className={`accqua-notification-icon is-${notification.icon}`}>
-                    <NotificationGlyph icon={notification.icon} />
-                  </span>
-                  <span>
-                    <strong>{notification.title}</strong>
-                    <p>{notification.body || "Toque para marcar como lida."}</p>
-                  </span>
+                  <span className={`accqua-notification-icon is-${notification.icon}`}><NotificationGlyph icon={notification.icon} /></span>
+                  <span><strong>{notification.title}</strong><p>{notification.body || "Toque para marcar como lida."}</p></span>
                   <time>{formatNotificationTime(notification.createdAt)}</time>
                 </button>
               </SwipeableListItem>

@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
+import StaffSubPageHeader from "../components/StaffSubPageHeader";
 import {
   sendStaffNotification,
   type NotificationAudience,
@@ -67,22 +68,18 @@ export default function NotificationsStaff() {
 
   return (
     <main className="notifications-staff-page">
-      <header className="notifications-staff-heading">
-        <small>ÁREA ACCQUA</small>
-        <h1>Notificações</h1>
-        <p>Envie avisos segmentados para o sino do app e, quando autorizado, por push.</p>
-      </header>
+      <StaffSubPageHeader
+        title="Notificações"
+        subtitle="Envie avisos segmentados para o sino do app e, quando autorizado, por push."
+      />
 
       <div className="notifications-staff-grid">
         <form className="notifications-staff-card notifications-compose" onSubmit={(event) => void submit(event)}>
           <div className="notifications-section-heading"><span>COMPOSIÇÃO</span><strong>Novo aviso</strong></div>
           <label>Título <span>{title.length}/60</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={60} placeholder="Ex: Aula de hidro alterada" required /></label>
           <label>Mensagem <span>{body.length}/200</span><textarea value={body} onChange={(event) => setBody(event.target.value)} maxLength={200} rows={5} placeholder="Escreva a mensagem que o aluno vai receber." required /></label>
-
           <fieldset><legend>Ícone</legend><div className="notification-icon-grid">{ICONS.map((item) => <button key={item.id} type="button" className={icon === item.id ? "is-selected" : ""} onClick={() => setIcon(item.id)} aria-pressed={icon === item.id}><b>{item.glyph}</b><span>{item.label}</span></button>)}</div></fieldset>
-
           <fieldset><legend>Público</legend><div className="notification-audience-grid">{AUDIENCES.map((item) => <button key={item.id} type="button" className={audience === item.id ? "is-selected" : ""} onClick={() => setAudience(item.id)} aria-pressed={audience === item.id}><strong>{item.label}</strong><small>{item.detail}</small></button>)}</div></fieldset>
-
           <button className="notifications-send" type="submit" disabled={sending}>{sending ? "Enviando..." : "Enviar notificação"}</button>
         </form>
 
@@ -91,7 +88,6 @@ export default function NotificationsStaff() {
             <div className="notifications-section-heading"><span>PRÉVIA</span><strong>Como aparece para o aluno</strong></div>
             <article><span className="notification-preview-icon">{ICONS.find((item) => item.id === icon)?.glyph}</span><div><strong>{title.trim() || "Título da notificação"}</strong><p>{body.trim() || "Sua mensagem aparece aqui antes do envio."}</p><small>Agora · ACCQUA Sports</small></div></article>
           </section>
-
           <section className="notifications-staff-card notification-delivery-info">
             <div className="notifications-section-heading"><span>ENTREGA</span><strong>Respeita a preferência do aluno</strong></div>
             <p>Quem desativou notificações não recebe entrada no sino nem push. iPhone precisa do app instalado na Tela de Início para Web Push.</p>

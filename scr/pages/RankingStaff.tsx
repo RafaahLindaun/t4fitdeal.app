@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
+import StaffSubPageHeader from "../components/StaffSubPageHeader";
 import StorageImageUploadGrid, { type StorageImageValue } from "../components/StorageImageUploadGrid";
 import {
   loadAccquaRanking,
@@ -28,17 +29,8 @@ export default function RankingStaff() {
 
   const currentPeriod = rankingPeriodKey();
   const nextPeriod = nextRankingPeriodKey();
-  const rankingQuery = useQuery({
-    queryKey: ["ranking", "monthly", "1.5.3"],
-    queryFn: loadAccquaRanking,
-    enabled: isStaff,
-    staleTime: 20_000,
-  });
-  const prizeQuery = useQuery({
-    queryKey: ["ranking-prize", period],
-    queryFn: () => loadRankingPrize(period),
-    enabled: isStaff,
-  });
+  const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6"], queryFn: loadAccquaRanking, enabled: isStaff, staleTime: 20_000 });
+  const prizeQuery = useQuery({ queryKey: ["ranking-prize", period], queryFn: () => loadRankingPrize(period), enabled: isStaff });
 
   useEffect(() => {
     const prize = prizeQuery.data;
@@ -55,18 +47,10 @@ export default function RankingStaff() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) {
-      toast.error("Informe o nome do prêmio.");
-      return;
-    }
+    if (!name.trim()) { toast.error("Informe o nome do prêmio."); return; }
     setSaving(true);
     try {
-      await saveRankingPrize({
-        period,
-        name: name.trim(),
-        description: description.trim(),
-        imageUrl: images[0]?.url ?? "",
-      });
+      await saveRankingPrize({ period, name: name.trim(), description: description.trim(), imageUrl: images[0]?.url ?? "" });
       toast.success(`Prêmio de ${rankingPeriodLabel(period)} salvo.`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["ranking-prize"] }),
@@ -75,16 +59,12 @@ export default function RankingStaff() {
     } catch (error) {
       logStaffError("ranking-prize", error);
       toast.error(staffFacingErrorMessage(error, "Não foi possível salvar o prêmio agora. Tente novamente."));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   return (
     <main className="ranking-staff-page">
-      <section className="ranking-staff-heading">
-        <div><small>ÁREA ACCQUA</small><h1>Ranking</h1><p>Prêmio mensal e acompanhamento da disputa.</p></div>
-      </section>
+      <StaffSubPageHeader title="Ranking" subtitle="Prêmio mensal e acompanhamento da disputa por dias treinados." />
 
       <div className="ranking-staff-grid">
         <form className="ranking-staff-card ranking-prize-editor" onSubmit={(event) => void submit(event)}>
@@ -98,8 +78,8 @@ export default function RankingStaff() {
 
         <section className="ranking-staff-card ranking-race-panel">
           <header><div><small>DISPUTA</small><h2>Quem está perto de ganhar</h2></div><span>Top 5 do mês</span></header>
-          {rankingQuery.isLoading ? <div className="ranking-staff-empty">Carregando ranking...</div> : !topFive.length ? <div className="ranking-staff-empty">Ainda não há treinos válidos neste mês.</div> : <div className="ranking-race-list">{topFive.map((entry) => <article key={entry.studentId} className={entry.workoutsToLeader <= 2 && entry.position > 1 ? "is-close" : ""}><span className="ranking-race-position">{entry.position}º</span><span className="ranking-race-avatar">{entry.avatarUrl ? <img src={entry.avatarUrl} alt="" /> : entry.firstName.slice(0,2).toUpperCase()}</span><div><strong>{entry.firstName}</strong><small>{entry.points} treino{entry.points === 1 ? "" : "s"}{entry.position > 1 ? ` · a ${entry.workoutsToLeader} do líder` : " · líder"}</small>{entry.position > 1 && entry.workoutsToLeader <= 2 ? <em>🔥 Disputa acirrada</em> : null}</div></article>)}</div>}
-          <p className="ranking-race-note">A distância exibida aqui vem da mesma RPC usada no Ranking do aluno.</p>
+          {rankingQuery.isLoading ? <div className="ranking-staff-empty">Carregando ranking...</div> : !topFive.length ? <div className="ranking-staff-empty">Ainda não há dias válidos neste mês.</div> : <div className="ranking-race-list">{topFive.map((entry) => <article key={entry.studentId} className={entry.daysToLeader <= 2 && entry.position > 1 ? "is-close" : ""}><span className="ranking-race-position">{entry.position}º</span><span className="ranking-race-avatar">{entry.avatarUrl ? <img src={entry.avatarUrl} alt="" /> : entry.firstName.slice(0,2).toUpperCase()}</span><div><strong>{entry.firstName}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"}{entry.position > 1 ? ` · a ${entry.daysToLeader} dia${entry.daysToLeader === 1 ? "" : "s"} treinado${entry.daysToLeader === 1 ? "" : "s"} do líder` : " · líder"}</small>{entry.position > 1 && entry.daysToLeader <= 2 ? <em>🔥 Disputa acirrada</em> : null}</div></article>)}</div>}
+          <p className="ranking-race-note">A distância exibida aqui vem da mesma RPC de dias treinados usada no Ranking do aluno.</p>
         </section>
       </div>
     </main>

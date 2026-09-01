@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ClassesAdmin from "./ClassesAdmin";
+import StaffSubPageHeader from "../components/StaffSubPageHeader";
 import { loadAccessModeSummary } from "../lib/accessSummary";
 import "./classes-admin-v155.css";
 
 function AccessSummary() {
-  const query = useQuery({ queryKey: ["access-mode-summary", "1.5.5"], queryFn: loadAccessModeSummary, staleTime: 20_000 });
+  const query = useQuery({ queryKey: ["access-mode-summary", "1.5.7"], queryFn: loadAccessModeSummary, staleTime: 20_000 });
   const rows = query.data ?? [];
   return (
     <aside className="classes-v155-access-summary" aria-label="Como seus alunos acessam">
@@ -29,9 +30,6 @@ export default function ClassesAdminV155() {
       if (forced) {
         window.setTimeout(() => { delete card.dataset.v155ForceCollapsed; }, 0);
       } else if (body) {
-        // A implementação legada reabre automaticamente o primeiro accordion
-        // quando o Set chega a zero. Este estado visual explícito preserva a
-        // intenção do clique sem alterar o CRUD/estado interno já estabilizado.
         window.setTimeout(() => { card.dataset.v155ForceCollapsed = "true"; }, 0);
       }
     };
@@ -39,5 +37,10 @@ export default function ClassesAdminV155() {
     return () => document.removeEventListener("click", onClick, true);
   }, []);
 
-  return <div className="classes-admin-v155-wrap"><AccessSummary /><ClassesAdmin /></div>;
+  return (
+    <div className="classes-admin-v155-page">
+      <StaffSubPageHeader title="Gestão de aulas" subtitle="Horários, modalidades e acesso dos alunos em um só lugar." />
+      <div className="classes-admin-v155-wrap"><AccessSummary /><ClassesAdmin /></div>
+    </div>
+  );
 }

@@ -15,9 +15,10 @@ const schemaMigration = "supabase/migrations/20260901070000_build_1_5_5_workout_
 const storeMigration = "supabase/migrations/20260901070200_build_1_5_5_store_soft_delete_compat.sql";
 const aiFunction = "supabase/functions/generate-workout-ai-v155/index.ts";
 
-requireMatch("155/version", "package.json", /"version":\s*"1\.5\.5"/, "package não está marcado como 1.5.5");
-requireMatch("155/contracts", "package.json", /verify-visual-contracts-1\.5\.5\.mjs/, "npm não executa contratos 1.5.5");
-requireMatch("155/css-order", "scr/main.tsx", /build-1\.5\.4\.css";\s*\nimport "\.\/styles\/build-1\.5\.5\.css";/, "camada 1.5.5 não é a última da cascata");
+// Contrato histórico: qualquer patch >= 1.5.5 precisa preservar a feature 1.5.5.
+requireMatch("155/version", "package.json", /"version":\s*"1\.5\.(?:[5-9]|\d{2,})"/, "package ficou abaixo da linha 1.5.5");
+requireMatch("155/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:[5-9]|\d{2,})\.mjs/, "npm não executa a cadeia de contratos 1.5.5+");
+requireMatch("155/css-order", "scr/main.tsx", /build-1\.5\.4\.css";\s*\nimport "\.\/styles\/build-1\.5\.5\.css";/, "camada 1.5.5 não vem depois da 1.5.4 na cascata");
 
 // Entrada única e convergência no mesmo editor.
 requireAll("155/method-entry", "scr/pages/WorkoutBuilderEntry.tsx", [/Montar manualmente/, /Assistente guiado/, /Modelo salvo/, /Descrever pra IA/], "faltou algum dos quatro métodos de montagem");
