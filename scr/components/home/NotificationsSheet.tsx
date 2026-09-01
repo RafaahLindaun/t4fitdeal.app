@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ResponsiveDialog from "../ResponsiveDialog";
+import SwipeableListItem from "../SwipeableListItem";
 import type { WorkoutRequiredAlert } from "../../lib/admin";
 import {
+  deleteAccquaNotificationForMe,
   loadAccquaNotifications,
   markAccquaNotificationRead,
   markAllAccquaNotificationsRead,
+  type NotificationIcon,
 } from "../../lib/notifications";
 
 function formatNotificationTime(value: string) {
@@ -17,6 +20,15 @@ function formatNotificationTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function NotificationGlyph({ icon }: { icon: NotificationIcon }) {
+  if (icon === "treino") return <span aria-hidden="true">🏋️</span>;
+  if (icon === "pagamento") return <span aria-hidden="true">💳</span>;
+  if (icon === "presente") return <span aria-hidden="true">🎁</span>;
+  if (icon === "alerta") return <span aria-hidden="true">⚠️</span>;
+  if (icon === "conquista") return <span aria-hidden="true">🏆</span>;
+  return <span aria-hidden="true">📣</span>;
 }
 
 type Props = {
@@ -55,9 +67,16 @@ export default function NotificationsSheet({
     ]);
   };
 
-  const openNotification = async (id: string, read: boolean) => {
-    setExpandedId((current) => current === id ? "" : id);
-    if (!read && await markAccquaNotificationRead(id)) await invalidate();
+  const openNotification = async (receiptId: string, read: boolean) => {
+    setExpandedId((current) => current === receiptId ? "" : receiptId);
+    if (!read && await markAccquaNotificationRead(receiptId)) await invalidate();
+  };
+
+  const removeNotification = async (receiptId: string) => {
+    if (await deleteAccquaNotificationForMe(receiptId)) {
+      if (expandedId === receiptId) setExpandedId("");
+      await invalidate();
+    }
   };
 
   const markAll = async () => {
@@ -94,7 +113,7 @@ export default function NotificationsSheet({
               className="accqua-notification-row is-unread"
               onClick={() => void onStaffAlertClick(alert)}
             >
-              <i aria-hidden="true" />
+              <span className="accqua-notification-icon is-alert" aria-hidden="true">⚠️</span>
               <span>
                 <strong>{alert.title || "Aluno precisa de atenção"}</strong>
                 <p>{alert.message || `${alert.studentName} precisa de uma ação da equipe.`}</p>
@@ -104,22 +123,29 @@ export default function NotificationsSheet({
           ))}
 
           {notifications.map((notification) => {
-            const expanded = expandedId === notification.id;
+            const expanded = expandedId === notification.receiptId;
             return (
-              <button
-                key={notification.id}
-                type="button"
-                className={`accqua-notification-row ${notification.read ? "" : "is-unread"} ${expanded ? "is-expanded" : ""}`.trim()}
-                aria-expanded={expanded}
-                onClick={() => void openNotification(notification.id, notification.read)}
+              <SwipeableListItem
+                key={notification.receiptId}
+                onDelete={() => void removeNotification(notification.receiptId)}
+                deleteLabel="Excluir notificação"
               >
-                <i aria-hidden="true" />
-                <span>
-                  <strong>{notification.title}</strong>
-                  <p>{notification.body || "Toque para marcar como lida."}</p>
-                </span>
-                <time>{formatNotificationTime(notification.createdAt)}</time>
-              </button>
+                <button
+                  type="button"
+                  className={`accqua-notification-row ${notification.read ? "" : "is-unread"} ${expanded ? "is-expanded" : ""}`.trim()}
+                  aria-expanded={expanded}
+                  onClick={() => void openNotification(notification.receiptId, notification.read)}
+                >
+                  <span className={`accqua-notification-icon is-${notification.icon}`}>
+                    <NotificationGlyph icon={notification.icon} />
+                  </span>
+                  <span>
+                    <strong>{notification.title}</strong>
+                    <p>{notification.body || "Toque para marcar como lida."}</p>
+                  </span>
+                  <time>{formatNotificationTime(notification.createdAt)}</time>
+                </button>
+              </SwipeableListItem>
             );
           })}
         </div>
