@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
+import StaffSubPageHeader from "../components/StaffSubPageHeader";
 import StorageImageUploadGrid, { type StorageImageValue } from "../components/StorageImageUploadGrid";
 import {
   loadAccquaRanking,
@@ -28,17 +29,8 @@ export default function RankingStaff() {
 
   const currentPeriod = rankingPeriodKey();
   const nextPeriod = nextRankingPeriodKey();
-  const rankingQuery = useQuery({
-    queryKey: ["ranking", "monthly", "1.5.6"],
-    queryFn: loadAccquaRanking,
-    enabled: isStaff,
-    staleTime: 20_000,
-  });
-  const prizeQuery = useQuery({
-    queryKey: ["ranking-prize", period],
-    queryFn: () => loadRankingPrize(period),
-    enabled: isStaff,
-  });
+  const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6"], queryFn: loadAccquaRanking, enabled: isStaff, staleTime: 20_000 });
+  const prizeQuery = useQuery({ queryKey: ["ranking-prize", period], queryFn: () => loadRankingPrize(period), enabled: isStaff });
 
   useEffect(() => {
     const prize = prizeQuery.data;
@@ -55,18 +47,10 @@ export default function RankingStaff() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) {
-      toast.error("Informe o nome do prêmio.");
-      return;
-    }
+    if (!name.trim()) { toast.error("Informe o nome do prêmio."); return; }
     setSaving(true);
     try {
-      await saveRankingPrize({
-        period,
-        name: name.trim(),
-        description: description.trim(),
-        imageUrl: images[0]?.url ?? "",
-      });
+      await saveRankingPrize({ period, name: name.trim(), description: description.trim(), imageUrl: images[0]?.url ?? "" });
       toast.success(`Prêmio de ${rankingPeriodLabel(period)} salvo.`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["ranking-prize"] }),
@@ -75,16 +59,12 @@ export default function RankingStaff() {
     } catch (error) {
       logStaffError("ranking-prize", error);
       toast.error(staffFacingErrorMessage(error, "Não foi possível salvar o prêmio agora. Tente novamente."));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   return (
     <main className="ranking-staff-page">
-      <section className="ranking-staff-heading">
-        <div><small>ÁREA ACCQUA</small><h1>Ranking</h1><p>Prêmio mensal e acompanhamento da disputa por dias treinados.</p></div>
-      </section>
+      <StaffSubPageHeader title="Ranking" subtitle="Prêmio mensal e acompanhamento da disputa por dias treinados." />
 
       <div className="ranking-staff-grid">
         <form className="ranking-staff-card ranking-prize-editor" onSubmit={(event) => void submit(event)}>
