@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
+import { loadUnreadNotificationCountV153 } from "./notifications";
 import { loadAssignedWorkout, type WorkoutExerciseRecord, type WorkoutPlanRecord } from "./workout";
 
 type Row = Record<string, unknown>;
@@ -23,7 +24,6 @@ export type HomeDashboardData = {
   workout: HomeWorkoutSummary;
   membershipValidUntil: string;
 };
-
 
 export function statusMatricula(validUntil: string | Date | null | undefined, today = new Date()): MembershipHealth {
   if (!validUntil) return "inativa";
@@ -212,8 +212,10 @@ export async function loadHomeDashboard(userId: string): Promise<HomeDashboardDa
 export async function loadUnreadNotificationCount(userId: string) {
   if (!isSupabaseConfigured || !userId) return 0;
 
-  // Algumas bases antigas podem usar student_id/recipient_id. Mesclamos todas
-  // as colunas válidas para que uma user_id existente porém vazia não esconda avisos.
+  const currentCount = await loadUnreadNotificationCountV153(userId);
+  if (currentCount > 0) return currentCount;
+
+  // Fallback para registros legados anteriores à central 1.5.3.
   const ids = new Set<string>();
   let successful = false;
   for (const identity of ["user_id", "student_id", "recipient_id"]) {

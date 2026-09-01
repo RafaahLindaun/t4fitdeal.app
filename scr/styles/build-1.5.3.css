@@ -1,0 +1,161 @@
+/* ACCQUA Sports — Build 1.5.3 */
+
+/* Ranking prize layer */
+@import url("../pages/ranking-1.5.3.css");
+
+/* Notification center: semantic icon replaces the legacy status dot. */
+.accqua-notification-row {
+  grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+}
+
+.accqua-notification-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  border-radius: 12px;
+  color: #ffd128;
+  background: rgba(255, 209, 40, .08);
+  border: 1px solid rgba(255, 209, 40, .11);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.accqua-notification-row.is-unread .accqua-notification-icon {
+  background: rgba(255, 209, 40, .13);
+  border-color: rgba(255, 209, 40, .25);
+  box-shadow: 0 0 0 4px rgba(255, 209, 40, .035);
+}
+
+.accqua-notification-icon.is-pagamento { color: #85c8ff; background: rgba(56, 145, 255, .1); border-color: rgba(98, 173, 255, .18); }
+.accqua-notification-icon.is-alert { color: #ffb77a; background: rgba(255, 126, 43, .09); border-color: rgba(255, 142, 72, .17); }
+.accqua-notification-icon.is-conquista { color: #ffd128; }
+
+.accqua-notifications-list .swipeable-list-item {
+  border-radius: 16px;
+}
+
+/* Profile master preference injected into the existing notification subview. */
+[data-accqua-notification-master-host] {
+  display: block;
+}
+
+.accqua-notification-master-card {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 12px;
+  padding: 13px;
+  border: 1px solid rgba(255, 209, 40, .18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 209, 40, .075), transparent 42%),
+    rgba(9, 36, 73, .74);
+}
+
+.accqua-notification-master-row {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.accqua-notification-master-row > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.accqua-notification-master-row strong {
+  color: #f8fbff;
+  font-size: .84rem;
+}
+
+.accqua-notification-master-row small {
+  color: rgba(231, 241, 255, .58);
+  font-size: .68rem;
+  line-height: 1.42;
+}
+
+.accqua-notification-master-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.accqua-notification-master-row > i {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(191, 211, 236, .16);
+  box-shadow: inset 0 0 0 1px rgba(191, 211, 236, .12);
+  transition: background .18s ease, box-shadow .18s ease;
+}
+
+.accqua-notification-master-row > i > b {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #eaf2fb;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .24);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s ease;
+}
+
+.accqua-notification-master-row input:checked + i {
+  background: #ffd128;
+  box-shadow: 0 0 0 3px rgba(255, 209, 40, .07);
+}
+
+.accqua-notification-master-row input:checked + i > b {
+  transform: translateX(20px);
+  background: #0a1b32;
+}
+
+.accqua-notification-master-row input:disabled + i {
+  opacity: .55;
+}
+
+.accqua-notification-master-card > button {
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 209, 40, .2);
+  border-radius: 12px;
+  color: #ffd128;
+  background: rgba(255, 209, 40, .06);
+  font-size: .7rem;
+  font-weight: 850;
+}
+
+@media (max-width: 520px) {
+  .accqua-notification-row {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    gap: 9px !important;
+  }
+
+  .accqua-notification-row time {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 2px;
+  }
+
+  .accqua-notification-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-notification-master-row > i,
+  .accqua-notification-master-row > i > b {
+    transition: none;
+  }
+}

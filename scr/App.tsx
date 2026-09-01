@@ -6,6 +6,7 @@ import LoadingSplash from "./components/LoadingSplash";
 import StaffWorkoutAlerts from "./components/StaffWorkoutAlerts";
 import EngagementNotifications from "./components/EngagementNotifications";
 import WelcomeOnboarding from "./components/WelcomeOnboarding";
+import NotificationPreferenceBridge from "./components/NotificationPreferenceBridge";
 import AccquaToaster from "./components/AccquaToaster";
 import { SyncQueueProvider } from "./hooks/useSyncQueue";
 import MainLayout from "./components/MainLayout";
@@ -23,6 +24,8 @@ const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const Ranking = lazy(() => import("./pages/Ranking"));
+const RankingStaff = lazy(() => import("./pages/RankingStaff"));
+const NotificationsStaff = lazy(() => import("./pages/NotificationsStaff"));
 const Diet = lazy(() => import("./pages/Diet"));
 const Store = lazy(() => import("./pages/Store"));
 const StoreAdmin = lazy(() => import("./pages/StoreAdmin"));
@@ -40,6 +43,7 @@ export default function App() {
         <StaffWorkoutAlerts />
         <EngagementNotifications />
         <WelcomeOnboarding />
+        <NotificationPreferenceBridge />
         <AccquaToaster />
         <LayoutGroup id="accqua-workout-shared-layout">
           <Suspense fallback={<LoadingSplash />}>
@@ -63,6 +67,8 @@ export default function App() {
                   <Route index element={<AdminArea />} />
                   <Route path="loja" element={<StoreAdmin />} />
                   <Route path="aulas" element={<ClassesAdmin />} />
+                  <Route path="ranking" element={<RankingStaff />} />
+                  <Route path="notificacoes" element={<NotificationsStaff />} />
                   <Route path="alunos" element={<Navigate to="/area-accqua" replace />} />
                   <Route path="montar" element={<AdminWorkoutBuilder />} />
                 </Route>

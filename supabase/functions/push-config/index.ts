@@ -1,0 +1,30 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "GET" && req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method_not_allowed" }), { status: 405, headers: cors });
+  }
+
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!url || !service) {
+    return new Response(JSON.stringify({ error: "server_config_missing" }), { status: 500, headers: cors });
+  }
+
+  const admin = createClient(url, service, { auth: { persistSession: false } });
+  const { data, error } = await admin.rpc("get_push_vapid_config_v1_5_3");
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row?.public_key) {
+    return new Response(JSON.stringify({ error: "push_not_configured" }), { status: 503, headers: cors });
+  }
+
+  // A chave privada nunca sai do servidor.
+  return new Response(JSON.stringify({ publicKey: row.public_key }), { headers: cors });
+});

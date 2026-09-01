@@ -1,0 +1,109 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import webpush from "npm:web-push@3.6.7";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
+};
+const ICONS = new Set(["megafone", "treino", "pagamento", "presente", "alerta", "conquista"]);
+const TARGETS = new Set(["todos", "matriculados", "gympass", "totalpass"]);
+const text = (v: unknown) => String(v ?? "").trim();
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "method_not_allowed" }), { status: 405, headers: cors });
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!url || !anon || !service) throw new Error("server_config_missing");
+
+    const auth = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
+    const { data: authData, error: authError } = await auth.auth.getUser();
+    if (authError || !authData.user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: cors });
+
+    const admin = createClient(url, service, { auth: { persistSession: false } });
+    const { data: profile } = await admin.from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
+    const role = text(profile?.role).toLowerCase();
+    if (!["professor", "admin", "reception"].includes(role)) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: cors });
+
+    const body = await req.json();
+    const titulo = text(body?.titulo).slice(0, 60);
+    const mensagem = text(body?.mensagem).slice(0, 200);
+    const icone = text(body?.icone);
+    const publicoAlvo = text(body?.publicoAlvo);
+    if (!titulo || !mensagem || !ICONS.has(icone) || !TARGETS.has(publicoAlvo)) {
+      return new Response(JSON.stringify({ error: "invalid_payload" }), { status: 400, headers: cors });
+    }
+
+    const { data: recipientRows, error: recipientError } = await admin.rpc("resolve_notification_recipients_v1_5_3", { p_publico: publicoAlvo });
+    if (recipientError) throw recipientError;
+    const recipientIds = [...new Set((recipientRows ?? []).map((row: any) => text(row.aluno_id)).filter(Boolean))];
+
+    const { data: notification, error: insertError } = await admin.from("notificacoes").insert({
+      titulo,
+      mensagem,
+      icone,
+      publico_alvo: publicoAlvo,
+      criado_por: authData.user.id,
+    }).select("id").single();
+    if (insertError) throw insertError;
+
+    if (recipientIds.length) {
+      const { error: readingsError } = await admin.from("notificacoes_leitura").insert(
+        recipientIds.map((aluno_id) => ({ notificacao_id: notification.id, aluno_id })),
+      );
+      if (readingsError) throw readingsError;
+    }
+
+    let pushDelivered = 0;
+    let pushFailed = 0;
+    if (recipientIds.length) {
+      const [{ data: subscriptions }, { data: vapidRows, error: vapidError }] = await Promise.all([
+        admin.from("push_subscriptions").select("id,aluno_id,endpoint,p256dh,auth_key").in("aluno_id", recipientIds),
+        admin.rpc("get_push_vapid_config_v1_5_3"),
+      ]);
+      const vapid = Array.isArray(vapidRows) ? vapidRows[0] : vapidRows;
+      if (!vapidError && vapid?.public_key && vapid?.private_key) {
+        webpush.setVapidDetails("mailto:contato@accquasports.com.br", vapid.public_key, vapid.private_key);
+        const payload = JSON.stringify({
+          title: titulo,
+          body: mensagem,
+          icon: "/logo/logo_app_4k.png",
+          badge: "/logo/logo_app_4k.png",
+          data: { url: "/menu-teste", notificationId: notification.id, icon: icone },
+        });
+
+        await Promise.allSettled((subscriptions ?? []).map(async (sub: any) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
+              payload,
+              { TTL: 3600 },
+            );
+            pushDelivered += 1;
+          } catch (error: any) {
+            pushFailed += 1;
+            const status = Number(error?.statusCode ?? error?.status ?? 0);
+            if (status === 404 || status === 410) {
+              await admin.from("push_subscriptions").delete().eq("id", sub.id);
+            }
+            throw error;
+          }
+        }));
+      }
+    }
+
+    return new Response(JSON.stringify({
+      notificacaoId: notification.id,
+      enviados: recipientIds.length,
+      pushEntregues: pushDelivered,
+      pushFalhos: pushFailed,
+    }), { headers: cors });
+  } catch (error) {
+    console.error("send-staff-notification", error instanceof Error ? error.message : String(error));
+    return new Response(JSON.stringify({ error: "send_failed" }), { status: 500, headers: cors });
+  }
+});
