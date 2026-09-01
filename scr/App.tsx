@@ -28,6 +28,8 @@ const Store = lazy(() => import("./pages/Store"));
 const StoreAdmin = lazy(() => import("./pages/StoreAdmin"));
 const Aulas = lazy(() => import("./pages/Aulas"));
 const ClassesAdmin = lazy(() => import("./pages/ClassesAdmin"));
+const StaffRanking = lazy(() => import("./pages/StaffRanking"));
+const StaffNotifications = lazy(() => import("./pages/StaffNotifications"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 export default function App() {
@@ -63,6 +65,8 @@ export default function App() {
                   <Route index element={<AdminArea />} />
                   <Route path="loja" element={<StoreAdmin />} />
                   <Route path="aulas" element={<ClassesAdmin />} />
+                  <Route path="ranking" element={<StaffRanking />} />
+                  <Route path="notificacoes" element={<StaffNotifications />} />
                   <Route path="alunos" element={<Navigate to="/area-accqua" replace />} />
                   <Route path="montar" element={<AdminWorkoutBuilder />} />
                 </Route>
