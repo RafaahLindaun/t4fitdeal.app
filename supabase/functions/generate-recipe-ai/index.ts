@@ -1,77 +1,283 @@
-// ACCQUA Sports Build 1.5.6 — gera apenas um RASCUNHO para revisão humana.
-// O LLM nunca fornece kcal/macros. Nutrição vem exclusivamente da TACO/NEPA-UNICAMP.
+// ACCQUA Sports Build 1.5.7 — gera somente RASCUNHO para revisão humana.
+// O LLM nunca calcula macros. Nutrição vem exclusivamente da TACO/NEPA-UNICAMP.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx@0.18.5";
 
-const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Content-Type":"application/json"};
-// Link oficial "Tabela TACO (Excel)" publicado pelo NEPA/UNICAMP.
-// A versão anterior apontava para uma PÁGINA HTML e o XLSX.read recebia HTML.
-const TACO_URL="https://www.nepa.unicamp.br/arquivo/uploads/taco-4a-edicao/taco-4a-edicao-2/";
-const text=(v:unknown)=>String(v??"").trim();
-const num=(v:unknown)=>{if(typeof v==="number")return Number.isFinite(v)?v:NaN;const s=text(v).replace(",",".").replace(/\s/g,"");if(!s||/^(tr|na|nd|\*|-)$/i.test(s))return /tr/i.test(s)?0:NaN;const parsed=Number(s);return Number.isFinite(parsed)?parsed:NaN;};
-function normalize(value:string){return value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();}
-function normalizeModel(raw?:string){return text(raw).replace(/^["'`]+|["'`]+$/g,"").replace(/^models\//i,"").replace(/:generateContent.*$/i,"");}
-function extractText(payload:any){const parts=payload?.candidates?.[0]?.content?.parts;return Array.isArray(parts)?parts.map((p:any)=>typeof p?.text==="string"?p.text:"").join("").trim():"";}
-function parseJson(value:string){return JSON.parse(value.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim());}
-async function blobBase64(blob:Blob){const bytes=new Uint8Array(await blob.arrayBuffer());let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(binary);}
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
+};
+const TACO_URL = "https://www.nepa.unicamp.br/arquivo/uploads/taco-4a-edicao/taco-4a-edicao-2/";
+const text = (value: unknown) => String(value ?? "").trim();
+const numberFromCell = (value: unknown) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+  const normalized = text(value).replace(",", ".").replace(/\s/g, "");
+  if (!normalized || /^(na|nd|\*|-)$/i.test(normalized)) return NaN;
+  if (/^tr$/i.test(normalized)) return 0;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
 
-async function geminiJson(prompt:string){
- const key=Deno.env.get("GEMINI_API_KEY")?.trim();if(!key)throw new Error("gemini_key_missing");
- const models=[normalizeModel(Deno.env.get("MEAL_VISION_MODEL")),"gemini-3.7-flash","gemini-3.1-flash-lite","gemini-2.5-flash-lite"].filter((m,i,a)=>Boolean(m)&&a.indexOf(m)===i);
- for(const model of models){const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:.35}})});if(r.status===404)continue;if(!r.ok)throw new Error(`gemini_${r.status}`);return parseJson(extractText(await r.json()));}
- throw new Error("gemini_unavailable");
+function normalize(value: string) {
+  return value
+    .toLocaleLowerCase("pt-BR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+function normalizeModel(raw?: string) {
+  return text(raw)
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/^https?:\/\/generativelanguage\.googleapis\.com\/v1(?:beta)?\/models\//i, "")
+    .replace(/^models\//i, "")
+    .replace(/:generateContent.*$/i, "")
+    .trim();
+}
+function extractText(payload: any) {
+  const parts = payload?.candidates?.[0]?.content?.parts;
+  return Array.isArray(parts)
+    ? parts.map((part: any) => typeof part?.text === "string" ? part.text : "").join("").trim()
+    : "";
+}
+function parseJson(value: string) {
+  return JSON.parse(value.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
 }
 
-async function evaluateImage(name:string,image:Blob){
- const key=Deno.env.get("GEMINI_API_KEY")?.trim();if(!key)return null;
- const models=[normalizeModel(Deno.env.get("MEAL_VISION_MODEL")),"gemini-3.7-flash","gemini-3.1-flash-lite","gemini-2.5-flash-lite"].filter((m,i,a)=>Boolean(m)&&a.indexOf(m)===i);
- const data=await blobBase64(image);const prompt=`Controle de qualidade visual de receita. Nome esperado: "${name}". Avalie se a foto representa razoavelmente esse prato. Rejeite pessoas, casas, objetos, suplementos isolados ou comida claramente diferente. Retorne SOMENTE JSON {"score":0.0,"reason":"curto"}.`;
- for(const model of models){const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt},{inlineData:{mimeType:image.type||"image/jpeg",data}}]}],generationConfig:{responseMimeType:"application/json"}})});if(r.status===404)continue;if(!r.ok)continue;const parsed=parseJson(extractText(await r.json()));return{score:Math.max(0,Math.min(1,Number(parsed?.score??0))),reason:text(parsed?.reason)};}
- return null;
+async function geminiJson(prompt: string) {
+  const key = Deno.env.get("GEMINI_API_KEY")?.trim();
+  if (!key) throw new Error("gemini_key_missing");
+  const models = [
+    normalizeModel(Deno.env.get("MEAL_VISION_MODEL")),
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+  ].filter((model, index, array) => Boolean(model) && array.indexOf(model) === index);
+
+  let lastDetail = "";
+  for (const model of models) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        signal: AbortSignal.timeout(14_000),
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.35 },
+        }),
+      });
+      if (!response.ok) {
+        lastDetail = `${model}:${response.status}:${(await response.text()).slice(0, 350)}`;
+        console.warn("generate-recipe-ai Gemini candidate failed", lastDetail);
+        continue;
+      }
+      const parsed = parseJson(extractText(await response.json()));
+      console.log("generate-recipe-ai Gemini model", model);
+      return parsed;
+    } catch (error) {
+      lastDetail = `${model}:${error instanceof Error ? error.message : String(error)}`;
+      console.warn("generate-recipe-ai Gemini candidate exception", lastDetail);
+    }
+  }
+  throw new Error(`gemini_unavailable:${lastDetail.slice(0, 220)}`);
 }
 
-async function findValidatedImage(name:string){
- const accessKey=Deno.env.get("UNSPLASH_ACCESS_KEY")?.trim();if(!accessKey)return null;
- const response=await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(name+" prato comida food")}&per_page=5&orientation=landscape`,{headers:{Authorization:`Client-ID ${accessKey}`,"Accept-Version":"v1"}});if(!response.ok)return null;
- const payload=await response.json();for(const result of (payload?.results??[])){const url=text(result?.urls?.regular);if(!url)continue;try{const imgResponse=await fetch(url,{headers:{"User-Agent":"ACCQUA-Recipe-QA/1.5.6"}});if(!imgResponse.ok)continue;const blob=await imgResponse.blob();if(!blob.type.startsWith("image/")||blob.size>12*1024*1024)continue;const qa=await evaluateImage(name,blob);if(qa&&qa.score>=.75)return{url,confidence:qa.score,source:"ia_unsplash",reason:qa.reason};}catch{} }
- return null;
+type TacoFood = { name: string; kcal: number; protein: number; carbs: number; fat: number };
+let tacoCache: { loadedAt: number; foods: TacoFood[] } | null = null;
+
+function headerIndex(row: unknown[], needles: string[]) {
+  return row.findIndex((cell) => {
+    const value = normalize(text(cell));
+    return needles.some((needle) => value.includes(needle));
+  });
+}
+function looksLikeWorkbook(bytes: Uint8Array, contentType: string) {
+  const type = contentType.toLowerCase();
+  const zipMagic = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+  return zipMagic || type.includes("spreadsheet") || type.includes("excel") || type.includes("octet-stream");
 }
 
-type TacoFood={name:string;kcal:number;protein:number;carbs:number;fat:number};
-let tacoCache:{loadedAt:number;foods:TacoFood[]}|null=null;
-function headerIndex(row:unknown[],needles:string[]){return row.findIndex((cell)=>{const value=normalize(text(cell));return needles.some((needle)=>value.includes(needle));});}
-function looksLikeWorkbook(bytes:Uint8Array,contentType:string){
- const type=contentType.toLowerCase();
- const zipMagic=bytes.length>=4&&bytes[0]===0x50&&bytes[1]===0x4b;
- return zipMagic||type.includes("spreadsheet")||type.includes("excel")||type.includes("octet-stream");
-}
-async function loadTaco(){
- if(tacoCache&&Date.now()-tacoCache.loadedAt<12*60*60*1000)return tacoCache.foods;
- const response=await fetch(TACO_URL,{headers:{"User-Agent":"ACCQUA-Sports/1.5.6","Accept":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream;q=0.9,*/*;q=0.2"}});if(!response.ok)throw new Error(`taco_download_${response.status}`);
- const contentType=response.headers.get("content-type")??"";
- const bytes=new Uint8Array(await response.arrayBuffer());
- if(bytes.length<1024||!looksLikeWorkbook(bytes,contentType))throw new Error("taco_invalid_workbook");
- let workbook:XLSX.WorkBook;try{workbook=XLSX.read(bytes,{type:"array"});}catch{throw new Error("taco_parse_failed");}
- let foods:TacoFood[]=[];
- for(const sheetName of workbook.SheetNames){const rows=XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName],{header:1,raw:true,defval:""});for(let r=0;r<Math.min(rows.length,35);r++){const row=rows[r]??[];const nameCol=headerIndex(row,["descricao dos alimentos","descricao do alimento","alimento"]);const kcalCol=headerIndex(row,["energia kcal","kcal"]);const proteinCol=headerIndex(row,["proteina"]);const fatCol=headerIndex(row,["lipideos","lipideo","gordura"]);const carbCol=headerIndex(row,["carboidrato"]);if(nameCol<0||kcalCol<0||proteinCol<0||fatCol<0||carbCol<0)continue;const parsed:TacoFood[]=[];for(let i=r+1;i<rows.length;i++){const data=rows[i]??[];const name=text(data[nameCol]);if(!name||/^fonte|^nota|^tabela/i.test(name))continue;const kcal=num(data[kcalCol]),protein=num(data[proteinCol]),fat=num(data[fatCol]),carbs=num(data[carbCol]);if(!Number.isFinite(kcal)||!Number.isFinite(protein)||!Number.isFinite(fat)||!Number.isFinite(carbs))continue;parsed.push({name,kcal,protein,carbs,fat});}if(parsed.length>100){foods=parsed;break;}}if(foods.length>100)break;}
- if(foods.length<100)throw new Error("taco_foods_not_found");tacoCache={loadedAt:Date.now(),foods};return foods;
+async function loadTaco() {
+  if (tacoCache && Date.now() - tacoCache.loadedAt < 12 * 60 * 60 * 1000) return tacoCache.foods;
+  const response = await fetch(TACO_URL, {
+    headers: {
+      "User-Agent": "ACCQUA-Sports/1.5.7",
+      Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream;q=0.9,*/*;q=0.2",
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`taco_download_${response.status}`);
+  const contentType = response.headers.get("content-type") ?? "";
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length < 1024 || !looksLikeWorkbook(bytes, contentType)) throw new Error("taco_invalid_workbook");
+
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(bytes, { type: "array" });
+  } catch {
+    throw new Error("taco_parse_failed");
+  }
+
+  let foods: TacoFood[] = [];
+  for (const sheetName of workbook.SheetNames) {
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, raw: true, defval: "" });
+    for (let rowIndex = 0; rowIndex < Math.min(rows.length, 45); rowIndex += 1) {
+      const row = rows[rowIndex] ?? [];
+      const nameCol = headerIndex(row, ["descricao dos alimentos", "descricao do alimento", "alimento"]);
+      const kcalCol = headerIndex(row, ["energia kcal", "kcal"]);
+      const proteinCol = headerIndex(row, ["proteina"]);
+      const fatCol = headerIndex(row, ["lipideos", "lipideo", "gordura"]);
+      const carbCol = headerIndex(row, ["carboidrato"]);
+      if ([nameCol, kcalCol, proteinCol, fatCol, carbCol].some((index) => index < 0)) continue;
+
+      const parsed: TacoFood[] = [];
+      for (let i = rowIndex + 1; i < rows.length; i += 1) {
+        const data = rows[i] ?? [];
+        const name = text(data[nameCol]);
+        if (!name || /^fonte|^nota|^tabela/i.test(name)) continue;
+        const kcal = numberFromCell(data[kcalCol]);
+        const protein = numberFromCell(data[proteinCol]);
+        const fat = numberFromCell(data[fatCol]);
+        const carbs = numberFromCell(data[carbCol]);
+        if (![kcal, protein, fat, carbs].every(Number.isFinite)) continue;
+        parsed.push({ name, kcal, protein, carbs, fat });
+      }
+      if (parsed.length > 100) {
+        foods = parsed;
+        break;
+      }
+    }
+    if (foods.length > 100) break;
+  }
+
+  if (foods.length < 100) throw new Error("taco_foods_not_found");
+  tacoCache = { loadedAt: Date.now(), foods };
+  console.log("generate-recipe-ai TACO foods", foods.length);
+  return foods;
 }
 
-function scoreFood(needle:string,candidate:string){const a=normalize(needle),b=normalize(candidate);if(!a||!b)return 0;if(a===b)return 1;if(b.includes(a)||a.includes(b))return .86;const aa=new Set(a.split(" ").filter(x=>x.length>2)),bb=new Set(b.split(" ").filter(x=>x.length>2));let hits=0;for(const token of aa)if(bb.has(token))hits++;const overlap=hits/Math.max(1,Math.max(aa.size,bb.size));const important=["frango","arroz","feijao","batata","brocolis","ovo","leite","banana","aveia","carne","peixe","macarrao","queijo","iogurte"].some(k=>a.includes(k)&&b.includes(k)) ? .08 : 0;return Math.min(1,overlap+important);}
-function matchTaco(name:string,foods:TacoFood[]){let best:TacoFood|null=null,bestScore=0;for(const food of foods){const score=scoreFood(name,food.name);if(score>bestScore){best=food;bestScore=score;}}return best&&bestScore>=.62?{food:best,score:bestScore}:null;}
+function scoreFood(needle: string, candidate: string) {
+  const a = normalize(needle), b = normalize(candidate);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (b.includes(a) || a.includes(b)) return 0.86;
+  const aa = new Set(a.split(" ").filter((token) => token.length > 2));
+  const bb = new Set(b.split(" ").filter((token) => token.length > 2));
+  let hits = 0;
+  for (const token of aa) if (bb.has(token)) hits += 1;
+  const overlap = hits / Math.max(1, Math.max(aa.size, bb.size));
+  const important = ["frango", "arroz", "feijao", "batata", "brocolis", "ovo", "leite", "banana", "aveia", "carne", "peixe", "macarrao", "queijo", "iogurte"]
+    .some((token) => a.includes(token) && b.includes(token)) ? 0.08 : 0;
+  return Math.min(1, overlap + important);
+}
+function matchTaco(name: string, foods: TacoFood[]) {
+  let best: TacoFood | null = null;
+  let bestScore = 0;
+  for (const food of foods) {
+    const score = scoreFood(name, food.name);
+    if (score > bestScore) { best = food; bestScore = score; }
+  }
+  return best && bestScore >= 0.62 ? { food: best, score: bestScore } : null;
+}
 
-Deno.serve(async(req)=>{
- if(req.method==="OPTIONS")return new Response("ok",{headers:cors});if(req.method!=="POST")return new Response(JSON.stringify({error:"method_not_allowed"}),{status:405,headers:cors});
- try{
-  const url=Deno.env.get("SUPABASE_URL")??"",anon=Deno.env.get("SUPABASE_ANON_KEY")??"",service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??"",authHeader=req.headers.get("Authorization")??"";
-  const auth=createClient(url,anon,{global:{headers:{Authorization:authHeader}}});const {data:authData,error:authError}=await auth.auth.getUser();if(authError||!authData.user)return new Response(JSON.stringify({error:"unauthorized",message:"Faça login novamente para continuar."}),{status:401,headers:cors});
-  const admin=createClient(url,service,{auth:{persistSession:false}});const {data:profile}=await admin.from("profiles").select("role").eq("id",authData.user.id).maybeSingle();if(!["professor","admin","reception"].includes(text(profile?.role).toLowerCase()))return new Response(JSON.stringify({error:"forbidden",message:"Seu perfil não tem permissão para gerar receitas."}),{status:403,headers:cors});
-  const body=await req.json();const descricao=text(body?.descricao).slice(0,500);if(!descricao)return new Response(JSON.stringify({error:"descricao_required",message:"Descreva a receita antes de gerar."}),{status:400,headers:cors});
-  const prompt=["Crie um RASCUNHO culinário para revisão de um professor.","NÃO calcule e NÃO retorne kcal, proteína, carboidrato, gordura ou qualquer macro.","Retorne SOMENTE JSON: nome, ingredientes (array de {nome, quantidade_g, observacao}), modo_preparo, porcao_descricao, categoria_objetivo (array somente emagrecimento|hipertrofia|low_carb), categoria_refeicao (cafe_da_manha|almoco|lanche|jantar), periodo_dia (manha|tarde|noite), nivel_saudavel (saudavel|moderado|menos_saudavel).","Cada ingrediente precisa de quantidade_g numérica plausível para UMA porção. Prefira ingredientes simples presentes em tabelas brasileiras de composição de alimentos.",`Descrição do professor: ${descricao}`].join("\n");
-  const draft=await geminiJson(prompt);const ingredients=Array.isArray(draft?.ingredientes)?draft.ingredientes.slice(0,30).map((i:any)=>({nome:text(i?.nome),quantidade_g:Math.max(0,Number(i?.quantidade_g??0)),observacao:text(i?.observacao)})).filter((i:any)=>i.nome&&Number.isFinite(i.quantidade_g)&&i.quantidade_g>0):[];
-  if(!ingredients.length)throw new Error("ingredients_not_generated");
-  const taco=await loadTaco();let kcal=0,protein=0,carbs=0,fat=0;const verification=ingredients.map((item:any)=>{const matched=matchTaco(item.nome,taco);if(!matched)return{ingrediente:item.nome,quantidade_g:item.quantidade_g,encontradoNaTaco:false,referencia:null,confianca:0};const ratio=item.quantidade_g/100;const f=matched.food;kcal+=f.kcal*ratio;protein+=f.protein*ratio;carbs+=f.carbs*ratio;fat+=f.fat*ratio;return{ingrediente:item.nome,quantidade_g:item.quantidade_g,encontradoNaTaco:true,referencia:f.name,confianca:Number(matched.score.toFixed(2))};});
-  const allMatched=verification.length>0&&verification.every((item:any)=>item.encontradoNaTaco);const recipeName=text(draft?.nome)||descricao;const image=await findValidatedImage(recipeName);
-  return new Response(JSON.stringify({name:recipeName,ingredients,instructions:text(draft?.modo_preparo),portionDescription:text(draft?.porcao_descricao)||"1 porção",objectiveCategories:Array.isArray(draft?.categoria_objetivo)?draft.categoria_objetivo:[],mealCategory:text(draft?.categoria_refeicao)||"almoco",dayPeriod:text(draft?.periodo_dia)||"tarde",healthLevel:text(draft?.nivel_saudavel)||"saudavel",kcal:Math.round(kcal),protein:Number(protein.toFixed(1)),carbs:Number(carbs.toFixed(1)),fat:Number(fat.toFixed(1)),macrosEstimatedAi:!allMatched,macroVerification:verification,nutritionSource:"TACO/NEPA-UNICAMP 4a edição",imageUrl:image?.url??"",imageConfidence:image?.confidence??null,imageSource:image?.source??null,imageReason:image?.reason??""}),{headers:cors});
- }catch(error){const detail=error instanceof Error?error.message:String(error);console.error("generate-recipe-ai",detail);return new Response(JSON.stringify({error:"generation_failed",message:"Não foi possível gerar a receita agora. Tente novamente.",detail}),{status:502,headers:cors});}
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "method_not_allowed" }), { status: 405, headers: cors });
+
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const auth = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
+    const { data: authData, error: authError } = await auth.auth.getUser();
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ error: "unauthorized", message: "Faça login novamente para continuar." }), { status: 401, headers: cors });
+    }
+
+    const admin = createClient(url, service, { auth: { persistSession: false } });
+    const { data: profile } = await admin.from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
+    if (!["professor", "admin", "reception"].includes(text(profile?.role).toLowerCase())) {
+      return new Response(JSON.stringify({ error: "forbidden", message: "Seu perfil não tem permissão para gerar receitas." }), { status: 403, headers: cors });
+    }
+
+    const body = await req.json();
+    const descricao = text(body?.descricao).slice(0, 500);
+    if (!descricao) {
+      return new Response(JSON.stringify({ error: "descricao_required", message: "Descreva a receita antes de gerar." }), { status: 400, headers: cors });
+    }
+
+    const prompt = [
+      "Crie um RASCUNHO culinário para revisão de um professor.",
+      "NÃO calcule e NÃO retorne kcal, proteína, carboidrato, gordura ou qualquer macro.",
+      "Retorne SOMENTE JSON válido, sem markdown, com: nome, ingredientes (array de {nome, quantidade_g, observacao}), modo_preparo, porcao_descricao, categoria_objetivo (array somente emagrecimento|hipertrofia|low_carb), categoria_refeicao (cafe_da_manha|almoco|lanche|jantar), periodo_dia (manha|tarde|noite), nivel_saudavel (saudavel|moderado|menos_saudavel).",
+      "Cada ingrediente precisa de quantidade_g numérica plausível para UMA porção. Prefira ingredientes simples presentes em tabelas brasileiras de composição de alimentos.",
+      `Descrição do professor: ${descricao}`,
+    ].join("\n");
+
+    // Download/parse da TACO acontece em paralelo com a geração qualitativa.
+    const tacoPromise = loadTaco().catch((error) => {
+      console.error("generate-recipe-ai TACO unavailable", error instanceof Error ? error.message : String(error));
+      return [] as TacoFood[];
+    });
+    const draft = await geminiJson(prompt);
+    const ingredients = Array.isArray(draft?.ingredientes)
+      ? draft.ingredientes.slice(0, 30).map((item: any) => ({
+          nome: text(item?.nome),
+          quantidade_g: Math.max(0, Number(item?.quantidade_g ?? 0)),
+          observacao: text(item?.observacao),
+        })).filter((item: any) => item.nome && Number.isFinite(item.quantidade_g) && item.quantidade_g > 0)
+      : [];
+    if (!ingredients.length) throw new Error("ingredients_not_generated");
+
+    const taco = await tacoPromise;
+    let kcal = 0, protein = 0, carbs = 0, fat = 0;
+    const verification = ingredients.map((item: any) => {
+      const matched = taco.length ? matchTaco(item.nome, taco) : null;
+      if (!matched) return { ingrediente: item.nome, quantidade_g: item.quantidade_g, encontradoNaTaco: false, referencia: null, confianca: 0 };
+      const ratio = item.quantidade_g / 100;
+      const food = matched.food;
+      kcal += food.kcal * ratio;
+      protein += food.protein * ratio;
+      carbs += food.carbs * ratio;
+      fat += food.fat * ratio;
+      return { ingrediente: item.nome, quantidade_g: item.quantidade_g, encontradoNaTaco: true, referencia: food.name, confianca: Number(matched.score.toFixed(2)) };
+    });
+
+    const allMatched = taco.length > 0 && verification.length > 0 && verification.every((item: any) => item.encontradoNaTaco);
+    const recipeName = text(draft?.nome) || descricao;
+
+    // A imagem é opcional no rascunho. A busca/QA fica no endpoint
+    // validate-recipe-image, que já exige revisão humana e não bloqueia a receita.
+    return new Response(JSON.stringify({
+      name: recipeName,
+      ingredients,
+      instructions: text(draft?.modo_preparo),
+      portionDescription: text(draft?.porcao_descricao) || "1 porção",
+      objectiveCategories: Array.isArray(draft?.categoria_objetivo) ? draft.categoria_objetivo : [],
+      mealCategory: text(draft?.categoria_refeicao) || "almoco",
+      dayPeriod: text(draft?.periodo_dia) || "tarde",
+      healthLevel: text(draft?.nivel_saudavel) || "saudavel",
+      kcal: Math.round(kcal),
+      protein: Number(protein.toFixed(1)),
+      carbs: Number(carbs.toFixed(1)),
+      fat: Number(fat.toFixed(1)),
+      macrosEstimatedAi: !allMatched,
+      macroVerification: verification,
+      nutritionSource: taco.length ? "TACO/NEPA-UNICAMP 4a edição" : "TACO temporariamente indisponível — revisão obrigatória",
+      imageUrl: "",
+      imageConfidence: null,
+      imageSource: null,
+      imageReason: "Use Validar IA para buscar uma imagem candidata ou envie manualmente.",
+    }), { status: 200, headers: cors });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("generate-recipe-ai", detail);
+    return new Response(JSON.stringify({
+      error: "generation_failed",
+      message: "Não foi possível gerar a receita agora. Tente novamente.",
+      detail: detail.slice(0, 180),
+    }), { status: 502, headers: cors });
+  }
 });
