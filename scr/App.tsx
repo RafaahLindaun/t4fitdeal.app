@@ -23,6 +23,8 @@ const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const Ranking = lazy(() => import("./pages/Ranking"));
+const RankingStaff = lazy(() => import("./pages/RankingStaff"));
+const NotificationsStaff = lazy(() => import("./pages/NotificationsStaff"));
 const Diet = lazy(() => import("./pages/Diet"));
 const Store = lazy(() => import("./pages/Store"));
 const StoreAdmin = lazy(() => import("./pages/StoreAdmin"));
@@ -63,6 +65,8 @@ export default function App() {
                   <Route index element={<AdminArea />} />
                   <Route path="loja" element={<StoreAdmin />} />
                   <Route path="aulas" element={<ClassesAdmin />} />
+                  <Route path="ranking" element={<RankingStaff />} />
+                  <Route path="notificacoes" element={<NotificationsStaff />} />
                   <Route path="alunos" element={<Navigate to="/area-accqua" replace />} />
                   <Route path="montar" element={<AdminWorkoutBuilder />} />
                 </Route>
