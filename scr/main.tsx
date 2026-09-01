@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
+import { installInfrastructureToastGuard } from "./lib/staffErrors";
 import "./index.css";
 import "./styles/build-1.4.5-hardening.css";
 import "./styles/build-1.4.6.css";
@@ -16,6 +17,8 @@ import "./styles/build-1.4.8.10.css";
 import "./styles/build-1.5.1.css";
 import "./styles/build-1.5.3.css";
 import "./styles/build-1.5.4.css";
+
+installInfrastructureToastGuard();
 
 const queryClient = new QueryClient({
   defaultOptions: {
