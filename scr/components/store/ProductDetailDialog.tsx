@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { MenuBagIcon } from "../MenuIcons";
+import PixNoveltyBadge from "./PixNoveltyBadge";
 import { productCategoryLabel, type StoreProduct } from "../../lib/store";
+import "./pix-payment.css";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -16,7 +18,9 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onReserve: (product: StoreProduct) => void;
+  onPayNow: (product: StoreProduct) => void;
   reserving?: boolean;
+  paying?: boolean;
   alreadyReserved?: boolean;
 };
 
@@ -25,7 +29,9 @@ export default function ProductDetailDialog({
   open,
   onOpenChange,
   onReserve,
+  onPayNow,
   reserving = false,
+  paying = false,
   alreadyReserved = false,
 }: Props) {
   const reducedMotion = Boolean(useReducedMotion());
@@ -53,7 +59,8 @@ export default function ProductDetailDialog({
       : Math.max(1, Math.round((1 - product.pixPrice / product.originalPrice) * 100))
     : 0;
   const unavailable = product.stock <= 0;
-  const reserveDisabled = unavailable || reserving || alreadyReserved;
+  const reserveDisabled = unavailable || reserving || paying || alreadyReserved;
+  const payDisabled = unavailable || paying || reserving || alreadyReserved;
   const stockLabel = unavailable
     ? "Sem estoque"
     : product.stock <= 3
@@ -65,7 +72,7 @@ export default function ProductDetailDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Detalhes do produto"
-      description="Confira as informações antes de reservar para retirada na recepção."
+      description="Escolha reservar para pagar na recepção ou pagar agora via Pix."
       className="store-product-detail-dialog"
       bodyClassName="store-product-detail-body"
       ariaDescriptionId="store-product-detail-description"
@@ -146,7 +153,26 @@ export default function ProductDetailDialog({
               <strong>{alreadyReserved ? "Reservado" : unavailable ? "Sem estoque" : reserving ? "Reservando..." : "Reservar"}</strong>
               <small>{alreadyReserved ? "Aguardando retirada" : unavailable ? "Consulte a recepção" : "Retire na recepção"}</small>
             </motion.button>
-            <p>Não há pagamento pelo app nesta fase. A reserva apenas separa o produto para retirada.</p>
+
+            {product.purchaseEnabled ? (
+              <div className="store-product-detail-pay-wrap">
+                <motion.button
+                  type="button"
+                  className="store-product-detail-pay"
+                  disabled={payDisabled}
+                  aria-busy={paying}
+                  whileTap={reducedMotion || payDisabled ? undefined : { scale: 0.985 }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!payDisabled) onPayNow(product);
+                  }}
+                >
+                  <strong>{alreadyReserved ? "Você já reservou" : paying ? "Gerando Pix..." : "Pagar agora"}</strong>
+                  <small>{alreadyReserved ? "Cancele a reserva para pagar pelo app" : "Retirada garantida"}</small>
+                </motion.button>
+                {!alreadyReserved && !unavailable ? <PixNoveltyBadge /> : null}
+              </div>
+            ) : null}
           </div>
         </section>
       </motion.div>
