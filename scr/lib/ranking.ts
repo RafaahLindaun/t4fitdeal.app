@@ -5,12 +5,15 @@ export type RankingEntry = {
   studentId: string;
   firstName: string;
   avatarUrl: string;
+  /** Build 1.5.6: pontos do ranking = dias treinados válidos no mês. */
   points: number;
   workoutDays: number;
   cardioOnlyDays: number;
   totalDurationSeconds: number;
   lastActivityDate: string;
   position: number;
+  daysToLeader: number;
+  /** Compatibilidade temporária com componentes antigos. Mesmo valor de daysToLeader. */
   workoutsToLeader: number;
 };
 
@@ -30,17 +33,33 @@ const n = (value: unknown) => {
 };
 
 function mapEntry(row: Row, index = 0): RankingEntry {
+  const points = Math.max(
+    0,
+    n(
+      row.dias_treinados ??
+        row.monthly_workout_count ??
+        row.workout_days ??
+        row.workout_count ??
+        row.ranking_points ??
+        row.points,
+    ),
+  );
+  const daysToLeader = Math.max(
+    0,
+    Math.round(n(row.dias_para_lider ?? row.treinos_para_lider)),
+  );
   return {
     studentId: t(row.student_id ?? row.user_id),
     firstName: t(row.first_name ?? row.student_name ?? "Aluno").split(/\s+/)[0] || "Aluno",
     avatarUrl: t(row.avatar_url),
-    points: Math.max(0, n(row.monthly_workout_count ?? row.workout_count ?? row.ranking_points ?? row.points)),
-    workoutDays: Math.max(0, n(row.workout_days)),
+    points,
+    workoutDays: Math.max(0, n(row.workout_days ?? row.dias_treinados ?? points)),
     cardioOnlyDays: Math.max(0, n(row.cardio_only_days)),
     totalDurationSeconds: Math.max(0, n(row.total_duration_seconds)),
     lastActivityDate: t(row.last_activity_date),
     position: Math.max(1, Math.round(n(row.posicao) || index + 1)),
-    workoutsToLeader: Math.max(0, Math.round(n(row.treinos_para_lider))),
+    daysToLeader,
+    workoutsToLeader: daysToLeader,
   };
 }
 
@@ -58,10 +77,12 @@ function withDerivedPositions(entries: RankingEntry[]) {
     const rank = previousPoints === entry.points ? previousRank : index + 1;
     previousPoints = entry.points;
     previousRank = rank;
+    const daysToLeader = Math.max(0, entry.daysToLeader || leader - entry.points);
     return {
       ...entry,
       position: entry.position > 0 ? entry.position : rank,
-      workoutsToLeader: Math.max(0, entry.workoutsToLeader || leader - entry.points),
+      daysToLeader,
+      workoutsToLeader: daysToLeader,
     };
   });
 }
@@ -69,39 +90,46 @@ function withDerivedPositions(entries: RankingEntry[]) {
 export async function loadAccquaRanking(): Promise<RankingEntry[]> {
   if (!isSupabaseConfigured) return [];
 
-  // Build 1.5.3: fonte única compartilhada entre aluno e Staff. A RPC envolve
-  // a contagem mensal canônica v9.7, que lê accqua_workout_records.
-  const v153 = await supabase.rpc("get_accqua_monthly_ranking_v1_5_3");
+  // Build 1.5.6: fonte única compartilhada entre aluno e Staff.
+  // A RPC conta no máximo um ponto por dia e só aceita o dia com lastro de
+  // presença em aula OU matrícula válida naquela data.
+  const v156 = await supabase.rpc("get_accqua_monthly_ranking_v1_5_6");
   let entries: RankingEntry[] = [];
 
-  if (!v153.error && Array.isArray(v153.data)) {
-    entries = v153.data.map((row, index) => mapEntry(row as Row, index));
+  if (!v156.error && Array.isArray(v156.data)) {
+    entries = v156.data.map((row, index) => mapEntry(row as Row, index));
   } else {
-    const monthlyRpcV97 = await supabase.rpc("get_accqua_monthly_workout_ranking_v9_7");
-    const monthlyRpc = monthlyRpcV97.error
-      ? await supabase.rpc("get_accqua_monthly_ranking_v9_6")
-      : monthlyRpcV97;
-    const newestRpc = monthlyRpc.error
-      ? await supabase.rpc("get_accqua_ranking_v9_6")
-      : monthlyRpc;
-    const rpc = newestRpc.error
-      ? await supabase.rpc("get_accqua_ranking_v9_4")
-      : newestRpc;
-
-    if (!rpc.error && Array.isArray(rpc.data)) {
-      entries = rpc.data.map((row, index) => mapEntry(row as Row, index));
+    // Fallback preservado apenas para ambientes ainda sem a migration 1.5.6.
+    const v153 = await supabase.rpc("get_accqua_monthly_ranking_v1_5_3");
+    if (!v153.error && Array.isArray(v153.data)) {
+      entries = v153.data.map((row, index) => mapEntry(row as Row, index));
     } else {
-      const previousRpc = await supabase.rpc("get_accqua_ranking_v8_9");
-      if (!previousRpc.error && Array.isArray(previousRpc.data)) {
-        entries = previousRpc.data.map((row, index) => mapEntry(row as Row, index));
+      const monthlyRpcV97 = await supabase.rpc("get_accqua_monthly_workout_ranking_v9_7");
+      const monthlyRpc = monthlyRpcV97.error
+        ? await supabase.rpc("get_accqua_monthly_ranking_v9_6")
+        : monthlyRpcV97;
+      const newestRpc = monthlyRpc.error
+        ? await supabase.rpc("get_accqua_ranking_v9_6")
+        : monthlyRpc;
+      const rpc = newestRpc.error
+        ? await supabase.rpc("get_accqua_ranking_v9_4")
+        : newestRpc;
+
+      if (!rpc.error && Array.isArray(rpc.data)) {
+        entries = rpc.data.map((row, index) => mapEntry(row as Row, index));
       } else {
-        const fallback = await supabase
-          .from("accqua_ranking_v9_2")
-          .select("*")
-          .order("ranking_points", { ascending: false })
-          .limit(100);
-        if (fallback.error) return [];
-        entries = (fallback.data ?? []).map((row, index) => mapEntry(row as Row, index));
+        const previousRpc = await supabase.rpc("get_accqua_ranking_v8_9");
+        if (!previousRpc.error && Array.isArray(previousRpc.data)) {
+          entries = previousRpc.data.map((row, index) => mapEntry(row as Row, index));
+        } else {
+          const fallback = await supabase
+            .from("accqua_ranking_v9_2")
+            .select("*")
+            .order("ranking_points", { ascending: false })
+            .limit(100);
+          if (fallback.error) return [];
+          entries = (fallback.data ?? []).map((row, index) => mapEntry(row as Row, index));
+        }
       }
     }
   }
