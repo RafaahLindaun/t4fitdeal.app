@@ -5,6 +5,7 @@ import { useAuth } from "./auth/AuthProvider";
 import LoadingSplash from "./components/LoadingSplash";
 import StaffWorkoutAlerts from "./components/StaffWorkoutAlerts";
 import EngagementNotifications from "./components/EngagementNotifications";
+import PushSubscriptionBridge from "./components/PushSubscriptionBridge";
 import WelcomeOnboarding from "./components/WelcomeOnboarding";
 import AccquaToaster from "./components/AccquaToaster";
 import { SyncQueueProvider } from "./hooks/useSyncQueue";
@@ -41,6 +42,7 @@ export default function App() {
       <>
         <StaffWorkoutAlerts />
         <EngagementNotifications />
+        <PushSubscriptionBridge />
         <WelcomeOnboarding />
         <AccquaToaster />
         <LayoutGroup id="accqua-workout-shared-layout">
