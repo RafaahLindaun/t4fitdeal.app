@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { statusMatricula } from "../lib/home";
 import { updateStudentMembership } from "../lib/classes";
+import { logStaffError, staffFacingErrorMessage } from "../lib/staffErrors";
 import { AdminCheckIcon, AdminShieldIcon } from "./AdminIcons";
 import "./student-membership-editor.css";
 
@@ -79,7 +80,8 @@ export default function StudentMembershipEditor({ studentId, validUntil, payment
       toast.success(confirmed ? "Pagamento confirmado" : "Matrícula marcada como pendente.");
       await onSaved();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a matrícula.");
+      logStaffError("membership", error);
+      toast.error(staffFacingErrorMessage(error, "Não foi possível atualizar a matrícula agora. Tente novamente."));
     } finally {
       setBusy(false);
     }

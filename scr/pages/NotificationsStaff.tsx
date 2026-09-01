@@ -9,6 +9,7 @@ import {
   type NotificationIcon,
   type StaffNotificationResult,
 } from "../lib/notifications";
+import { logStaffError, staffFacingErrorMessage } from "../lib/staffErrors";
 import "./notifications-staff.css";
 
 const ICONS: Array<{ id: NotificationIcon; glyph: string; label: string }> = [
@@ -57,7 +58,8 @@ export default function NotificationsStaff() {
       setBody("");
       toast.success(`Enviado para ${result.recipients} aluno${result.recipients === 1 ? "" : "s"}.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a notificação.");
+      logStaffError("notifications", error);
+      toast.error(staffFacingErrorMessage(error, "Não foi possível enviar a notificação agora. Tente novamente."));
     } finally {
       setSending(false);
     }

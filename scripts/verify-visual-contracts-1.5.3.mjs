@@ -85,8 +85,8 @@ requireMatch("U/pwa-manifest", "public/manifest.webmanifest", /"display":\s*"sta
 requireMatch("U/pwa-index", "index.html", /rel="manifest" href="\/manifest\.webmanifest"/, "manifest não está ligado ao HTML");
 requireMatch("U/pwa-ios", "index.html", /apple-mobile-web-app-capable/, "metadados de instalação iOS foram removidos");
 
-// Versionamento final.
-requireMatch("VERSION/1.5.3", "package.json", /"version":\s*"1\.5\.3"/, "package ainda não está marcado como 1.5.3");
+// Contrato histórico: a feature 1.5.3 deve continuar presente em qualquer patch >= 1.5.3.
+requireMatch("VERSION/1.5.3+", "package.json", /"version":\s*"1\.5\.(?:[3-9]|\d{2,})"/, "package ficou abaixo da linha 1.5.3");
 requireMatch("VERSION/css", "scr/main.tsx", /build-1\.5\.3\.css/, "camada visual 1.5.3 não está carregada");
 
 if (failures.length) {
