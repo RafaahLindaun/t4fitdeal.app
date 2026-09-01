@@ -51,17 +51,22 @@ const pushConfigFn = "supabase/functions/push-config/index.ts";
 const serviceWorker = "public/accqua-notifications-sw.js";
 
 // Ranking: aluno e Staff compartilham a mesma RPC mensal/cálculo.
-requireMatch("S/ranking-rpc", rankingLib, /get_accqua_monthly_ranking_v1_5_3/, "Ranking deixou de usar a RPC mensal 1.5.3");
+requireMatch("S/ranking-rpc", rankingLib, /get_accqua_monthly_ranking_v1_5_3/, "Ranking deixou de manter compatibilidade com a RPC mensal 1.5.3");
 requireMatch("S/ranking-canonical", migration, /get_accqua_monthly_workout_ranking_v9_7/, "RPC 1.5.3 deixou de envolver a fonte canônica mensal");
 requireMatch("S/prize-table", migration, /create table if not exists public\.ranking_premios/, "tabela de prêmio mensal não está versionada");
-requireAll("S/prize-student", rankingStudent, [/Prêmio deste mês/, /workoutsToLeader/], "aluno perdeu contexto do prêmio/distância do líder");
+// >=1.5.6 a distância do líder é expressa em dias treinados. O contrato histórico
+// continua exigindo o modal do prêmio e uma distância real, aceitando o nome
+// antigo somente para builds 1.5.3–1.5.5.
+requireAll("S/prize-student", rankingStudent, [/Prêmio deste mês/, /(?:daysToLeader|workoutsToLeader)/], "aluno perdeu contexto do prêmio/distância do líder");
 requireAll("S/prize-staff", rankingStaff, [/Prêmio do período/, /saveRankingPrize/], "Staff perdeu editor do prêmio mensal");
 requireMatch("S/race-close", rankingStaff, /Disputa acirrada/, "badge de disputa acirrada foi removido");
 
 // Receitas: IA cria rascunho, TACO calcula macro e aprovação continua humana.
 requireMatch("T/ai-entry", storeAdmin, /Criar receita com IA/, "entrada Criar receita com IA foi removida");
 requireAll("T/ai-draft", storeAdmin, [/generateRecipeWithAI/, /setRecipeForm/], "IA não volta mais para o mesmo editor manual");
-requireMatch("T/taco-source", recipeFn, /nepa\.unicamp\.br\/publicacoes\/tabela-taco-excel\//, "fonte oficial TACO deixou de ser usada");
+// A URL antiga era uma página HTML. O contrato passa a exigir o workbook oficial
+// publicado pelo NEPA/UNICAMP, além do parser XLSX, evitando regressão ao HTML.
+requireAll("T/taco-source", recipeFn, [/nepa\.unicamp\.br\/arquivo\/uploads\/taco-4a-edicao\/taco-4a-edicao-2\//, /XLSX\.read/], "fonte oficial TACO/workbook deixou de ser usada");
 requireMatch("T/no-llm-macros", recipeFn, /NÃO calcule e NÃO retorne kcal/, "LLM voltou a poder inventar macros");
 requireMatch("T/taco-match-warning", recipeFn, /macrosEstimatedAi:!allMatched/, "ingrediente sem match deixou de exigir revisão");
 requireAll("T/image-human-review", imageFn, [/requires_human_review:true/, /imagem_validada:false/], "imagem sugerida pela IA pode voltar aprovada automaticamente");
