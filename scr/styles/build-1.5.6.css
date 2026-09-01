@@ -1,0 +1,228 @@
+/* ACCQUA Sports — Build 1.5.6
+   Final regression layer. Preserve 1.5.5 behavior and only override known 1.5.6 defects. */
+
+/* --------------------------------------------------------------------------
+   Staff desktop: sidebar owns its width; content never participates in the same
+   grid track calculation. Collapsing cannot resize/reflow the page structure.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .accqua-staff-layout {
+    display: flex !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .accqua-staff-sidebar {
+    flex: 0 0 238px !important;
+    width: 238px !important;
+    min-width: 0 !important;
+    transition: flex-basis 200ms ease, width 200ms ease !important;
+  }
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar,
+  .accqua-staff-sidebar.is-collapsed {
+    flex-basis: 72px !important;
+    width: 72px !important;
+  }
+  .accqua-staff-content {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Shared Staff scroll contract — including Ranking and Notifications. */
+.accqua-staff-layout.uses-document-scroll,
+.accqua-staff-layout.uses-document-scroll .accqua-staff-content,
+.accqua-staff-layout.uses-document-scroll .accqua-staff-route {
+  min-height: 0 !important;
+}
+.accqua-staff-layout.uses-document-scroll .accqua-staff-content {
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.ranking-staff-page,
+.notifications-staff-page {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+/* Filter/stat selected states never inherit the page background. */
+.admin-area-filters button.is-active,
+.admin-dashboard-stat.is-active,
+.admin-dashboard-stat:active {
+  color: var(--text-on-active, #fff) !important;
+  border-color: var(--border-active, #f2c230) !important;
+  background: var(--surface-active, #1e3a5f) !important;
+}
+.admin-area-filters button.is-active *,
+.admin-dashboard-stat.is-active * {
+  color: inherit !important;
+}
+
+/* Student profile action subtitles stay in the text palette, never browser/link blue. */
+.admin-area-shell.is-student-detail .admin-training-action small,
+.admin-area-shell.is-student-detail .admin-training-action p {
+  color: var(--text-secondary) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Workout builder: the side columns keep their own scroll and the central grid
+   can scroll again. Build 1.5.5 had overflow:hidden on the shell, which could
+   trap the middle column after the three-column redesign.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .admin-builder-screen {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .admin-builder-shell {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-builder-library,
+  .admin-builder-desktop-aside {
+    min-height: 0 !important;
+    max-height: calc(100dvh - 190px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  .admin-builder-library {
+    min-width: 280px !important;
+  }
+  .admin-builder-groups {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 8px;
+    padding-right: 24px !important;
+  }
+  .admin-builder-groups button {
+    flex: 0 0 auto !important;
+    scroll-snap-align: start;
+  }
+  .admin-builder-library-list article > div strong,
+  .admin-builder-exercise-copy strong {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.3 !important;
+  }
+}
+@media (max-width: 1023px) {
+  .admin-builder-split-options {
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity !important;
+    padding-right: 40px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-builder-split-options button:last-child { margin-right: 16px !important; }
+}
+
+/* --------------------------------------------------------------------------
+   Ranking desktop: sidebar already owns the ACCQUA logo. Keep actions inside
+   the header flow instead of using mobile fixed positioning.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .ranking-header {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+  }
+  .ranking-header-logo { display: none !important; }
+  .ranking-header-actions {
+    position: static !important;
+    inset: auto !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  .ranking-header-actions .ranking-prize-fab,
+  .ranking-header-actions .ranking-info-fab {
+    position: static !important;
+    inset: auto !important;
+    flex: 0 0 auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Cardio modality captions: put the explanatory line on a dark gradient over
+   the lower part of the thumbnail so it stays legible over every image.
+   -------------------------------------------------------------------------- */
+.cardio-activity-card { position: relative !important; }
+.cardio-activity-card > small {
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  top: 48px !important;
+  z-index: 3 !important;
+  min-height: 30px !important;
+  margin: 0 !important;
+  padding: 13px 8px 5px !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  color: #fff !important;
+  border-radius: 0 0 14px 14px !important;
+  background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0)) !important;
+  font-size: 8px !important;
+  line-height: 1.3 !important;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Recipe creation controls: same geometry, crisp vector icon, clear hierarchy.
+   -------------------------------------------------------------------------- */
+.recipe-create-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.recipe-create-actions > button:first-child {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 10px !important;
+  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent) !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+.recipe-ai-create-button {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  color: #111827 !important;
+  background: linear-gradient(135deg, #f2c230, #f59e0b) !important;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 16%, transparent) !important;
+}
+.recipe-ai-create-button svg {
+  width: 18px !important;
+  height: 18px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Existing 1.5.5 contracts remain explicit in the final cascade. */
+.responsive-dialog-header { gap: 24px !important; }
+.responsive-dialog-header > .accqua-modal-close-button { flex: 0 0 auto !important; }
+body[data-accqua-modal-open="true"] .accqua-main-layout-nav { visibility: hidden !important; pointer-events: none !important; }
+.accqua-main-layout-nav { background: transparent !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-staff-sidebar { transition-duration: 1ms !important; }
+}
