@@ -1,0 +1,106 @@
+/* ACCQUA Sports — Build 1.5.1
+   Q: Loja mobile
+   R: modais/bottom sheets acima da bottom navigation. */
+
+/* R — qualquer modal real deve vencer a bottom navigation.
+   ResponsiveDialog já marca o body; :has([aria-modal=true]) cobre sheets manuais. */
+body[data-accqua-modal-open="true"] .accqua-main-layout-nav,
+body:has([aria-modal="true"]) .accqua-main-layout-nav {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.responsive-dialog-overlay {
+  z-index: 10040 !important;
+}
+
+.responsive-dialog-drawer,
+.responsive-dialog-content {
+  z-index: 10041 !important;
+}
+
+/* O sheet de perfil do Ranking é manual, fora do ResponsiveDialog. */
+.ranking-sheet-backdrop {
+  z-index: 10040 !important;
+}
+
+.ranking-sheet {
+  position: relative;
+  z-index: 10041 !important;
+}
+
+/* Q — detalhe do produto mobile. */
+@media (max-width: 767.98px) {
+  .store-product-detail-dialog {
+    overflow: hidden !important;
+  }
+
+  .store-product-detail-body,
+  .store-product-detail-dialog .responsive-dialog-body {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .store-product-detail-main-image {
+    position: relative !important;
+    min-height: 0 !important;
+    aspect-ratio: 4 / 3 !important;
+    overflow: hidden !important;
+    border-radius: 20px !important;
+  }
+
+  .store-product-detail-main-image > img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    transform: none !important;
+    rotate: 0deg !important;
+    image-orientation: from-image;
+  }
+
+  .store-product-detail-discount {
+    position: absolute !important;
+    top: 12px !important;
+    left: 12px !important;
+    right: auto !important;
+    z-index: 4 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  .store-product-detail-thumbs img {
+    transform: none !important;
+    rotate: 0deg !important;
+    object-fit: cover !important;
+    image-orientation: from-image;
+  }
+
+  .store-product-detail-actions {
+    position: relative !important;
+    z-index: 5 !important;
+    margin-top: 18px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .store-product-detail-reserve {
+    position: relative !important;
+    z-index: 6 !important;
+    width: 100% !important;
+    min-height: 60px !important;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-accqua-modal-open="true"] .accqua-main-layout-nav,
+  body:has([aria-modal="true"]) .accqua-main-layout-nav {
+    transition: none !important;
+  }
+}

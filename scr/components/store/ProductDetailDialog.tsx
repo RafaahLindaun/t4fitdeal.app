@@ -53,6 +53,7 @@ export default function ProductDetailDialog({
       : Math.max(1, Math.round((1 - product.pixPrice / product.originalPrice) * 100))
     : 0;
   const unavailable = product.stock <= 0;
+  const reserveDisabled = unavailable || reserving || alreadyReserved;
   const stockLabel = unavailable
     ? "Sem estoque"
     : product.stock <= 3
@@ -78,7 +79,11 @@ export default function ProductDetailDialog({
         <section className="store-product-detail-media" aria-label={`Fotos de ${product.name}`}>
           <div className="store-product-detail-main-image">
             {current?.url ? (
-              <img src={current.url} alt={`${product.name}${images.length > 1 ? ` — foto ${index + 1}` : ""}`} />
+              <img
+                src={current.url}
+                alt={`${product.name}${images.length > 1 ? ` — foto ${index + 1}` : ""}`}
+                draggable={false}
+              />
             ) : (
               <span className="store-product-detail-placeholder"><MenuBagIcon size={54} /><small>Imagem não disponível</small></span>
             )}
@@ -95,7 +100,7 @@ export default function ProductDetailDialog({
                   aria-label={`Ver foto ${imageIndex + 1}`}
                   aria-pressed={imageIndex === index}
                 >
-                  <img src={image.url} alt="" aria-hidden="true" />
+                  <img src={image.url} alt="" aria-hidden="true" draggable={false} />
                 </button>
               ))}
             </div>
@@ -130,9 +135,13 @@ export default function ProductDetailDialog({
             <motion.button
               type="button"
               className="store-product-detail-reserve"
-              disabled={unavailable || reserving || alreadyReserved}
-              whileTap={reducedMotion || unavailable || alreadyReserved ? undefined : { scale: 0.985 }}
-              onClick={() => onReserve(product)}
+              disabled={reserveDisabled}
+              aria-busy={reserving}
+              whileTap={reducedMotion || reserveDisabled ? undefined : { scale: 0.985 }}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!reserveDisabled) onReserve(product);
+              }}
             >
               <strong>{alreadyReserved ? "Reservado" : unavailable ? "Sem estoque" : reserving ? "Reservando..." : "Reservar"}</strong>
               <small>{alreadyReserved ? "Aguardando retirada" : unavailable ? "Consulte a recepção" : "Retire na recepção"}</small>
