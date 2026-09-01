@@ -31,11 +31,16 @@ export type StoreReservation = {
   studentName?: string;
 };
 
+export type RecipeImageSource = "upload_manual" | "ia_unsplash" | "ia_catalogo" | "";
+
 export type RecipeAdminRecord = {
   id: string;
   name: string;
   imageUrl: string;
   imageValidated: boolean;
+  imageConfidence: number | null;
+  imageSource: RecipeImageSource;
+  macrosEstimatedAi: boolean;
   aiScore: number | null;
   aiReason: string;
   objectiveCategories: string[];
@@ -56,13 +61,40 @@ export type RecipeAdminRecord = {
 export type RecipeAdminInput = Omit<RecipeAdminRecord, "id" | "aiScore" | "aiReason">;
 
 export type RecipeImageReview = {
-  id:string; name:string; imageUrl:string; validated:boolean; aiScore:number|null; aiReason:string; objectiveTags:string[]; mealCategory:string;
+  id: string;
+  name: string;
+  imageUrl: string;
+  validated: boolean;
+  aiScore: number | null;
+  aiReason: string;
+  objectiveTags: string[];
+  mealCategory: string;
+};
+
+export type RecipeAiDraft = {
+  name: string;
+  ingredients: unknown[];
+  instructions: string;
+  portionDescription: string;
+  objectiveCategories: string[];
+  mealCategory: string;
+  dayPeriod: RecipeAdminRecord["dayPeriod"];
+  healthLevel: RecipeAdminRecord["healthLevel"];
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  macrosEstimatedAi: boolean;
+  macroVerification: unknown[];
+  nutritionSource: string;
+  imageUrl: string;
+  imageConfidence: number | null;
+  imageSource: RecipeImageSource;
 };
 
 type Row = Record<string, unknown>;
 function n(value: unknown) { const x = Number(value ?? 0); return Number.isFinite(x) ? x : 0; }
 function t(value: unknown) { return String(value ?? "").trim(); }
-
 
 const CATEGORY_ALIASES: Record<string, string> = {
   camisa: "camisas",
@@ -80,25 +112,12 @@ export function normalizeProductCategory(value: unknown) {
 
 export function productCategoryLabel(value: unknown) {
   const normalized = normalizeProductCategory(value);
-  const known: Record<string, string> = {
-    todos: "Todos",
-    camisas: "Camisas",
-    suplementos: "Suplementos",
-    acessorios: "Acessórios",
-    outros: "Outros",
-  };
+  const known: Record<string, string> = { todos: "Todos", camisas: "Camisas", suplementos: "Suplementos", acessorios: "Acessórios", outros: "Outros" };
   if (known[normalized]) return known[normalized];
-  return normalized
-    .replace(/_/g, " ")
-    .replace(/(^|\s)\p{L}/gu, (letter) => letter.toLocaleUpperCase("pt-BR"));
+  return normalized.replace(/_/g, " ").replace(/(^|\s)\p{L}/gu, (letter) => letter.toLocaleUpperCase("pt-BR"));
 }
 
-const TEST_COPY_PATTERNS = [
-  /nunca\s+mais\s+comer\s+p[aã]ozinho/i,
-  /lorem\s+ipsum/i,
-  /\bplaceholder\b/i,
-  /^teste(?:\s+teste)*[.!]?$/i,
-];
+const TEST_COPY_PATTERNS = [/nunca\s+mais\s+comer\s+p[aã]ozinho/i, /lorem\s+ipsum/i, /\bplaceholder\b/i, /^teste(?:\s+teste)*[.!]?$/i];
 
 export function hasSuspiciousProductCopy(value: unknown) {
   const copy = t(value);
@@ -157,7 +176,6 @@ export async function loadStoreProducts(includeInactive = false) {
   const { data, error } = await query;
   if (error) throw error;
   const products = await productsFromRows((data ?? []) as Row[]);
-  // Defesa em profundidade: o catálogo do aluno nunca renderiza item sem mídia.
   return includeInactive ? products : products.filter((product) => hasProductImage(product));
 }
 
@@ -186,10 +204,7 @@ export async function loadMyReservations(userId: string): Promise<StoreReservati
   const rows = (data ?? []) as Row[];
   const ids = [...new Set(rows.map(r=>t(r.produto_id)).filter(Boolean))];
   const productMap = await productMapByIds(ids);
-  return rows.map(row => ({
-    id:t(row.id), productId:t(row.produto_id), studentId:t(row.aluno_id), status:(t(row.status)||"reservado") as StoreReservation["status"],
-    reservedAt:t(row.reservado_em), withdrawnAt:t(row.retirado_em), product:productMap.get(t(row.produto_id)) ?? null,
-  }));
+  return rows.map(row => ({ id:t(row.id), productId:t(row.produto_id), studentId:t(row.aluno_id), status:(t(row.status)||"reservado") as StoreReservation["status"], reservedAt:t(row.reservado_em), withdrawnAt:t(row.retirado_em), product:productMap.get(t(row.produto_id)) ?? null }));
 }
 
 export type ProductInput = Omit<StoreProduct,"id"|"discountPercent"|"rating"|"ratingCount"|"imageUrl"> & { rating?: number; ratingCount?: number };
@@ -223,43 +238,19 @@ async function syncProductImages(productId: string, images: StoreProductImage[])
 
 export async function saveProduct(input: ProductInput, id?: string) {
   const firstImage = input.images[0]?.url ?? input.images[0]?.path ?? null;
-  if (input.active && !hasProductImage({ images: input.images })) {
-    throw new Error("product_image_required");
-  }
-  if (input.active && hasSuspiciousProductCopy(input.description)) {
-    throw new Error("product_copy_review_required");
-  }
-
-  const basePayload = {
-    nome:input.name.trim(),
-    descricao:input.description.trim() || null,
-    categoria:normalizeProductCategory(input.category),
-    preco_original:input.originalPrice,
-    preco_pix:input.pixPrice,
-    avaliacao:input.rating ?? null,
-    quantidade_avaliacoes:input.ratingCount ?? 0,
-    estoque_quantidade:Math.max(0,Math.round(input.stock)),
-    imagem_url:firstImage,
-    compra_habilitada:input.purchaseEnabled,
-  };
-
+  if (input.active && !hasProductImage({ images: input.images })) throw new Error("product_image_required");
+  if (input.active && hasSuspiciousProductCopy(input.description)) throw new Error("product_copy_review_required");
+  const basePayload = { nome:input.name.trim(), descricao:input.description.trim() || null, categoria:normalizeProductCategory(input.category), preco_original:input.originalPrice, preco_pix:input.pixPrice, avaliacao:input.rating ?? null, quantidade_avaliacoes:input.ratingCount ?? 0, estoque_quantidade:Math.max(0,Math.round(input.stock)), imagem_url:firstImage, compra_habilitada:input.purchaseEnabled };
   let productId = id ?? "";
   if (id) {
-    // Campos são salvos sem ativar primeiro; a publicação só acontece depois
-    // de a galeria estar sincronizada, permitindo o guard do banco.
     const { error } = await supabase.from("produtos").update({ ...basePayload, ativo:false }).eq("id",id);
     if (error) throw error;
   } else {
     const user = await supabase.auth.getUser();
-    const { data,error } = await supabase
-      .from("produtos")
-      .insert({ ...basePayload, ativo:false, criado_por:user.data.user?.id ?? null })
-      .select("id")
-      .single();
+    const { data,error } = await supabase.from("produtos").insert({ ...basePayload, ativo:false, criado_por:user.data.user?.id ?? null }).select("id").single();
     if (error) throw error;
     productId = String(data.id);
   }
-
   await syncProductImages(productId, input.images);
   const { error: publishError } = await supabase.from("produtos").update({ ativo:input.active }).eq("id", productId);
   if (publishError) throw publishError;
@@ -269,10 +260,7 @@ export async function saveProduct(input: ProductInput, id?: string) {
 export async function loadStaffReservations(): Promise<StoreReservation[]> {
   const { data,error } = await supabase.from("reservas").select("*").order("reservado_em",{ascending:false}).limit(500); if(error) throw error;
   const rows=(data??[]) as Row[]; const productIds=[...new Set(rows.map(r=>t(r.produto_id)).filter(Boolean))]; const studentIds=[...new Set(rows.map(r=>t(r.aluno_id)).filter(Boolean))];
-  const [productMap,profiles] = await Promise.all([
-    productMapByIds(productIds),
-    studentIds.length ? supabase.from("profiles").select("id,full_name").in("id",studentIds) : Promise.resolve({data:[],error:null} as any),
-  ]);
+  const [productMap,profiles] = await Promise.all([ productMapByIds(productIds), studentIds.length ? supabase.from("profiles").select("id,full_name").in("id",studentIds) : Promise.resolve({data:[],error:null} as any) ]);
   const profileMap=new Map(((profiles.data??[]) as Row[]).map(r=>[t(r.id),t(r.full_name)||"Aluno ACCQUA"]));
   return rows.map(row=>({id:t(row.id),productId:t(row.produto_id),studentId:t(row.aluno_id),status:(t(row.status)||"reservado") as StoreReservation["status"],reservedAt:t(row.reservado_em),withdrawnAt:t(row.retirado_em),product:productMap.get(t(row.produto_id))??null,studentName:profileMap.get(t(row.aluno_id))??"Aluno ACCQUA"}));
 }
@@ -285,6 +273,8 @@ function recipeFromRow(r: Row): RecipeAdminRecord {
   const objectives = Array.isArray(r.categoria_objetivo) ? r.categoria_objetivo.map(t).filter(Boolean) : [];
   return {
     id:t(r.id), name:t(r.nome??r.title)||"Receita", imageUrl:t(r.imagem_url), imageValidated:r.imagem_validada===true,
+    imageConfidence:r.imagem_confianca==null?null:Math.max(0,Math.min(1,n(r.imagem_confianca))),
+    imageSource:(t(r.imagem_fonte) as RecipeImageSource)||"", macrosEstimatedAi:r.macros_estimados_ia===true,
     aiScore:r.imagem_validacao_score==null?null:n(r.imagem_validacao_score), aiReason:t(r.imagem_validacao_motivo), objectiveCategories:objectives,
     mealCategory:t(r.categoria_refeicao), dayPeriod:(t(r.periodo_dia) as RecipeAdminRecord["dayPeriod"])||"", calorieLevel:(t(r.nivel_calorico) as RecipeAdminRecord["calorieLevel"])||"",
     healthLevel:(["saudavel","moderado","menos_saudavel"].includes(t(r.nivel_saudavel))?t(r.nivel_saudavel):"saudavel") as RecipeAdminRecord["healthLevel"],
@@ -302,7 +292,8 @@ export async function loadRecipesForAdmin(): Promise<RecipeAdminRecord[]> {
 export async function saveRecipeAdmin(input: RecipeAdminInput, id?: string) {
   const payload = {
     nome: input.name.trim(), title: input.name.trim(), imagem_url: input.imageUrl || null,
-    imagem_validada: input.imageValidated && Boolean(input.imageUrl),
+    imagem_validada: input.imageValidated && Boolean(input.imageUrl), imagem_confianca: input.imageConfidence,
+    imagem_fonte: input.imageUrl ? (input.imageSource || "upload_manual") : null, macros_estimados_ia: input.macrosEstimatedAi,
     categoria_objetivo: input.objectiveCategories, categoria_refeicao: input.mealCategory,
     periodo_dia: input.dayPeriod || null, nivel_calorico: input.calorieLevel || null, nivel_saudavel: input.healthLevel,
     kcal:Math.round(input.kcal), proteina_g:input.protein, carbo_g:input.carbs, gordura_g:input.fat,
@@ -310,9 +301,7 @@ export async function saveRecipeAdmin(input: RecipeAdminInput, id?: string) {
     macros:{calorias:Math.round(input.kcal),proteina_g:input.protein,carbo_g:input.carbs,gordura_g:input.fat},
     tags:[...input.objectiveCategories,input.mealCategory], ativo:input.active,
   };
-  if (id) {
-    const {error}=await supabase.from("recipes").update(payload).eq("id",id); if(error) throw error; return id;
-  }
+  if (id) { const {error}=await supabase.from("recipes").update(payload).eq("id",id); if(error) throw error; return id; }
   const {data,error}=await supabase.from("recipes").insert(payload).select("id").single(); if(error) throw error; return t(data?.id);
 }
 
@@ -324,19 +313,39 @@ export async function loadRecipeImageReviewQueue(): Promise<RecipeImageReview[]>
   return rows.map(r=>({id:r.id,name:r.name,imageUrl:r.imageUrl,validated:r.imageValidated,aiScore:r.aiScore,aiReason:r.aiReason,objectiveTags:r.objectiveCategories,mealCategory:r.mealCategory}));
 }
 
-export async function validateRecipeImageWithAI(recipe:RecipeImageReview) {
-  const {data,error}=await supabase.functions.invoke("validate-recipe-image",{body:{recipe_id:recipe.id,nome:recipe.name,imagem_url:recipe.imageUrl}}); if(error) throw error;
-  return { match:Boolean(data?.match), score:Math.max(0,Math.min(1,n(data?.score))), reason:t(data?.reason) };
+export async function validateRecipeImageWithAI(recipe:RecipeImageReview, replaceApproved = false) {
+  const {data,error}=await supabase.functions.invoke("validate-recipe-image",{body:{recipe_id:recipe.id,replace_approved:replaceApproved}});
+  if(error) {
+    const context = (error as any)?.context;
+    if (context?.status === 409) return { status:"confirmation_required" as const, match:false, score:0, reason:"Substituir imagem já aprovada?", imageUrl:"", source:"" };
+    throw error;
+  }
+  return {
+    status:(t(data?.status)||"ok") as "ok"|"sem_match"|"confirmation_required",
+    match:Boolean(data?.match), score:Math.max(0,Math.min(1,n(data?.score))), reason:t(data?.reason),
+    imageUrl:t(data?.imageUrl), source:t(data?.source),
+  };
+}
+
+export async function generateRecipeDraftWithAI(description:string): Promise<RecipeAiDraft> {
+  const { data, error } = await supabase.functions.invoke("generate-recipe-ai", { body: { descricao: description.trim() } });
+  if (error) throw error;
+  return {
+    name:t(data?.name), ingredients:Array.isArray(data?.ingredients)?data.ingredients:[], instructions:t(data?.instructions), portionDescription:t(data?.portionDescription),
+    objectiveCategories:Array.isArray(data?.objectiveCategories)?data.objectiveCategories.map(t).filter(Boolean):[], mealCategory:t(data?.mealCategory)||"almoco",
+    dayPeriod:(["manha","tarde","noite"].includes(t(data?.dayPeriod))?t(data?.dayPeriod):"tarde") as RecipeAiDraft["dayPeriod"],
+    healthLevel:(["saudavel","moderado","menos_saudavel"].includes(t(data?.healthLevel))?t(data?.healthLevel):"saudavel") as RecipeAiDraft["healthLevel"],
+    kcal:Math.max(0,n(data?.kcal)),protein:Math.max(0,n(data?.protein)),carbs:Math.max(0,n(data?.carbs)),fat:Math.max(0,n(data?.fat)),macrosEstimatedAi:Boolean(data?.macrosEstimatedAi),
+    macroVerification:Array.isArray(data?.macroVerification)?data.macroVerification:[],nutritionSource:t(data?.nutritionSource),imageUrl:t(data?.imageUrl),
+    imageConfidence:data?.imageConfidence==null?null:Math.max(0,Math.min(1,n(data?.imageConfidence))),imageSource:(t(data?.imageSource) as RecipeImageSource)||"",
+  };
 }
 
 export async function deleteStoreProductStaff(id: string): Promise<{ action: "deleted" | "deactivated"; reservations: number }> {
   const { data, error } = await supabase.rpc("accqua_staff_delete_product_v1_3_6", { p_product_id: id });
   if (error) throw new Error(error.message);
   const raw = (Array.isArray(data) ? data[0] : data ?? {}) as Row;
-  return {
-    action: t(raw.action) === "deleted" ? "deleted" : "deactivated",
-    reservations: Math.max(0, n(raw.reservations)),
-  };
+  return { action: t(raw.action) === "deleted" ? "deleted" : "deactivated", reservations: Math.max(0, n(raw.reservations)) };
 }
 
 export async function deleteRecipeStaff(id: string): Promise<void> {
