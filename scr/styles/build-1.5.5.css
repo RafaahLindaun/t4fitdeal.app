@@ -1,0 +1,50 @@
+/* ACCQUA Sports — Build 1.5.5
+   Final regression layer. Keep after 1.5.4. */
+:root{--surface-active:#1e3a5f;--text-on-active:#fff;--border-active:#f2c230;--accent-selection:#3b82f6}
+
+/* Staff > Alunos: semantic selected/pressed contrast and independent scrolling. */
+.admin-area-filters button[aria-pressed="true"],.admin-dashboard-stat[aria-pressed="true"],.admin-dashboard-stat.is-active{color:var(--text-on-active)!important;border-color:var(--border-active)!important;background:var(--surface-active)!important}
+.admin-dashboard-stat[aria-pressed="true"] small,.admin-dashboard-stat[aria-pressed="true"] b,.admin-dashboard-stat.is-active small,.admin-dashboard-stat.is-active b{color:#eaf3ff!important}
+.accqua-staff-content,.admin-area-content,.admin-dashboard-roster,.admin-dashboard-resource{min-height:0}
+.admin-area-list.admin-dashboard-roster,.admin-dashboard-resource{overflow-y:auto;overscroll-behavior-y:contain}
+
+/* Canonical warning badge pair. */
+.accqua-status-badge.is-warning,.admin-student-flags i.is-no-workout{color:#07162d!important;background:#ffd128!important;border-color:#ffd128!important}
+
+/* ResponsiveDialog / student modals: X never fights title or viewport. */
+.responsive-dialog-header{display:grid!important;grid-template-columns:minmax(0,1fr) 44px!important;gap:24px!important;align-items:start!important;padding-right:0!important}
+.responsive-dialog-header>div{min-width:0}.responsive-dialog-header>.accqua-modal-close-button{position:static!important;justify-self:end!important;flex:0 0 auto!important}
+.accqua-modal-close-button{width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;margin:0!important}
+@media(max-width:767px){.responsive-dialog-header{gap:18px!important;padding-inline:16px!important}.responsive-dialog-drawer{max-width:calc(100vw - 16px)!important;margin-inline:auto!important}.responsive-dialog-body{padding-inline:16px!important}}
+
+/* Montar Treino — only one visual progress system. */
+@media(min-width:1024px){.admin-builder-mobile-progress{display:grid!important;grid-column:1/-1;gap:7px;padding:8px 14px 12px;border-bottom:1px solid color-mix(in srgb,var(--builder-line) 68%,transparent);background:color-mix(in srgb,var(--surface-deep) 94%,transparent)}.admin-builder-story-segments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.admin-builder-story-segments button{height:14px;padding:5px 0;border:0;background:transparent}.admin-builder-story-segments button i{display:block;height:4px;border-radius:999px;background:color-mix(in srgb,var(--text-tertiary) 34%,transparent)}.admin-builder-story-segments button.is-complete i{background:var(--status-success)}.admin-builder-story-segments button.is-active i{background:var(--accent);transform:scaleY(1.3)}.admin-builder-progress-copy{display:flex;justify-content:space-between;gap:12px}.admin-builder-progress-copy small{color:var(--text-tertiary);font-size:10px;font-weight:850}.admin-builder-progress-copy strong{font-size:13px}.admin-builder-context-bar,.admin-builder-step-nav,.admin-builder-mobile-step-controls{display:none!important}.admin-builder-readiness-score{display:none!important}.admin-builder-readiness-summary{grid-template-columns:minmax(0,1fr) auto!important}.admin-builder-footer-summary{display:none!important}.admin-builder-footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px}.admin-builder-footer-actions .is-template{min-height:44px!important;padding:0 4px!important;border:0!important;color:var(--text-secondary)!important;background:transparent!important;box-shadow:none!important;text-decoration:underline;text-underline-offset:4px}.admin-builder-footer-actions .is-publish{min-height:48px!important;color:#07162d!important;border-color:var(--accent)!important;background:var(--accent)!important}.admin-builder-guide-button{display:none!important}}
+
+/* Builder 3-column / independent scroll hardening. */
+@media(min-width:1024px){.admin-builder-screen{height:100dvh!important;min-height:0!important;overflow:hidden!important}.admin-builder-shell{height:100%!important;min-height:0!important;overflow:hidden!important}.admin-builder-program-card,.admin-builder-routine-card,.admin-builder-selected,.admin-builder-library,.admin-builder-cardio,.admin-builder-desktop-aside{min-height:0}.admin-builder-library,.admin-builder-desktop-aside{max-height:calc(100dvh - 190px)!important;overflow-y:auto!important;overscroll-behavior:contain}.admin-builder-library{min-width:280px!important}.admin-builder-library-list{min-height:0;overflow-y:visible}.admin-builder-groups{display:flex!important;gap:8px!important;overflow-x:auto!important;scroll-snap-type:x proximity;padding-bottom:6px;scrollbar-width:thin}.admin-builder-groups button{flex:0 0 auto;scroll-snap-align:start}.admin-builder-library-list article>div strong{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.3!important}.admin-builder-desktop-aside{padding-right:3px}}
+@media(max-width:1023px){.admin-builder-split-options{padding-right:40px!important}.admin-builder-split-options button:last-child{margin-right:16px}.admin-builder-shell{min-height:0!important;overflow-y:auto!important}.admin-builder-readiness-score{display:none!important}}
+
+/* Bottom nav is a single floating pill; modal layers always win. */
+.accqua-main-layout-nav{background:transparent!important;pointer-events:none}.accqua-main-layout-nav .bottom-navigation,.accqua-main-layout-nav nav{pointer-events:auto}.responsive-dialog-overlay,.admin-v10-drawer-overlay,.admin-v11-library-overlay,.admin-builder-drawer-backdrop{z-index:1800!important}.responsive-dialog-content,.responsive-dialog-drawer,.admin-v10-drawer-content,.admin-v11-library-drawer,.admin-builder-guide-sheet{z-index:1801!important}body[data-accqua-modal-open="true"] .accqua-main-layout-nav{visibility:hidden!important;pointer-events:none!important}
+
+/* Mobile student profile. */
+@media(max-width:767px){.admin-profile-view,.admin-profile-hero,.admin-profile-menu,.admin-training-action{overflow:visible!important}.admin-profile-view{padding-inline:12px!important}.admin-profile-hero,.admin-profile-menu,.admin-training-action{max-width:100%!important;margin-inline:0!important}.admin-student-quick-status{overflow-x:auto!important;padding-inline:2px!important}.admin-profile-view .admin-area-header{position:sticky!important;top:0!important;z-index:90!important;border-radius:16px!important;background:var(--surface-deep)!important}.admin-profile-menu{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}.admin-profile-menu .profile-menu-item,.admin-profile-menu>button{min-height:84px!important;height:84px!important;padding:8px!important}.is-route-focus-mode .accqua-main-layout-content,.is-route-focus-mode .accqua-route-transition{padding-bottom:0!important}}
+
+/* Membership/payment modal touch hierarchy. */
+@media(max-width:767px){.admin-membership-dialog label>span,.admin-membership-sheet label>span{font-size:13px!important;font-weight:500!important}.admin-membership-dialog input,.admin-membership-dialog select,.admin-membership-sheet input,.admin-membership-sheet select{min-height:44px!important;padding:11px 12px!important;font-size:16px!important}.admin-membership-dialog strong,.admin-membership-sheet strong{font-size:16px!important;line-height:1.4!important}}
+
+/* Diet header icon geometry. */
+@media(max-width:767px){.diet-topbar-side.is-right{display:flex!important;align-items:center!important;gap:12px!important}.diet-round-button{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:50%!important}.diet-round-button svg{width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important}}
+
+/* Store product details and Staff delete affordance. */
+.store-product-image,.store-product-detail-image,.store-product-media img{transform:none!important;object-fit:cover!important}.store-product-media,.store-product-image-wrap,.store-product-detail-media{position:relative!important}.store-product-discount,.store-product-detail-discount{position:absolute!important;top:12px!important;left:12px!important}.store-product-reserve,.store-reserve-button{color:#07162d!important;background:#ffd128!important;border-color:#ffd128!important;opacity:1!important;visibility:visible!important;overflow:visible!important}
+@media(min-width:768px){.store-admin-list .accqua-swipe-item{overflow:visible!important}.store-admin-list .accqua-swipe-content{overflow:visible!important}.store-admin-list .accqua-swipe-desktop-delete{top:-10px!important;right:-10px!important;z-index:12!important;width:30px!important;height:30px!important;border-radius:50%!important;opacity:0!important;transform:none!important}.store-admin-list .accqua-swipe-item:hover .accqua-swipe-desktop-delete,.store-admin-list .accqua-swipe-desktop-delete:focus-visible{opacity:1!important}}
+
+/* Staff library: internal scrolling + trash outside card. */
+.admin-dashboard-resource{min-height:0!important}.admin-dashboard-resource-grid{min-height:0;overflow-y:auto!important;overscroll-behavior-y:contain;padding-top:10px;padding-right:10px}.admin-dashboard-resource-card{overflow:visible!important}.admin-dashboard-resource-grid .accqua-swipe-item,.admin-dashboard-resource-grid .accqua-swipe-content{overflow:visible!important}@media(min-width:768px){.admin-dashboard-resource-grid .accqua-swipe-desktop-delete{top:-9px!important;right:-9px!important;z-index:14!important}}
+
+/* Classes v1.5.5 wrapper is responsible for accordion intent and dynamic access summary. */
+.classes-admin-type-card[data-v155-force-collapsed="true"] .classes-admin-type-body{display:none!important}
+
+/* Staff mobile decorative shapes never escape viewport. */
+@media(max-width:480px){.admin-area-background span,.admin-area-background i{max-width:100%!important}.admin-area-screen:not(.is-student-detail-screen) .admin-area-background{overflow:hidden!important}}
