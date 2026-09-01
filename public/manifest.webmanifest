@@ -1,0 +1,26 @@
+{
+  "name": "ACCQUA Sports",
+  "short_name": "ACCQUA",
+  "description": "Treinos, aulas, evolução e acompanhamento ACCQUA Sports.",
+  "lang": "pt-BR",
+  "start_url": "/menu-teste",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#04162f",
+  "theme_color": "#04162f",
+  "icons": [
+    {
+      "src": "/logo/logo_app_4k.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo/logo_app_4k.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
