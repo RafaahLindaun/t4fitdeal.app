@@ -8,7 +8,9 @@ import LoadingSplash from "../components/LoadingSplash";
 import PageHeader from "../components/PageHeader";
 import ResponsiveDialog from "../components/ResponsiveDialog";
 import ProductDetailDialog from "../components/store/ProductDetailDialog";
+import PixPaymentDialog from "../components/store/PixPaymentDialog";
 import { MenuArrowIcon, MenuBagIcon } from "../components/MenuIcons";
+import { createPixPayment, type PixPayment } from "../lib/payments";
 import { loadMyReservations, loadStoreProducts, productCategoryLabel, reserveProduct, type StoreProduct } from "../lib/store";
 import "./store.css";
 
@@ -29,10 +31,27 @@ function ProductArt({ product }: { product: StoreProduct }) {
 
 export default function Store(){
   const navigate=useNavigate(); const queryClient=useQueryClient(); const reduceMotion=useReducedMotion();
-  const {user,loading,landingPath}=useAuth(); const [category,setCategory]=useState("todos"); const [confirmed,setConfirmed]=useState<StoreProduct|null>(null); const [selectedProduct,setSelectedProduct]=useState<StoreProduct|null>(null);
+  const {user,loading,landingPath}=useAuth();
+  const [category,setCategory]=useState("todos");
+  const [confirmed,setConfirmed]=useState<StoreProduct|null>(null);
+  const [selectedProduct,setSelectedProduct]=useState<StoreProduct|null>(null);
+  const [paymentProduct,setPaymentProduct]=useState<StoreProduct|null>(null);
+  const [pixPayment,setPixPayment]=useState<PixPayment|null>(null);
   const productsQuery=useQuery({queryKey:["store-products"],queryFn:()=>loadStoreProducts(false),enabled:Boolean(user?.id),staleTime:30_000});
   const reservationsQuery=useQuery({queryKey:["my-reservations",user?.id],queryFn:()=>loadMyReservations(user!.id),enabled:Boolean(user?.id),staleTime:15_000});
-  const reserveMutation=useMutation({mutationFn:(product:StoreProduct)=>reserveProduct(product.id),onSuccess:(_,product)=>{setSelectedProduct(null);setConfirmed(product);void queryClient.invalidateQueries({queryKey:["store-products"]});void queryClient.invalidateQueries({queryKey:["my-reservations",user?.id]});},onError:(error:any)=>toast.error(error?.message?.includes("estoque")?"Esse item acabou de ficar sem estoque.":"Não foi possível reservar agora.")});
+  const invalidateStore=()=>{void queryClient.invalidateQueries({queryKey:["store-products"]});void queryClient.invalidateQueries({queryKey:["my-reservations",user?.id]});};
+  const reserveMutation=useMutation({mutationFn:(product:StoreProduct)=>reserveProduct(product.id),onSuccess:(_,product)=>{setSelectedProduct(null);setConfirmed(product);invalidateStore();},onError:(error:any)=>toast.error(error?.message?.includes("estoque")?"Esse item acabou de ficar sem estoque.":"Não foi possível reservar agora.")});
+  const payMutation=useMutation({
+    mutationFn:(product:StoreProduct)=>createPixPayment(product.id),
+    onSuccess:(payment,product)=>{setSelectedProduct(null);setPaymentProduct(product);setPixPayment(payment);invalidateStore();},
+    onError:(error:any)=>{
+      const message=String(error?.message??"");
+      if(message.includes("pix_provider_not_configured"))toast.error("Pagamento Pix ainda não foi ativado pela academia.");
+      else if(message.includes("product_out_of_stock"))toast.error("Esse item acabou de ficar sem estoque.");
+      else if(message.includes("payment_already_pending"))toast.error("Já existe um Pix ativo para este produto. Aguarde expirar ou conclua o pagamento.");
+      else toast.error("Não foi possível gerar o Pix agora.");
+    },
+  });
   const categories=useMemo(()=>["todos",...new Set((productsQuery.data??[]).map(p=>p.category).filter(Boolean))],[productsQuery.data]);
   const products=useMemo(()=>category==="todos"?(productsQuery.data??[]): (productsQuery.data??[]).filter(p=>p.category===category),[category,productsQuery.data]);
   const activeReservations=useMemo(()=>(reservationsQuery.data??[]).filter(item=>item.status==="reservado"),[reservationsQuery.data]);
@@ -41,15 +60,15 @@ export default function Store(){
   return <div className="store-screen"><div className="store-bg" aria-hidden="true"/><main className="store-shell">
     <PageHeader className="store-header" ariaLabel="Loja ACCQUA" left={<button className="store-header-button" type="button" onClick={()=>navigate("/menu-teste")} aria-label="Voltar"><BackIcon/></button>} center={<div className="store-header-title"><span>ACCQUA SPORTS</span><strong>Loja</strong></div>} right={<button className="store-header-icon store-header-reservations" type="button" onClick={()=>navigate("/perfil?section=reservas")} aria-label={activeReservations.length?`Minhas reservas, ${activeReservations.length} ativa${activeReservations.length===1?"":"s"}`:"Minhas reservas"} title="Minhas reservas"><MenuBagIcon size={23}/>{activeReservations.length?<b>{activeReservations.length>9?"9+":activeReservations.length}</b>:null}</button>}/>
     <div className="store-scroll">
-      <section className="store-hero"><span>EXCLUSIVO PARA ALUNOS</span><h1>Reserve agora.<br/>Retire na recepção.</h1><p>Produtos ACCQUA e parceiros, sem pagamento pelo app nesta fase.</p></section>
+      <section className="store-hero"><span>EXCLUSIVO PARA ALUNOS</span><h1>Reserve agora.<br/>Retire na recepção.</h1><p>Reserve para pagar na recepção ou pague agora via Pix com confirmação automática.</p></section>
       <div className="store-filter-row" role="tablist" aria-label="Categorias da loja">{categories.map(item=><button key={item} type="button" role="tab" aria-selected={category===item} className={category===item?"is-active":""} onClick={()=>setCategory(item)}>{productCategoryLabel(item)}</button>)}</div>
       {products.length?<section className="store-grid" aria-label="Produtos disponíveis">{products.map(product=>{const alreadyReserved=reservedProductIds.has(product.id);return <motion.article key={product.id} className="store-card" whileHover={reduceMotion?undefined:{y:-2}} whileTap={reduceMotion?undefined:{scale:.992}} role="button" tabIndex={0} aria-label={`Ver detalhes de ${product.name}`} onClick={()=>setSelectedProduct(product)} onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();setSelectedProduct(product)}}}>
         <ProductArt product={product}/>
         <div className="store-card-body"><div className="store-card-copy"><small>{productCategoryLabel(product.category)}</small><h2>{product.name}</h2><p className={product.description?"":"is-empty"} aria-hidden={!product.description}>{product.description||"\u00a0"}</p></div>
           <div className="store-rating"><StarIcon/><strong>{product.rating?product.rating.toFixed(1):"Novo"}</strong>{product.ratingCount>0?<span>({product.ratingCount})</span>:null}</div>
           <div className="store-price"><strong>{formatMoney(product.pixPrice)} <small>no Pix</small></strong>{product.originalPrice>product.pixPrice?<s>{formatMoney(product.originalPrice)}</s>:null}</div>
-          <button type="button" className="store-reserve" disabled={product.stock<=0||reserveMutation.isPending||alreadyReserved} onClick={(event)=>{event.stopPropagation();reserveMutation.mutate(product)}}><span>{alreadyReserved?"Reservado":product.stock<=0?"Sem estoque":"Reservar"}<small>{alreadyReserved?"Aguardando retirada":product.stock<=0?"Consulte a recepção":"Retire na recepção"}</small></span><MenuArrowIcon size={19}/></button>
-          {product.purchaseEnabled?<button type="button" className="store-buy-future" onClick={(event)=>{event.stopPropagation();toast("Compra online será habilitada em breve.")}}>Comprar online</button>:null}
+          <button type="button" className="store-reserve" disabled={product.stock<=0||reserveMutation.isPending||payMutation.isPending||alreadyReserved} onClick={(event)=>{event.stopPropagation();reserveMutation.mutate(product)}}><span>{alreadyReserved?"Reservado":product.stock<=0?"Sem estoque":"Reservar"}<small>{alreadyReserved?"Aguardando retirada":product.stock<=0?"Consulte a recepção":"Retire na recepção"}</small></span><MenuArrowIcon size={19}/></button>
+          {product.purchaseEnabled?<button type="button" className="store-buy-future" disabled={product.stock<=0||alreadyReserved} onClick={(event)=>{event.stopPropagation();setSelectedProduct(product)}}>Pagar com Pix</button>:null}
         </div>
       </motion.article>})}</section>:<div className="store-empty"><MenuBagIcon size={34}/><strong>Nenhum produto nesta categoria</strong><p>Novos itens aparecem aqui assim que forem liberados.</p></div>}
     </div>
@@ -60,8 +79,20 @@ export default function Store(){
     open={Boolean(selectedProduct)}
     onOpenChange={(open)=>{if(!open)setSelectedProduct(null)}}
     onReserve={(product)=>reserveMutation.mutate(product)}
+    onPayNow={(product)=>payMutation.mutate(product)}
     reserving={reserveMutation.isPending}
+    paying={payMutation.isPending}
     alreadyReserved={Boolean(selectedProduct && reservedProductIds.has(selectedProduct.id))}
+  />
+  <PixPaymentDialog
+    product={paymentProduct}
+    payment={pixPayment}
+    open={Boolean(paymentProduct&&pixPayment)}
+    onOpenChange={(open)=>{if(!open){setPixPayment(null);setPaymentProduct(null);invalidateStore();}}}
+    onGenerateNew={()=>{if(paymentProduct&&!payMutation.isPending)payMutation.mutate(paymentProduct)}}
+    regenerating={payMutation.isPending}
+    onPaid={()=>invalidateStore()}
+    onViewReservations={()=>{setPixPayment(null);setPaymentProduct(null);invalidateStore();navigate("/perfil?section=reservas")}}
   />
   <ResponsiveDialog open={Boolean(confirmed)} onOpenChange={(open)=>{if(!open)setConfirmed(null)}} title="Reserva confirmada" description="Seu item ficou separado para retirada na recepção." closeButton={<button type="button" aria-label="Fechar">×</button>}>
     <div className="store-confirm"><span>✓</span><strong>{confirmed?.name}</strong><p>Apresente seu nome na recepção da ACCQUA para retirar. Se mudar de ideia, você pode cancelar pelo Perfil enquanto o status estiver como reservado.</p><button type="button" onClick={()=>{setConfirmed(null);navigate("/perfil")}}>Ver minhas reservas</button></div>

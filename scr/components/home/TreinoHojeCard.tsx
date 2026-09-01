@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { MenuArrowIcon, MenuPhoneIcon } from "../MenuIcons";
+import CompletionCheckmark from "../CompletionCheckmark";
 import type { HomeWorkoutSummary } from "../../lib/home";
 import { performHaptic } from "../../lib/appFeedback";
 import { consumeWorkoutCompletionTransition } from "../../lib/workoutCompletionTransition";
@@ -142,20 +143,7 @@ export default function TreinoHojeCard({
 
             {phase === "confirming" ? (
               <motion.div layout className="accqua-workout-hero-completed">
-                <motion.svg viewBox="0 0 48 48" aria-hidden="true" initial={{ scale: .82, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-                  <circle cx="24" cy="24" r="20" fill="rgba(255,209,40,.13)" stroke="rgba(255,209,40,.48)" />
-                  <motion.path
-                    d="M15 24.5l6 6L34 17"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: .52, ease: [0.2,.8,.2,1] }}
-                  />
-                </motion.svg>
+                <CompletionCheckmark />
                 <div aria-live="polite"><h2>Treino concluído!</h2><p>Seu progresso de hoje foi atualizado.</p></div>
               </motion.div>
             ) : workout?.status === "ready" && workout.plan ? (
