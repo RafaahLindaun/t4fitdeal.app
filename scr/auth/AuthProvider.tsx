@@ -58,66 +58,43 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
 const normalizeDigits = (value: string) => value.replace(/\D/g, "");
 
-/**
- * Papel de acesso nunca deve ser inferido de e-mail ou user_metadata.
- * O perfil persistido/RPC e, em ultimo caso, app_metadata (server-controlled)
- * sao as unicas fontes aceitas pelo cliente.
- */
 function normalizeRole(value: unknown): AppRole {
   const role = String(value ?? "").trim().toLowerCase();
-
-  if (
-    role === "professor" ||
-    role === "teacher" ||
-    role === "personal"
-  ) {
-    return "professor";
-  }
-
-  if (role === "reception" || role === "recepcao") {
-    return "reception";
-  }
-
+  if (["professor", "teacher", "personal"].includes(role)) return "professor";
+  if (["reception", "recepcao"].includes(role)) return "reception";
   if (role === "admin") return "admin";
   return "student";
 }
 
 function normalizeStatus(value: unknown, role: AppRole): MembershipStatus {
-  const status = String(value ?? "").toLowerCase();
-  if (status === "active" || status === "ativo") return "active";
-  if (status === "inactive" || status === "inativo") return "inactive";
-  if (status === "blocked" || status === "bloqueado") return "blocked";
-  if (role !== "student") return "active";
-  return "pending";
+  const status = String(value ?? "").trim().toLowerCase();
+  if (["active", "ativo"].includes(status)) return "active";
+  if (["inactive", "inativo"].includes(status)) return "inactive";
+  if (["blocked", "bloqueado"].includes(status)) return "blocked";
+  return role === "student" ? "pending" : "active";
 }
 
 function normalizeApprovalStatus(value: unknown): AppApprovalStatus | null {
   const status = String(value ?? "").trim().toLowerCase();
-  if (status === "approved" || status === "active" || status === "ativo") {
-    return "approved";
-  }
-  if (status === "blocked" || status === "bloqueado") return "blocked";
-  if (status === "pending" || status === "pendente") return "pending";
+  if (["approved", "active", "ativo"].includes(status)) return "approved";
+  if (["blocked", "bloqueado"].includes(status)) return "blocked";
+  if (["pending", "pendente"].includes(status)) return "pending";
   return null;
 }
 
-function approvalToMembershipStatus(
-  approval: AppApprovalStatus,
-): MembershipStatus {
+function approvalToMembershipStatus(approval: AppApprovalStatus): MembershipStatus {
   if (approval === "approved") return "active";
   if (approval === "blocked") return "blocked";
   return "pending";
 }
 
 function normalizeProfile(raw: Record<string, unknown>, user: User): AppProfile {
-  const email = String(raw.email ?? user.email ?? "");
   const role = normalizeRole(raw.role);
   return {
     id: String(raw.id ?? user.id),
-    email,
+    email: String(raw.email ?? user.email ?? ""),
     fullName: String(raw.full_name ?? raw.nome ?? user.user_metadata?.full_name ?? ""),
     cpf: String(raw.cpf ?? ""),
     phone: String(raw.phone ?? raw.telefone ?? ""),
@@ -130,11 +107,10 @@ function normalizeProfile(raw: Record<string, unknown>, user: User): AppProfile 
 }
 
 function fallbackProfile(user: User): AppProfile {
-  const email = user.email ?? "";
   const role = normalizeRole(user.app_metadata?.role);
   return {
     id: user.id,
-    email,
+    email: user.email ?? "",
     fullName: String(user.user_metadata?.full_name ?? user.user_metadata?.nome ?? ""),
     cpf: String(user.user_metadata?.cpf ?? ""),
     phone: String(user.user_metadata?.phone ?? ""),
@@ -143,9 +119,7 @@ function fallbackProfile(user: User): AppProfile {
     objective: String(user.user_metadata?.objective ?? ""),
     role,
     status: normalizeStatus(
-      user.user_metadata?.status ??
-        user.user_metadata?.membership_status ??
-        user.user_metadata?.app_access_status,
+      user.user_metadata?.status ?? user.user_metadata?.membership_status ?? user.user_metadata?.app_access_status,
       role,
     ),
   };
@@ -154,48 +128,47 @@ function fallbackProfile(user: User): AppProfile {
 async function withTimeout<T>(promise: PromiseLike<T>, ms = 6500): Promise<T> {
   return await Promise.race([
     Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
-      window.setTimeout(() => reject(new Error("timeout")), ms),
-    ),
+    new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error("timeout")), ms)),
   ]);
 }
 
-async function loadCanonicalAccessStatus(
-  userId: string,
-): Promise<AppApprovalStatus | null> {
+async function loadCanonicalAccessStatus(userId: string): Promise<AppApprovalStatus | null> {
   if (!isSupabaseConfigured) return null;
-
   try {
-    const rpc = await withTimeout(
-      supabase.rpc("get_my_accqua_access_v4"),
-    );
-
+    const rpc = await withTimeout(supabase.rpc("get_my_accqua_access_v4"));
     if (!rpc.error && rpc.data) {
       const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
       const status = normalizeApprovalStatus(
-        typeof row === "object" && row !== null
-          ? (row as Record<string, unknown>).status
-          : row,
+        typeof row === "object" && row !== null ? (row as Record<string, unknown>).status : row,
       );
       if (status) return status;
     }
 
     const direct = await withTimeout(
-      supabase
-        .from("accqua_app_approval")
-        .select("status")
-        .eq("user_id", userId)
-        .maybeSingle(),
+      supabase.from("accqua_app_approval").select("status").eq("user_id", userId).maybeSingle(),
     );
-
-    if (!direct.error && direct.data) {
-      return normalizeApprovalStatus(direct.data.status);
-    }
+    if (!direct.error && direct.data) return normalizeApprovalStatus(direct.data.status);
   } catch {
     return null;
   }
-
   return null;
+}
+
+async function edgeFunctionMessage(error: unknown, fallback: string) {
+  const context = (error as { context?: unknown } | null)?.context as
+    | { clone?: () => Response; json?: () => Promise<unknown> }
+    | undefined;
+  try {
+    const response = typeof context?.clone === "function" ? context.clone() : context;
+    if (response && typeof response.json === "function") {
+      const payload = (await response.json()) as { message?: unknown };
+      const message = String(payload?.message ?? "").trim();
+      if (message) return message;
+    }
+  } catch {
+    // Keep the safe fallback below.
+  }
+  return fallback;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -216,65 +189,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let resolvedProfile = fallback;
-
     try {
-      const rpcResult = await withTimeout(
-        supabase.rpc("get_my_accqua_profile"),
-      );
-
-      if (
-        !rpcResult.error &&
-        rpcResult.data &&
-        typeof rpcResult.data === "object"
-      ) {
-        const rpcProfile = Array.isArray(rpcResult.data)
-          ? rpcResult.data[0]
-          : rpcResult.data;
-
+      const rpcResult = await withTimeout(supabase.rpc("get_my_accqua_profile"));
+      if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === "object") {
+        const rpcProfile = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
         if (rpcProfile && typeof rpcProfile === "object") {
-          resolvedProfile = normalizeProfile(
-            rpcProfile as Record<string, unknown>,
-            user,
-          );
+          resolvedProfile = normalizeProfile(rpcProfile as Record<string, unknown>, user);
         }
       } else {
         const { data, error } = await withTimeout(
-          supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .maybeSingle(),
+          supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         );
-
-        if (!error && data) {
-          resolvedProfile = normalizeProfile(
-            data as Record<string, unknown>,
-            user,
-          );
-        }
+        if (!error && data) resolvedProfile = normalizeProfile(data as Record<string, unknown>, user);
       }
     } catch {
       resolvedProfile = fallback;
     }
 
-    // A tabela accqua_app_approval é a única fonte de verdade para
-    // permitir a entrada no aplicativo. profiles.status fica apenas como
-    // espelho de compatibilidade para as telas administrativas antigas.
     const approval = await loadCanonicalAccessStatus(user.id);
-    resolvedProfile = {
+    setProfile({
       ...resolvedProfile,
-      // Falha fechada: sem confirmação da tabela oficial, ninguém entra.
-      status: approval
-        ? approvalToMembershipStatus(approval)
-        : "pending",
-    };
-
-    setProfile(resolvedProfile);
+      status: approval ? approvalToMembershipStatus(approval) : "pending",
+    });
   }, []);
 
   useEffect(() => {
     let alive = true;
-
     const boot = async () => {
       try {
         if (!isSupabaseConfigured) return;
@@ -291,12 +231,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (alive) setLoading(false);
       }
     };
+    void boot();
 
-    boot();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === "PASSWORD_RECOVERY") {
         window.sessionStorage.setItem("accqua:password-recovery", "1");
       }
@@ -310,31 +247,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
-  const resolveEmail = async (identifier: string) => {
-    const clean = identifier.trim();
-    if (clean.includes("@")) return clean.toLowerCase();
-    const digits = normalizeDigits(clean);
-    if (!digits || !isSupabaseConfigured) return "";
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("email")
-      .or(`cpf.eq.${digits},phone.eq.${digits}`)
-      .maybeSingle();
-
-    return String(data?.email ?? "").toLowerCase();
-  };
-
   const signIn = async (identifier: string, password: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
       return { error: "O acesso está temporariamente indisponível. Tente novamente em instantes." };
     }
-    const email = await resolveEmail(identifier);
-    if (!email) {
-      return { error: "Não encontrei seu cadastro. Confira os dados ou fale com a recepção." };
+
+    const cleanIdentifier = identifier.trim();
+    if (!cleanIdentifier || !password) {
+      return { error: "Preencha seu acesso e sua senha." };
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: "E-mail, CPF, telefone ou senha incorretos." };
+
+    const { data, error } = await supabase.functions.invoke("login-identifier-v157", {
+      body: { identifier: cleanIdentifier, password },
+    });
+
+    if (error || !data?.access_token || !data?.refresh_token) {
+      return {
+        error: await edgeFunctionMessage(
+          error,
+          String(data?.message ?? "E-mail, CPF, telefone ou senha incorretos."),
+        ),
+      };
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: String(data.access_token),
+      refresh_token: String(data.refresh_token),
+    });
+    if (sessionError) return { error: "Não foi possível concluir o acesso. Tente novamente." };
     return {};
   };
 
@@ -358,8 +298,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: "O acesso está temporariamente indisponível. Tente novamente em instantes." };
     }
 
-    // Cadastro público nunca escolhe papel privilegiado. Promoção para
-    // professor/recepção/admin deve acontecer apenas pelo backend/gestão.
     const metadata = {
       full_name: input.fullName.trim(),
       nome: input.fullName.trim(),
@@ -379,11 +317,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: metadata,
       },
     });
-
     if (error) return { error: error.message };
 
     if (data.user) {
-      const baseProfile = {
+      await supabase.from("profiles").upsert({
         id: data.user.id,
         email: input.email.trim().toLowerCase(),
         full_name: input.fullName.trim(),
@@ -392,17 +329,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emergency_phone: normalizeDigits(input.emergencyPhone),
         birth_date: input.birthDate || null,
         objective: input.objective || null,
-      };
-
-      // Mantém compatibilidade com o Supabase já configurado. Se as políticas
-      // não permitirem inserir diretamente, o trigger criado nas migrações
-      // continua sendo a fonte oficial do perfil.
-      await supabase.from("profiles").upsert(baseProfile, { onConflict: "id" });
+      }, { onConflict: "id" });
     }
 
-    return {
-      message: "Cadastro enviado. Um professor, a administração ou a recepção precisa liberar seu acesso.",
-    };
+    return { message: "Cadastro enviado. Um professor, a administração ou a recepção precisa liberar seu acesso." };
   };
 
   const completeGoogleProfile = async (
@@ -411,7 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = session?.user;
     if (!user?.email) return { error: "Sessão do Google não encontrada." };
 
-    const payload = {
+    const { error } = await supabase.from("profiles").upsert({
       id: user.id,
       email: user.email,
       full_name: input.fullName.trim(),
@@ -420,9 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       emergency_phone: normalizeDigits(input.emergencyPhone),
       birth_date: input.birthDate || null,
       objective: input.objective || null,
-    };
-
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+    }, { onConflict: "id" });
     if (error) return { error: "Não foi possível salvar seus dados." };
     await loadProfile(user);
     return { message: "Dados salvos. Seu cadastro foi enviado para liberação." };
@@ -441,15 +369,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return { error: "O acesso está temporariamente indisponível. Tente novamente em instantes." };
     }
-    if (password.length < 8) {
-      return { error: "A nova senha precisa ter pelo menos 8 caracteres." };
-    }
+    if (password.length < 8) return { error: "A nova senha precisa ter pelo menos 8 caracteres." };
 
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      return { error: "Não foi possível atualizar sua senha. Abra novamente o link recebido por e-mail." };
-    }
-
+    if (error) return { error: "Não foi possível atualizar sua senha. Abra novamente o link recebido por e-mail." };
     window.sessionStorage.removeItem("accqua:password-recovery");
     return { message: "Senha alterada com sucesso." };
   };
@@ -467,34 +390,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const user = session?.user ?? null;
   const isTeam = Boolean(profile && ["professor", "reception", "admin"].includes(profile.role));
-  // O primeiro acesso já coleta os dados obrigatórios. O login pelo Google
-  // segue diretamente a autorização administrativa, sem uma segunda etapa
-  // de cadastro que possa prender o usuário.
   const landingPath = !user
     ? "/login"
     : profile?.status === "active"
       ? "/menu-teste"
       : "/aguardando";
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      session,
-      user,
-      profile,
-      loading,
-      isTeam,
-      landingPath,
-      signIn,
-      signInWithGoogle,
-      signUpFirstAccess,
-      completeGoogleProfile,
-      resetPassword,
-      updateRecoveredPassword,
-      signOut,
-      refreshProfile,
-    }),
-    [session, user, profile, loading, isTeam, landingPath],
-  );
+  const value = useMemo<AuthContextValue>(() => ({
+    session,
+    user,
+    profile,
+    loading,
+    isTeam,
+    landingPath,
+    signIn,
+    signInWithGoogle,
+    signUpFirstAccess,
+    completeGoogleProfile,
+    resetPassword,
+    updateRecoveredPassword,
+    signOut,
+    refreshProfile,
+  }), [session, user, profile, loading, isTeam, landingPath]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
