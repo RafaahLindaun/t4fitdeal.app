@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 type UnknownError = unknown;
 
 const INFRASTRUCTURE_PATTERNS = [
@@ -50,6 +52,10 @@ function rawMessage(error: UnknownError) {
   return "";
 }
 
+function isInfrastructureMessage(message: string) {
+  return INFRASTRUCTURE_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 /**
  * Converte falhas técnicas em mensagens seguras para Staff.
  * O erro real continua disponível para console/telemetria, mas SQL/PostgREST
@@ -66,9 +72,7 @@ export function staffFacingErrorMessage(
     if (pattern.test(message)) return friendly;
   }
 
-  if (INFRASTRUCTURE_PATTERNS.some((pattern) => pattern.test(message))) {
-    return fallback;
-  }
+  if (isInfrastructureMessage(message)) return fallback;
 
   // Mensagens curtas e já escritas para usuário em português podem passar.
   // Evita transformar validações de formulário em um erro genérico.
@@ -81,4 +85,27 @@ export function staffFacingErrorMessage(
 
 export function logStaffError(scope: string, error: UnknownError) {
   console.error(`[ACCQUA Staff/${scope}]`, error);
+}
+
+let globalToastGuardInstalled = false;
+
+/**
+ * Última barreira de segurança: páginas legadas ainda podem chamar
+ * toast.error(error.message). Se a string tiver assinatura de infraestrutura,
+ * a mensagem é sanitizada antes de chegar ao usuário. Validações normais e
+ * ReactNodes continuam passando sem alteração.
+ */
+export function installInfrastructureToastGuard() {
+  if (globalToastGuardInstalled) return;
+  globalToastGuardInstalled = true;
+
+  const originalError = toast.error.bind(toast);
+  const mutableToast = toast as typeof toast & { error: typeof toast.error };
+  mutableToast.error = ((message: Parameters<typeof toast.error>[0], data?: Parameters<typeof toast.error>[1]) => {
+    if (typeof message === "string" && isInfrastructureMessage(message)) {
+      console.error("[ACCQUA/toast-infrastructure-error]", message);
+      return originalError("Não foi possível concluir essa ação agora. Tente novamente.", data);
+    }
+    return originalError(message, data);
+  }) as typeof toast.error;
 }
