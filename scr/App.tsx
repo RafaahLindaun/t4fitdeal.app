@@ -18,6 +18,7 @@ const Pending = lazy(() => import("./pages/Pending"));
 const Treino = lazy(() => import("./pages/Treino"));
 const Cardio = lazy(() => import("./pages/Cardio"));
 const AdminArea = lazy(() => import("./pages/AdminArea"));
+const WorkoutBuilderEntry = lazy(() => import("./pages/WorkoutBuilderEntry"));
 const AdminWorkoutBuilder = lazy(() => import("./pages/AdminWorkoutBuilder"));
 const Profile = lazy(() => import("./pages/Profile"));
 const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery"));
@@ -30,7 +31,7 @@ const Diet = lazy(() => import("./pages/Diet"));
 const Store = lazy(() => import("./pages/Store"));
 const StoreAdmin = lazy(() => import("./pages/StoreAdmin"));
 const Aulas = lazy(() => import("./pages/Aulas"));
-const ClassesAdmin = lazy(() => import("./pages/ClassesAdmin"));
+const ClassesAdminV155 = lazy(() => import("./pages/ClassesAdminV155"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 export default function App() {
@@ -66,11 +67,12 @@ export default function App() {
                 <Route path="/area-accqua" element={<StaffLayout />}>
                   <Route index element={<AdminArea />} />
                   <Route path="loja" element={<StoreAdmin />} />
-                  <Route path="aulas" element={<ClassesAdmin />} />
+                  <Route path="aulas" element={<ClassesAdminV155 />} />
                   <Route path="ranking" element={<RankingStaff />} />
                   <Route path="notificacoes" element={<NotificationsStaff />} />
                   <Route path="alunos" element={<Navigate to="/area-accqua" replace />} />
-                  <Route path="montar" element={<AdminWorkoutBuilder />} />
+                  <Route path="montar" element={<WorkoutBuilderEntry />} />
+                  <Route path="montar/editor" element={<AdminWorkoutBuilder />} />
                 </Route>
               </Route>
               <Route path="/aguardando" element={<Pending />} />
