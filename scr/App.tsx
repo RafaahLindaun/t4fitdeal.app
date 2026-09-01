@@ -18,6 +18,7 @@ const Pending = lazy(() => import("./pages/Pending"));
 const Treino = lazy(() => import("./pages/Treino"));
 const Cardio = lazy(() => import("./pages/Cardio"));
 const AdminArea = lazy(() => import("./pages/AdminArea"));
+const WorkoutBuilderEntry = lazy(() => import("./pages/WorkoutBuilderEntry"));
 const AdminWorkoutBuilder = lazy(() => import("./pages/AdminWorkoutBuilder"));
 const Profile = lazy(() => import("./pages/Profile"));
 const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery"));
@@ -70,7 +71,8 @@ export default function App() {
                   <Route path="ranking" element={<RankingStaff />} />
                   <Route path="notificacoes" element={<NotificationsStaff />} />
                   <Route path="alunos" element={<Navigate to="/area-accqua" replace />} />
-                  <Route path="montar" element={<AdminWorkoutBuilder />} />
+                  <Route path="montar" element={<WorkoutBuilderEntry />} />
+                  <Route path="montar/editor" element={<AdminWorkoutBuilder />} />
                 </Route>
               </Route>
               <Route path="/aguardando" element={<Pending />} />
