@@ -13,6 +13,7 @@ import {
   rankingPeriodLabel,
   saveRankingPrize,
 } from "../lib/ranking";
+import { logStaffError, staffFacingErrorMessage } from "../lib/staffErrors";
 import "./ranking-staff.css";
 
 export default function RankingStaff() {
@@ -72,7 +73,8 @@ export default function RankingStaff() {
         queryClient.invalidateQueries({ queryKey: ["ranking-config"] }),
       ]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o prêmio.");
+      logStaffError("ranking-prize", error);
+      toast.error(staffFacingErrorMessage(error, "Não foi possível salvar o prêmio agora. Tente novamente."));
     } finally {
       setSaving(false);
     }
