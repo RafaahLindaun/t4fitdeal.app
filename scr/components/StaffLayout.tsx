@@ -41,9 +41,6 @@ export default function StaffLayout() {
         ? "PROFESSOR"
         : "EQUIPE";
 
-  // Build 1.5.6: todas as subpáginas que usam o fluxo documental do Staff
-  // compartilham o mesmo painel rolável. Ranking/Notificações não mantêm mais
-  // um scroll próprio que perde min-height:0.
   const usesDocumentScroll = [
     "students",
     "alerts",
@@ -63,8 +60,13 @@ export default function StaffLayout() {
     });
   }, [active]);
 
-  // Guard central: subpaginas Staff nao dependem mais de lembrar de bloquear
-  // acesso individualmente. RLS continua sendo a barreira definitiva no banco.
+  // Build 1.5.7: a tela “Como você quer começar?” precisa de mais área útil.
+  // Usa exatamente o mesmo estado/classe/transition do botão manual da sidebar.
+  useEffect(() => {
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    if (location.pathname === "/area-accqua/montar") setSidebarCollapsed(true);
+  }, [location.pathname]);
+
   if (!user) return <Navigate to="/login" replace />;
   if (!profile || profile.status !== "active") return <Navigate to="/aguardando" replace />;
   if (!isStaff) return <Navigate to="/menu-teste" replace />;
