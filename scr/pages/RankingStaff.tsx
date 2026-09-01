@@ -29,7 +29,7 @@ export default function RankingStaff() {
   const currentPeriod = rankingPeriodKey();
   const nextPeriod = nextRankingPeriodKey();
   const rankingQuery = useQuery({
-    queryKey: ["ranking", "monthly", "1.5.3"],
+    queryKey: ["ranking", "monthly", "1.5.6"],
     queryFn: loadAccquaRanking,
     enabled: isStaff,
     staleTime: 20_000,
@@ -83,7 +83,7 @@ export default function RankingStaff() {
   return (
     <main className="ranking-staff-page">
       <section className="ranking-staff-heading">
-        <div><small>ÁREA ACCQUA</small><h1>Ranking</h1><p>Prêmio mensal e acompanhamento da disputa.</p></div>
+        <div><small>ÁREA ACCQUA</small><h1>Ranking</h1><p>Prêmio mensal e acompanhamento da disputa por dias treinados.</p></div>
       </section>
 
       <div className="ranking-staff-grid">
@@ -98,8 +98,8 @@ export default function RankingStaff() {
 
         <section className="ranking-staff-card ranking-race-panel">
           <header><div><small>DISPUTA</small><h2>Quem está perto de ganhar</h2></div><span>Top 5 do mês</span></header>
-          {rankingQuery.isLoading ? <div className="ranking-staff-empty">Carregando ranking...</div> : !topFive.length ? <div className="ranking-staff-empty">Ainda não há treinos válidos neste mês.</div> : <div className="ranking-race-list">{topFive.map((entry) => <article key={entry.studentId} className={entry.workoutsToLeader <= 2 && entry.position > 1 ? "is-close" : ""}><span className="ranking-race-position">{entry.position}º</span><span className="ranking-race-avatar">{entry.avatarUrl ? <img src={entry.avatarUrl} alt="" /> : entry.firstName.slice(0,2).toUpperCase()}</span><div><strong>{entry.firstName}</strong><small>{entry.points} treino{entry.points === 1 ? "" : "s"}{entry.position > 1 ? ` · a ${entry.workoutsToLeader} do líder` : " · líder"}</small>{entry.position > 1 && entry.workoutsToLeader <= 2 ? <em>🔥 Disputa acirrada</em> : null}</div></article>)}</div>}
-          <p className="ranking-race-note">A distância exibida aqui vem da mesma RPC usada no Ranking do aluno.</p>
+          {rankingQuery.isLoading ? <div className="ranking-staff-empty">Carregando ranking...</div> : !topFive.length ? <div className="ranking-staff-empty">Ainda não há dias válidos neste mês.</div> : <div className="ranking-race-list">{topFive.map((entry) => <article key={entry.studentId} className={entry.daysToLeader <= 2 && entry.position > 1 ? "is-close" : ""}><span className="ranking-race-position">{entry.position}º</span><span className="ranking-race-avatar">{entry.avatarUrl ? <img src={entry.avatarUrl} alt="" /> : entry.firstName.slice(0,2).toUpperCase()}</span><div><strong>{entry.firstName}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"}{entry.position > 1 ? ` · a ${entry.daysToLeader} dia${entry.daysToLeader === 1 ? "" : "s"} treinado${entry.daysToLeader === 1 ? "" : "s"} do líder` : " · líder"}</small>{entry.position > 1 && entry.daysToLeader <= 2 ? <em>🔥 Disputa acirrada</em> : null}</div></article>)}</div>}
+          <p className="ranking-race-note">A distância exibida aqui vem da mesma RPC de dias treinados usada no Ranking do aluno.</p>
         </section>
       </div>
     </main>
