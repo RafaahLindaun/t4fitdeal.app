@@ -63,8 +63,8 @@ requireMatch("PIX/webhook-completed", webhookFn, /OPENPIX:CHARGE_COMPLETED[\s\S]
 requireMatch("PIX/webhook-expired", webhookFn, /OPENPIX:CHARGE_EXPIRED[\s\S]*?expire_pix_payment_v1_5_2/, "expiração da Woovi não libera o hold");
 
 // UI: ação nova, QR real, contador, copiar em um toque, Realtime e celebração compartilhada.
-requireMatch("PIX/pay-now-copy", productDialog, />Pagar agora</, "CTA Pagar agora não está visível");
-requireMatch("PIX/pay-now-subtitle", productDialog, />Retirada garantida</, "CTA perdeu a promessa de retirada garantida");
+requireMatch("PIX/pay-now-copy", productDialog, /"Pagar agora"/, "CTA Pagar agora não está visível");
+requireMatch("PIX/pay-now-subtitle", productDialog, /"Retirada garantida"/, "CTA perdeu a promessa de retirada garantida");
 requireMatch("PIX/pay-now-handler", productDialog, /if \(!payDisabled\) onPayNow\(product\);/, "CTA Pagar agora não está ligado ao fluxo Pix");
 requireMatch("PIX/remove-legacy-copy", productDialog, /description="Escolha reservar para pagar na recepção ou pagar agora via Pix\."/, "descrição do modal não reflete o novo pagamento");
 requireMatch("PIX/clipboard-api", pixDialog, /navigator\.clipboard\?\.writeText/, "copia-e-cola deixou de usar Clipboard API");
