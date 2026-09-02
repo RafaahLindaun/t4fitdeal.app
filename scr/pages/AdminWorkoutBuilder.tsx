@@ -642,6 +642,7 @@ export default function AdminWorkoutBuilder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const studentId = searchParams.get("student") ?? "";
+  const modelMode = searchParams.get("modo") === "modelo";
   const returnStudentId =
     searchParams.get("returnStudent") ?? studentId;
   const { user, profile, loading, landingPath } = useAuth();
@@ -1151,6 +1152,7 @@ export default function AdminWorkoutBuilder() {
     return <Navigate to="/area-accqua" replace />;
   }
   const returnToStudent = () => {
+    if (modelMode) { navigate("/area-accqua?section=templates"); return; }
     navigate(
       returnStudentId
         ? `/area-accqua?student=${returnStudentId}`
@@ -1533,7 +1535,7 @@ export default function AdminWorkoutBuilder() {
       localStorage.removeItem(
         `accqua-program-draft:${user.id}:${student.id}`,
       );
-      setToast("Treino publicado para o aluno.");
+      setToast(modelMode ? "Modelo salvo na biblioteca da equipe." : "Treino publicado para o aluno.");
       window.setTimeout(returnToStudent, 900);
     } catch (error) {
       setToast(

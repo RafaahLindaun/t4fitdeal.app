@@ -33,6 +33,8 @@ export type WorkoutStudent = {
   avatarUrl: string;
 };
 
+export const WORKOUT_TEMPLATE_STUDENT_ID = "00000000-0000-0000-0000-000000000159";
+
 export type ExerciseLibraryItem = {
   id: string;
   slug: string;
@@ -1334,6 +1336,23 @@ export async function getWorkoutStudentById(
 ): Promise<WorkoutStudent | null> {
   if (!isSupabaseConfigured) return null;
 
+  if (studentId === WORKOUT_TEMPLATE_STUDENT_ID) {
+    const { data: authData } = await supabase.auth.getUser();
+    const staffId = authData.user?.id ?? "";
+    return {
+      id: WORKOUT_TEMPLATE_STUDENT_ID,
+      fullName: "Modelo da equipe",
+      cpf: "", rg: "", registrationCode: "MODELO", gympassNumber: "",
+      membershipValidUntil: "", membershipPaymentDay: 0, membershipLastPayment: "",
+      membershipConfirmedAt: "", membershipNotes: "",
+      email: authData.user?.email ?? "", phone: "", emergencyPhone: "", birthDate: "",
+      objective: "Modelo reutilizável", role: "student", status: "active",
+      linkedProfessorId: staffId, linkedProfessorName: "Equipe ACCQUA", linkedProfessorEmail: authData.user?.email ?? "",
+      hasActiveWorkout: false, activeWorkoutCount: 0, workoutUpdatedAt: "", reviewAt: "",
+      programCode: "MODELO", avatarUrl: "",
+    };
+  }
+
   const guidedRpc = await supabase.rpc(
     "get_accqua_student_guided",
     {
@@ -1832,6 +1851,16 @@ export async function resolveStudentWorkoutAlerts(
 export async function publishAdminProgram(
   input: PublishAdminProgramInput,
 ): Promise<void> {
+  if (input.studentId === WORKOUT_TEMPLATE_STUDENT_ID) {
+    const modelName = input.programName.trim() || `Modelo ${input.splitCode}`;
+    await saveAdminProgramTemplate(input.staffId, {
+      name: modelName,
+      splitCode: input.splitCode,
+      payload: { programName: modelName, notes: input.notes, reviewAt: input.reviewAt, routines: input.routines, cardio: input.cardio },
+    });
+    return;
+  }
+
   if (!isSupabaseConfigured) {
     throw new Error("O Supabase não está configurado.");
   }
