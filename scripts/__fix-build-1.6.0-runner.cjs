@@ -30,4 +30,8 @@ if (drawerIndex >= 0) {
   }
 }
 
+// Nested template literals in the generated TS/MJS must keep their interpolation
+// for the generated file, not execute while this patch runner is evaluating.
+source = source.replaceAll('\\\\${', '\\${');
+
 fs.writeFileSync(file, source, 'utf8');
