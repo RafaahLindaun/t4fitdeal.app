@@ -16,9 +16,9 @@ const migration = "supabase/migrations/20260901203000_build_1_5_7_login_reservat
 const loginFn = "supabase/functions/login-identifier-v157/index.ts";
 const recipeFn = "supabase/functions/generate-recipe-ai/index.ts";
 
-requireMatch("157/version", "package.json", /"version":\s*"1\.5\.7"/, "package não está em 1.5.7");
-requireMatch("157/contracts", "package.json", /verify-visual-contracts-1\.5\.7\.mjs/, "npm não executa contratos 1.5.7");
-requireMatch("157/css-last", "scr/main.tsx", /build-1\.5\.6\.css";\s*\nimport "\.\/styles\/build-1\.5\.7\.css";/, "camada 1.5.7 não é a última da cascata");
+requireMatch("157/version", "package.json", /"version":\s*"1\.5\.(?:[7-9]|\d{2,})"/, "package ficou abaixo de 1.5.7");
+requireMatch("157/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:[7-9]|\d{2,})\.mjs/, "npm não preserva contratos 1.5.7+");
+requireMatch("157/css-last", "scr/main.tsx", /build-1\.5\.6\.css";\s*\nimport "\.\/styles\/build-1\.5\.7\.css";/, "camada 1.5.7 não vem depois da 1.5.6");
 
 requireAll("157/login-edge", loginFn, [/cpf\.eq\.\$\{normalized\}/, /phone\.eq\.\$\{normalized\}/, /signInWithPassword/, /access_token/, /refresh_token/], "endpoint não resolve CPF/telefone + senha com segurança");
 requireAbsent("157/login-no-email-leak", loginFn, /return json\(\{[^}]*email:/, "endpoint pode devolver o e-mail resolvido");
@@ -37,11 +37,11 @@ requireAll("157/staff-header-component", "scr/components/StaffSubPageHeader.tsx"
 requireAll("157/staff-headers", "scr/pages/NotificationsStaff.tsx", [/StaffSubPageHeader/, /title="Notificações"/], "Notificações não usa header compartilhado");
 requireAll("157/staff-ranking-header", "scr/pages/RankingStaff.tsx", [/StaffSubPageHeader/, /title="Ranking"/], "Ranking não usa header compartilhado");
 requireAll("157/staff-classes-header", "scr/pages/ClassesAdminV155.tsx", [/StaffSubPageHeader/, /title="Gestão de aulas"/], "Aulas não usa header compartilhado");
-requireAll("157/sidebar-autocollapse", "scr/components/StaffLayout.tsx", [/location\.pathname === "\/area-accqua\/montar"/, /setSidebarCollapsed\(true\)/], "entrada do montador não recolhe a sidebar pelo estado canônico");
+requireAll("157/sidebar-autocollapse", "scr/components/StaffLayout.tsx", [/location\.pathname\.(?:startsWith\("\/area-accqua\/montar"\)|includes\("\/area-accqua\/montar"\))/, /setSidebarCollapsed\(true\)/], "fluxo do montador não recolhe a sidebar pelo estado canônico");
 requireAll("157/sidebar-hover", css, [/accqua-sidebar-wiggle-v157/, /rotate\(-8deg\)/, /accqua-sidebar-underline-v157/, /prefers-reduced-motion:no-preference/], "sidebar perdeu hover sutil/acessível");
 
 requireAll("157/method-hover", css, [/workout-entry-methods button p/, /button:hover p/, /opacity: 0/], "descrição dos métodos não está progressivamente revelada no desktop");
-requireAll("157/builder-footer", css, [/admin-builder-shell[\s\S]*?padding-bottom: max\(138px/, /admin-builder-mobile-footer-copy > strong[\s\S]*?white-space: normal/, /admin-builder-mobile-primary[\s\S]*?max-width: 46vw/], "footer pode sobrepor/cortar dados após IA");
+requireAll("157/builder-footer", css, [/admin-builder-shell[\s\S]*?padding-bottom: max\(138px/, /admin-builder-mobile-footer-copy > strong[\s\S]*?white-space: normal/, /admin-builder-mobile-primary[\s\S]*?max-width: 46vw/], "footer 1.5.7 perdeu seu fallback de compatibilidade");
 requireAll("157/home-icons", css, [/accqua-membership-shield/, /accqua-notification-button/, /background: #0a2a54/, /border-radius: 12px/], "ícones do topo da Início não compartilham o card visual");
 requireAll("157/quick-copy", "scr/components/Build157UiBridge.tsx", [/Montar treino rápido/, /Selecionar treino rápido/], "rótulo Selecionar treino rápido não foi aplicado");
 requireMatch("157/profile-icons", css, /admin-training-action > span[\s\S]*?color: var\(--accent\)/, "ícones dos cards de treino não estão amarelos");

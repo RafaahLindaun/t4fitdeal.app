@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import Build158MotionBridge from "./Build158MotionBridge";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
+import { staffButtonVariants, staffMotionTransition } from "../lib/staffMotion";
 import "./staff-layout.css";
 import "./staff-layout-v1484.css";
 
@@ -60,11 +63,11 @@ export default function StaffLayout() {
     });
   }, [active]);
 
-  // Build 1.5.7: a tela “Como você quer começar?” precisa de mais área útil.
-  // Usa exatamente o mesmo estado/classe/transition do botão manual da sidebar.
+  // Build 1.5.8: todo o fluxo de montagem precisa da maior largura útil possível.
+  // A sidebar continua disponível, apenas entra no mesmo estado compacto do botão manual.
   useEffect(() => {
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
-    if (location.pathname === "/area-accqua/montar") setSidebarCollapsed(true);
+    if (location.pathname.startsWith("/area-accqua/montar")) setSidebarCollapsed(true);
   }, [location.pathname]);
 
   if (!user) return <Navigate to="/login" replace />;
@@ -101,7 +104,7 @@ export default function StaffLayout() {
         </div>
         <nav>
           {items.map((item) => (
-            <button
+            <motion.button
               key={item.key}
               type="button"
               className={active === item.key ? "is-active" : ""}
@@ -109,10 +112,16 @@ export default function StaffLayout() {
               aria-label={sidebarCollapsed ? item.label : undefined}
               title={sidebarCollapsed ? item.label : undefined}
               onClick={() => navigate(item.href)}
+              initial="idle"
+              animate="idle"
+              whileHover="hover"
+              whileTap="tap"
+              variants={staffButtonVariants}
+              transition={staffMotionTransition}
             >
               <span>{item.icon}</span>
               <strong>{item.label}</strong>
-            </button>
+            </motion.button>
           ))}
         </nav>
         <div className="accqua-staff-sidebar-account" aria-hidden={sidebarCollapsed ? "true" : undefined}>
@@ -124,23 +133,29 @@ export default function StaffLayout() {
 
       <nav className="accqua-staff-mobile-nav" data-tab-swipe-ignore aria-label="Seções da Área ACCQUA" data-testid="staff-mobile-nav">
         {items.map((item) => (
-          <button
+          <motion.button
             ref={(node) => { mobileItemRefs.current[item.key] = node; }}
             key={item.key}
             type="button"
             className={active === item.key ? "is-active" : ""}
             aria-current={active === item.key ? "page" : undefined}
             onClick={() => navigate(item.href)}
+            initial="idle"
+            animate="idle"
+            whileTap="tap"
+            variants={staffButtonVariants}
+            transition={staffMotionTransition}
           >
             {item.icon}
             <span>{item.label}</span>
-          </button>
+          </motion.button>
         ))}
       </nav>
 
       <section className="accqua-staff-content" aria-live="polite">
         <div className="accqua-staff-route" key={location.pathname} data-staff-route={location.pathname}>
           <Outlet />
+          {location.pathname.startsWith("/area-accqua/montar") ? <Build158MotionBridge /> : null}
         </div>
       </section>
     </div>

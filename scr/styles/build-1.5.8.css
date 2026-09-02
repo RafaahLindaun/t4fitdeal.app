@@ -1,0 +1,646 @@
+/* ACCQUA Sports — Build 1.5.8
+   Montar Treino: hierarchy, reflow, progressive disclosure and shared Staff motion. */
+
+/* --------------------------------------------------------------------------
+   Shared Staff interaction language
+   -------------------------------------------------------------------------- */
+.staff-action-card {
+  min-width: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 8px 12px;
+  padding: 18px;
+  text-align: left;
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  background: rgba(255,255,255,.035);
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+.staff-action-card-icon {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #75aef8;
+  background: rgba(59,130,246,.12);
+}
+.staff-action-card.is-ai .staff-action-card-icon { color: var(--accent); background: rgba(255,209,40,.1); }
+.staff-action-card-copy { min-width: 0; display: grid; gap: 6px; }
+.staff-action-card-copy strong { font-size: 16px; line-height: 1.2; }
+.staff-action-card-copy p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+.staff-action-card-meta {
+  grid-column: 2;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.05);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+@media (hover:hover) and (pointer:fine) {
+  .staff-action-card:hover {
+    border-color: rgba(242,194,48,.28);
+    background: rgba(255,255,255,.055);
+    box-shadow: 0 10px 26px rgba(0,0,0,.16);
+  }
+}
+
+/* Entry methods are now the shared card itself, not a second nested layout. */
+.workout-entry-methods > .staff-action-card {
+  min-height: 154px;
+  grid-template-columns: 46px minmax(0,1fr);
+  grid-template-rows: auto 1fr;
+  align-content: start;
+}
+.workout-entry-methods > .staff-action-card > .staff-action-card-icon { width: 44px; height: 44px; }
+.workout-entry-methods > .staff-action-card > .staff-action-card-copy { align-self: start; }
+.workout-entry-methods > .staff-action-card > .staff-action-card-meta { align-self: end; }
+
+/* --------------------------------------------------------------------------
+   Guided assistant — one question, one progress source, physical answers
+   -------------------------------------------------------------------------- */
+.workout-entry-guide-v158 { overflow: hidden; }
+.workout-entry-guide-progress-v158 { display: grid; gap: 7px; margin-bottom: 16px; }
+.workout-entry-guide-progress-v158 > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.workout-entry-guide-progress-v158 small,
+.workout-entry-guide-progress-v158 strong { color: var(--text-secondary); font-size: 10px; font-weight: 850; letter-spacing: .06em; }
+.workout-entry-guide-progress-v158 > i { height: 4px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.09); }
+.workout-entry-guide-progress-v158 > i > b { display: block; width: 100%; height: 100%; transform-origin: left center; border-radius: inherit; background: var(--accent); }
+.workout-entry-question-v158 { min-width: 0; touch-action: pan-y; }
+.workout-entry-answer-grid { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 9px !important; }
+.workout-entry-answer-grid.is-days { grid-template-columns: repeat(3,minmax(0,1fr)) !important; }
+.workout-entry-answer-card {
+  min-width: 0;
+  min-height: 52px !important;
+  position: relative;
+  padding: 10px 38px 10px 12px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  border-radius: 13px !important;
+  background: rgba(255,255,255,.04) !important;
+  box-shadow: 0 0 0 transparent;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+.workout-entry-answer-card[data-selected="true"] {
+  border-color: var(--accent) !important;
+  background: rgba(242,194,48,.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(242,194,48,.12);
+}
+.workout-entry-answer-check {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  color: #07162d;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.workout-entry-guide-nav { display: flex !important; align-items: center; justify-content: space-between; gap: 12px; margin-top: 3px; }
+.workout-entry-guide-nav > button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; color: var(--text-primary); border: 1px solid rgba(255,255,255,.09); border-radius: 11px; background: rgba(255,255,255,.035); }
+.workout-entry-guide-nav > button:disabled { opacity: .35; }
+.workout-entry-guide-nav small { color: var(--text-tertiary); font-size: 10px; }
+.workout-entry-guide-finish { min-height: 230px; display: grid; place-items: center; align-content: center; gap: 8px; text-align: center; }
+.workout-entry-guide-finish > span { width: 46px; height: 46px; display: grid; place-items: center; color: #07162d; border-radius: 50%; background: var(--accent); }
+.workout-entry-guide-finish strong { font-size: 19px; }
+.workout-entry-guide-finish p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+@media (hover:hover) and (pointer:fine) {
+  .workout-entry-answer-card:hover { border-color: rgba(242,194,48,.26) !important; background: rgba(255,255,255,.06) !important; box-shadow: 0 9px 22px rgba(0,0,0,.14); }
+}
+
+/* --------------------------------------------------------------------------
+   Builder root — correct the containing block first
+   -------------------------------------------------------------------------- */
+[data-staff-route^="/area-accqua/montar"] {
+  width: 100%;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+[data-staff-route^="/area-accqua/montar"] > .admin-builder-screen,
+.admin-builder-screen {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+.admin-builder-screen *,
+.admin-builder-shell > * { min-width: 0; }
+.admin-builder-shell,
+.admin-builder-program-card,
+.admin-builder-routines,
+.admin-builder-routine-card,
+.admin-builder-selected,
+.admin-builder-library,
+.admin-builder-cardio,
+.admin-builder-desktop-aside,
+.admin-builder-footer { max-width: 100%; }
+
+/* Compact progress: one source only. */
+.admin-builder-step-nav {
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 8px;
+  border: 0;
+  background: transparent;
+}
+.admin-builder-step-nav > button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 9px;
+  display: grid;
+  grid-template-columns: 24px minmax(0,1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 7px;
+  text-align: left;
+  border-radius: 12px;
+}
+.admin-builder-step-nav > button > span { grid-row: 1 / span 2; width: 24px; height: 24px; }
+.admin-builder-step-nav > button strong { overflow: hidden; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.admin-builder-step-nav > button em { overflow: hidden; font-size: 9px; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Program: hierarchy first, secondary preparation collapsed by existing trigger. */
+.admin-builder-program-card { min-height: 0; }
+.admin-builder-split-start,
+.admin-builder-program-fields,
+.admin-builder-program-heading,
+.admin-builder-link-status { min-width: 0; }
+.admin-builder-split-options {
+  width: 100% !important;
+  max-width: 100%;
+  margin-inline: 0 !important;
+  padding: 4px 0 6px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+.admin-builder-split-options > button {
+  flex: 0 0 auto !important;
+  min-width: 78px !important;
+  max-width: 150px;
+}
+.admin-builder-program-fields { grid-template-columns: minmax(0,1.5fr) minmax(180px,.5fr) !important; }
+
+/* Days: true responsive reflow, never four rigid columns. */
+.admin-builder-routine-tabs {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit,minmax(240px,1fr));
+  gap: 10px;
+  overflow: visible !important;
+}
+.admin-builder-routine-tabs > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 64px;
+  padding: 10px 12px !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0,1fr);
+  grid-template-rows: auto auto;
+  justify-items: start;
+  align-content: center;
+  column-gap: 10px;
+  opacity: .72;
+  transform: scale(.985);
+  transition: transform 170ms ease, opacity 170ms ease, border-color 170ms ease, background-color 170ms ease;
+}
+.admin-builder-routine-tabs > button > span {
+  grid-row: 1 / span 2;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(255,255,255,.055);
+}
+.admin-builder-routine-tabs > button > small { max-width: 100%; white-space: normal; line-height: 1.25; }
+.admin-builder-routine-tabs > button.is-active { opacity: 1; transform: scale(1); }
+.admin-builder-routine-tabs > button.is-add { min-width: 64px !important; grid-template-columns: 1fr; justify-items: center; }
+.admin-builder-routine-card,
+.admin-builder-routine-fields,
+.admin-builder-week-days { min-width: 0; }
+.admin-builder-routine-fields { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+.admin-builder-routine-card h2,
+.admin-builder-routine-card p,
+.admin-builder-routine-card small { overflow-wrap: anywhere; }
+
+/* Exercises: local scrollers and readable labels. */
+.admin-builder-library,
+.admin-builder-selected,
+.admin-builder-desktop-aside { min-height: 0; }
+.admin-builder-library { display: flex; flex-direction: column; }
+.admin-builder-library-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+.admin-builder-groups,
+.admin-v11-library-groups {
+  width: 100%;
+  max-width: 100%;
+  display: flex !important;
+  gap: 8px;
+  padding-right: 24px !important;
+  padding-bottom: 6px;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+.admin-builder-groups::-webkit-scrollbar,
+.admin-v11-library-groups::-webkit-scrollbar { display: none; }
+.admin-builder-groups > button,
+.admin-v11-library-groups > button { flex: 0 0 auto; }
+.admin-builder-library-list article > div,
+.admin-v11-library-results article > div { min-width: 0; }
+.admin-builder-library-list article strong,
+.admin-v11-library-results article strong,
+.admin-builder-exercise-copy strong {
+  white-space: normal !important;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: clip !important;
+}
+.admin-builder-exercise-copy small {
+  white-space: normal !important;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: clip !important;
+}
+.admin-builder-reorder-handle { cursor: grab; }
+.admin-builder-reorder-handle:active { cursor: grabbing; }
+.admin-builder-reorder-item { transition: transform 170ms cubic-bezier(.22,1,.36,1); }
+@media (hover:hover) and (pointer:fine) {
+  .admin-builder-reorder-item:hover .admin-builder-exercise { border-color: rgba(255,255,255,.16); background: color-mix(in srgb,var(--surface-raised) 64%,transparent); box-shadow: 0 8px 22px rgba(0,0,0,.12); }
+  .admin-builder-reorder-item:hover .admin-builder-reorder-handle { transform: translateY(-1px); border-color: rgba(242,194,48,.25); }
+}
+
+/* --------------------------------------------------------------------------
+   Desktop: the editor owns the content column and shows only the active task
+   -------------------------------------------------------------------------- */
+@media (min-width:1024px) {
+  [data-staff-route^="/area-accqua/montar"] { height: 100dvh; }
+  [data-staff-route^="/area-accqua/montar"] > .admin-builder-screen { height: 100dvh !important; min-height: 0 !important; overflow: hidden !important; }
+
+  .admin-builder-shell {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 10px 14px 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr);
+    grid-template-rows: auto auto auto minmax(0,1fr) auto;
+    gap: 9px 12px;
+    overflow: hidden !important;
+  }
+  .admin-builder-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    position: static !important;
+    height: 48px;
+    margin: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+  .admin-builder-step-nav { grid-column: 1 / -1; grid-row: 2; }
+  .admin-builder-guided-sticky,
+  .admin-builder-mobile-progress,
+  .admin-builder-mobile-step-controls { display: none !important; }
+
+  .admin-builder-readiness,
+  .admin-builder-program-card,
+  .admin-builder-routines,
+  .admin-builder-selected,
+  .admin-builder-library,
+  .admin-builder-cardio,
+  .admin-builder-desktop-aside { display: none !important; margin: 0 !important; }
+
+  .admin-builder-readiness { grid-column: 1 / -1; grid-row: 3; }
+  .admin-builder-screen.is-step-programa .admin-builder-readiness,
+  .admin-builder-screen.is-step-cardio .admin-builder-readiness { display: block !important; }
+  .admin-builder-readiness-summary { min-height: 48px !important; padding: 8px 12px !important; }
+  .admin-builder-readiness-copy p { margin-top: 2px !important; }
+
+  .admin-builder-screen.is-step-programa .admin-builder-program-card {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    display: block !important;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .admin-builder-screen.is-step-rotina .admin-builder-routines {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    min-height: 0;
+    display: grid !important;
+    grid-template-rows: auto minmax(0,1fr);
+    gap: 12px;
+    overflow: hidden;
+  }
+  .admin-builder-screen.is-step-rotina .admin-builder-routine-card {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Wide exercise workspace: Library | Routine | Student. */
+  .admin-builder-screen.is-step-exercicios .admin-builder-shell {
+    grid-template-columns: minmax(300px,.85fr) minmax(420px,1.35fr) minmax(240px,.7fr);
+  }
+  .admin-builder-screen.is-step-exercicios .admin-builder-library {
+    grid-column: 1;
+    grid-row: 4;
+    display: flex !important;
+    height: 100%;
+    overflow: hidden;
+  }
+  .admin-builder-screen.is-step-exercicios .admin-builder-selected {
+    grid-column: 2;
+    grid-row: 4;
+    display: flex !important;
+    height: 100%;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .admin-builder-screen.is-step-exercicios .admin-builder-desktop-aside {
+    grid-column: 3;
+    grid-row: 4;
+    display: flex !important;
+    height: 100%;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .admin-builder-screen.is-step-exercicios .admin-builder-exercise-list { min-height: 0; }
+
+  /* Review is intentionally a summary, not another full editor. */
+  .admin-builder-screen.is-step-cardio .admin-builder-shell {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+  .admin-builder-screen.is-step-cardio .admin-builder-program-card {
+    grid-column: 1;
+    grid-row: 4;
+    display: block !important;
+    overflow-y: auto;
+  }
+  .admin-builder-screen.is-step-cardio .admin-builder-routines {
+    grid-column: 2;
+    grid-row: 4;
+    display: block !important;
+    overflow-y: auto;
+  }
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio {
+    grid-column: 3;
+    grid-row: 4;
+    display: block !important;
+    overflow-y: auto;
+  }
+  .admin-builder-screen.is-step-cardio .admin-builder-link-status,
+  .admin-builder-screen.is-step-cardio .admin-builder-split-start,
+  .admin-builder-screen.is-step-cardio .admin-builder-program-fields,
+  .admin-builder-screen.is-step-cardio .admin-builder-guide-button,
+  .admin-builder-screen.is-step-cardio .admin-builder-routine-card { display: none !important; }
+  .admin-builder-screen.is-step-cardio .admin-builder-program-heading { grid-template-columns: 44px minmax(0,1fr) !important; }
+  .admin-builder-screen.is-step-cardio .admin-builder-routine-tabs { grid-template-columns: repeat(auto-fit,minmax(92px,1fr)); }
+  .admin-builder-screen.is-step-cardio .admin-builder-routine-tabs > button { min-height: 58px; grid-template-columns: 32px minmax(0,1fr); padding: 8px !important; }
+  .admin-builder-screen.is-step-cardio .admin-builder-routine-tabs > button > span { width: 32px; height: 32px; }
+
+  .admin-builder-footer {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    border-radius: 0 !important;
+    background: var(--surface-deep) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+  .admin-builder-footer-summary { min-width: 0; }
+  .admin-builder-footer-actions { flex: 0 0 auto; }
+
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-program-card,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-routines,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-selected,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-library,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-cardio,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-desktop-aside { animation: build158-step-in-forward 240ms cubic-bezier(.22,1,.36,1) both; }
+  .build158-step-animating[data-step-direction="back"] .admin-builder-program-card,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-routines,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-selected,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-library,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-cardio,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-desktop-aside { animation: build158-step-in-back 240ms cubic-bezier(.22,1,.36,1) both; }
+}
+
+/* When the real Staff content drops below 1180px, secondary student info yields first. */
+@media (min-width:1024px) and (max-width:1180px) {
+  .admin-builder-screen.is-step-exercicios .admin-builder-shell {
+    grid-template-columns: minmax(280px,.8fr) minmax(0,1.2fr);
+  }
+  .admin-builder-screen.is-step-exercicios .admin-builder-desktop-aside { display: none !important; }
+  .admin-builder-screen.is-step-exercicios .admin-builder-library { grid-column: 1; }
+  .admin-builder-screen.is-step-exercicios .admin-builder-selected { grid-column: 2; }
+  .admin-builder-screen.is-step-cardio .admin-builder-shell { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio { grid-column: 1 / -1; grid-row: 5; }
+  .admin-builder-screen.is-step-cardio .admin-builder-footer { grid-row: 6; }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile/tablet: one step at a time, local vertical scroll, footer in flow
+   -------------------------------------------------------------------------- */
+@media (max-width:1023px) {
+  [data-staff-route^="/area-accqua/montar"] {
+    height: calc(100dvh - var(--staff-mobile-nav-height, 56px) - var(--app-bottomnav-offset, 0px));
+    min-height: 420px;
+  }
+  [data-staff-route^="/area-accqua/montar"] > .admin-builder-screen {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .admin-builder-shell {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow-x: visible !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-builder-header {
+    flex: 0 0 auto;
+    top: 0 !important;
+    margin: 0 !important;
+    padding-inline: 12px;
+  }
+  .admin-builder-mobile-progress { flex: 0 0 auto; top: 56px !important; }
+  .admin-builder-step-nav,
+  .admin-builder-mobile-step-controls,
+  .admin-builder-context-bar { display: none !important; }
+
+  .admin-builder-program-card,
+  .admin-builder-routines,
+  .admin-builder-selected,
+  .admin-builder-library,
+  .admin-builder-cardio,
+  .admin-builder-desktop-aside,
+  .admin-builder-readiness { display: none !important; margin: 12px !important; }
+
+  .admin-builder-screen.is-step-programa .admin-builder-program-card { display: block !important; }
+  .admin-builder-screen.is-step-programa .admin-builder-readiness { display: block !important; order: 3; }
+  .admin-builder-screen.is-step-rotina .admin-builder-routines { display: block !important; }
+  .admin-builder-screen.is-step-exercicios .admin-builder-selected { display: block !important; }
+  .admin-builder-screen.is-step-cardio .admin-builder-program-card,
+  .admin-builder-screen.is-step-cardio .admin-builder-routines,
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio,
+  .admin-builder-screen.is-step-cardio .admin-builder-readiness { display: block !important; }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-link-status,
+  .admin-builder-screen.is-step-cardio .admin-builder-split-start,
+  .admin-builder-screen.is-step-cardio .admin-builder-program-fields,
+  .admin-builder-screen.is-step-cardio .admin-builder-guide-button,
+  .admin-builder-screen.is-step-cardio .admin-builder-routine-card { display: none !important; }
+
+  .admin-builder-guided-sticky { position: static !important; flex: 0 0 auto; }
+  .admin-builder-screen.is-step-programa .admin-builder-mobile-tools,
+  .admin-builder-screen.is-step-cardio .admin-builder-mobile-tools { display: none !important; }
+  .admin-builder-screen.is-step-rotina .admin-builder-mobile-search,
+  .admin-builder-screen.is-step-rotina .admin-builder-mobile-search-results { display: none !important; }
+
+  .admin-builder-split-options {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    padding: 4px 16px 9px !important;
+    margin-inline: -16px !important;
+    width: calc(100% + 32px) !important;
+  }
+  .admin-builder-split-options::-webkit-scrollbar { display: none; }
+  .admin-builder-split-options > button { min-width: 82px !important; scroll-snap-align: start; }
+
+  .admin-builder-routine-tabs {
+    grid-template-columns: repeat(auto-fit,minmax(148px,1fr));
+    gap: 8px;
+  }
+  .admin-builder-routine-tabs > button { min-height: 58px; }
+  .admin-builder-routine-fields { grid-template-columns: 1fr !important; }
+  .admin-builder-program-fields { grid-template-columns: 1fr !important; }
+  .admin-builder-program-fields label { grid-column: 1 !important; }
+
+  .admin-builder-footer {
+    position: sticky !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: 0 !important;
+    z-index: 120;
+    flex: 0 0 auto;
+    order: 99;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: auto 0 0 !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+    border-radius: 0 !important;
+    background: color-mix(in srgb,var(--surface-deep) 97%,transparent) !important;
+    box-shadow: 0 -10px 26px rgba(0,0,0,.16) !important;
+  }
+  .admin-builder-mobile-footer { min-width: 0 !important; grid-template-columns: minmax(0,1fr) minmax(108px,auto) !important; }
+  .admin-builder-mobile-footer-copy { min-width: 0 !important; }
+  .admin-builder-mobile-footer-copy > strong { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.2 !important; }
+  .admin-builder-mobile-primary { min-width: 108px !important; max-width: 46%; white-space: normal !important; line-height: 1.15 !important; }
+  .admin-builder-save-warning { position: static !important; margin-bottom: 8px; }
+
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-program-card,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-routines,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-selected,
+  .build158-step-animating[data-step-direction="forward"] .admin-builder-cardio { animation: build158-step-in-forward 240ms cubic-bezier(.22,1,.36,1) both; }
+  .build158-step-animating[data-step-direction="back"] .admin-builder-program-card,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-routines,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-selected,
+  .build158-step-animating[data-step-direction="back"] .admin-builder-cardio { animation: build158-step-in-back 240ms cubic-bezier(.22,1,.36,1) both; }
+}
+
+@media (max-width:430px) {
+  .workout-entry-methods { grid-template-columns: 1fr !important; }
+  .workout-entry-methods > .staff-action-card { min-height: 112px; padding: 14px; }
+  .workout-entry-answer-grid { grid-template-columns: 1fr !important; }
+  .workout-entry-answer-grid.is-days { grid-template-columns: repeat(3,minmax(0,1fr)) !important; }
+  .workout-entry-guide-nav small { display: none; }
+  .admin-builder-program-card,
+  .admin-builder-routines,
+  .admin-builder-selected,
+  .admin-builder-cardio,
+  .admin-builder-readiness { margin: 10px !important; }
+  .admin-builder-week-days > div { grid-template-columns: repeat(7,minmax(32px,1fr)) !important; overflow-x: auto; padding-bottom: 4px; }
+  .admin-builder-exercise-summary { grid-template-columns: 40px minmax(0,1fr) auto !important; }
+  .admin-builder-quick-tune { grid-column: 2 / -1 !important; overflow-x: auto; }
+}
+
+@keyframes build158-step-in-forward { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes build158-step-in-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-action-card,
+  .workout-entry-answer-card,
+  .admin-builder-routine-tabs > button,
+  .admin-builder-reorder-item { transition-duration: 1ms !important; }
+  .build158-step-animating .admin-builder-program-card,
+  .build158-step-animating .admin-builder-routines,
+  .build158-step-animating .admin-builder-selected,
+  .build158-step-animating .admin-builder-library,
+  .build158-step-animating .admin-builder-cardio,
+  .build158-step-animating .admin-builder-desktop-aside { animation: none !important; }
+}
