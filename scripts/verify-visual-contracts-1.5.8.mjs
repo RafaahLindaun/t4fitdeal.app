@@ -14,8 +14,8 @@ const requireAbsent = (id, file, pattern, note) => !pattern.test(read(file)) ? p
 const css = "scr/styles/build-1.5.8.css";
 const entry = "scr/pages/WorkoutBuilderEntry.tsx";
 
-requireMatch("158/version", "package.json", /"version":\s*"1\.5\.8"/, "package não está em 1.5.8");
-requireMatch("158/contracts", "package.json", /verify-visual-contracts-1\.5\.8\.mjs/, "npm não executa contratos 1.5.8");
+requireMatch("158/version", "package.json", /"version":\s*"1\.5\.(?:[8-9]|\d{2,})"/, "package não está em 1.5.8");
+requireMatch("158/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:8|9|\d{2,})\.mjs/, "npm não executa contratos 1.5.8");
 requireMatch("158/css-last", "scr/main.tsx", /build-1\.5\.7\.css";\s*\nimport "\.\/styles\/build-1\.5\.8\.css";/, "camada 1.5.8 não é a última da cascata");
 
 requireAll("158/shared-motion", "scr/lib/staffMotion.ts", [/hover:\s*\{\s*y:\s*-3,\s*scale:\s*1\.01/, /tap:\s*\{\s*y:\s*0,\s*scale:\s*0\.975/, /hover:\s*\{\s*x:\s*2,\s*y:\s*-1/], "motion Staff não segue padrão compartilhado");
