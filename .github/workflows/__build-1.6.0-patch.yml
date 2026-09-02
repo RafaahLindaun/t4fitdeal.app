@@ -46,7 +46,7 @@ jobs:
         run: npm run build
 
       - name: Remove temporary patch files
-        run: git rm scripts/__apply-build-1.6.0.cjs scripts/__fix-build-1.6.0-runner.cjs .github/workflows/__build-1.6.0-patch.yml
+        run: git rm -f scripts/__apply-build-1.6.0.cjs scripts/__fix-build-1.6.0-runner.cjs .github/workflows/__build-1.6.0-patch.yml
 
       - name: Commit Build 1.6.0
         run: |
