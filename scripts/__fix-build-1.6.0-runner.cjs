@@ -19,4 +19,15 @@ if (markerIndex >= 0) {
   }
 }
 
+const drawerIndex = source.indexOf('drawer-template-');
+if (drawerIndex >= 0) {
+  const keyStart = source.lastIndexOf('key={', drawerIndex);
+  const keyEnd = source.indexOf('} onClick=', drawerIndex);
+  if (keyStart >= 0 && keyEnd > drawerIndex) {
+    source = source.slice(0, keyStart) +
+      'key={"drawer-template-" + template.id}' +
+      source.slice(keyEnd + 1);
+  }
+}
+
 fs.writeFileSync(file, source, 'utf8');
