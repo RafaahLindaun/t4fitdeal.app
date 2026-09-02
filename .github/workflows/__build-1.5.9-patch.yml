@@ -25,10 +25,10 @@ jobs:
           node-version: 22
 
       - name: Apply Build 1.5.9
-        run: node scripts/__apply-build-1.5.9.cjs
+        run: node scripts/__apply-build-1.5.9-v2.cjs
 
       - name: Remove temporary patch runner
-        run: git rm scripts/__apply-build-1.5.9.cjs .github/workflows/__build-1.5.9-patch.yml
+        run: git rm scripts/__apply-build-1.5.9.cjs scripts/__apply-build-1.5.9-v2.cjs .github/workflows/__build-1.5.9-patch.yml
 
       - name: Commit Build 1.5.9
         run: |
