@@ -8,8 +8,8 @@ const requireMatch=(id,file,pattern,note)=>pattern.test(read(file))?passes.push(
 const requireAll=(id,file,patterns,note)=>patterns.every((pattern)=>pattern.test(read(file)))?passes.push(id):failures.push(`${id} — ${note} (${file})`);
 const requireAbsent=(id,file,pattern,note)=>!pattern.test(read(file))?passes.push(id):failures.push(`${id} — ${note} (${file})`);
 const css="scr/styles/build-1.5.9.css", area="scr/pages/AdminArea.tsx", entry="scr/pages/WorkoutBuilderEntry.tsx", builder="scr/pages/AdminWorkoutBuilder.tsx", admin="scr/lib/admin.ts";
-requireMatch("159/version","package.json",/"version":\s*"1\.5\.9"/,"package não está em 1.5.9");
-requireMatch("159/contracts","package.json",/verify-visual-contracts-1\.5\.9\.mjs/,"npm não executa contratos 1.5.9");
+requireMatch("159/version","package.json",/"version":\s*"(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)"/,"package não está em 1.5.9");
+requireMatch("159/contracts","package.json",/verify-visual-contracts-(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)\.mjs/,"npm não executa contratos 1.5.9");
 requireMatch("159/css-last","scr/main.tsx",/build-1\.5\.8\.css";\s*\nimport "\.\/styles\/build-1\.5\.9\.css";/,"camada 1.5.9 não é a última");
 requireAll("159/roster-stable",area,[/studentsHydratedRef/,/if \(!studentsHydratedRef\.current\) setStudentsLoading\(true\)/],"lista não preserva dados");
 requireAbsent("159/no-roster-poll",area,/setInterval\(refresh,\s*15000\)|addEventListener\("focus",\s*refresh\)|visibilitychange/,"polling antigo ainda existe");

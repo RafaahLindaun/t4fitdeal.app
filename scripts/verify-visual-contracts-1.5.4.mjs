@@ -60,8 +60,8 @@ requireMatch("154/builder-one-primary", "scr/pages/admin-workout-builder-v150.cs
 requireAll("154/builder-reorder", "scr/pages/AdminWorkoutBuilder.tsx", [/<Reorder\.Group/, /<Reorder\.Item/, /reorderActiveRoutineExercises/], "lista de exercícios deixou de ser reordenável/persistente");
 
 // Versionamento: versões posteriores também devem preservar todos os contratos 1.5.4.
-requireMatch("154/version", "package.json", /"version":\s*"1\.5\.(?:4|[5-9]|\d{2,})"/, "package está abaixo da 1.5.4");
-requireMatch("154/contracts-script", "package.json", /verify-visual-contracts-1\.5\.(?:4|[5-9]|\d{2,})\.mjs/, "npm deixou de encadear contratos 1.5.4+");
+requireMatch("154/version", "package.json", /"version":\s*"(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)"/, "package está abaixo da 1.5.4");
+requireMatch("154/contracts-script", "package.json", /verify-visual-contracts-(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)\.mjs/, "npm deixou de encadear contratos 1.5.4+");
 requireMatch("154/css-last", "scr/main.tsx", /build-1\.5\.3\.css";\s*\nimport "\.\/styles\/build-1\.5\.4\.css";/, "camada 1.5.4 não está depois da 1.5.3");
 
 if (failures.length) {

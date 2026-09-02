@@ -21,6 +21,16 @@ function unique(values: string[]) {
   return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
 }
 
+function compactImageCandidate(value: string) {
+  const source = String(value ?? "").trim();
+  if (!source || !/\.(?:png|jpe?g|webp|gif)(?:\?|$)/i.test(source)) return "";
+  const marker = "/storage/v1/object/public/";
+  if (!source.includes(marker)) return "";
+  const rendered = source.replace(marker, "/storage/v1/render/image/public/");
+  const separator = rendered.includes("?") ? "&" : "?";
+  return rendered + separator + "width=112&height=112&resize=cover&quality=55";
+}
+
 export default function ExerciseMedia({
   name,
   slug = "",
@@ -37,8 +47,10 @@ export default function ExerciseMedia({
     });
     // Build 1.4.2: sem adivinhação de .gif/.GIF. Usamos a URL canônica do
     // banco e, como ponte para o legado, somente nomes reais do manifest.
-    return unique([mediaUrl, ...exactManifestMatches]);
-  }, [manifestFiles, mediaUrl, name, slug]);
+    const originals = unique([mediaUrl, ...exactManifestMatches]);
+    if (!compact) return originals;
+    return unique(originals.flatMap((candidate) => [compactImageCandidate(candidate), candidate]));
+  }, [compact, manifestFiles, mediaUrl, name, slug]);
 
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -98,5 +110,5 @@ export default function ExerciseMedia({
     );
   }
 
-  return <img className={`exercise-media-asset ${loaded ? "is-loaded" : "is-loading"} ${className}`} src={source} alt={`Demonstração de ${name}`} loading="lazy" draggable={false} onLoad={() => setLoaded(true)} onError={tryNext} />;
+  return <img className={`exercise-media-asset ${loaded ? "is-loaded" : "is-loading"} ${className}`} src={source} alt={`Demonstração de ${name}`} loading="lazy" decoding="async" draggable={false} onLoad={() => setLoaded(true)} onError={tryNext} />;
 }

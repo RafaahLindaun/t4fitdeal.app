@@ -105,6 +105,22 @@ const BUILDER_STEPS: Array<{
   { key: "cardio", number: 4, label: "Revisão" },
 ];
 
+function StepProgress({ current, onSelect }: { current: BuilderStep; onSelect: (step: BuilderStep) => void; }) {
+  const currentIndex = Math.max(0, BUILDER_STEPS.findIndex((step) => step.key === current));
+  return (
+    <nav className="admin-builder-progress-v160" aria-label="Etapas do treino">
+      <div>
+        {BUILDER_STEPS.map((step, index) => (
+          <button type="button" key={step.key} className={clsx(index < currentIndex && "is-complete", index === currentIndex && "is-current")} aria-current={index === currentIndex ? "step" : undefined} onClick={() => onSelect(step.key)} title={step.label}>
+            <i /><span>{step.label}</span>
+          </button>
+        ))}
+      </div>
+      <strong>{BUILDER_STEPS[currentIndex]?.label ?? "Programa"}</strong>
+    </nav>
+  );
+}
+
 type CustomExerciseDraft = CreateExerciseLibraryInput;
 
 type BuiltInPreset = {
@@ -1680,6 +1696,12 @@ export default function AdminWorkoutBuilder() {
           </button>
         </header>
 
+        <StepProgress current={mobileStep} onSelect={showBuilderSection} />
+
+        <button type="button" className="admin-builder-compact-tools-trigger" onClick={() => setStudentSheetOpen(true)} aria-label="Abrir aluno e métodos de montagem" title="Aluno e métodos">
+          <AdminInfoIcon size={18} />
+        </button>
+
         <section className="admin-builder-mobile-progress" aria-label="Progresso da montagem">
           <div className="admin-builder-story-segments">
             {BUILDER_STEPS.map((step, index) => {
@@ -1969,14 +1991,6 @@ export default function AdminWorkoutBuilder() {
                 {totalExercises === 1 ? "" : "s"}
               </p>
             </div>
-            <button
-              type="button"
-              className="admin-builder-guide-button"
-              onClick={() => setGuideOpen(true)}
-            >
-              <AdminSparkIcon size={18} />
-              <span>Montagem guiada</span>
-            </button>
           </div>
 
           <div
@@ -2805,7 +2819,8 @@ export default function AdminWorkoutBuilder() {
           </section>
 
           <section className="admin-builder-aside-templates">
-            <header><div><small>MODELOS SALVOS</small><h2>Aplicar rapidamente</h2></div><button type="button" onClick={() => setTemplatesOpen(true)}>Ver todos</button></header>
+            <header><div><small>MÉTODOS DE MONTAGEM</small><h2>Comece de um jeito rápido</h2></div><button type="button" onClick={() => setTemplatesOpen(true)}>Ver modelos</button></header>
+            <button type="button" className="admin-builder-guide-button is-aside" onClick={() => setGuideOpen(true)}><AdminSparkIcon size={18} /><span>Montagem guiada</span></button>
             <div>
               {templates.slice(0, 4).map((template) => (
                 <button type="button" key={template.id} onClick={() => applyTemplate(template)}>
@@ -2825,7 +2840,9 @@ export default function AdminWorkoutBuilder() {
           </section>
         </aside>
 
-        <footer className="admin-builder-footer">
+      </main>
+
+      <footer className="admin-builder-footer">
           <div className="admin-builder-mobile-footer">
             <div className="admin-builder-mobile-footer-copy">
               <small>ETAPA ATUAL</small>
@@ -2860,7 +2877,7 @@ export default function AdminWorkoutBuilder() {
                 disabled={saving}
               >
                 <AdminCheckIcon size={17} />
-                {saving ? "Salvando..." : "Salvar treino"}
+                {saving ? "Salvando..." : modelMode ? "Salvar modelo" : "Salvar treino"}
               </button>
             )}
           </div>
@@ -2876,50 +2893,17 @@ export default function AdminWorkoutBuilder() {
             </div>
           ) : null}
           <div className="admin-builder-footer-summary">
-            <span>
-              <strong>{completionPercent}%</strong>
-              <small>
-                {nextReadinessIssue
-                  ? `${requiredReadiness.length - completedRequired} pendência${
-                      requiredReadiness.length - completedRequired === 1
-                        ? ""
-                        : "s"
-                    }`
-                  : "Pronto"}
-              </small>
-            </span>
-            <i>
-              {routines.length} rotina{routines.length === 1 ? "" : "s"} ·{" "}
-              {totalExercises} exercício
-              {totalExercises === 1 ? "" : "s"} · ~{estimatedMinutes} min
-            </i>
+            <span><small>ETAPA ATUAL</small><strong>{activeStepMeta.label}</strong></span>
+            <i>{routines.length} rotina{routines.length === 1 ? "" : "s"} ·{" "}{totalExercises} exercício{totalExercises === 1 ? "" : "s"} · ~{estimatedMinutes} min</i>
           </div>
 
           <div className="admin-builder-footer-actions">
-            <button
-              type="button"
-              className="is-template"
-              onClick={openTemplateName}
-              disabled={saving}
-            >
-              <AdminSaveIcon />
-              <span>Salvar modelo</span>
-            </button>
-
-            <button
-              type="button"
-              className="is-publish"
-              onClick={() => void publish()}
-              disabled={saving}
-            >
-              <AdminCheckIcon />
-              <span>
-                {saving ? "Salvando..." : "Salvar treino do aluno"}
-              </span>
+            {!modelMode ? <button type="button" className="is-template" onClick={openTemplateName} disabled={saving}>Salvar como modelo</button> : null}
+            <button type="button" className="is-publish" onClick={() => { const next = BUILDER_STEPS[activeStepIndex + 1]; if (next) { showBuilderSection(next.key); return; } void publish(); }} disabled={saving}>
+              {activeStepIndex < BUILDER_STEPS.length - 1 ? <><span>Próximo</span><AdminChevronIcon size={17} /></> : <><AdminCheckIcon /><span>{saving ? "Salvando..." : modelMode ? "Salvar modelo" : "Salvar treino do aluno"}</span></>}
             </button>
           </div>
-        </footer>
-      </main>
+      </footer>
 
       <Drawer.Root open={librarySheetOpen} onOpenChange={setLibrarySheetOpen}>
         <Drawer.Portal>
@@ -3045,6 +3029,15 @@ export default function AdminWorkoutBuilder() {
               <article><small>Tempo no app</small><strong>{studentMemberTime}</strong></article>
               <article><small>Treinos totais</small><strong>{studentSummary?.totalWorkouts ?? recentWorkoutCount}</strong></article>
               <article><small>Divisão</small><strong>{splitCode}</strong></article>
+            </div>
+
+            <div className="admin-v160-compact-methods">
+              <small>MÉTODOS DE MONTAGEM</small>
+              <button type="button" onClick={() => { setStudentSheetOpen(false); setGuideOpen(true); }}><AdminSparkIcon size={18} /><span><strong>Montagem guiada</strong><em>Responda e revise a sugestão.</em></span></button>
+              {templates.slice(0, 4).map((template) => (
+                <button type="button" key={"drawer-template-" + template.id} onClick={() => { applyTemplate(template); setStudentSheetOpen(false); }}><AdminLayersIcon size={18} /><span><strong>{template.name}</strong><em>{template.splitCode}</em></span></button>
+              ))}
+              <button type="button" onClick={() => { setStudentSheetOpen(false); setTemplatesOpen(true); }}><AdminLayersIcon size={18} /><span><strong>Ver todos os modelos</strong><em>Biblioteca da equipe</em></span></button>
             </div>
 
             <Drawer.Close asChild>

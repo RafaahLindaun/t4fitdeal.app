@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ClassesAdmin from "./ClassesAdmin";
 import StaffSubPageHeader from "../components/StaffSubPageHeader";
+import StaffPageLayout from "../components/StaffPageLayout";
 import { loadAccessModeSummary } from "../lib/accessSummary";
 import "./classes-admin-v155.css";
 
@@ -18,29 +18,9 @@ function AccessSummary() {
 }
 
 export default function ClassesAdminV155() {
-  useEffect(() => {
-    const onClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest<HTMLButtonElement>(".classes-admin-type-head");
-      if (!button) return;
-      const card = button.closest<HTMLElement>(".classes-admin-type-card");
-      if (!card) return;
-      const forced = card.dataset.v155ForceCollapsed === "true";
-      const body = card.querySelector(".classes-admin-type-body");
-      if (forced) {
-        window.setTimeout(() => { delete card.dataset.v155ForceCollapsed; }, 0);
-      } else if (body) {
-        window.setTimeout(() => { card.dataset.v155ForceCollapsed = "true"; }, 0);
-      }
-    };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-  }, []);
-
   return (
-    <div className="classes-admin-v155-page">
-      <StaffSubPageHeader title="Gestão de aulas" subtitle="Horários, modalidades e acesso dos alunos em um só lugar." />
+    <StaffPageLayout className="classes-admin-v155-page" header={<StaffSubPageHeader title="Gestão de aulas" subtitle="Horários, modalidades e acesso dos alunos em um só lugar." />}>
       <div className="classes-admin-v155-wrap"><AccessSummary /><ClassesAdmin /></div>
-    </div>
+    </StaffPageLayout>
   );
 }

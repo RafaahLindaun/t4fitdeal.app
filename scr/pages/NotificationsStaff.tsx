@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
 import StaffSubPageHeader from "../components/StaffSubPageHeader";
+import StaffPageLayout from "../components/StaffPageLayout";
 import {
   sendStaffNotification,
   type NotificationAudience,
@@ -67,12 +68,10 @@ export default function NotificationsStaff() {
   };
 
   return (
-    <main className="notifications-staff-page">
-      <StaffSubPageHeader
-        title="Notificações"
-        subtitle="Envie avisos segmentados para o sino do app e, quando autorizado, por push."
-      />
-
+    <StaffPageLayout
+      className="notifications-staff-page"
+      header={<StaffSubPageHeader title="Notificações" subtitle="Envie avisos segmentados para o sino do app e, quando autorizado, por push." />}
+    >
       <div className="notifications-staff-grid">
         <form className="notifications-staff-card notifications-compose" onSubmit={(event) => void submit(event)}>
           <div className="notifications-section-heading"><span>COMPOSIÇÃO</span><strong>Novo aviso</strong></div>
@@ -95,6 +94,6 @@ export default function NotificationsStaff() {
           </section>
         </aside>
       </div>
-    </main>
+    </StaffPageLayout>
   );
 }

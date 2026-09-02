@@ -349,6 +349,8 @@ export default function Login() {
         </section>
 
         <form className="concept-login-form" onSubmit={handleLogin}>
+          {feedback ? <div className={`concept-feedback ${feedback.type}`} role="alert">{feedback.text}</div> : null}
+
           <label className="concept-login-field">
             <UserIcon size={20} />
             <input
@@ -389,16 +391,8 @@ export default function Login() {
           <button className="concept-first-access" type="button" onClick={openRegister}>
             Primeiro acesso
           </button>
+          <button className="concept-google-link" disabled={busy} type="button" onClick={handleGoogle}><GoogleMark /> Entrar com Google</button>
         </form>
-
-        <button className="concept-google-link" disabled={busy} type="button" onClick={handleGoogle}>
-          <GoogleMark />
-          Entrar com Google
-        </button>
-
-        {feedback ? (
-          <div className={`concept-feedback ${feedback.type}`}>{feedback.text}</div>
-        ) : null}
 
         <section className="concept-feature-section" aria-label="Recursos do aplicativo">
           <div className="concept-feature-title">

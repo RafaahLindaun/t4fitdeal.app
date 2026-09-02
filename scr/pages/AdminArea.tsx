@@ -1426,7 +1426,7 @@ export default function AdminArea() {
                   >
                     <span className="is-quick"><AdminBoltIcon /></span>
                     <div>
-                      <strong>Montar treino rápido</strong>
+                      <strong>Selecionar treino rápido</strong>
                       <small>{selectedStatus === "active" ? "Publique um modelo salvo em poucos passos." : "Autorize o acesso do aluno para liberar esta ação."}</small>
                     </div>
                     <AdminChevronIcon />
