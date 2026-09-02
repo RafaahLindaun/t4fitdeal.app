@@ -1,0 +1,24 @@
+/* ACCQUA Sports — Build 1.5.9 */
+.admin-area-pending.has-pending,
+.admin-area-pending.has-pending:hover,
+.admin-area-pending.has-pending:focus-visible {
+  color: var(--text-on-active, #fff) !important;
+  border-color: var(--border-active, #f2c230) !important;
+  background: var(--surface-active, #1e3a5f) !important;
+}
+.admin-area-pending.has-pending small { color: inherit !important; }
+.admin-profile-view .admin-student-summary-list { gap: 12px !important; }
+.admin-profile-view .admin-student-summary-list .profile-menu-item { min-height: 44px; border-radius: 16px !important; }
+.admin-template-add-v159 { min-width: 40px; min-height: 40px; font-size: 22px !important; line-height: 1 !important; }
+@media (min-width:1024px) {
+  .admin-area-shell.is-dashboard .admin-dashboard-search-wrap.is-student-sticky {
+    position: sticky !important; top: 0 !important; z-index: 28 !important;
+    padding-top: 10px !important; padding-bottom: 10px !important;
+    background: var(--surface-deep, #04162f) !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  }
+}
+@media (max-width:1023.98px) {
+  .admin-profile-view .admin-student-summary-list { grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 12px !important; }
+  .admin-profile-view .admin-student-summary-list .profile-menu-item { height: 84px !important; min-height: 84px !important; border-radius: 16px !important; }
+}

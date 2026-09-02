@@ -19,6 +19,7 @@ import {
   createBuilderExercise,
   getWorkoutStudentById,
   loadAdminProgramTemplates,
+  WORKOUT_TEMPLATE_STUDENT_ID,
   loadExerciseLibrary,
   type AdminProgramTemplate,
   type AdminRoutine,
@@ -152,6 +153,7 @@ export default function WorkoutBuilderEntry() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const studentId = searchParams.get("student") ?? "";
+  const templateMode = searchParams.get("modo") === "modelo";
   const returnStudentId = searchParams.get("returnStudent") ?? studentId;
   const { user, profile, loading, landingPath } = useAuth();
   const canManage = Boolean(profile && ["professor", "reception", "admin"].includes(profile.role));
@@ -173,7 +175,9 @@ export default function WorkoutBuilderEntry() {
   const guideDragControls = useDragControls();
 
   useEffect(() => {
-    if (!user?.id || !canManage || !studentId) return;
+    if (!user?.id || !canManage) return;
+    if (templateMode) { setBusy(false); return; }
+    if (!studentId) return;
     let alive = true;
     setBusy(true);
     Promise.all([getWorkoutStudentById(studentId), loadExerciseLibrary(), loadAdminProgramTemplates(user.id)])
@@ -187,7 +191,7 @@ export default function WorkoutBuilderEntry() {
       .catch(() => toast.error("Não foi possível abrir as opções de montagem."))
       .finally(() => { if (alive) setBusy(false); });
     return () => { alive = false; };
-  }, [canManage, studentId, user?.id]);
+  }, [canManage, studentId, templateMode, user?.id]);
 
   useEffect(() => () => window.clearTimeout(guideTimer.current), []);
 
@@ -195,6 +199,7 @@ export default function WorkoutBuilderEntry() {
   if (loading || busy) return <LoadingSplash />;
   if (!user) return <Navigate to="/login" replace />;
   if (!canManage || landingPath !== "/menu-teste") return <Navigate to={landingPath} replace />;
+  if (templateMode) return <Navigate to={`/area-accqua/montar/editor?student=${encodeURIComponent(WORKOUT_TEMPLATE_STUDENT_ID)}&modo=modelo`} replace />;
   if (!student) return <Navigate to="/area-accqua" replace />;
 
   const name = firstName(student.fullName);

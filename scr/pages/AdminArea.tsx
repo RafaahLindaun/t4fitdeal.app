@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -164,6 +165,7 @@ export default function AdminArea() {
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resourceError, setResourceError] = useState("");
   const [studentsLoading, setStudentsLoading] = useState(true);
+  const studentsHydratedRef = useRef(false);
   const [studentError, setStudentError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<WorkoutStudent | null>(null);
   const [studentActivities, setStudentActivities] = useState<StudentActivitySummary[]>([]);
@@ -211,7 +213,7 @@ export default function AdminArea() {
     if (!user || !canManageStudents) return;
 
     const timer = window.setTimeout(async () => {
-      setStudentsLoading(true);
+      if (!studentsHydratedRef.current) setStudentsLoading(true);
       setStudentError("");
 
       try {
@@ -223,6 +225,7 @@ export default function AdminArea() {
             : "Não foi possível consultar os alunos.",
         );
       } finally {
+        studentsHydratedRef.current = true;
         setStudentsLoading(false);
       }
     }, 260);
@@ -277,26 +280,6 @@ export default function AdminArea() {
       cancelled = true;
     };
   }, [canManageStudents, dashboardView, user?.id]);
-
-  useEffect(() => {
-    if (!canManageStudents) return;
-
-    const refresh = () => setReloadKey((current) => current + 1);
-    const interval = window.setInterval(refresh, 15000);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [canManageStudents]);
 
   useEffect(() => {
     if (!toast) return;
@@ -1104,7 +1087,7 @@ export default function AdminArea() {
               </div>
             </section>
 
-            <section className="admin-area-search-wrap admin-dashboard-search-wrap">
+            <section className={clsx("admin-area-search-wrap admin-dashboard-search-wrap", dashboardView === "students" && "is-student-sticky")}>
               <label className="admin-area-search">
                 <AdminSearchIcon />
                 <input
@@ -1293,7 +1276,11 @@ export default function AdminArea() {
                   </div>
                   <div className="admin-dashboard-resource-head-actions">
                     <span>{dashboardView === "library" ? filteredLibraryItems.length : filteredResourceTemplates.length}</span>
-                    {dashboardView === "library" ? <button type="button" className="admin-library-add" onClick={() => { resetExerciseDraft(); setExerciseDialogOpen(true); }} aria-label="Adicionar exercício">+</button> : null}
+                    {dashboardView === "library" ? (
+                      <button type="button" className="admin-library-add" onClick={() => { resetExerciseDraft(); setExerciseDialogOpen(true); }} aria-label="Adicionar exercício">+</button>
+                    ) : (
+                      <button type="button" className="admin-library-add admin-template-add-v159" onClick={() => navigate("/area-accqua/montar?modo=modelo")} aria-label="Criar novo modelo de treino" title="Criar novo modelo">+</button>
+                    )}
                   </div>
                 </header>
 

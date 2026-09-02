@@ -21,6 +21,7 @@ import "./styles/build-1.5.5.css";
 import "./styles/build-1.5.6.css";
 import "./styles/build-1.5.7.css";
 import "./styles/build-1.5.8.css";
+import "./styles/build-1.5.9.css";
 
 installInfrastructureToastGuard();
 
