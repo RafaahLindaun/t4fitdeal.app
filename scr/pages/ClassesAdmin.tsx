@@ -173,7 +173,7 @@ export default function ClassesAdmin() {
   const queryClient = useQueryClient();
   const { profile, loading, landingPath } = useAuth();
   const isStaff = Boolean(profile && ["professor", "reception", "admin"].includes(profile.role));
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [typeDialog, setTypeDialog] = useState<{ open: boolean; type: ClassType | null }>({ open: false, type: null });
   const [typeDraft, setTypeDraft] = useState<TypeDraft>(DEFAULT_TYPE);
   const [scheduleDialog, setScheduleDialog] = useState<{ open: boolean; type: ClassType | null; schedule: ClassSchedule | null }>({ open: false, type: null, schedule: null });
@@ -189,9 +189,6 @@ export default function ClassesAdmin() {
     void queryClient.invalidateQueries({ queryKey: ["staff-class-reservations"] });
   }), [queryClient]);
 
-  useEffect(() => {
-    if (!expanded.size && managementQuery.data?.types.length) setExpanded(new Set([managementQuery.data.types[0].id]));
-  }, [expanded.size, managementQuery.data?.types]);
 
   const saveTypeMutation = useMutation({
     mutationFn: async () => {
@@ -302,10 +299,10 @@ export default function ClassesAdmin() {
               <header><div><small>MODALIDADES</small><h2>Tipos de aula</h2></div><button type="button" onClick={() => openType(null)}><AdminPlusIcon size={18} /> Nova modalidade</button></header>
               {(data?.types ?? []).map((type) => {
                 const schedules = schedulesByType.get(type.id) ?? [];
-                const isOpen = expanded.has(type.id);
+                const isOpen = expandedId === type.id;
                 return (
                   <motion.article layout className={clsx("classes-admin-type-card", !type.active && "is-inactive")} key={type.id}>
-                    <button type="button" className="classes-admin-type-head" onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(type.id)) next.delete(type.id); else next.add(type.id); return next; })}>
+                    <button type="button" className="classes-admin-type-head" aria-expanded={isOpen} onClick={() => setExpandedId((current) => current === type.id ? null : type.id)}>
                       <i style={{ background: type.accentColor }} />
                       <span><strong>{type.name}</strong><small>{classRequirementLabel(type.requiresMembership, type.acceptsGympass)} · {schedules.filter((item) => item.active).length} horários</small></span>
                       {!type.active ? <b>INATIVA</b> : null}

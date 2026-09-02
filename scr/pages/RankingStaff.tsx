@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
 import StaffSubPageHeader from "../components/StaffSubPageHeader";
+import StaffPageLayout from "../components/StaffPageLayout";
 import StorageImageUploadGrid, { type StorageImageValue } from "../components/StorageImageUploadGrid";
 import {
   loadAccquaRanking,
@@ -63,9 +64,7 @@ export default function RankingStaff() {
   };
 
   return (
-    <main className="ranking-staff-page">
-      <StaffSubPageHeader title="Ranking" subtitle="Prêmio mensal e acompanhamento da disputa por dias treinados." />
-
+    <StaffPageLayout className="ranking-staff-page" header={<StaffSubPageHeader title="Ranking" subtitle="Prêmio mensal e acompanhamento da disputa por dias treinados." />}>
       <div className="ranking-staff-grid">
         <form className="ranking-staff-card ranking-prize-editor" onSubmit={(event) => void submit(event)}>
           <header><div><small>PRÊMIO</small><h2>Prêmio do período</h2></div><span>{rankingPeriodLabel(period)}</span></header>
@@ -82,6 +81,6 @@ export default function RankingStaff() {
           <p className="ranking-race-note">A distância exibida aqui vem da mesma RPC de dias treinados usada no Ranking do aluno.</p>
         </section>
       </div>
-    </main>
+    </StaffPageLayout>
   );
 }

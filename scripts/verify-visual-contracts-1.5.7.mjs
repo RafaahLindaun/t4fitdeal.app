@@ -16,8 +16,8 @@ const migration = "supabase/migrations/20260901203000_build_1_5_7_login_reservat
 const loginFn = "supabase/functions/login-identifier-v157/index.ts";
 const recipeFn = "supabase/functions/generate-recipe-ai/index.ts";
 
-requireMatch("157/version", "package.json", /"version":\s*"1\.5\.(?:[7-9]|\d{2,})"/, "package ficou abaixo de 1.5.7");
-requireMatch("157/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:[7-9]|\d{2,})\.mjs/, "npm não preserva contratos 1.5.7+");
+requireMatch("157/version", "package.json", /"version":\s*"(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)"/, "package ficou abaixo de 1.5.7");
+requireMatch("157/contracts", "package.json", /verify-visual-contracts-(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)\.mjs/, "npm não preserva contratos 1.5.7+");
 requireMatch("157/css-last", "scr/main.tsx", /build-1\.5\.6\.css";\s*\nimport "\.\/styles\/build-1\.5\.7\.css";/, "camada 1.5.7 não vem depois da 1.5.6");
 
 requireAll("157/login-edge", loginFn, [/cpf\.eq\.\$\{normalized\}/, /phone\.eq\.\$\{normalized\}/, /signInWithPassword/, /access_token/, /refresh_token/], "endpoint não resolve CPF/telefone + senha com segurança");

@@ -57,7 +57,7 @@ requireAbsentInTree("U/no-private-vapid-client", "scr", /get_push_vapid_config_v
 requireMatch("U/pwa-manifest", "public/manifest.webmanifest", /"display":\s*"standalone"/, "manifest deixou de ser instalável");
 requireMatch("U/pwa-index", "index.html", /rel="manifest" href="\/manifest\.webmanifest"/, "manifest não está ligado ao HTML");
 requireMatch("U/pwa-ios", "index.html", /apple-mobile-web-app-capable/, "metadados de instalação iOS foram removidos");
-requireMatch("VERSION/1.5.3+", "package.json", /"version":\s*"1\.5\.(?:[3-9]|\d{2,})"/, "package ficou abaixo da linha 1.5.3");
+requireMatch("VERSION/1.5.3+", "package.json", /"version":\s*"(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)"/, "package ficou abaixo da linha 1.5.3");
 requireMatch("VERSION/css", "scr/main.tsx", /build-1\.5\.3\.css/, "camada visual 1.5.3 não está carregada");
 
 if (failures.length) {

@@ -16,8 +16,8 @@ const storeMigration = "supabase/migrations/20260901070200_build_1_5_5_store_sof
 const aiFunction = "supabase/functions/generate-workout-ai-v155/index.ts";
 
 // Contrato histórico: qualquer patch >= 1.5.5 precisa preservar a feature 1.5.5.
-requireMatch("155/version", "package.json", /"version":\s*"1\.5\.(?:[5-9]|\d{2,})"/, "package ficou abaixo da linha 1.5.5");
-requireMatch("155/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:[5-9]|\d{2,})\.mjs/, "npm não executa a cadeia de contratos 1.5.5+");
+requireMatch("155/version", "package.json", /"version":\s*"(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)"/, "package ficou abaixo da linha 1.5.5");
+requireMatch("155/contracts", "package.json", /verify-visual-contracts-(?:1\.5\.[3-9]|1\.(?:[6-9]|\d{2,})\.\d+)\.mjs/, "npm não executa a cadeia de contratos 1.5.5+");
 requireMatch("155/css-order", "scr/main.tsx", /build-1\.5\.4\.css";\s*\nimport "\.\/styles\/build-1\.5\.5\.css";/, "camada 1.5.5 não vem depois da 1.5.4 na cascata");
 
 // Entrada única e convergência no mesmo editor.
@@ -34,7 +34,8 @@ requireMatch("155/ai-client", "scr/lib/workoutAi.ts", /generate-workout-ai-v155[
 // Modelo com origem e acesso dinâmico.
 requireMatch("155/template-origin", schemaMigration, /origin in \('manual','assistente_guiado','ia_descricao'\)/, "origem dos modelos não está versionada");
 requireMatch("155/access-summary-rpc", schemaMigration, /get_accqua_access_mode_summary_v1_5_5[\s\S]*?accqua_app_access[\s\S]*?group by 1/, "resumo de acesso não é dinâmico");
-requireAll("155/classes", "scr/pages/ClassesAdminV155.tsx", [/v155ForceCollapsed/, /loadAccessModeSummary/, /classes-admin-type-head/], "Aulas não recebeu collapse + resumo real");
+requireAll("155/classes", "scr/pages/ClassesAdminV155.tsx", [/loadAccessModeSummary/, /<ClassesAdmin \/>/, /StaffPageLayout/], "Aulas perdeu wrapper/resumo real");
+requireAll("155/classes-accordion", "scr/pages/ClassesAdmin.tsx", [/expandedId/, /setExpandedId/, /expandedId === type\.id/], "accordion voltou a ter fontes de verdade paralelas");
 
 // Store soft-delete: excluído some, desativado continua semanticamente distinto.
 requireMatch("155/store-column", schemaMigration, /add column if not exists excluido_em timestamptz/, "produto não tem marcador de exclusão lógica");

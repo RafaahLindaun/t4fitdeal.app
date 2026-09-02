@@ -12,15 +12,9 @@ const STAFF_ROLES = ["professor", "reception", "admin"] as const;
 
 function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="19"
-      height="19"
-      aria-hidden="true"
-      focusable="false"
-      className={collapsed ? "is-collapsed" : ""}
-    >
-      <path d="M14.5 6.5 9 12l5.5 5.5" />
+    <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false" className={collapsed ? "is-collapsed" : ""}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9 4v16" />
     </svg>
   );
 }
@@ -50,9 +44,8 @@ export default function StaffLayout() {
     "approvals",
     "library",
     "templates",
-    "ranking",
-    "notifications",
   ].includes(active);
+  const usesInternalPageScroll = ["classes", "ranking", "notifications"].includes(active);
 
   useEffect(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
@@ -76,7 +69,7 @@ export default function StaffLayout() {
 
   return (
     <div
-      className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+      className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""} ${usesInternalPageScroll ? "uses-internal-page-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <aside
         className={`accqua-staff-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}
