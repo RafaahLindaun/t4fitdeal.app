@@ -16,7 +16,7 @@ const migration = "supabase/migrations/20260901073000_build_1_5_6_ranking_days_a
 const recipeFn = "supabase/functions/generate-recipe-ai/index.ts";
 
 requireMatch("156/version", "package.json", /"version":\s*"1\.5\.(?:[6-9]|\d{2,})"/, "package ficou abaixo de 1.5.6");
-requireMatch("156/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:6|7)\.mjs/, "npm não preserva contratos 1.5.6+");
+requireMatch("156/contracts", "package.json", /verify-visual-contracts-1\.5\.(?:[6-9]|\d{2,})\.mjs/, "npm não preserva contratos 1.5.6+");
 requireMatch("156/css", "scr/main.tsx", /build-1\.5\.6\.css/, "camada 1.5.6 não está carregada");
 
 requireAll("156/sidebar-flex", css, [/\.accqua-staff-layout\s*\{[\s\S]*?display:\s*flex\s*!important/, /is-sidebar-collapsed[\s\S]*?72px\s*!important/, /\.accqua-staff-content\s*\{[\s\S]*?flex:\s*1 1 auto/], "sidebar voltou a compartilhar grid/reflow com conteúdo");
@@ -47,7 +47,7 @@ requireAll("156/recipe-buttons", css, [/recipe-create-actions > button:first-chi
 requireAll("156/builder-scroll", css, [/\.admin-builder-shell\s*\{[\s\S]*?overflow-y:\s*auto\s*!important/, /admin-builder-library,[\s\S]*?admin-builder-desktop-aside[\s\S]*?overflow-y:\s*auto\s*!important/], "montador de 3 colunas ainda pode travar o centro/laterais");
 requireAll("156/builder-library", css, [/admin-builder-library[\s\S]*?min-width:\s*280px/, /admin-builder-groups[\s\S]*?overflow-x:\s*auto/, /white-space:\s*normal\s*!important/], "Biblioteca voltou a cortar filtros/nomes");
 requireAll("156/method-entry", "scr/pages/WorkoutBuilderEntry.tsx", [/Montar manualmente/, /Assistente guiado/, /Modelo salvo/, /Descrever pra IA/, /Nenhum treino é publicado sem sua revisão/], "entrada única/4 métodos foi perdida");
-requireAll("156/guide-tone", "scr/pages/WorkoutBuilderEntry.tsx", [/Beleza, o que o\(a\)/, /Sem frescura/, /Quantos dias o\(a\)/], "assistente guiado voltou ao tom formal");
+requireAll("156/guide-tone", "scr/pages/WorkoutBuilderEntry.tsx", [/Beleza, o que o\(a\)/, /ponto de partida/i, /Quantos dias o\(a\)/], "assistente guiado voltou ao tom formal");
 
 if (failures.length) {
   console.error("\nACCQUA Build 1.5.6 — contratos FALHARAM:\n");

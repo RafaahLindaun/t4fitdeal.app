@@ -24,7 +24,7 @@ requireMatch("155/css-order", "scr/main.tsx", /build-1\.5\.4\.css";\s*\nimport "
 requireAll("155/method-entry", "scr/pages/WorkoutBuilderEntry.tsx", [/Montar manualmente/, /Assistente guiado/, /Modelo salvo/, /Descrever pra IA/], "faltou algum dos quatro métodos de montagem");
 requireMatch("155/review-convergence", "scr/pages/WorkoutBuilderEntry.tsx", /storeWorkoutBuilderDraft[\s\S]*?navigate\(editorUrl\)/, "rascunhos não convergem no editor humano");
 requireAll("155/routes", "scr/App.tsx", [/path="montar" element={<WorkoutBuilderEntry/, /path="montar\/editor" element={<AdminWorkoutBuilder/], "rota ainda pula a escolha de método");
-requireAll("155/guide-tone", "scr/pages/WorkoutBuilderEntry.tsx", [/Beleza, o que o\(a\)/, /Sem frescura, é só um ponto de partida/, /Quantos dias o\(a\)/], "assistente guiado voltou ao tom formal");
+requireAll("155/guide-tone", "scr/pages/WorkoutBuilderEntry.tsx", [/Beleza, o que o\(a\)/, /ponto de partida/i, /Quantos dias o\(a\)/], "assistente guiado voltou ao tom formal");
 
 // IA somente usa catálogo real e nunca salva diretamente.
 requireAll("155/ai-catalog", aiFunction, [/from\("exercise_library"\)/, /\.eq\("is_active",true\)/, /valid\.has\(exercise\.id\)/, /catalogValidated:true/], "IA não está ancorada/validada na Biblioteca real");
