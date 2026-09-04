@@ -16,7 +16,7 @@ requireMatch("162/css-last", "scr/main.tsx", /build-1\.6\.0\.css";\s*\nimport "\
 requireAll("162/entry-copy", "scr/styles/build-1.6.2.css", [/staff-action-card-copy/,/line-clamp:3/,/staff-action-card-icon/], "cards de entrada continuam suscetíveis a sobreposição");
 requireAll("162/stepper", "scr/pages/AdminWorkoutBuilder.tsx", [/admin-builder-progress-v162/,/admin-builder-step-orb/,/AdminCheckIcon/], "stepper grande 1–4 ausente");
 requireAll("162/split-yellow", "scr/styles/build-1.6.2.css", [/admin-builder-split-options button\.is-active/,/#ffd128!important/], "divisão selecionada não usa amarelo");
-requireAll("162/set-types", "scr/lib/admin.ts", [/setType:\s*"normal"\s*\|\s*"biset"\s*\|\s*"triset"/,/setGroupId/,/setGroupOrder/], "modelo de bi-set/tri-set ausente");
+requireAll("162/set-types", "scr/lib/admin.ts", [/setType\?:\s*"normal"\s*\|\s*"biset"\s*\|\s*"triset"/,/setGroupId\?/,/setGroupOrder\?/], "modelo de bi-set/tri-set ausente");
 requireAll("162/set-editor", "scr/pages/AdminWorkoutBuilder.tsx", [/Tipo de série/,/Bi-set/,/Tri-set/,/setExerciseSeriesType/], "editor não configura bi-set/tri-set");
 requireAll("162/review", "scr/pages/AdminWorkoutBuilder.tsx", [/admin-builder-review-summary/,/RESUMO PARA PUBLICAÇÃO/,/admin-builder-review-exercises/], "etapa Revisão não mostra resumo completo");
 requireAll("162/rest-pref", "scr/lib/profile.ts", [/restRequired:\s*boolean/,/rest_required/,/loadRestRequiredPreference/], "preferência de repouso não persiste");
