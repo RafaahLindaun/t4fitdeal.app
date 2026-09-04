@@ -30,6 +30,7 @@ export default function StaffLayout() {
   const isStaff = Boolean(
     profile && STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number]),
   );
+  const isBuilder = location.pathname.startsWith("/area-accqua/montar");
   const role = profile?.role === "admin"
     ? "ADMINISTRAÇÃO"
     : profile?.role === "reception"
@@ -37,15 +38,6 @@ export default function StaffLayout() {
       : profile?.role === "professor"
         ? "PROFESSOR"
         : "EQUIPE";
-
-  const usesDocumentScroll = [
-    "students",
-    "alerts",
-    "approvals",
-    "library",
-    "templates",
-  ].includes(active);
-  const usesInternalPageScroll = ["classes", "ranking", "notifications"].includes(active);
 
   useEffect(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
@@ -56,12 +48,10 @@ export default function StaffLayout() {
     });
   }, [active]);
 
-  // Build 1.5.8: todo o fluxo de montagem precisa da maior largura útil possível.
-  // A sidebar continua disponível, apenas entra no mesmo estado compacto do botão manual.
   useEffect(() => {
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
-    if (location.pathname.startsWith("/area-accqua/montar")) setSidebarCollapsed(true);
-  }, [location.pathname]);
+    if (isBuilder) setSidebarCollapsed(true);
+  }, [isBuilder]);
 
   if (!user) return <Navigate to="/login" replace />;
   if (!profile || profile.status !== "active") return <Navigate to="/aguardando" replace />;
@@ -69,7 +59,7 @@ export default function StaffLayout() {
 
   return (
     <div
-      className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""} ${usesInternalPageScroll ? "uses-internal-page-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+      className={`accqua-staff-layout uses-unified-mobile-scroll ${isBuilder ? "uses-builder-internal-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <aside
         className={`accqua-staff-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}
@@ -148,7 +138,7 @@ export default function StaffLayout() {
       <section className="accqua-staff-content" aria-live="polite">
         <div className="accqua-staff-route" key={location.pathname} data-staff-route={location.pathname}>
           <Outlet />
-          {location.pathname.startsWith("/area-accqua/montar") ? <Build158MotionBridge /> : null}
+          {isBuilder ? <Build158MotionBridge /> : null}
         </div>
       </section>
     </div>
