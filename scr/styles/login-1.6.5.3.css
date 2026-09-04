@@ -1,0 +1,207 @@
+/* ACCQUA Sports — Build 1.6.5.3
+   Login only: replace historical absolute-position collisions with one stable layout. */
+
+.concept-login .concept-login-form {
+  box-sizing: border-box !important;
+}
+
+.concept-login .concept-login-form .concept-feedback,
+.concept-login .concept-login-form .concept-google-link {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.concept-login .concept-google-link {
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  border: 1px solid rgba(255,255,255,.11) !important;
+  border-radius: 14px !important;
+  color: #f7fbff !important;
+  background: rgba(255,255,255,.045) !important;
+  line-height: 1 !important;
+}
+
+.concept-login .concept-google-link > svg {
+  flex: 0 0 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+@media (min-width: 900px) and (min-height: 620px) {
+  .concept-login .login-artboard {
+    width: min(1180px, calc(100vw - 72px)) !important;
+    height: min(700px, calc(100dvh - 54px)) !important;
+    padding: 40px 54px 30px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.08fr) minmax(380px, .92fr) !important;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
+    column-gap: clamp(34px, 5vw, 78px) !important;
+    row-gap: 16px !important;
+    align-items: start !important;
+    overflow: visible !important;
+  }
+
+  .concept-login .concept-logo,
+  .concept-login .concept-intro,
+  .concept-login .concept-access-banner,
+  .concept-login .concept-feature-section,
+  .concept-login .concept-reception-link,
+  .concept-login .concept-login-form {
+    position: static !important;
+    inset: auto !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+  }
+
+  .concept-login .concept-logo {
+    grid-column: 1;
+    grid-row: 1;
+    width: min(280px, 100%) !important;
+    min-height: 84px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .concept-login .concept-logo .accqua-logo {
+    width: min(260px, 100%) !important;
+  }
+
+  .concept-login .concept-intro {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: 470px !important;
+    text-align: left !important;
+  }
+
+  .concept-login .concept-intro h1 {
+    margin: 0 !important;
+    font-size: clamp(32px, 3vw, 43px) !important;
+    line-height: 1.05 !important;
+  }
+
+  .concept-login .concept-intro p {
+    margin: 14px 0 0 !important;
+    font-size: 15px !important;
+    line-height: 1.45 !important;
+  }
+
+  .concept-login .concept-access-banner {
+    grid-column: 1;
+    grid-row: 3;
+    max-width: 470px !important;
+    min-height: 88px !important;
+    padding: 14px 16px !important;
+    grid-template-columns: 50px minmax(0, 1fr) !important;
+    border-radius: 18px !important;
+  }
+
+  .concept-login .concept-feature-section {
+    grid-column: 1;
+    grid-row: 4;
+    width: 100% !important;
+    max-width: 500px !important;
+    min-height: 0 !important;
+    align-self: start !important;
+  }
+
+  .concept-login .concept-reception-link {
+    grid-column: 1;
+    grid-row: 5;
+    width: max-content !important;
+    min-height: 28px !important;
+    justify-content: flex-start !important;
+  }
+
+  .concept-login .concept-login-form {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    justify-self: stretch !important;
+    align-self: center !important;
+    width: min(100%, 420px) !important;
+    margin: 46px 0 0 auto !important;
+    padding: 28px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 11px !important;
+    border: 1px solid rgba(194,219,255,.18) !important;
+    border-radius: 26px !important;
+    background: linear-gradient(155deg, rgba(15,50,96,.88), rgba(5,27,59,.94)) !important;
+    box-shadow: 0 28px 72px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05) !important;
+    backdrop-filter: blur(22px) !important;
+  }
+
+  .concept-login .concept-login-form::before {
+    left: 0 !important;
+    top: -52px !important;
+  }
+
+  .concept-login .concept-login-form::after {
+    left: 0 !important;
+    top: -24px !important;
+  }
+
+  .concept-login .concept-login-field {
+    width: 100% !important;
+    height: 52px !important;
+  }
+
+  .concept-login .concept-enter-button,
+  .concept-login .concept-first-access,
+  .concept-login .concept-google-link {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+  }
+
+  .concept-login .concept-feedback {
+    min-height: 42px !important;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 899px) {
+  .concept-login .concept-login-form {
+    gap: 9px !important;
+  }
+
+  .concept-login .concept-google-link {
+    width: 100% !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    margin-top: 0 !important;
+    font-size: 12px !important;
+    border-radius: 13px !important;
+  }
+
+  .concept-login .concept-feedback {
+    min-height: 40px !important;
+    margin: 0 !important;
+    padding: 9px 11px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .concept-login .concept-login-form {
+    gap: 8px !important;
+  }
+
+  .concept-login .concept-google-link {
+    min-height: 40px !important;
+    height: 40px !important;
+  }
+}
