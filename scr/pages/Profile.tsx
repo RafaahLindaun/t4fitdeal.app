@@ -8,7 +8,7 @@ import LoadingSplash from "../components/LoadingSplash";
 import PageHeader from "../components/PageHeader";
 import ProfilePhotoViewer from "../components/ProfilePhotoViewer";
 import ProfileMenuItem from "../components/ProfileMenuItem";
-import ProfileTrainingPartners163 from "../components/ProfileTrainingPartners163";
+import ProfileTrainingPartners164 from "../components/ProfileTrainingPartners164";
 import { loadActiveWorkoutCardioPrescription } from "../lib/cardio";
 import {
   changeMyPassword,
@@ -36,6 +36,7 @@ type ProfileView =
   | "notifications"
   | "settings"
   | "security"
+  | "partners"
   | "support";
 
 type IconName =
@@ -114,6 +115,7 @@ const viewTitles: Record<ProfileView, string> = {
   notifications: "Notificações",
   settings: "Configurações",
   security: "Segurança",
+  partners: "Parceiros",
   support: "Ajuda e suporte",
 };
 
@@ -162,6 +164,20 @@ function formatMemberSince(value: string) {
     month: "long",
     year: "numeric",
   }).format(date)}`;
+}
+
+function profileAppMilestoneV164(value: string) {
+  const start = new Date(value);
+  if (Number.isNaN(start.getTime())) return { days: null as number | null, label: "" };
+  const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / 86_400_000));
+  const levels = [
+    { days: 365, label: "LENDÁRIO" },
+    { days: 180, label: "IMPARÁVEL" },
+    { days: 90, label: "CONSISTENTE" },
+    { days: 50, label: "INSANO" },
+    { days: 30, label: "NO RITMO" },
+  ];
+  return { days, label: levels.find((level) => days >= level.days)?.label ?? "" };
 }
 
 function formatDate(value: string, withTime = false) {
@@ -682,6 +698,14 @@ export default function Profile() {
                 </div>
               </section>
 
+              {!isStaffProfile ? (
+                <section className="profile-highlights-v164" aria-label="Destaques do perfil">
+                  <article className="profile-highlight-v164"><small>TEMPO NO APP</small><strong>{profileAppMilestoneV164(details.memberSince).days === null ? "Começando agora" : `${profileAppMilestoneV164(details.memberSince).days} dias no app`}</strong>{profileAppMilestoneV164(details.memberSince).label ? <em>{profileAppMilestoneV164(details.memberSince).label}</em> : null}</article>
+                  <article className="profile-highlight-v164"><small>DIVISÃO ATUAL</small><strong>{dashboard.activeWorkout?.splitType || "A definir"}</strong></article>
+                  <article className="profile-highlight-v164"><small>OBJETIVO</small><strong>{details.objective || "Defina no perfil"}</strong></article>
+                </section>
+              ) : null}
+
               <motion.section className="profile-stats-grid" aria-label="Resumo do perfil" variants={profileStatsVariants} initial="hidden" animate="visible">
                 <motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="dumbbell" /></span><strong>{treinoStatus.isLoading ? "…" : treinoStatus.isError ? "—" : <AnimatedProfileNumber value={treinoStatus.data?.totalCompleted ?? 0} />}</strong></div><p>Treinos</p></motion.article>
                 <motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="cardio" /></span><strong><AnimatedProfileNumber value={dashboard.totalCardioMinutes} /></strong></div><p>Min. cardio</p></motion.article>
@@ -720,6 +744,7 @@ export default function Profile() {
                   <ProfileMenuItem icon={<ProfileIcon name="history" size={22} />}  title="Histórico de registros" subtitle="Treinos, cardio e aulas" onClick={() => openView("history")} />
                   <ProfileMenuItem icon={<ProfileIcon name="dumbbell" size={22} />}  title="Meus treinos" subtitle="Ficha atual e treinos concluídos" onClick={() => openView("workouts")} />
                   <ProfileMenuItem icon={<ProfileIcon name="calendar" size={22} />}  title="Minhas aulas" subtitle="Agendadas e já realizadas" onClick={() => openView("classes")} />
+                  <ProfileMenuItem icon={<ProfileIcon name="dumbbell" size={22} />} title="Parceiros" subtitle="Conexões e chamadas para treino" onClick={() => openView("partners")} />
                 </div>
               </section>
 
@@ -746,13 +771,17 @@ export default function Profile() {
                 ) : <div className="profile-reservation-empty">Você ainda não reservou nenhum item. <button type="button" onClick={() => navigate("/loja")}>Abrir Loja</button></div>}
               </section>
 
-              <ProfileTrainingPartners163 />
-
               <button type="button" className="profile-logout-button" onClick={() => setLogoutConfirmOpen(true)}>
                 <ProfileIcon name="logout" size={20} />
                 Sair da conta
               </button>
             </>
+          ) : null}
+
+          {!loadingDashboard && view === "partners" ? (
+            <section className="profile-subview profile-partners-subview-v164">
+              <ProfileTrainingPartners164 />
+            </section>
           ) : null}
 
           {!loadingDashboard && view === "personal" ? (

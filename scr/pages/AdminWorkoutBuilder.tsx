@@ -2734,6 +2734,12 @@ export default function AdminWorkoutBuilder() {
           </div>
         </section>
 
+
+        </div>
+        ) : null}
+
+        {mobileStep === "cardio" ? (
+        <div className="admin-builder-stage-v163 is-revisao">
         <section className="admin-builder-review-summary admin-builder-anchor" aria-label="Resumo do treino para revisão">
           <header>
             <div><small>RESUMO PARA PUBLICAÇÃO</small><h2>Revise o programa completo</h2></div>
@@ -2756,11 +2762,7 @@ export default function AdminWorkoutBuilder() {
             ))}
           </div>
         </section>
-        </div>
-        ) : null}
 
-        {mobileStep === "cardio" ? (
-        <div className="admin-builder-stage-v163 is-revisao">
         <section
           ref={cardioSectionRef}
           className="admin-builder-cardio admin-builder-anchor"

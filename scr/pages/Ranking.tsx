@@ -91,12 +91,12 @@ function RankingInfoSheet({ open, onClose }: { open: boolean; onClose: () => voi
   const prizeQuery = useQuery({ queryKey: ["ranking-config", "nome-premio"], queryFn: loadRankingPrizeName, enabled: open, staleTime: 5 * 60_000 });
   const prizeName = prizeQuery.data?.trim() || "um prêmio especial";
   return (
-    <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Como funciona" description="Entenda como sua posição no Ranking ACCQUA é calculada." className="ranking-info-responsive-dialog" bodyClassName="ranking-info-dialog-body" closeButton={<button type="button" className="ranking-sheet-close" aria-label="Fechar">×</button>}>
-      <div className="ranking-info-list">
-        <article><strong>Dias treinados do mês</strong><p>Cada dia válido conta no máximo uma vez no ranking, mesmo que você registre mais de um treino no mesmo dia.</p></article>
-        <article><strong>Presença com lastro</strong><p>O dia só entra na disputa quando há matrícula válida naquela data ou presença registrada em uma aula.</p></article>
-        <article><strong>Prêmio para o 1º lugar</strong><p>Quem terminar o mês em primeiro lugar ganha: {prizeName}.</p></article>
-        <article><strong>Todo mês começa do zero</strong><p>No primeiro dia de cada mês começa um novo período de disputa.</p></article>
+    <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Como funciona" description="Três regras para entender sua posição no Ranking ACCQUA." className="ranking-info-responsive-dialog" bodyClassName="ranking-info-dialog-body" closeButton={<button type="button" className="ranking-sheet-close" aria-label="Fechar">×</button>}>
+      <div className="ranking-info-list ranking-info-list-v164">
+        <p className="ranking-info-summary-v164">Seu lugar no ranking vem dos dias válidos em que você treinou neste mês.</p>
+        <article className="ranking-info-rule-v164"><span>1</span><div><strong>Um dia conta uma vez</strong><p>Mesmo com mais de um treino, o dia soma apenas 1 posição válida.</p></div></article>
+        <article className="ranking-info-rule-v164"><span>✓</span><div><strong>O dia precisa ser válido</strong><p>É necessário ter matrícula válida na data ou presença registrada em aula.</p></div></article>
+        <article className="ranking-info-rule-v164"><span>★</span><div><strong>O mês reinicia</strong><p>Todo mês começa do zero; o 1º lugar disputa {prizeName}.</p></div></article>
       </div>
     </ResponsiveDialog>
   );

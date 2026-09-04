@@ -38,14 +38,6 @@ export default function StaffLayout() {
         ? "PROFESSOR"
         : "EQUIPE";
 
-  const usesDocumentScroll = [
-    "students",
-    "alerts",
-    "approvals",
-    "library",
-    "templates",
-  ].includes(active);
-  const usesInternalPageScroll = ["classes", "ranking", "notifications"].includes(active);
 
   useEffect(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
@@ -69,7 +61,7 @@ export default function StaffLayout() {
 
   return (
     <div
-      className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""} ${usesInternalPageScroll ? "uses-internal-page-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+      className={`accqua-staff-layout uses-unified-mobile-scroll ${location.pathname.startsWith("/area-accqua/montar") ? "uses-builder-internal-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <aside
         className={`accqua-staff-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}

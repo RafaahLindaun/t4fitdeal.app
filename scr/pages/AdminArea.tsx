@@ -1000,6 +1000,7 @@ export default function AdminArea() {
             </section>
 
 
+{dashboardView === "students" ? (
             <section className="admin-work-queue admin-dashboard-statbar" aria-label="Resumo operacional">
               <div className="admin-work-queue-grid">
                 <button
@@ -1086,6 +1087,7 @@ export default function AdminArea() {
                 </button>
               </div>
             </section>
+            ) : null}
 
             <section className={clsx("admin-area-search-wrap admin-dashboard-search-wrap", dashboardView === "students" && "is-student-sticky")}>
               <label className="admin-area-search">

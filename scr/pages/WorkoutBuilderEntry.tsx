@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
 import ResponsiveDialog from "../components/ResponsiveDialog";
+import CenteredModal from "../components/CenteredModal";
 import StaffActionCard from "../components/StaffActionCard";
 import {
   AdminBackIcon,
@@ -291,7 +292,7 @@ export default function WorkoutBuilderEntry() {
         <p className="workout-entry-footnote">Todos os caminhos terminam no mesmo editor. Nenhum treino é publicado sem sua revisão.</p>
       </main>
 
-      <ResponsiveDialog open={mode === "guide"} onOpenChange={(open) => { if (!open && !guideFinishing) setMode(""); }} title="Assistente guiado" description="Uma pergunta por vez. Suas respostas ficam salvas quando você volta." className="workout-entry-dialog workout-entry-guide-v158">
+      <CenteredModal open={mode === "guide"} onOpenChange={(open) => { if (!open && !guideFinishing) setMode(""); }} title="Assistente guiado" description="Uma pergunta por vez. Suas respostas ficam salvas quando você volta." className="workout-entry-dialog workout-entry-guide-v158">
         <div className="workout-entry-guide-progress-v158" aria-label={`Pergunta ${guideStep + 1} de 3`}>
           <span><small>Pergunta {guideStep + 1} de 3</small><strong>{Math.round(((guideStep + 1) / 3) * 100)}%</strong></span>
           <i><motion.b initial={false} animate={{ scaleX: (guideStep + 1) / 3 }} transition={{ duration: 0.25 }} /></i>
@@ -329,7 +330,6 @@ export default function WorkoutBuilderEntry() {
               {guideStep === 0 ? (
                 <>
                   <h3>Beleza, o que o(a) {name} quer treinar?</h3>
-                  <p>Isso define o estilo do treino — dá para mudar depois.</p>
                   <div className="workout-entry-answer-grid">
                     {GOALS.map((item) => {
                       const selected = guideGoal === item.value;
@@ -342,7 +342,6 @@ export default function WorkoutBuilderEntry() {
               {guideStep === 1 ? (
                 <>
                   <h3>Como você diria que o(a) {name} está hoje?</h3>
-                  <p>É só um ponto de partida; tudo poderá ser revisado no editor.</p>
                   <div className="workout-entry-answer-grid">
                     {LEVELS.map((item) => {
                       const selected = guideLevel === item.value;
@@ -355,7 +354,6 @@ export default function WorkoutBuilderEntry() {
               {guideStep === 2 ? (
                 <>
                   <h3>Quantos dias o(a) {name} consegue treinar por semana?</h3>
-                  <p>A divisão se ajusta sozinha a partir disso.</p>
                   <div className="workout-entry-answer-grid is-days">
                     {[1, 2, 3, 4, 5, 6].map((day) => {
                       const selected = guideDays === day;
@@ -372,11 +370,11 @@ export default function WorkoutBuilderEntry() {
             </motion.div>
           )}
         </AnimatePresence>
-      </ResponsiveDialog>
+      </CenteredModal>
 
-      <ResponsiveDialog open={mode === "templates"} onOpenChange={(open) => { if (!open) setMode(""); }} title="Modelos salvos" description={`Escolha uma base e revise para o(a) ${name}.`} className="workout-entry-dialog">
+      <CenteredModal open={mode === "templates"} onOpenChange={(open) => { if (!open) setMode(""); }} title="Modelos salvos" description={`Escolha uma base e revise para o(a) ${name}.`} className="workout-entry-dialog">
         <div className="workout-entry-template-list">{templates.length ? templates.map((template) => <button type="button" key={template.id} onClick={() => applyTemplate(template)}><span><strong>{template.name}</strong><small>{template.splitCode} · {template.payload.routines.length} rotina{template.payload.routines.length === 1 ? "" : "s"}</small></span><em>Usar modelo</em></button>) : <div className="workout-entry-empty"><AdminLayersIcon size={28}/><strong>Nenhum modelo salvo ainda</strong><p>Monte um treino manualmente e salve como modelo para reutilizar aqui.</p></div>}</div>
-      </ResponsiveDialog>
+      </CenteredModal>
 
       <ResponsiveDialog open={mode === "ai"} onOpenChange={(open) => { if (!open && !aiGenerating) setMode(""); }} title={`Me conta sobre o ${name}`} description="Escreva como se estivesse explicando para outro professor." className="workout-entry-dialog">
         {aiGenerating ? <div className="workout-entry-ai-loading"><AdminSparkIcon size={34}/><strong>Montando uma sugestão...</strong><p>Selecionando apenas exercícios que já existem na Biblioteca da equipe.</p></div> : <div className="workout-entry-ai"><textarea autoFocus rows={6} value={aiDescription} onChange={(event) => setAiDescription(event.target.value)} placeholder="Ex: quer emagrecer, tem dor no joelho direito, treina 3x por semana, gosta mais de treino em pé do que sentado na máquina"/><p>A IA não publica nada e não pode inventar exercícios. O resultado abre no mesmo editor para sua revisão.</p><button type="button" className="workout-entry-primary" disabled={!aiDescription.trim()} onClick={() => void generateAI()}>Gerar sugestão de treino</button></div>}

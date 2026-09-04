@@ -58,3 +58,7 @@ export async function callTrainingPartner(partnerId: string) {
   if (error) throw error;
   return String(data ?? "");
 }
+
+export async function inviteTrainingPartner(partnerId: string) {
+  return requestTrainingPartner(partnerId);
+}
