@@ -1,0 +1,197 @@
+/* ACCQUA Sports — Build 1.6.3
+   Consolidação visual/estrutural do QA de Staff, Montar Treino, Perfil, Loja,
+   Ranking, Login, Cardio e modais. Esta camada é carregada depois da 1.6.2. */
+
+:root{
+  --surface-active:#1e3a5f;
+  --text-on-active:#fff;
+  --border-active:#f2c230;
+  --accent-primary:#f2c230;
+  --accent-selection:#3b82f6;
+  --accent-success:#22c55e;
+  --surface-neutral:#1e293b;
+}
+
+/* Staff shell: cada página recebe altura útil real e somente o conteúdo rola. */
+.accqua-staff-layout,.accqua-staff-content,.accqua-staff-route,.staff-page-layout{min-height:0!important}
+.accqua-staff-content,.accqua-staff-route{overflow:hidden!important}
+.staff-page-layout{height:100%;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+.staff-page-layout-header{flex:0 0 auto;position:relative;z-index:12;background:#06172f}
+.staff-page-layout-scroll{flex:1 1 auto;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.notifications-staff-page,.classes-admin-screen,.ranking-staff-page,.admin-library-screen{min-height:0!important}
+.notifications-staff-grid,.classes-admin-scroll,.admin-library-list{min-height:0!important}
+
+/* Sidebar: width belongs to the sidebar itself; content is always flexible. */
+@media(min-width:1024px){
+  .accqua-staff-layout{display:flex!important;grid-template-columns:none!important;align-items:stretch!important}
+  .accqua-staff-sidebar{flex:0 0 var(--staff-sidebar-expanded-width,238px)!important;width:var(--staff-sidebar-expanded-width,238px)!important;overflow:hidden!important;transition:width .2s ease,flex-basis .2s ease,padding .2s ease!important}
+  .accqua-staff-layout.is-sidebar-collapsed .accqua-staff-sidebar,.accqua-staff-sidebar.is-collapsed{flex-basis:72px!important;width:72px!important}
+  .accqua-staff-content{flex:1 1 auto!important;width:auto!important;min-width:0!important}
+}
+
+/* Chips/cards selecionados nunca perdem contraste. */
+.admin-filter-chip[aria-pressed="true"],.admin-filter-chip[aria-selected="true"],
+.admin-dashboard-stat.is-active,.admin-dashboard-stat[aria-pressed="true"],
+.classes-admin-weekdays button.is-active,.notification-audience-grid button.is-selected{
+  background:var(--surface-active)!important;color:var(--text-on-active)!important;border-color:var(--border-active)!important
+}
+.admin-status-badge.is-warning,.admin-student-badge.is-warning,.status-badge--warning{background:#f2c230!important;color:#1a1400!important;border-color:#f2c230!important}
+
+/* Shared modal contract: X never crowds the title; drawers stay above nav. */
+.responsive-dialog-overlay{z-index:1000!important}
+.responsive-dialog-content,.responsive-dialog-drawer{z-index:1001!important}
+.responsive-dialog-header{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:24px!important;padding-right:2px!important}
+.responsive-dialog-header>div{min-width:0!important;flex:1 1 auto!important}
+.responsive-dialog-header>button,.responsive-dialog-header [data-radix-collection-item]{flex:0 0 auto!important}
+.responsive-dialog-handle{width:42px!important;height:5px!important;border-radius:999px!important;margin:8px auto 10px!important;background:rgba(255,255,255,.3)!important}
+body[data-accqua-modal-open="true"] .accqua-main-layout-nav{visibility:hidden!important;pointer-events:none!important}
+
+/* Bottom navigation: só a pílula possui fundo; safe-area é transparente. */
+.accqua-main-layout-nav{background:transparent!important;z-index:50!important}
+.accqua-bottom-navigation{border-radius:28px!important}
+.bottom-nav-safe-area-spacer,.accqua-main-layout-nav::before,.accqua-main-layout-nav::after{background:transparent!important}
+
+/* Entrada do Montar Treino: título/subtítulo sempre visíveis, nunca hover-only. */
+.workout-entry-methods>button{height:auto!important;min-height:184px!important;grid-template-rows:44px auto auto!important;overflow:visible!important}
+.workout-entry-methods>button>.staff-action-card-copy{min-height:0!important;overflow:visible!important;opacity:1!important;transform:none!important}
+.workout-entry-methods>button>.staff-action-card-copy strong{white-space:normal!important;text-overflow:clip!important;overflow:visible!important}
+.workout-entry-methods>button>.staff-action-card-copy p{display:block!important;max-height:none!important;overflow:visible!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;color:rgba(239,246,255,.66)!important}
+.workout-entry-methods>button>.staff-action-card-meta{margin-top:auto!important}
+
+/* Stepper 1–4 é a única navegação visual de progresso. */
+.admin-builder-step-nav,.admin-builder-mobile-step-controls{display:none!important}
+.admin-builder-progress-v162{flex:0 0 auto!important;overflow:visible!important}
+.admin-builder-progress-v162 button>small{white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+
+/* Montador: shell e estágio atual recebem scroll previsível. */
+.admin-builder-screen{height:100dvh!important;min-height:0!important;overflow:hidden!important}
+.admin-builder-shell{height:calc(100dvh - var(--admin-builder-footer-height,78px));min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding-bottom:24px!important}
+.admin-builder-header{position:sticky!important;top:0!important;z-index:20!important;background:#06172f!important}
+.admin-builder-footer{position:sticky!important;bottom:0!important;z-index:35!important;width:100%!important;background:rgba(5,20,43,.98)!important;backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.09)!important}
+.admin-builder-footer-actions .is-template{background:transparent!important;border:0!important;color:rgba(239,246,255,.62)!important;text-decoration:underline;text-underline-offset:3px}
+.admin-builder-footer-actions .is-publish{background:#f2c230!important;color:#07162d!important;border-color:#f2c230!important}
+.admin-builder-readiness{position:relative!important;inset:auto!important;transform:none!important;z-index:1!important}
+
+/* Divisão horizontal arrastável/rolável com seleção ACCQUA. */
+.admin-builder-split-options{display:flex!important;grid-template-columns:none!important;gap:10px!important;overflow-x:auto!important;scroll-snap-type:x proximity!important;padding:4px 18px 8px 2px!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch}
+.admin-builder-split-options::-webkit-scrollbar{display:none}
+.admin-builder-split-options>button{flex:0 0 92px!important;min-width:92px!important;scroll-snap-align:center!important;border-radius:16px!important;transition:transform .18s ease,border-color .18s ease,background .18s ease!important}
+.admin-builder-split-options>button.is-active,.admin-builder-split-options>button[aria-pressed="true"]{transform:scale(1.035)!important;background:#ffd128!important;color:#07162d!important;border-color:#ffd128!important}
+
+/* Exercícios: biblioteca legível e controles nunca ocupam a mesma célula. */
+.admin-builder-library{min-width:0!important}
+.admin-builder-groups{display:flex!important;overflow-x:auto!important;scroll-snap-type:x proximity!important;gap:8px!important;padding-right:22px!important;scrollbar-width:none!important}
+.admin-builder-groups::-webkit-scrollbar{display:none}
+.admin-builder-groups>button{flex:0 0 auto!important;scroll-snap-align:start!important}
+.admin-builder-library-list>article{grid-template-columns:auto minmax(0,1fr) auto!important;overflow:visible!important}
+.admin-builder-library-list strong{white-space:normal!important;display:block!important;max-height:none!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;overflow:visible!important;line-height:1.3!important}
+.admin-builder-exercise-summary{position:relative!important;grid-template-columns:auto minmax(0,1fr)!important;grid-template-areas:"media copy" "tune tune" "group group" "actions actions"!important;padding-right:10px!important}
+.admin-builder-reorder-handle,.admin-builder-exercise-controls{position:static!important;grid-area:actions!important;align-self:center!important}
+.admin-builder-reorder-handle{justify-self:start!important;margin:0!important}
+.admin-builder-exercise-controls{justify-self:end!important;display:flex!important;gap:6px!important}
+.admin-builder-exercise-summary>svg{position:static!important;grid-area:actions!important;justify-self:end!important}
+.admin-builder-quick-tune>span{grid-template-columns:auto 38px minmax(46px,1fr) 38px!important}
+.admin-builder-set-group-badge{max-width:100%!important;white-space:normal!important}
+
+/* Revisão: cardio e resumo ocupam linhas próprias, sem sobreposição. */
+.admin-builder-cardio,.admin-builder-review-summary{position:relative!important;inset:auto!important;float:none!important;clear:both!important;width:100%!important;margin:14px 0 0!important}
+.admin-builder-cardio-toggle{width:100%!important;min-width:0!important;overflow:visible!important}
+.admin-builder-review-summary{overflow:visible!important}
+
+/* Método desktop: info lateral e métodos ficam no mesmo eixo sem esmagar editor. */
+@media(min-width:1280px){
+  .admin-builder-screen.is-step-exercicios .admin-builder-shell{max-width:1440px!important;margin-inline:auto!important}
+  .admin-builder-screen.is-step-exercicios .admin-builder-library{min-width:280px!important}
+}
+
+/* Mobile: nenhum painel antigo pode pairar sobre o estágio atual. */
+@media(max-width:1023px){
+  .admin-builder-screen{height:100dvh!important}
+  .admin-builder-shell{height:calc(100dvh - 74px)!important;padding-bottom:18px!important}
+  .admin-builder-header{top:0!important}
+  .admin-builder-footer{position:fixed!important;left:0!important;right:0!important;bottom:0!important;min-height:74px!important;padding-bottom:calc(8px + env(safe-area-inset-bottom))!important}
+  .admin-builder-footer-summary{display:none!important}
+  .admin-builder-footer-actions{width:100%!important;display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;gap:10px!important}
+  .admin-builder-footer-actions .is-publish{min-height:48px!important}
+  .admin-builder-readiness{margin:10px 0 14px!important;max-height:none!important}
+  .admin-builder-split-options{margin-inline:0!important}
+  .workout-entry-shell{padding-inline:14px!important}
+  .workout-entry-methods{gap:10px!important}
+}
+@media(max-width:560px){
+  .workout-entry-methods{grid-template-columns:1fr!important}
+  .workout-entry-methods>button{min-height:150px!important}
+  .admin-builder-progress-v162 .admin-builder-step-orb{width:44px!important;height:44px!important}
+  .admin-builder-progress-v162 button>small{font-size:9px!important}
+}
+
+/* Perfil do aluno / Staff mobile: sem recorte, cards compactos e texto neutro. */
+@media(max-width:767px){
+  .admin-student-detail,.admin-student-profile,.admin-student-profile-shell{overflow:visible!important;padding-inline:12px!important}
+  .admin-training-card,.admin-student-card,.profile-menu-section{overflow:visible!important;border-radius:16px!important}
+  .admin-training-status,.admin-training-badge,.badge-treino-pendente{z-index:4!important;max-width:calc(100% - 24px)!important}
+  .admin-profile-actions,.admin-student-options,.perfil-opcoes-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+  .admin-profile-actions>button,.admin-student-options>button,.perfil-opcao-tile{min-height:84px!important;height:auto!important;border-radius:16px!important;padding:8px!important}
+  .admin-training-action p,.admin-training-action small,.card-treino .subtitulo{color:rgba(239,246,255,.62)!important}
+  .admin-training-action svg{color:#ffd128!important}
+  .admin-student-professor-box,.header-professor-box{width:100%!important;border-radius:16px!important;overflow:hidden!important;background:#06172f!important}
+}
+
+/* Modal matrícula: leitura e toque confortáveis. */
+.admin-membership-dialog label,.membership-field-label{font-size:13px!important;font-weight:600!important;color:rgba(239,246,255,.68)!important}
+.admin-membership-dialog input,.admin-membership-dialog select,.membership-field-value{min-height:44px!important;font-size:16px!important;line-height:1.4!important}
+
+/* Loja: imagem reta, desconto ancorado e CTA sempre sólido. */
+.store-product-detail-main-image{position:relative!important;overflow:hidden!important}
+.store-product-detail-main-image img{transform:none!important;rotate:none!important;object-fit:cover!important}
+.store-product-detail-discount{position:absolute!important;top:12px!important;left:12px!important;right:auto!important;z-index:3!important}
+.store-product-detail-reserve{display:flex!important;width:100%!important;min-height:52px!important;background:#ffd128!important;color:#07162d!important;border-color:#ffd128!important;opacity:1!important;visibility:visible!important}
+.store-product-detail-reserve:disabled{opacity:.45!important}
+.store-admin-product-card,.admin-library-card{position:relative!important;overflow:visible!important}
+.store-admin-product-card .swipeable-delete-action,.admin-library-card .swipeable-delete-action,.store-admin-row .swipeable-delete-action{top:-9px!important;right:-9px!important;z-index:8!important}
+
+/* Perfil: reservas + parceiros. */
+.profile-training-partners-v163{display:grid;gap:12px}
+.profile-training-partners-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#ffd128;background:rgba(255,209,40,.1)}
+.profile-training-partners-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.profile-training-partners-lead{margin:-3px 0 0;color:rgba(239,246,255,.58);font-size:12px;line-height:1.45}
+.profile-training-partners-list{display:grid;gap:8px}
+.profile-training-partners-list>article{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 11px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.035)}
+.profile-training-partner-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#183250;color:#fff;font-size:12px;font-weight:900}
+.profile-training-partner-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-training-partners-list>article>div{min-width:0;display:grid;gap:2px}.profile-training-partners-list strong{font-size:13px}.profile-training-partners-list small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(239,246,255,.55);font-size:10px}
+.profile-training-partners-list button{min-height:36px;padding:0 11px;border:1px solid rgba(255,209,40,.35);border-radius:10px;color:#07162d;background:#ffd128;font-size:11px;font-weight:900}.profile-training-partners-list button.is-pending,.profile-training-partners-list button.is-accepted{color:rgba(239,246,255,.62);background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
+
+/* Ranking: no desktop a sidebar já é a marca; ações ficam em fluxo flex. */
+.ranking-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;position:relative!important}
+.ranking-header-actions{position:static!important;display:flex!important;align-items:center!important;gap:8px!important;margin-left:auto!important}
+.ranking-header-action,.ranking-prize-fab,.ranking-info-fab{position:static!important;flex:0 0 auto!important}
+@media(min-width:1024px){.accqua-staff-layout .ranking-header-logo{display:none!important}}
+.ranking-achievement-v163{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid rgba(255,209,40,.28);border-radius:999px;color:#ffd128;background:rgba(255,209,40,.08);font-size:10px;font-weight:900;letter-spacing:.04em}
+.ranking-profile-objective-v163{grid-column:1/-1!important}
+
+/* Login: feedback pertence ao form; recursos e Google com encaixe consistente. */
+.concept-login-form{position:relative!important;display:flex!important;flex-direction:column!important;align-items:stretch!important}
+.concept-feedback{position:static!important;width:100%!important;margin:0 0 9px!important;transform:none!important}
+.concept-feature-grid article{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;transition:transform .2s ease,box-shadow .2s ease!important}
+.concept-feature-grid article:hover{transform:translateY(-4px)!important}
+.concept-google-link{min-height:42px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important}
+
+/* Home / dieta: ícones quadrados opacos com mesmo eixo. */
+.home-header-actions,.diet-header-actions,.nutrition-header-actions{display:flex!important;align-items:center!important;gap:12px!important}
+.home-header-actions>button,.diet-header-actions>button,.nutrition-header-actions>button{width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;display:grid!important;place-items:center!important;border-radius:13px!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.1)!important}
+.home-header-actions svg,.diet-header-actions svg,.nutrition-header-actions svg{width:20px!important;height:20px!important;margin:auto!important}
+
+/* Cardio thumbnails: legenda sempre legível sobre a mídia. */
+.cardio-type-card,.cardio-mode-card{position:relative!important;overflow:hidden!important;border-radius:12px!important}
+.cardio-type-caption,.cardio-mode-caption,.cardio-type-card small,.cardio-mode-card small{position:relative!important;z-index:2!important;color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.65)}
+.cardio-type-card::after,.cardio-mode-card::after{content:"";position:absolute;left:0;right:0;bottom:0;height:48%;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.78),transparent)}
+
+/* Loading: somente transform/opacity; nada de layout/reflow. */
+.splash-screen .accqua-logo,.splash-screen img,.splash-glow{will-change:transform,opacity!important}
+.button-loader{animation-duration:.55s!important}
+
+@media(prefers-reduced-motion:reduce){
+  .accqua-staff-sidebar,.admin-builder-split-options>button,.concept-feature-grid article{transition:none!important}
+  .admin-builder-progress-v162 button.is-current .admin-builder-step-orb::before{animation:none!important;border-top-color:#ffd128!important}
+}
