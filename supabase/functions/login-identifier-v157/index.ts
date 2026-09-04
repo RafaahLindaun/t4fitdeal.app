@@ -44,21 +44,19 @@ Deno.serve(async (req) => {
       }
 
       const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-      const { data, error } = await admin
-        .from("profiles")
-        .select("email")
-        .or(`cpf.eq.${normalized},phone.eq.${normalized}`)
-        .limit(2);
+      const { data, error } = await admin.rpc("resolve_accqua_login_email_v1_6_3", {
+        p_identifier: normalized,
+      });
 
       if (error) {
         console.error("login-identifier-v157 profile lookup", error.code, error.message);
         return json({ error: "unavailable", message: "O acesso está temporariamente indisponível. Tente novamente em instantes." }, 503);
       }
 
-      if (!data || data.length !== 1 || !text(data[0]?.email)) {
+      email = text(data).toLowerCase();
+      if (!email) {
         return json({ error: "invalid_credentials", message: genericError }, 401);
       }
-      email = text(data[0].email).toLowerCase();
     }
 
     const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });

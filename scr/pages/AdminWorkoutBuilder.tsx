@@ -932,6 +932,12 @@ export default function AdminWorkoutBuilder() {
     return () => window.removeEventListener("keydown", handleKeyboardShortcuts);
   }, [routines.length]);
 
+  // Build 1.6.3: estágio único montado por vez.
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>(".admin-builder-shell");
+    shell?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [mobileStep]);
+
   const activeRoutine =
     routines[activeRoutineIndex] ?? routines[0] ?? createRoutines("FULL")[0];
 
@@ -2017,6 +2023,8 @@ export default function AdminWorkoutBuilder() {
           ) : null}
         </section>
 
+        {mobileStep === "programa" ? (
+        <div className="admin-builder-stage-v163 is-programa">
         <section
           ref={programSectionRef}
           className="admin-builder-program-card admin-builder-anchor"
@@ -2114,7 +2122,11 @@ export default function AdminWorkoutBuilder() {
             </label>
           </div>
         </section>
+        </div>
+        ) : null}
 
+        {mobileStep === "rotina" ? (
+        <div className="admin-builder-stage-v163 is-rotina">
         <section
           ref={routineSectionRef}
           className="admin-builder-routines admin-builder-anchor"
@@ -2232,7 +2244,11 @@ export default function AdminWorkoutBuilder() {
             </div>
           </article>
         </section>
+        </div>
+        ) : null}
 
+        {mobileStep === "exercicios" ? (
+        <div className="admin-builder-stage-v163 is-exercicios">
         <section ref={selectedSectionRef} className="admin-builder-selected admin-builder-anchor">
           <header>
             <div>
@@ -2740,7 +2756,11 @@ export default function AdminWorkoutBuilder() {
             ))}
           </div>
         </section>
+        </div>
+        ) : null}
 
+        {mobileStep === "cardio" ? (
+        <div className="admin-builder-stage-v163 is-revisao">
         <section
           ref={cardioSectionRef}
           className="admin-builder-cardio admin-builder-anchor"
@@ -2895,6 +2915,8 @@ export default function AdminWorkoutBuilder() {
             </div>
           ) : null}
         </section>
+        </div>
+        ) : null}
 
         <aside className="admin-builder-desktop-aside">
           <section className="admin-builder-student-summary">

@@ -1,7 +1,7 @@
 {
   "name": "accqua-sports-app",
   "private": true,
-  "version": "1.6.2",
+  "version": "1.6.3",
   "type": "module",
   "scripts": {
     "predev": "node scripts/generate-exercise-media-manifest.mjs",
@@ -9,7 +9,7 @@
     "prebuild": "node scripts/generate-exercise-media-manifest.mjs",
     "build": "vite build",
     "typecheck": "tsc -b --pretty false",
-    "visual:contracts": "node scripts/verify-visual-contracts-1.6.2.mjs",
+    "visual:contracts": "node scripts/verify-visual-contracts-1.6.3.mjs",
     "validate": "npm run visual:contracts && npm run typecheck && npm run build",
     "preview": "vite preview --host 0.0.0.0",
     "test:visual": "playwright test -c playwright.visual.config.ts",

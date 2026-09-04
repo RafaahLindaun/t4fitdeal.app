@@ -8,6 +8,7 @@ import LoadingSplash from "../components/LoadingSplash";
 import PageHeader from "../components/PageHeader";
 import ProfilePhotoViewer from "../components/ProfilePhotoViewer";
 import ProfileMenuItem from "../components/ProfileMenuItem";
+import ProfileTrainingPartners163 from "../components/ProfileTrainingPartners163";
 import { loadActiveWorkoutCardioPrescription } from "../lib/cardio";
 import {
   changeMyPassword,
@@ -744,6 +745,8 @@ export default function Profile() {
                   ))}</div>
                 ) : <div className="profile-reservation-empty">Você ainda não reservou nenhum item. <button type="button" onClick={() => navigate("/loja")}>Abrir Loja</button></div>}
               </section>
+
+              <ProfileTrainingPartners163 />
 
               <button type="button" className="profile-logout-button" onClick={() => setLogoutConfirmOpen(true)}>
                 <ProfileIcon name="logout" size={20} />

@@ -42,6 +42,20 @@ function formatAppTime(value: string) {
     : `${years} ${years === 1 ? "ano" : "anos"} no app`;
 }
 
+function rankingAchievementV163(memberSince: string) {
+  const start = new Date(memberSince);
+  if (Number.isNaN(start.getTime())) return null;
+  const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / 86_400_000));
+  const levels = [
+    { days: 365, label: "LENDÁRIO" },
+    { days: 180, label: "IMPARÁVEL" },
+    { days: 90, label: "CONSISTENTE" },
+    { days: 50, label: "INSANO" },
+    { days: 30, label: "NO RITMO" },
+  ];
+  return levels.find((level) => days >= level.days) ?? null;
+}
+
 function BackIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7"/><path d="M8 12h11"/></svg>;
 }
@@ -144,6 +158,8 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry
           <article><span>Tempo no app</span><strong>{formatAppTime(summary.memberSince)}</strong></article>
           <article><span>Treinos feitos</span><strong>{summary.totalWorkouts}</strong></article>
           <article><span>Divisão atual</span><strong>{summary.currentSplit || "Não informada"}</strong></article>
+          <article className="ranking-profile-objective-v163"><span>Objetivo</span><strong>{summary.objective || "Não informado"}</strong></article>
+          {rankingAchievementV163(summary.memberSince) ? <span className="ranking-achievement-v163">★ {rankingAchievementV163(summary.memberSince)?.label}</span> : null}
         </div>}
       </section>
     </div>

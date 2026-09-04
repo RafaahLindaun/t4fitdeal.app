@@ -24,14 +24,15 @@ import "./styles/build-1.5.8.css";
 import "./styles/build-1.5.9.css";
 import "./styles/build-1.6.0.css";
 import "./styles/build-1.6.2.css";
+import "./styles/build-1.6.3.css";
 
 installInfrastructureToastGuard();
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 15_000,
-      refetchOnWindowFocus: true,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
