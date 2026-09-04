@@ -1,0 +1,65 @@
+/* ACCQUA Sports — Build 1.6.2
+   Regressões do Montar Treino + grouping + revisão + stepper mobile. */
+
+/* Entrada do montador: o copy NÃO pode receber o quadrado 44x44 do ícone. */
+.workout-entry-methods>button{min-height:174px!important;overflow:hidden!important;grid-template-rows:44px minmax(0,1fr) auto!important;align-content:stretch!important}
+.workout-entry-methods>button>.staff-action-card-icon{width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;overflow:hidden!important}
+.workout-entry-methods>button>.staff-action-card-copy{width:auto!important;height:auto!important;min-width:0!important;min-height:56px!important;display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;gap:6px!important;align-content:start!important;overflow:hidden!important}
+.workout-entry-methods>button>.staff-action-card-copy strong{display:block!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.workout-entry-methods>button>.staff-action-card-copy p{display:-webkit-box!important;margin:0!important;overflow:hidden!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;line-clamp:3!important;max-height:4.5em!important;color:rgba(239,246,255,.64)!important}
+.workout-entry-methods>button>.staff-action-card-meta{position:static!important;align-self:end!important;justify-self:start!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.workout-entry-methods>button:hover{border-color:rgba(255,209,40,.58)!important;background:rgba(255,209,40,.065)!important}
+.workout-entry-methods>button:hover .staff-action-card-copy,.workout-entry-methods>button:focus-visible .staff-action-card-copy{transform:none!important;opacity:1!important}
+.workout-entry-question>div:not(.workout-entry-dialog-actions)>button.is-selected{border-color:#ffd128!important;background:rgba(255,209,40,.13)!important;box-shadow:inset 0 0 0 1px rgba(255,209,40,.18)!important}
+.workout-entry-ai textarea:focus{border-color:#ffd128!important;box-shadow:0 0 0 3px rgba(255,209,40,.12)!important}
+
+/* Stepper 1–4 único. */
+.admin-builder-progress-v162{width:100%;margin:0;padding:8px 0 12px}
+.admin-builder-progress-v162>ol{list-style:none;margin:0;padding:0 clamp(4px,2vw,16px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;align-items:start}
+.admin-builder-progress-v162 button{min-width:0;min-height:70px;padding:0 2px;border:0;background:transparent;color:rgba(239,246,255,.38);display:grid;justify-items:center;align-content:start;gap:6px;cursor:pointer}
+.admin-builder-progress-v162 .admin-builder-step-orb{position:relative;width:48px;height:48px;display:grid;place-items:center}
+.admin-builder-progress-v162 .admin-builder-step-orb>i{position:relative;z-index:2;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);font-style:normal;font-size:16px;font-weight:900;color:rgba(239,246,255,.4)}
+.admin-builder-progress-v162 button.is-current .admin-builder-step-orb::before{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid #ffd128;border-top-color:transparent;animation:accqua-builder-step-spin .9s linear infinite}
+.admin-builder-progress-v162 button.is-current .admin-builder-step-orb>i{color:#ffd128;background:rgba(255,209,40,.08);border-color:rgba(255,209,40,.2)}
+.admin-builder-progress-v162 button.is-complete .admin-builder-step-orb>i{color:#07162d;background:#ffd128;border-color:#ffd128}
+.admin-builder-progress-v162 button>small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-size:10px;font-weight:800}
+.admin-builder-progress-v162 button.is-current>small,.admin-builder-progress-v162 button.is-complete>small{color:#f8fbff}
+@keyframes accqua-builder-step-spin{to{transform:rotate(360deg)}}
+
+/* Programa: seleção sempre ACCQUA amarelo e data coerente com dark theme. */
+.admin-builder-split-options button.is-active,.admin-builder-split-options button[aria-pressed="true"]{border-color:#ffd128!important;background:#ffd128!important;color:#07162d!important;box-shadow:0 0 0 2px rgba(255,209,40,.14)!important}
+.admin-builder-program-fields input[type="date"]{color-scheme:dark;background-color:#07182f!important;color:#f8fbff!important}
+.admin-builder-program-fields input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(88%) sepia(78%) saturate(1017%) hue-rotate(342deg) brightness(105%) contrast(101%);opacity:.9;cursor:pointer}
+
+/* Exercícios: controles primários separados e confortáveis. */
+.admin-builder-exercise-summary{grid-template-columns:auto minmax(0,1fr)!important;grid-template-areas:"media copy" "tune tune" "group group"!important;gap:10px 12px!important;overflow:visible!important}
+.admin-builder-selected-gif{grid-area:media}.admin-builder-exercise-copy{grid-area:copy;min-width:0}.admin-builder-quick-tune{grid-area:tune!important;width:100%!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin-top:2px!important}
+.admin-builder-quick-tune>span{min-width:0!important;min-height:42px!important;display:grid!important;grid-template-columns:auto 36px minmax(40px,1fr) 36px!important;align-items:center!important;gap:6px!important;padding:4px 6px!important;border-radius:12px!important;background:rgba(255,255,255,.035)!important}
+.admin-builder-quick-tune button{min-width:36px!important;min-height:36px!important;width:36px!important;height:36px!important}
+.admin-builder-quick-tune b{min-width:40px!important;white-space:nowrap!important;text-align:center!important;overflow:visible!important}
+.admin-builder-reorder-handle,.admin-builder-exercise-controls{position:absolute!important;top:8px!important;z-index:4!important}
+.admin-builder-reorder-handle{right:82px!important}.admin-builder-exercise-controls{right:10px!important;display:flex!important;gap:4px!important}
+.admin-builder-exercise-controls button{min-width:32px!important;min-height:32px!important}
+.admin-builder-exercise-summary>svg{position:absolute!important;right:8px!important;bottom:8px!important}
+.admin-builder-exercise.is-set-group{border-left:3px solid #ffd128!important;background:linear-gradient(90deg,rgba(255,209,40,.055),transparent 28%)!important}
+.admin-builder-set-group-badge{grid-area:group;display:inline-flex!important;justify-self:start;align-items:center;gap:5px;max-width:100%;padding:4px 8px;border:1px solid rgba(255,209,40,.28);border-radius:999px;color:#ffd128!important;background:rgba(255,209,40,.07);font-size:10px!important;font-style:normal!important;font-weight:900!important;white-space:nowrap}
+.admin-builder-set-type{display:grid;gap:8px;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.025)}
+.admin-builder-set-type>span{font-size:11px;font-weight:850;color:rgba(239,246,255,.65)}.admin-builder-set-type>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.admin-builder-set-type button{min-height:40px;border:1px solid rgba(255,255,255,.1);border-radius:11px;color:rgba(239,246,255,.68);background:rgba(255,255,255,.04);font-size:11px;font-weight:850}.admin-builder-set-type button.is-active{border-color:#ffd128;color:#07162d;background:#ffd128}
+
+/* Biblioteca: nomes nunca invadem a legenda. */
+.admin-builder-library-list>article{min-height:72px!important;align-items:center!important}.admin-builder-library-list>article>div{min-width:0!important;display:grid!important;gap:3px!important}.admin-builder-library-list strong{display:-webkit-box!important;overflow:hidden!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;line-clamp:2!important;line-height:1.25!important;max-height:2.5em!important}.admin-builder-library-list small{display:block!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+
+/* Revisão: resumo real + cardio em linhas próprias. */
+.admin-builder-review-summary{display:grid;gap:12px;margin-top:14px;padding:16px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(255,255,255,.03)}
+.admin-builder-review-summary>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.admin-builder-review-summary>header small{color:#ffd128;font-size:10px;font-weight:900;letter-spacing:.1em}.admin-builder-review-summary>header h2{margin:3px 0 0;font-size:18px}.admin-builder-review-days{display:grid;gap:10px}.admin-builder-review-day{display:grid;gap:8px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(3,18,39,.65)}.admin-builder-review-day>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.admin-builder-review-day>header strong{font-size:13px}.admin-builder-review-day>header span{color:rgba(239,246,255,.52);font-size:10px}.admin-builder-review-exercises{display:grid;gap:6px}.admin-builder-review-exercises>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 9px;border-radius:10px;background:rgba(255,255,255,.035)}.admin-builder-review-exercises strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.admin-builder-review-exercises small{color:rgba(239,246,255,.55);font-size:10px;white-space:nowrap}.admin-builder-review-exercises em{grid-column:1/-1;color:#ffd128;font-size:9px;font-style:normal;font-weight:850}.admin-builder-cardio{position:relative!important;inset:auto!important;clear:both!important;margin-top:14px!important}.admin-builder-cardio-toggle{min-height:96px!important;overflow:hidden!important}.admin-builder-cardio-toggle>div{min-width:0!important}.admin-builder-cardio-toggle p{overflow:hidden!important;margin-bottom:0!important}.admin-builder-cardio-toggle>i{flex:0 0 auto!important}.admin-builder-cardio-toggle::after{content:attr(data-toggle-label)}
+
+/* Mobile shell: nenhum painel flutua sobre conteúdo. */
+@media(max-width:1023px){
+  .admin-builder-progress-v162{position:relative;z-index:3;background:#06172f}
+  .admin-builder-progress-v162>ol{padding-inline:2px}.admin-builder-progress-v162 button{min-height:66px}.admin-builder-progress-v162 .admin-builder-step-orb{width:46px;height:46px}.admin-builder-progress-v162 .admin-builder-step-orb>i{width:38px;height:38px}
+  .admin-builder-readiness{position:relative!important;inset:auto!important;transform:none!important;margin:10px 0 14px!important;z-index:1!important}
+  .admin-builder-exercise-summary{padding-right:10px!important}.admin-builder-reorder-handle{right:78px!important}.admin-builder-exercise-controls{right:8px!important}
+  .admin-builder-quick-tune{grid-template-columns:1fr!important}.admin-builder-set-type>div{grid-template-columns:1fr!important}
+}
+@media(max-width:430px){.workout-entry-methods>button{min-height:170px!important}.workout-entry-methods>button>.staff-action-card-copy p{-webkit-line-clamp:3!important}.admin-builder-progress-v162 button>small{font-size:9px}.admin-builder-review-summary{padding:12px}.admin-builder-review-exercises>div{grid-template-columns:1fr}.admin-builder-review-exercises small{white-space:normal}}
+@media(prefers-reduced-motion:reduce){.admin-builder-progress-v162 button.is-current .admin-builder-step-orb::before{animation:none;border-top-color:#ffd128}}
