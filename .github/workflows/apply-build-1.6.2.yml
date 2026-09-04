@@ -29,11 +29,7 @@ jobs:
           cache: npm
       - name: Apply Build 1.6.2
         run: node scripts/apply-build-1.6.2.mjs
-      - name: Install
-        run: npm ci
-      - name: Validate
-        run: npm run validate
-      - name: Commit validated build
+      - name: Commit generated source
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -41,3 +37,7 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "ACCQUA Sports — Build 1.6.2 applied"
           git push origin HEAD:build-1.6.2
+      - name: Install
+        run: npm ci
+      - name: Validate
+        run: npm run validate
