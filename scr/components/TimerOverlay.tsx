@@ -75,7 +75,7 @@ export default function TimerOverlay({
               strokeDasharray={circumference}
               initial={false}
               animate={{ strokeDashoffset: circumference * (1 - progress) }}
-              transition={reducedMotion ? { duration: 0 } : { duration: 0.9, ease: "linear" }}
+              transition={reducedMotion ? { duration: 0 } : { duration: 1.1, ease: "linear" }}
             />
           </svg>
           <div>
@@ -85,14 +85,29 @@ export default function TimerOverlay({
         </div>
 
         {canSkip && onSkip ? (
-          <motion.button
-            type="button"
-            className="accqua-timer-overlay-skip"
-            onClick={onSkip}
-            whileTap={reducedMotion ? undefined : { scale: 0.96 }}
+          <motion.div
+            className="accqua-timer-overlay-optional"
+            initial={reducedMotion ? false : { opacity: 0, y: 7 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.24 }}
           >
-            {skipLabel}
-          </motion.button>
+            <div>
+              <small>DESCANSO OPCIONAL</small>
+              <p>Você pode continuar antes do cronômetro terminar.</p>
+            </div>
+            <motion.button
+              type="button"
+              className="accqua-timer-overlay-skip"
+              onClick={onSkip}
+              whileHover={reducedMotion ? undefined : { y: -1 }}
+              whileTap={reducedMotion ? undefined : { scale: 0.97 }}
+            >
+              <span>{skipLabel}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
+            </motion.button>
+          </motion.div>
         ) : (
           <p className="accqua-timer-overlay-lock">Aguarde o tempo terminar para continuar.</p>
         )}
