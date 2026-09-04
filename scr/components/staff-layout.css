@@ -5,7 +5,7 @@
   position: relative;
   width: 100%;
   min-width: 0;
-  min-height: 100dvh;
+  min-height: 0;
   isolation: isolate;
 }
 
@@ -81,86 +81,90 @@
   inset: 0 !important;
 }
 
+/* Build 1.6.5.2 — um único proprietário de scroll vertical: .accqua-staff-content.
+   Páginas comuns cedem o próprio overflow; Montar Treino é a única exceção. */
 @media (max-width: 1023.98px) {
-  /* Build 1.6.5.1: o shell Staff é o único dono do scroll vertical no mobile. */
-  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) {
-    height: 100dvh;
-    min-height: 100dvh;
-    display: block;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+  .accqua-staff-layout.uses-unified-mobile-scroll {
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    overflow: hidden !important;
   }
 
-  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-mobile-nav {
-    position: sticky;
-    top: 0;
+  .accqua-staff-layout.uses-unified-mobile-scroll .accqua-staff-mobile-nav {
+    position: relative !important;
+    top: auto !important;
     z-index: 80;
+    flex: 0 0 auto;
     touch-action: pan-x;
   }
 
   .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-content {
-    min-height: calc(100dvh - var(--staff-mobile-nav-height));
-    overflow: visible !important;
-    touch-action: pan-y;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
   }
 
   .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route {
-    min-height: calc(100dvh - var(--staff-mobile-nav-height));
-    overflow: visible !important;
-    touch-action: pan-y;
-  }
-
-  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .staff-page-layout {
-    width: 100% !important;
-    height: auto !important;
-    min-height: calc(100dvh - var(--staff-mobile-nav-height)) !important;
-    display: block !important;
+    min-height: 100% !important;
     overflow: visible !important;
   }
 
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .staff-page-layout,
   .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .staff-page-layout-scroll {
+    width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
+    display: block !important;
     overflow: visible !important;
     overscroll-behavior: auto !important;
     -webkit-overflow-scrolling: auto !important;
   }
 
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .staff-page-layout {
+    min-height: 100% !important;
+  }
+
   .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .admin-area-screen,
   .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .classes-admin-screen,
-  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .store-admin-screen {
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .store-admin-screen,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .notifications-staff-page,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .ranking-staff-page,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .classes-admin-v155-page,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .admin-library-screen {
     height: auto !important;
-    min-height: calc(100dvh - var(--staff-mobile-nav-height)) !important;
+    min-height: 100% !important;
     max-height: none !important;
-    padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
     overflow: visible !important;
   }
 
   .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .classes-admin-scroll,
-  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .store-admin-scroll {
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .store-admin-scroll,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .notifications-staff-grid,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .admin-library-list {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
-    padding-bottom: 0 !important;
   }
 
-  /* Montar Treino continua como a única exceção com scroll interno controlado. */
-  .accqua-staff-layout.uses-builder-internal-scroll {
-    height: 100dvh;
-    min-height: 0;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    overflow: hidden;
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .admin-area-screen,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .classes-admin-screen,
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-route > .store-admin-screen {
+    padding-bottom: calc(30px + env(safe-area-inset-bottom)) !important;
   }
 
   .accqua-staff-layout.uses-builder-internal-scroll .accqua-staff-content {
-    min-height: 0;
-    overflow: hidden;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   .accqua-staff-layout.uses-builder-internal-scroll .accqua-staff-route,
@@ -175,34 +179,39 @@
   .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-body,
   .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-shell {
     min-height: 0 !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
   }
 }
 
 @media (min-width: 1024px) {
   .accqua-staff-layout {
-    display: grid;
-    grid-template-columns: var(--staff-sidebar-width) minmax(0, 1fr);
-    align-items: stretch;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
   }
 
   .accqua-staff-mobile-nav { display: none; }
 
   .accqua-staff-sidebar {
-    position: sticky;
-    top: 0;
+    position: relative;
+    top: auto;
     z-index: 32;
+    flex: 0 0 var(--staff-sidebar-width);
     width: var(--staff-sidebar-width);
     height: 100dvh;
-    min-height: 100dvh;
+    min-height: 0;
     padding: 22px 15px;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    overflow: hidden auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     border-right: 1px solid rgba(255,255,255,.08);
     background: rgba(3,18,40,.97);
     box-shadow: 18px 0 45px rgba(0,0,0,.14);
@@ -244,25 +253,82 @@
   .accqua-staff-sidebar-account span { color: rgba(255,255,255,.4); font-size: 10px; }
 
   .accqua-staff-content {
-    grid-column: 2;
-    width: 100%;
-    min-width: 0;
-    min-height: 100dvh;
-    overflow: visible;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    height: 100dvh !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    scrollbar-gutter: stable;
   }
 
-  .accqua-staff-route > .admin-area-screen {
-    height: auto !important;
-    min-height: 100dvh !important;
+  .accqua-staff-route {
+    min-height: 100% !important;
     overflow: visible !important;
   }
 
+  .accqua-staff-content .staff-page-layout,
+  .accqua-staff-content .staff-page-layout-scroll {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .accqua-staff-content .staff-page-layout {
+    min-height: 100% !important;
+  }
+
+  .accqua-staff-route > .admin-area-screen,
   .accqua-staff-route > .classes-admin-screen,
   .accqua-staff-route > .store-admin-screen,
-  .accqua-staff-route > .admin-builder-screen {
-    height: 100dvh !important;
-    min-height: 100dvh !important;
+  .notifications-staff-page,
+  .ranking-staff-page,
+  .classes-admin-v155-page,
+  .admin-library-screen {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .accqua-staff-content .classes-admin-scroll,
+  .accqua-staff-content .store-admin-scroll,
+  .accqua-staff-content .notifications-staff-grid,
+  .accqua-staff-content .admin-library-list {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .accqua-staff-layout.uses-builder-internal-scroll .accqua-staff-content {
     overflow: hidden !important;
+  }
+
+  .accqua-staff-layout.uses-builder-internal-scroll .accqua-staff-route,
+  .accqua-staff-layout.uses-builder-internal-scroll .accqua-staff-route > .admin-builder-screen {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-shell,
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-library-list,
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-selected,
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-desktop-aside {
+    min-height: 0 !important;
+  }
+
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-library-list,
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-selected,
+  .accqua-staff-layout.uses-builder-internal-scroll .admin-builder-desktop-aside {
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    scrollbar-gutter: stable;
   }
 }
 
