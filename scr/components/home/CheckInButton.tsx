@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ResponsiveDialog from "../ResponsiveDialog";
-import { MenuCheckinIcon } from "../MenuIcons";
 import { loadCheckinProviders, openCheckinProvider, type CheckinProvider } from "../../lib/checkin";
 
 const STORAGE_KEY = "accqua:preferred-checkin-provider";
@@ -76,31 +75,30 @@ export default function CheckInButton() {
       <ResponsiveDialog
         open={open}
         onOpenChange={setOpen}
-        title="Fazer check-in"
-        description="Escolha o benefício usado hoje. Sua escolha fica salva para o próximo acesso."
+        title="Escolha o SEU tipo de benefício"
+        description="Toque no benefício que vale para o seu acesso de hoje."
         className="checkin-provider-dialog"
         bodyClassName="checkin-provider-dialog-body"
         closeButton={<button type="button" aria-label="Fechar">×</button>}
       >
         <div className="checkin-provider-list">
           {providersQuery.isLoading ? (
-            <div className="checkin-provider-state">Carregando parceiros...</div>
+            <div className="checkin-provider-state">Carregando benefícios...</div>
           ) : providers.length ? providers.map((provider) => (
             <button key={provider.id} type="button" onClick={() => launch(provider)}>
-              <span className="checkin-provider-logo">
-                {provider.logoUrl ? <img src={provider.logoUrl} alt="" /> : <MenuCheckinIcon size={22} />}
+              <span className="checkin-provider-logo checkin-provider-benefit-icon-v164">
+                <QrCheckinIcon size={22} />
               </span>
               <span>
                 <strong>{provider.name}</strong>
-                <small>{provider.deepLinkScheme ? "Abrir aplicativo de check-in" : "Abrir canal oficial do parceiro"}</small>
+                <small>{provider.deepLinkScheme ? "Abrir check-in" : "Abrir canal oficial"}</small>
               </span>
               {preferredId === provider.id ? <b>Preferido</b> : <i aria-hidden="true">›</i>}
             </button>
           )) : (
-            <div className="checkin-provider-state">Nenhum parceiro de check-in está habilitado no momento.</div>
+            <div className="checkin-provider-state">Nenhum benefício de check-in está habilitado no momento.</div>
           )}
         </div>
-        <p className="checkin-provider-note">O aplicativo ACCQUA não realiza nem valida o check-in. Ele apenas abre o canal oficial configurado para o parceiro.</p>
       </ResponsiveDialog>
     </>
   );
