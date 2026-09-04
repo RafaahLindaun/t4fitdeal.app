@@ -32,6 +32,9 @@ export type WorkoutExerciseRecord = {
   initialLoadKg: number;
   notes: string;
   position: number;
+  setType: "normal" | "biset" | "triset";
+  setGroupId: string;
+  setGroupOrder: number;
   isSimple: boolean;
 };
 
@@ -369,6 +372,9 @@ function normalizeExercise(
     ),
     notes: String(raw.notes ?? raw.observations ?? ""),
     position: toNumber(raw.position ?? raw.order_index, 0),
+    setType: raw.set_type === "biset" || raw.set_type === "triset" ? raw.set_type : "normal",
+    setGroupId: String(raw.set_group_id ?? ""),
+    setGroupOrder: Math.max(0, toNumber(raw.set_group_order, 0)),
     isSimple: false,
   };
 }

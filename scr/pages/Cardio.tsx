@@ -32,6 +32,7 @@ import {
 } from "recharts";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
+import TimerOverlay from "../components/TimerOverlay";
 import PageHeader from "../components/PageHeader";
 import {
   CardioCheckIcon,
@@ -991,6 +992,20 @@ export default function Cardio() {
           </section>
         </div>
       </main>
+
+      {cardioSession.phase === "em_andamento" && cardioSession.elapsedSeconds < targetSeconds ? (
+        <TimerOverlay
+          remainingSeconds={Math.max(0, targetSeconds - cardioSession.elapsedSeconds)}
+          totalSeconds={targetSeconds}
+          title={`CARDIO · ${getActivityOption(activity).label}`}
+          subtitle="Sessão em andamento"
+          mediaUrl={getActivityOption(activity).image}
+          mediaAlt={getActivityOption(activity).label}
+          canSkip
+          skipLabel="Pausar cardio"
+          onSkip={() => { haptic(14); void cardioSession.pause(); }}
+        />
+      ) : null}
 
       {settingsOpen ? (
         <div className="cardio-modal-overlay" role="dialog" aria-modal="true" aria-label="Configurações do cardio">

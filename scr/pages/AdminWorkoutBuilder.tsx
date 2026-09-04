@@ -108,15 +108,23 @@ const BUILDER_STEPS: Array<{
 function StepProgress({ current, onSelect }: { current: BuilderStep; onSelect: (step: BuilderStep) => void; }) {
   const currentIndex = Math.max(0, BUILDER_STEPS.findIndex((step) => step.key === current));
   return (
-    <nav className="admin-builder-progress-v160" aria-label="Etapas do treino">
-      <div>
+    <nav className="admin-builder-progress-v162" aria-label="Etapas do treino">
+      <ol>
         {BUILDER_STEPS.map((step, index) => (
-          <button type="button" key={step.key} className={clsx(index < currentIndex && "is-complete", index === currentIndex && "is-current")} aria-current={index === currentIndex ? "step" : undefined} onClick={() => onSelect(step.key)} title={step.label}>
-            <i /><span>{step.label}</span>
-          </button>
+          <li key={step.key}>
+            <button
+              type="button"
+              className={clsx(index < currentIndex && "is-complete", index === currentIndex && "is-current")}
+              aria-current={index === currentIndex ? "step" : undefined}
+              onClick={() => onSelect(step.key)}
+              title={step.label}
+            >
+              <span className="admin-builder-step-orb"><i>{index < currentIndex ? <AdminCheckIcon size={18} /> : step.number}</i></span>
+              <small>{step.label}</small>
+            </button>
+          </li>
         ))}
-      </div>
-      <strong>{BUILDER_STEPS[currentIndex]?.label ?? "Programa"}</strong>
+      </ol>
     </nav>
   );
 }
@@ -1459,13 +1467,48 @@ export default function AdminWorkoutBuilder() {
     draftId: string,
     patch: Partial<BuilderExercise>,
   ) => {
+    const target = activeRoutine.exercises.find((exercise) => exercise.draftId === draftId);
     updateRoutine(activeRoutineIndex, {
-      exercises: activeRoutine.exercises.map((exercise) =>
-        exercise.draftId === draftId
-          ? { ...exercise, ...patch }
-          : exercise,
-      ),
+      exercises: activeRoutine.exercises.map((exercise) => {
+        if (exercise.draftId === draftId) return { ...exercise, ...patch };
+        if (target?.setGroupId && patch.sets !== undefined && exercise.setGroupId === target.setGroupId) {
+          return { ...exercise, sets: patch.sets };
+        }
+        return exercise;
+      }),
     });
+  };
+
+  const setExerciseSeriesType = (draftId: string, setType: "normal" | "biset" | "triset") => {
+    const source = activeRoutine.exercises;
+    const startIndex = source.findIndex((exercise) => exercise.draftId === draftId);
+    if (startIndex < 0) return;
+    const targetCount = setType === "biset" ? 2 : setType === "triset" ? 3 : 1;
+    const touchedGroupIds = new Set(
+      source.slice(startIndex, startIndex + targetCount).map((exercise) => exercise.setGroupId).filter(Boolean) as string[],
+    );
+    if (source[startIndex].setGroupId) touchedGroupIds.add(source[startIndex].setGroupId as string);
+    let next = source.map((exercise) => touchedGroupIds.has(exercise.setGroupId ?? "")
+      ? { ...exercise, setType: "normal" as const, setGroupId: "", setGroupOrder: 0 }
+      : exercise);
+    if (setType === "normal") {
+      updateRoutine(activeRoutineIndex, { exercises: next });
+      setToast("Exercício configurado como série normal.");
+      return;
+    }
+    if (startIndex + targetCount > source.length) {
+      setToast(setType === "biset" ? "Adicione mais 1 exercício abaixo para formar o bi-set." : "Adicione mais 2 exercícios abaixo para formar o tri-set.");
+      return;
+    }
+    const groupId = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `00000000-0000-4000-8000-${Date.now().toString().slice(-12).padStart(12, "0")}`;
+    const sharedSets = Math.max(1, next[startIndex].sets);
+    next = next.map((exercise, index) => index >= startIndex && index < startIndex + targetCount
+      ? { ...exercise, sets: sharedSets, setType, setGroupId: groupId, setGroupOrder: index - startIndex + 1 }
+      : exercise);
+    updateRoutine(activeRoutineIndex, { exercises: next });
+    setToast(`${setType === "biset" ? "Bi-set" : "Tri-set"} criado. Uma volta completa conta como 1 série.`);
   };
 
   const applyPrescriptionPreset = (
@@ -2243,7 +2286,7 @@ export default function AdminWorkoutBuilder() {
                     <article
                       className={`admin-builder-exercise ${
                         expanded ? "is-expanded" : ""
-                      } ${recentlyAddedExercise?.draftId === exercise.draftId ? "is-just-added" : ""}`}
+                      } ${recentlyAddedExercise?.draftId === exercise.draftId ? "is-just-added" : ""} ${(exercise.setType ?? "normal") !== "normal" ? "is-set-group" : ""}`}
                     >
                     <div
                       className="admin-builder-exercise-summary"
@@ -2281,6 +2324,12 @@ export default function AdminWorkoutBuilder() {
                           rep · {exercise.restSeconds}s
                         </b>
                       </span>
+
+                      {(exercise.setType ?? "normal") !== "normal" ? (
+                        <em className="admin-builder-set-group-badge">
+                          {exercise.setType === "biset" ? "BI-SET" : "TRI-SET"} · {exercise.setGroupOrder ?? 1}/{exercise.setType === "biset" ? 2 : 3}
+                        </em>
+                      ) : null}
 
                       <span className="admin-builder-quick-tune" onClick={(event) => event.stopPropagation()}>
                         <span>
@@ -2402,6 +2451,27 @@ export default function AdminWorkoutBuilder() {
                               }
                             />
                           </label>
+                        </div>
+
+                        <div className="admin-builder-set-type">
+                          <span>Tipo de série</span>
+                          <div>
+                            {([
+                              ["normal", "Normal"],
+                              ["biset", "Bi-set"],
+                              ["triset", "Tri-set"],
+                            ] as const).map(([value, label]) => (
+                              <button
+                                type="button"
+                                key={value}
+                                className={(exercise.setType ?? "normal") === value ? "is-active" : ""}
+                                aria-pressed={(exercise.setType ?? "normal") === value}
+                                onClick={() => setExerciseSeriesType(exercise.draftId, value)}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
                         <div className="admin-builder-presets" aria-label="Prescrições rápidas">
@@ -2648,6 +2718,29 @@ export default function AdminWorkoutBuilder() {
           </div>
         </section>
 
+        <section className="admin-builder-review-summary admin-builder-anchor" aria-label="Resumo do treino para revisão">
+          <header>
+            <div><small>RESUMO PARA PUBLICAÇÃO</small><h2>Revise o programa completo</h2></div>
+            <span>{totalExercises} exercício{totalExercises === 1 ? "" : "s"}</span>
+          </header>
+          <div className="admin-builder-review-days">
+            {routines.map((routine) => (
+              <article className="admin-builder-review-day" key={`review-${routine.code}`}>
+                <header><strong>Treino {routine.code} · {routine.name}</strong><span>{routine.weekDays.length ? `${routine.weekDays.length} dia(s)/semana` : "Sem dia definido"}</span></header>
+                <div className="admin-builder-review-exercises">
+                  {routine.exercises.length ? routine.exercises.map((exercise) => (
+                    <div key={`review-${routine.code}-${exercise.draftId}`}>
+                      <strong>{exercise.name}</strong>
+                      <small>{exercise.sets}×{exercise.repsMin}{exercise.repsMax !== exercise.repsMin ? `–${exercise.repsMax}` : ""} · {exercise.restSeconds}s</small>
+                      {(exercise.setType ?? "normal") !== "normal" ? <em>{exercise.setType === "biset" ? "Bi-set" : "Tri-set"} · posição {exercise.setGroupOrder ?? 1}</em> : null}
+                    </div>
+                  )) : <div><strong>Nenhum exercício adicionado</strong><small>Revisão necessária</small></div>}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section
           ref={cardioSectionRef}
           className="admin-builder-cardio admin-builder-anchor"
@@ -2677,6 +2770,7 @@ export default function AdminWorkoutBuilder() {
             <i className={cardio.enabled ? "is-active" : ""}>
               <b />
             </i>
+            <span className="admin-builder-cardio-state-label">{cardio.enabled ? "Cardio opcional habilitado" : "Cardio opcional desabilitado"}</span>
           </button>
 
           {cardio.enabled ? (

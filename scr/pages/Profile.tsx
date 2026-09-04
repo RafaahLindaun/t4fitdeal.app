@@ -141,6 +141,7 @@ const emptyDashboard: ProfileDashboard = {
     newsNotifications: false,
     soundEnabled: true,
     vibrationEnabled: true,
+    restRequired: true,
     classReminderMinutes: 120,
   },
   activities: [],
@@ -837,6 +838,7 @@ export default function Profile() {
                 <ProfileToggle title="Aparecer no ranking" subtitle="Mostra seu primeiro nome e foto" checked={personalForm.showInRanking} onChange={async (value) => { const next = { ...personalForm, showInRanking: value }; setPersonalForm(next); const result = await savePersonalProfile(next); setMessage(result.error ? "Não foi possível salvar." : "Configuração salva."); }} />
                 <ProfileToggle title="Sons do aplicativo" subtitle="Avisos sonoros durante as atividades" checked={dashboard.preferences.soundEnabled} onChange={(value) => void updatePreferences("soundEnabled", value)} />
                 <ProfileToggle title="Vibração" subtitle="Feedback sutil nos controles" checked={dashboard.preferences.vibrationEnabled} onChange={(value) => void updatePreferences("vibrationEnabled", value)} />
+                <ProfileToggle title="Repouso obrigatório entre séries" subtitle="Desative para poder pular o descanso imediatamente" checked={dashboard.preferences.restRequired} onChange={(value) => void updatePreferences("restRequired", value)} />
               </div>
               <div className="profile-settings-note"><ProfileIcon name="shield" size={23} /><div><strong>Privacidade protegida</strong><p>CPF, telefone e e-mail continuam privados. No ranking aparecem somente o primeiro nome e a foto escolhida.</p></div></div>
             </section>

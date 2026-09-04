@@ -10,6 +10,7 @@ export type ProfilePreferences = {
   newsNotifications: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  restRequired: boolean;
   classReminderMinutes: number;
 };
 
@@ -83,6 +84,7 @@ const defaultPreferences: ProfilePreferences = {
   newsNotifications: false,
   soundEnabled: true,
   vibrationEnabled: true,
+  restRequired: true,
   classReminderMinutes: 120,
 };
 
@@ -168,6 +170,10 @@ function normalizePreferences(
     vibrationEnabled: booleanValue(
       raw?.vibration_enabled,
       defaultPreferences.vibrationEnabled,
+    ),
+    restRequired: booleanValue(
+      raw?.rest_required,
+      defaultPreferences.restRequired,
     ),
     classReminderMinutes: Math.max(30, numberValue(raw?.class_reminder_minutes) || defaultPreferences.classReminderMinutes),
   };
@@ -610,6 +616,7 @@ export async function saveProfilePreferences(
       news_notifications: preferences.newsNotifications,
       sound_enabled: preferences.soundEnabled,
       vibration_enabled: preferences.vibrationEnabled,
+      rest_required: preferences.restRequired,
       class_reminder_minutes: preferences.classReminderMinutes,
       updated_at: new Date().toISOString(),
     },
@@ -679,4 +686,15 @@ export async function uploadProfileAvatar(userId: string, file: File): Promise<{
   } catch {
     return { error: "Não foi possível preparar essa imagem. Tente outra foto." };
   }
+}
+
+export async function loadRestRequiredPreference(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !userId) return true;
+  const response = await supabase
+    .from("accqua_profile_preferences")
+    .select("rest_required")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (response.error) return true;
+  return booleanValue((response.data as Record<string, unknown> | null)?.rest_required, true);
 }

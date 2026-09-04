@@ -11,8 +11,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
+import TimerOverlay from "../components/TimerOverlay";
 import PageHeader from "../components/PageHeader";
 import { performHaptic } from "../lib/appFeedback";
+import { loadRestRequiredPreference } from "../lib/profile";
 import { recordWorkoutSessionCompletion } from "../lib/workoutStatus";
 import { markWorkoutCompletionTransition } from "../lib/workoutCompletionTransition";
 import { CardioSwapIcon } from "../components/CardioIcons";
@@ -65,6 +67,12 @@ type RestAction =
     }
   | {
       kind: "exercise";
+      targetIndex: number;
+    }
+  | {
+      kind: "group";
+      exerciseIds: string[];
+      nextSet: number;
       targetIndex: number;
     }
   | null;
@@ -145,6 +153,7 @@ export default function Treino() {
   const [restRemaining, setRestRemaining] = useState(0);
   const [restTotal, setRestTotal] = useState(0);
   const [restConfirmation, setRestConfirmation] = useState("");
+  const [restRequired, setRestRequired] = useState(true);
   const [restAction, setRestAction] =
     useState<RestAction>(null);
   const [seriesMotion, setSeriesMotion] = useState<
@@ -246,6 +255,7 @@ export default function Treino() {
     void loadActiveWorkoutCardioPrescription(user.id).then(
       setCardioPrescription,
     );
+    void loadRestRequiredPreference(user.id).then(setRestRequired);
   }, [user?.id]);
 
   useEffect(() => {
@@ -656,6 +666,16 @@ export default function Treino() {
       return;
     }
 
+    if (action.kind === "group") {
+      setSetCursor((previous) => ({
+        ...previous,
+        ...Object.fromEntries(action.exerciseIds.map((exerciseId) => [exerciseId, action.nextSet])),
+      }));
+      setToast(`Descanso concluído. Série ${action.nextSet} do grupo liberada.`);
+      goToExercise(action.targetIndex, "next");
+      return;
+    }
+
     goToExercise(action.targetIndex, "next");
   };
 
@@ -698,23 +718,48 @@ export default function Treino() {
     const wasCompleted = Boolean(completedSets[completedKey]);
     try {
       const activeSession = await ensureSession();
-      await saveCompletedSet({
-        userId: user.id,
-        sessionId: activeSession.id,
-        localSession: activeSession.local,
-        exerciseId: current.id,
-        simpleExercise: false,
-        setNumber: currentSet,
-        loadKg: currentLoad,
-        reps: currentReps,
-      });
+      await saveCompletedSet({ userId: user.id, sessionId: activeSession.id, localSession: activeSession.local, exerciseId: current.id, simpleExercise: false, setNumber: currentSet, loadKg: currentLoad, reps: currentReps });
       const updatedCompletedCount = wasCompleted ? completedSetCount : completedSetCount + 1;
       setCompletedSets((previous) => ({ ...previous, [completedKey]: true }));
       performHaptic(user.id, [32]);
-      const isFinalSet = currentSet === current.sets && exerciseIndex === exercises.length - 1;
-      if (!reduceMotion && !isFinalSet) {
-        confetti({ particleCount: 16, spread: 42, startVelocity: 18, scalar: 0.65, origin: { x: 0.5, y: 0.82 }, disableForReducedMotion: true });
+
+      const grouped = current.setType !== "normal" && Boolean(current.setGroupId);
+      const groupMembers = grouped
+        ? exercises.filter((exercise) => exercise.setGroupId === current.setGroupId).sort((a, b) => a.setGroupOrder - b.setGroupOrder)
+        : [];
+      const groupIndex = groupMembers.findIndex((exercise) => exercise.id === current.id);
+      const lastGroupMember = grouped && groupIndex === groupMembers.length - 1;
+      const isFinalSet = currentSet === current.sets && (grouped ? lastGroupMember && Math.max(...groupMembers.map((member) => exercises.findIndex((exercise) => exercise.id === member.id))) === exercises.length - 1 : exerciseIndex === exercises.length - 1);
+      if (!reduceMotion && !isFinalSet) confetti({ particleCount: 16, spread: 42, startVelocity: 18, scalar: 0.65, origin: { x: 0.5, y: 0.82 }, disableForReducedMotion: true });
+
+      if (grouped && groupMembers.length >= 2) {
+        if (!lastGroupMember) {
+          const nextMember = groupMembers[groupIndex + 1];
+          const nextIndex = exercises.findIndex((exercise) => exercise.id === nextMember.id);
+          showRestConfirmation(`${current.name} concluído · continue o ${current.setType === "biset" ? "bi-set" : "tri-set"}`);
+          setToast(`Próximo do ${current.setType === "biset" ? "bi-set" : "tri-set"}.`);
+          goToExercise(nextIndex, "next");
+          return;
+        }
+
+        const globalGroupIndexes = groupMembers.map((member) => exercises.findIndex((exercise) => exercise.id === member.id)).filter((index) => index >= 0);
+        const firstGroupIndex = Math.min(...globalGroupIndexes);
+        const lastGlobalGroupIndex = Math.max(...globalGroupIndexes);
+        if (currentSet < current.sets) {
+          showRestConfirmation(`Série ${currentSet}/${current.sets} do grupo concluída`);
+          setToast("Volta completa. Descanso iniciado.");
+          startRest(current.restSeconds, { kind: "group", exerciseIds: groupMembers.map((member) => member.id), nextSet: currentSet + 1, targetIndex: firstGroupIndex });
+          return;
+        }
+        if (lastGlobalGroupIndex < exercises.length - 1) {
+          showRestConfirmation(`${current.setType === "biset" ? "Bi-set" : "Tri-set"} concluído`);
+          startRest(current.restSeconds, { kind: "exercise", targetIndex: lastGlobalGroupIndex + 1 });
+          return;
+        }
+        await finishWorkout(updatedCompletedCount);
+        return;
       }
+
       if (currentSet < current.sets) {
         showRestConfirmation(`Série ${currentSet}/${current.sets} concluída`);
         setToast("Descanso iniciado.");
@@ -941,7 +986,7 @@ export default function Treino() {
                       <motion.div key="rest-timer" className="workout-rest-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         <strong>{formatRestTime(restRemaining)}</strong>
                         <small>{restAction?.kind === "set" ? "DESCANSO" : "ANTES DO PRÓXIMO EXERCÍCIO"}</small>
-                        <motion.button type="button" onClick={() => completeRestAction()} whileTap={{ scale: 0.92 }}>Pular descanso</motion.button>
+                        {!restRequired ? <motion.button type="button" onClick={() => completeRestAction()} whileTap={{ scale: 0.92 }}>Pular descanso</motion.button> : null}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1172,6 +1217,19 @@ export default function Treino() {
             </motion.button>
           </section>
         </div>
+      ) : null}
+
+      {restRemaining > 0 ? (
+        <TimerOverlay
+          remainingSeconds={restRemaining}
+          totalSeconds={restTotal}
+          title={restAction?.kind === "exercise" ? "ANTES DO PRÓXIMO EXERCÍCIO" : restAction?.kind === "group" ? "DESCANSO DO GRUPO" : "DESCANSO ENTRE SÉRIES"}
+          subtitle={restRequired ? "Repouso obrigatório ativo" : "Você pode seguir quando quiser"}
+          mediaUrl={(restAction?.kind === "exercise" || restAction?.kind === "group") ? exercises[restAction.targetIndex]?.mediaUrl : current?.mediaUrl}
+          mediaAlt={(restAction?.kind === "exercise" || restAction?.kind === "group") ? exercises[restAction.targetIndex]?.name : current?.name}
+          canSkip={!restRequired}
+          onSkip={() => completeRestAction()}
+        />
       ) : null}
 
       {finishOpen ? (
