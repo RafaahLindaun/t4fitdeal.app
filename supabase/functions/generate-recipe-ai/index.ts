@@ -1,4 +1,4 @@
-// ACCQUA Sports Build 1.6.5.1 — rascunho de receita com TACO prioritária e fallback estimado identificado.
+// ACCQUA Sports Build 1.6.5.2 — receita completa + imagem automática validada por IA.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx@0.18.5";
 
@@ -28,6 +28,16 @@ function extractText(payload: any) {
 function parseJson(value: string) {
   return JSON.parse(value.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
 }
+function tokens(value: string) {
+  return new Set(normalize(value).split(/\s+/).filter((token) => token.length > 2));
+}
+function similarity(a: string, b: string) {
+  const aa = tokens(a), bb = tokens(b);
+  if (!aa.size || !bb.size) return 0;
+  let hits = 0;
+  for (const token of aa) if (bb.has(token)) hits += 1;
+  return hits / Math.max(aa.size, bb.size);
+}
 
 async function geminiJson(prompt: string) {
   const key = Deno.env.get("GEMINI_API_KEY")?.trim();
@@ -47,7 +57,6 @@ async function geminiJson(prompt: string) {
       });
       if (!response.ok) {
         lastDetail = `${model}:${response.status}:${(await response.text()).slice(0, 260)}`;
-        console.warn("generate-recipe-ai candidate failed", lastDetail);
         continue;
       }
       const raw = extractText(await response.json());
@@ -55,10 +64,100 @@ async function geminiJson(prompt: string) {
       return parseJson(raw);
     } catch (error) {
       lastDetail = `${model}:${error instanceof Error ? error.message : String(error)}`;
-      console.warn("generate-recipe-ai candidate exception", lastDetail);
     }
   }
   throw new Error(`gemini_unavailable:${lastDetail.slice(0, 180)}`);
+}
+
+async function blobBase64(blob: Blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
+async function evaluateRecipeImage(name: string, image: Blob) {
+  const key = Deno.env.get("GEMINI_API_KEY")?.trim();
+  if (!key) return null;
+  const models = [normalizeModel(Deno.env.get("MEAL_VISION_MODEL")), "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
+    .filter((model, index, array) => Boolean(model) && array.indexOf(model) === index);
+  const data = await blobBase64(image);
+  const prompt = `Controle de qualidade de imagem de receita. Prato esperado: "${name}". Avalie se a foto representa razoavelmente esse prato ou uma apresentação culinária muito próxima. Rejeite pessoas, ambientes, embalagens, suplementos isolados e pratos claramente diferentes. Retorne SOMENTE JSON: {"score":0.0,"reason":"explicação curta"}. score entre 0 e 1.`;
+  for (const model of models) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: image.type || "image/jpeg", data } }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
+        }),
+      });
+      if (response.status === 404) continue;
+      if (!response.ok) continue;
+      const parsed = parseJson(extractText(await response.json()));
+      return { score: Math.max(0, Math.min(1, finite(parsed?.score))), reason: text(parsed?.reason).slice(0, 260) };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+type ImageCandidate = { url: string; source: "ia_unsplash" | "ia_catalogo"; label: string };
+async function unsplashCandidates(name: string): Promise<ImageCandidate[]> {
+  const accessKey = Deno.env.get("UNSPLASH_ACCESS_KEY")?.trim();
+  if (!accessKey) return [];
+  try {
+    const q = encodeURIComponent(`${name} prato comida food`);
+    const response = await fetch(`https://api.unsplash.com/search/photos?query=${q}&per_page=5&orientation=landscape`, {
+      headers: { Authorization: `Client-ID ${accessKey}`, "Accept-Version": "v1" },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return [];
+    const payload = await response.json();
+    return (payload?.results ?? []).map((item: any) => ({
+      url: text(item?.urls?.regular),
+      source: "ia_unsplash" as const,
+      label: text(item?.alt_description || item?.description || name),
+    })).filter((item: ImageCandidate) => Boolean(item.url));
+  } catch {
+    return [];
+  }
+}
+
+async function catalogCandidates(admin: any, name: string): Promise<ImageCandidate[]> {
+  const [recipes, foods] = await Promise.all([
+    admin.from("recipes").select("nome,title,imagem_url").not("imagem_url", "is", null).limit(40),
+    admin.from("foods").select("name,image_url").eq("active", true).not("image_url", "is", null).limit(60),
+  ]);
+  const list: ImageCandidate[] = [
+    ...((recipes.data ?? []).map((row: any) => ({ url: text(row.imagem_url), source: "ia_catalogo" as const, label: text(row.nome || row.title) }))),
+    ...((foods.data ?? []).map((row: any) => ({ url: text(row.image_url), source: "ia_catalogo" as const, label: text(row.name) }))),
+  ].filter((item: ImageCandidate) => Boolean(item.url));
+  return list.sort((a, b) => similarity(name, b.label) - similarity(name, a.label)).slice(0, 5);
+}
+
+async function findRecipeImage(name: string, admin: any) {
+  const candidates = [...(await unsplashCandidates(name)), ...(await catalogCandidates(admin, name))]
+    .filter((candidate, index, all) => all.findIndex((item) => item.url === candidate.url) === index)
+    .slice(0, 7);
+  let best: { url: string; source: "ia_unsplash" | "ia_catalogo"; score: number; reason: string } | null = null;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate.url, { headers: { "User-Agent": "ACCQUA-Recipe-AI/1.6.5.2" }, signal: AbortSignal.timeout(10_000) });
+      if (!response.ok) continue;
+      const image = await response.blob();
+      if (!image.type.startsWith("image/") || image.size > 10 * 1024 * 1024) continue;
+      const evaluated = await evaluateRecipeImage(name, image);
+      if (!evaluated) continue;
+      if (!best || evaluated.score > best.score) best = { url: candidate.url, source: candidate.source, score: evaluated.score, reason: evaluated.reason };
+      if (evaluated.score >= .82) break;
+    } catch {
+      continue;
+    }
+  }
+  return best && best.score >= .72 ? best : null;
 }
 
 type TacoFood = { name: string; kcal: number; protein: number; carbs: number; fat: number };
@@ -83,7 +182,7 @@ function looksLikeWorkbook(bytes: Uint8Array, contentType: string) {
 async function loadTaco() {
   if (tacoCache && Date.now() - tacoCache.loadedAt < 12 * 60 * 60 * 1000) return tacoCache.foods;
   const response = await fetch(TACO_URL, {
-    headers: { "User-Agent": "ACCQUA-Sports/1.6.5.1", Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream;q=0.9,*/*;q=0.2" },
+    headers: { "User-Agent": "ACCQUA-Sports/1.6.5.2", Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream;q=0.9,*/*;q=0.2" },
     signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error(`taco_download_${response.status}`);
@@ -191,11 +290,10 @@ Deno.serve(async (req) => {
       `Descrição do professor: ${descricao}`,
     ].join("\n");
 
-    const tacoPromise = loadTaco().catch((error) => {
-      console.warn("generate-recipe-ai TACO unavailable", error instanceof Error ? error.message : String(error));
-      return [] as TacoFood[];
-    });
+    const tacoPromise = loadTaco().catch(() => [] as TacoFood[]);
     const draft = await geminiJson(prompt);
+    const recipeName = text(draft?.nome) || descricao;
+    const imagePromise = findRecipeImage(recipeName, admin).catch(() => null);
     const ingredients = Array.isArray(draft?.ingredientes)
       ? draft.ingredientes.slice(0, 30).map((item: any) => ({ nome: text(item?.nome), quantidade_g: Math.max(0, finite(item?.quantidade_g)), observacao: text(item?.observacao) })).filter((item: any) => item.nome && item.quantidade_g > 0)
       : [];
@@ -206,7 +304,7 @@ Deno.serve(async (req) => {
       const repaired = await geminiJson([
         "Estime os macros totais de UMA porção da receita abaixo para revisão humana.",
         "Retorne somente JSON: {kcal_total:number, proteina_g:number, carboidrato_g:number, gordura_g:number}.",
-        `Receita: ${text(draft?.nome) || descricao}`,
+        `Receita: ${recipeName}`,
         `Ingredientes: ${ingredients.map((item: any) => `${item.nome} ${item.quantidade_g}g`).join(", ")}`,
       ].join("\n"));
       aiMacros = macroFromDraft({ macro_estimada: repaired });
@@ -229,9 +327,10 @@ Deno.serve(async (req) => {
     const tacoMacros: MacroSet = { kcal: Math.round(tacoKcal), protein: Number(tacoProtein.toFixed(1)), carbs: Number(tacoCarbs.toFixed(1)), fat: Number(tacoFat.toFixed(1)) };
     const finalMacros = allMatched && macroLooksUsable(tacoMacros) ? tacoMacros : aiMacros;
     const estimated = !(allMatched && macroLooksUsable(tacoMacros));
+    const image = await imagePromise;
 
     return new Response(JSON.stringify({
-      name: text(draft?.nome) || descricao,
+      name: recipeName,
       ingredients,
       instructions: text(draft?.modo_preparo),
       portionDescription: text(draft?.porcao_descricao) || "1 porção",
@@ -246,10 +345,10 @@ Deno.serve(async (req) => {
       macrosEstimatedAi: estimated,
       macroVerification: verification,
       nutritionSource: estimated ? "Estimativa nutricional da IA — revisão humana obrigatória; TACO não confirmou 100% dos ingredientes" : "TACO/NEPA-UNICAMP 4a edição",
-      imageUrl: "",
-      imageConfidence: null,
-      imageSource: null,
-      imageReason: "Envie ou valide uma imagem separadamente.",
+      imageUrl: image?.url ?? "",
+      imageConfidence: image?.score ?? null,
+      imageSource: image?.source ?? "",
+      imageReason: image?.reason ?? "Nenhuma imagem automática atingiu confiança suficiente. Envie ou valide manualmente.",
     }), { status: 200, headers: cors });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
