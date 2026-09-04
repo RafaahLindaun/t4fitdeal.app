@@ -7,11 +7,44 @@ const cors = {
 };
 
 const genericError = "E-mail, CPF, telefone ou senha incorretos.";
+const unavailable = "O acesso está temporariamente indisponível. Tente novamente em instantes.";
 const digits = (value: unknown) => String(value ?? "").replace(/\D/g, "");
 const text = (value: unknown) => String(value ?? "").trim();
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: cors });
+}
+
+async function resolveEmail(admin: ReturnType<typeof createClient>, identifier: string) {
+  if (identifier.includes("@")) return identifier.trim().toLowerCase();
+
+  const normalized = digits(identifier);
+  if (normalized.length < 10 || normalized.length > 11) return "";
+
+  // Fast path for the canonical schema, where CPF and phone are stored as digits.
+  const exact = await admin
+    .from("profiles")
+    .select("email,cpf,phone")
+    .or(`cpf.eq.${normalized},phone.eq.${normalized}`)
+    .limit(3);
+
+  if (!exact.error) {
+    const matches = (exact.data ?? []).filter((row: any) =>
+      digits(row?.cpf) === normalized || digits(row?.phone) === normalized,
+    );
+    if (matches.length === 1 && text(matches[0]?.email)) return text(matches[0].email).toLowerCase();
+    if (matches.length > 1) return "";
+  }
+
+  // Defensive fallback for legacy rows with masks/formatting. The dataset is tiny,
+  // and this runs with service-role only inside the Edge Function.
+  const fallback = await admin.from("profiles").select("email,cpf,phone").limit(500);
+  if (fallback.error) throw fallback.error;
+  const matches = (fallback.data ?? []).filter((row: any) =>
+    digits(row?.cpf) === normalized || digits(row?.phone) === normalized,
+  );
+  if (matches.length !== 1 || !text(matches[0]?.email)) return "";
+  return text(matches[0].email).toLowerCase();
 }
 
 Deno.serve(async (req) => {
@@ -31,42 +64,33 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     if (!url || !anonKey || !serviceKey) {
       console.error("login-identifier-v157 missing Supabase environment");
-      return json({ error: "unavailable", message: "O acesso está temporariamente indisponível. Tente novamente em instantes." }, 503);
+      return json({ error: "unavailable", message: unavailable }, 503);
     }
+
+    const admin = createClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
     let email = "";
-    if (identifier.includes("@")) {
-      email = identifier.toLowerCase();
-    } else {
-      const normalized = digits(identifier);
-      if (normalized.length < 10 || normalized.length > 11) {
-        return json({ error: "invalid_credentials", message: genericError }, 401);
-      }
-
-      const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-      const { data, error } = await admin.rpc("resolve_accqua_login_email_v1_6_3", {
-        p_identifier: normalized,
-      });
-
-      if (error) {
-        console.error("login-identifier-v157 profile lookup", error.code, error.message);
-        return json({ error: "unavailable", message: "O acesso está temporariamente indisponível. Tente novamente em instantes." }, 503);
-      }
-
-      email = text(data).toLowerCase();
-      if (!email) {
-        return json({ error: "invalid_credentials", message: genericError }, 401);
-      }
+    try {
+      email = await resolveEmail(admin, identifier);
+    } catch (error) {
+      console.error("login-identifier-v157 resolve_email", error instanceof Error ? error.message : String(error));
+      return json({ error: "unavailable", message: unavailable }, 503);
     }
 
-    const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    if (!email) return json({ error: "invalid_credentials", message: genericError }, 401);
+
+    const auth = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
     const { data, error } = await auth.auth.signInWithPassword({ email, password });
     if (error || !data.session) {
+      console.warn("login-identifier-v157 invalid_credentials");
       return json({ error: "invalid_credentials", message: genericError }, 401);
     }
 
-    // Never return the resolved e-mail/profile. Only the session Supabase Auth
-    // would have returned after valid credentials.
+    console.info("login-identifier-v157 success");
     return json({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
@@ -75,6 +99,6 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("login-identifier-v157", error instanceof Error ? error.message : String(error));
-    return json({ error: "unavailable", message: "O acesso está temporariamente indisponível. Tente novamente em instantes." }, 503);
+    return json({ error: "unavailable", message: unavailable }, 503);
   }
 });
