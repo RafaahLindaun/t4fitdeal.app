@@ -1,0 +1,48 @@
+name: ACCQUA Apply Build 1.6.4
+
+on:
+  push:
+    branches:
+      - build-1.6.4
+
+permissions:
+  contents: write
+
+concurrency:
+  group: accqua-apply-build-1-6-4
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, 'ACCQUA Sports — Build 1.6.4 applied') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: build-1.6.4
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Apply Build 1.6.4
+        run: node scripts/apply-build-1.6.4.mjs
+      - name: Commit generated source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "ACCQUA Sports — Build 1.6.4 source"
+          git push origin HEAD:build-1.6.4
+      - name: Install
+        run: npm ci
+      - name: Validate
+        run: npm run validate
+      - name: Mark validated build
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "ACCQUA Sports — Build 1.6.4 applied"
+          git push origin HEAD:build-1.6.4
