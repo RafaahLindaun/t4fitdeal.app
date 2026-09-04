@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
+import type { RankingProfileSummary } from "./ranking";
 
 export type PublicWorkoutSummary = {
   programName: string;
@@ -9,11 +10,32 @@ export type PublicWorkoutSummary = {
   reviewAt: string;
 };
 
+type Row = Record<string, unknown>;
 const text = (value: unknown) => String(value ?? "").trim();
 const numberValue = (value: unknown) => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
 };
+
+export async function loadRankingProfileSummary165(studentId: string): Promise<RankingProfileSummary | null> {
+  if (!isSupabaseConfigured || !studentId) return null;
+  const newest = await supabase.rpc("get_accqua_ranking_profile_summary_v9_7", { p_student_id: studentId });
+  const response = newest.error
+    ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_6", { p_student_id: studentId })
+    : newest;
+  if (response.error || !response.data) return null;
+  const raw = (Array.isArray(response.data) ? response.data[0] : response.data) as Row | undefined;
+  if (!raw) return null;
+  const rawAge = Number(raw.age_years);
+  return {
+    studentId: text(raw.student_id) || studentId,
+    memberSince: text(raw.member_since),
+    ageYears: Number.isFinite(rawAge) && rawAge >= 0 ? rawAge : null,
+    totalWorkouts: numberValue(raw.total_workouts),
+    currentSplit: text(raw.current_split) || "Não informado",
+    objective: text(raw.objective),
+  };
+}
 
 export async function loadPublicWorkoutSummary(studentId: string): Promise<PublicWorkoutSummary | null> {
   if (!isSupabaseConfigured || !studentId) return null;
@@ -22,7 +44,7 @@ export async function loadPublicWorkoutSummary(studentId: string): Promise<Publi
   });
   if (error) throw error;
   if (!data || typeof data !== "object") return null;
-  const row = data as Record<string, unknown>;
+  const row = data as Row;
   return {
     programName: text(row.programName) || "Treino atual",
     split: text(row.split) || "Não informada",
