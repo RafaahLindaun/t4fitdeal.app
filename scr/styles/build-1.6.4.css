@@ -1,0 +1,254 @@
+/* ACCQUA Sports — Build 1.6.4 */
+
+/* Staff: um único dono do scroll no mobile. O montador mantém o próprio scroller. */
+@media (max-width: 1023.98px) {
+  .accqua-staff-layout {
+    height: calc(100dvh - var(--app-bottomnav-offset, 0px)) !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+  .accqua-staff-content {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .accqua-staff-route {
+    min-height: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .accqua-staff-route > .classes-admin-screen,
+  .accqua-staff-route > .store-admin-screen,
+  .accqua-staff-route > .admin-area-screen {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .classes-admin-scroll,
+  .store-admin-scroll {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .accqua-staff-route > .admin-builder-screen {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Biblioteca */
+.admin-library-add {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  transform: none !important;
+  line-height: 1 !important;
+}
+.admin-library-add > svg,
+.admin-library-add > span { margin: 0 !important; transform: none !important; }
+
+/* Revisão do treino */
+.admin-builder-stage-v163.is-revisao .admin-builder-review-summary {
+  display: block;
+  margin: 0 0 14px;
+}
+.admin-builder-review-summary {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background: rgba(7, 31, 60, .82);
+}
+.admin-builder-review-day + .admin-builder-review-day { margin-top: 10px; }
+.admin-builder-cardio-state-label {
+  position: static !important;
+  width: auto !important;
+  margin: 8px 0 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgba(255,255,255,.62) !important;
+}
+.admin-builder-mobile-primary {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.22) !important;
+}
+.admin-builder-mobile-primary:focus-visible {
+  outline: 2px solid #ffd128 !important;
+  outline-offset: 3px !important;
+}
+
+/* Swipe: superfície nunca transparente e lixeira desktop apenas no hover. */
+.store-reservation-swipe-v164 { --accqua-swipe-surface: #0a2a52; }
+.store-reservation-swipe-v164 .accqua-swipe-content > article {
+  background: #0a2a52 !important;
+}
+@media (hover:hover) and (pointer:fine) {
+  .store-reservation-swipe-v164 .accqua-swipe-desktop-delete {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+/* Receita IA */
+.recipe-ai-error-v164 {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 112, 118, .28);
+  border-radius: 12px;
+  background: rgba(132, 28, 38, .22);
+  color: #ffd9dc;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.recipe-ai-generate-v164[aria-busy="true"] { opacity: .72; cursor: progress; }
+
+/* Check-in / benefício */
+.accqua-checkin-button,
+.accqua-membership-shield,
+.accqua-notification-button {
+  transform-origin: center;
+  transition: transform 140ms ease, filter 140ms ease;
+}
+.accqua-checkin-button:active,
+.accqua-membership-shield:active,
+.accqua-notification-button:active { transform: scale(.92); }
+.accqua-membership-shield {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+.accqua-membership-shield svg {
+  display: block !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+.checkin-provider-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+.checkin-provider-list > button {
+  min-width: 0;
+  height: 100%;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-content: center;
+}
+.checkin-provider-list > button > b,
+.checkin-provider-list > button > i { grid-column: 1 / -1; justify-self: start; }
+.checkin-provider-note { display: none !important; }
+.checkin-provider-benefit-icon-v164 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 350px) {
+  .checkin-provider-list { grid-template-columns: 1fr !important; }
+}
+
+/* Modal de matrícula: entrada própria, mais cerimoniosa. */
+.membership-status-card-icon {
+  transform-origin: center;
+  animation: membership-shield-entry-v164 520ms cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes membership-shield-entry-v164 {
+  0% { opacity: 0; transform: scale(.72); filter: drop-shadow(0 0 0 rgba(255,209,40,0)); }
+  65% { opacity: 1; transform: scale(1.08); filter: drop-shadow(0 0 16px rgba(255,209,40,.42)); }
+  100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 7px rgba(255,209,40,.18)); }
+}
+
+/* Ranking: safe-area e conteúdo curto sem corte no rodapé. */
+.ranking-info-responsive-dialog {
+  max-height: calc(100dvh - 18px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+}
+.ranking-info-dialog-body {
+  max-height: min(72dvh, 620px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+}
+.ranking-info-list-v164 {
+  display: grid;
+  gap: 10px;
+}
+.ranking-info-summary-v164 {
+  margin: 0 0 4px;
+  color: rgba(255,255,255,.78);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.ranking-info-rule-v164 {
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.055);
+}
+.ranking-info-rule-v164 > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(255,209,40,.12);
+  color: #ffd128;
+  font-weight: 900;
+}
+.ranking-info-rule-v164 strong { display: block; font-size: 13px; }
+.ranking-info-rule-v164 p { margin: 3px 0 0; color: rgba(255,255,255,.62); font-size: 12px; line-height: 1.4; }
+
+/* Perfil 1.6.4 */
+.profile-highlights-v164 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0 0 14px;
+}
+.profile-highlight-v164 {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(15,46,82,.92), rgba(8,31,60,.92));
+}
+.profile-highlight-v164 small { display:block; color: rgba(255,255,255,.5); font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+.profile-highlight-v164 strong { display:block; margin-top:5px; overflow:hidden; text-overflow:ellipsis; color:#fff; font-size:13px; }
+.profile-highlight-v164 em { display:inline-flex; margin-top:7px; padding:4px 7px; border-radius:999px; background:#ffd128; color:#08213e; font-size:9px; font-style:normal; font-weight:950; letter-spacing:.08em; }
+.profile-training-partners-v164 { margin-top: 0; }
+.profile-partner-group-v164 + .profile-partner-group-v164 { margin-top: 18px; }
+.profile-partner-group-v164 > h4 { margin: 0 0 9px; color: rgba(255,255,255,.62); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }
+.profile-training-partner-card-v164 { align-items: center; }
+.profile-training-partner-copy-v164 { min-width: 0; }
+.profile-training-partner-copy-v164 strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.profile-training-partner-actions-v164 { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+.profile-training-partner-actions-v164 button { white-space:nowrap; }
+.profile-training-partner-actions-v164 button.is-secondary { background: rgba(255,255,255,.07) !important; color: rgba(255,255,255,.76) !important; }
+@media (max-width: 430px) {
+  .profile-highlights-v164 { grid-template-columns: 1fr 1fr; }
+  .profile-highlight-v164:first-child { grid-column: 1 / -1; }
+  .profile-training-partner-card-v164 { grid-template-columns: auto minmax(0,1fr) !important; }
+  .profile-training-partner-actions-v164 { grid-column: 1 / -1; width:100%; }
+  .profile-training-partner-actions-v164 button { flex:1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-checkin-button,
+  .accqua-membership-shield,
+  .accqua-notification-button,
+  .membership-status-card-icon { transition: none !important; animation: none !important; }
+}
