@@ -3,18 +3,30 @@ import { motion } from "framer-motion";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Build158MotionBridge from "./Build158MotionBridge";
+import OwnerStaffManager from "./OwnerStaffManager";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import { staffButtonVariants, staffMotionTransition } from "../lib/staffMotion";
 import "./staff-layout.css";
 import "./staff-layout-v1484.css";
 
 const STAFF_ROLES = ["professor", "reception", "admin"] as const;
+const OWNER_EMAIL = "rafaalexandrowitch@professor.com";
 
 function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
   return (
     <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false" className={collapsed ? "is-collapsed" : ""}>
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
       <path d="M9 4v16" />
+    </svg>
+  );
+}
+
+function OwnerMenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="5" r="1.6" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.6" fill="currentColor" />
     </svg>
   );
 }
@@ -27,9 +39,11 @@ export default function StaffLayout() {
   const active = staffNavKeyForLocation(location.pathname, location.search);
   const mobileItemRefs = useRef<Partial<Record<StaffNavKey, HTMLButtonElement | null>>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [ownerManagerOpen, setOwnerManagerOpen] = useState(false);
   const isStaff = Boolean(
     profile && STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number]),
   );
+  const isOwner = Boolean(user?.email && user.email.trim().toLowerCase() === OWNER_EMAIL);
   const isBuilder = location.pathname.startsWith("/area-accqua/montar");
   const role = profile?.role === "admin"
     ? "ADMINISTRAÇÃO"
@@ -83,7 +97,18 @@ export default function StaffLayout() {
         <div className="accqua-staff-sidebar-heading">
           <small>ÁREA ACCQUA</small>
           <strong>Gestão da equipe</strong>
-          <span>{role}</span>
+          <span>{isOwner ? `${role} · DONO` : role}</span>
+          {isOwner && !sidebarCollapsed ? (
+            <button
+              type="button"
+              className="accqua-owner-staff-menu-button"
+              onClick={() => setOwnerManagerOpen(true)}
+              aria-label="Gerenciar acessos da equipe"
+              title="Gerenciar equipe"
+            >
+              <OwnerMenuIcon />
+            </button>
+          ) : null}
         </div>
         <nav>
           {items.map((item) => (
@@ -108,9 +133,9 @@ export default function StaffLayout() {
           ))}
         </nav>
         <div className="accqua-staff-sidebar-account" aria-hidden={sidebarCollapsed ? "true" : undefined}>
-          <small>{role}</small>
+          <small>{isOwner ? "DONO" : role}</small>
           <strong>{profile.fullName || user.email || "Equipe ACCQUA"}</strong>
-          <span>Gestão operacional</span>
+          <span>{isOwner ? "Controle de acessos Staff" : "Gestão operacional"}</span>
         </div>
       </aside>
 
@@ -133,6 +158,22 @@ export default function StaffLayout() {
             <span>{item.label}</span>
           </motion.button>
         ))}
+        {isOwner ? (
+          <motion.button
+            type="button"
+            className="accqua-owner-staff-mobile-button"
+            onClick={() => setOwnerManagerOpen(true)}
+            aria-label="Gerenciar acessos da equipe"
+            initial="idle"
+            animate="idle"
+            whileTap="tap"
+            variants={staffButtonVariants}
+            transition={staffMotionTransition}
+          >
+            <OwnerMenuIcon />
+            <span>Equipe</span>
+          </motion.button>
+        ) : null}
       </nav>
 
       <section className="accqua-staff-content" aria-live="polite">
@@ -141,6 +182,10 @@ export default function StaffLayout() {
           {isBuilder ? <Build158MotionBridge /> : null}
         </div>
       </section>
+
+      {isOwner ? (
+        <OwnerStaffManager open={ownerManagerOpen} onOpenChange={setOwnerManagerOpen} />
+      ) : null}
     </div>
   );
 }
