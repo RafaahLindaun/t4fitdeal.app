@@ -12,6 +12,8 @@ import {
 } from "../lib/staffNotifications";
 import { loadFeedbackPreferences, playAccquaChime } from "../lib/appFeedback";
 
+const STAFF_ALERT_POLL_MS = 90_000;
+
 function dispatchAlerts(alerts: WorkoutRequiredAlert[]) {
   window.dispatchEvent(
     new CustomEvent(WORKOUT_ALERTS_EVENT, {
@@ -23,6 +25,7 @@ function dispatchAlerts(alerts: WorkoutRequiredAlert[]) {
 export default function StaffWorkoutAlerts() {
   const { user, profile } = useAuth();
   const notifying = useRef(new Set<string>());
+  const inFlight = useRef(false);
 
   const isStaff =
     profile?.role === "professor" ||
@@ -38,6 +41,8 @@ export default function StaffWorkoutAlerts() {
     let cancelled = false;
 
     const refresh = async () => {
+      if (cancelled || inFlight.current || document.visibilityState !== "visible") return;
+      inFlight.current = true;
       try {
         const alerts = await loadWorkoutRequiredAlerts();
         if (cancelled) return;
@@ -61,26 +66,32 @@ export default function StaffWorkoutAlerts() {
         }
       } catch {
         if (!cancelled) dispatchAlerts([]);
+      } finally {
+        inFlight.current = false;
       }
     };
 
     void refresh();
-    const interval = window.setInterval(refresh, 20000);
+    const interval = window.setInterval(() => void refresh(), STAFF_ALERT_POLL_MS);
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") void refresh();
     };
 
-    window.addEventListener("focus", refresh);
-    window.addEventListener(WORKOUT_ALERTS_REFRESH_EVENT, refresh);
+    const handleFocus = () => void refresh();
+    const handleRefreshEvent = () => void refresh();
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener(WORKOUT_ALERTS_REFRESH_EVENT, handleRefreshEvent);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener(WORKOUT_ALERTS_REFRESH_EVENT, refresh);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener(WORKOUT_ALERTS_REFRESH_EVENT, handleRefreshEvent);
       document.removeEventListener("visibilitychange", handleVisibility);
+      inFlight.current = false;
     };
   }, [isStaff, user?.id]);
 
