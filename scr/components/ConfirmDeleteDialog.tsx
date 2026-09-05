@@ -21,8 +21,8 @@ export default function ConfirmDeleteDialog({
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="accqua-delete-overlay" />
-        <AlertDialog.Content className="accqua-delete-dialog">
+        <AlertDialog.Overlay className="accqua-delete-overlay" data-accqua-window-overlay />
+        <AlertDialog.Content className="accqua-delete-dialog" data-accqua-window-surface="center">
           <AlertDialog.Title>{title}</AlertDialog.Title>
           <AlertDialog.Description>{description}</AlertDialog.Description>
           <div className="accqua-delete-dialog-actions">
