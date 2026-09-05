@@ -1,0 +1,29 @@
+/* ACCQUA 1.6.5.7 — runtime mounts usados somente pelos contratos da Rodada 2. */
+.round2-original-add-hidden{display:none!important}
+.round2-add-slot{display:inline-flex;align-items:center;justify-content:center;min-width:0;vertical-align:middle}
+.round2-original-action-host{position:relative!important;min-width:92px!important;color:transparent!important}
+.round2-original-action-host>svg{opacity:0!important}
+.round2-original-action-host>.round2-add-slot{position:absolute;inset:0;z-index:8;display:flex;color:inherit!important}
+.round2-original-action-host>.round2-add-slot .admin-builder-add-exercise-button{color:#171304!important}
+.round2-original-action-host>.round2-add-slot .admin-builder-add-exercise-button.is-added{color:#ffd11e!important}
+.round2-original-action-host>.round2-add-slot .admin-builder-add-exercise-button.is-remove{color:#fca5a5!important}
+.admin-builder-add-exercise-button{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.admin-builder-add-exercise-button>b{font-size:15px;line-height:1}
+.admin-builder-add-exercise-button>span:empty{display:none}
+
+.ranking-profile-skeleton{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
+.ranking-profile-skeleton>span{position:relative;display:block;min-height:74px;overflow:hidden;border-radius:14px;background:rgba(255,255,255,.055)}
+.ranking-profile-skeleton>span.is-wide{grid-column:1/-1}
+.ranking-profile-skeleton>span::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:round2-skeleton 1.25s ease-in-out infinite}
+@keyframes round2-skeleton{to{transform:translateX(100%)}}
+.ranking-profile-objective-v163 strong.is-muted{color:rgba(255,255,255,.38)!important;font-weight:700!important}
+
+.cardio-title-row+.round2-cardio-schedule-slot{display:block;width:100%}
+
+@media(max-width:430px){
+  .admin-builder-cardio-days{grid-template-columns:repeat(7,42px)!important}
+  .ranking-workout-modal{width:min(400px,94vw);padding:16px}
+  .ranking-workout-exercise{grid-template-columns:4px minmax(0,1fr) auto}
+  .ranking-workout-exercise>span{margin-right:8px;padding:5px 8px}
+}
+@media(prefers-reduced-motion:reduce){.ranking-profile-skeleton>span::after{animation:none}}
