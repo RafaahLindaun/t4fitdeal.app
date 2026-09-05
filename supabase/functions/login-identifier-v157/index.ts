@@ -3,16 +3,30 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
   "Content-Type": "application/json",
 };
 
 const genericError = "E-mail, CPF, telefone ou senha incorretos.";
-const unavailable = "O acesso está temporariamente indisponível. Tente novamente em instantes.";
+const unavailable = "O serviço de login está temporariamente instável. Tente novamente em alguns instantes.";
 const digits = (value: unknown) => String(value ?? "").replace(/\D/g, "");
 const text = (value: unknown) => String(value ?? "").trim();
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: cors });
+}
+
+function authStatus(error: unknown) {
+  const value = Number((error as { status?: unknown } | null)?.status ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+async function withTimeout<T>(promise: PromiseLike<T>, ms = 12000): Promise<T> {
+  return await Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("auth_upstream_timeout")), ms)),
+  ]);
 }
 
 async function resolveEmail(admin: ReturnType<typeof createClient>, identifier: string) {
@@ -21,7 +35,6 @@ async function resolveEmail(admin: ReturnType<typeof createClient>, identifier: 
   const normalized = digits(identifier);
   if (normalized.length < 10 || normalized.length > 11) return "";
 
-  // Fast path for the canonical schema, where CPF and phone are stored as digits.
   const exact = await admin
     .from("profiles")
     .select("email,cpf,phone")
@@ -36,8 +49,6 @@ async function resolveEmail(admin: ReturnType<typeof createClient>, identifier: 
     if (matches.length > 1) return "";
   }
 
-  // Defensive fallback for legacy rows with masks/formatting. The dataset is tiny,
-  // and this runs with service-role only inside the Edge Function.
   const fallback = await admin.from("profiles").select("email,cpf,phone").limit(500);
   if (fallback.error) throw fallback.error;
   const matches = (fallback.data ?? []).filter((row: any) =>
@@ -48,7 +59,7 @@ async function resolveEmail(admin: ReturnType<typeof createClient>, identifier: 
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: cors });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
@@ -84,9 +95,23 @@ Deno.serve(async (req) => {
     const auth = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data, error } = await auth.auth.signInWithPassword({ email, password });
+
+    let result: Awaited<ReturnType<typeof auth.auth.signInWithPassword>>;
+    try {
+      result = await withTimeout(auth.auth.signInWithPassword({ email, password }));
+    } catch (error) {
+      console.error("login-identifier-v157 auth_upstream", error instanceof Error ? error.message : String(error));
+      return json({ error: "auth_unavailable", message: unavailable }, 503);
+    }
+
+    const { data, error } = result;
     if (error || !data.session) {
-      console.warn("login-identifier-v157 invalid_credentials");
+      const status = authStatus(error);
+      if (status >= 500 || status === 0) {
+        console.error("login-identifier-v157 auth_upstream_status", status || "unknown");
+        return json({ error: "auth_unavailable", message: unavailable }, 503);
+      }
+      console.warn("login-identifier-v157 invalid_credentials", status || "unknown");
       return json({ error: "invalid_credentials", message: genericError }, 401);
     }
 
