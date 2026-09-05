@@ -6,7 +6,9 @@ import { classDateTime, loadMyClasses } from "../lib/classes";
 import { supabase } from "../lib/supabase";
 
 const REMINDER_HOUR = 16;
-const POLL_MS = 45_000;
+const STUDENT_POLL_MS = 120_000;
+const STAFF_POLL_MS = 300_000;
+const MIN_FOCUS_GAP_MS = 20_000;
 
 type Toast = { title: string; message: string } | null;
 
@@ -102,6 +104,8 @@ export default function EngagementNotifications() {
   const { user, profile } = useAuth();
   const [toast, setToast] = useState<Toast>(null);
   const busy = useRef(false);
+  const lastCheckAt = useRef(0);
+  const isStaff = Boolean(profile && ["professor", "reception", "admin"].includes(profile.role));
 
   useEffect(() => {
     if (!user?.id || !profile) return;
@@ -208,31 +212,42 @@ export default function EngagementNotifications() {
       localStorage.setItem(key, signature);
     };
 
-    const check = async () => {
-      if (busy.current || cancelled) return;
+    const check = async (force = false) => {
+      if (busy.current || cancelled || document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (!force && now - lastCheckAt.current < MIN_FOCUS_GAP_MS) return;
       busy.current = true;
+      lastCheckAt.current = now;
       try {
-        if (["professor", "reception", "admin"].includes(profile.role)) await checkStaff();
+        if (isStaff) await checkStaff();
         else if (profile.status === "active") await checkStudent();
       } catch {
-        // A notificação não pode impedir o restante do aplicativo.
+        // Notificações são best-effort e nunca podem pressionar o app em caso de backend lento.
       } finally {
         busy.current = false;
       }
     };
 
-    void check();
-    const interval = window.setInterval(check, POLL_MS);
+    void check(true);
+    const interval = window.setInterval(
+      () => void check(),
+      isStaff ? STAFF_POLL_MS : STUDENT_POLL_MS,
+    );
     const handleFocus = () => void check();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void check();
+    };
     window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
       window.clearTimeout(toastTimer);
       window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [profile?.role, profile?.status, user?.id]);
+  }, [isStaff, profile?.status, user?.id]);
 
   if (!toast) return null;
   return (
