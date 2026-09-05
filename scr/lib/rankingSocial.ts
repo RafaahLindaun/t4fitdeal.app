@@ -1,6 +1,17 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
 import type { RankingProfileSummary } from "./ranking";
 
+export type PublicWorkoutExercise = {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  equipment: string;
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  routine: string;
+};
+
 export type PublicWorkoutSummary = {
   programName: string;
   split: string;
@@ -8,6 +19,7 @@ export type PublicWorkoutSummary = {
   routines: number;
   exercises: number;
   reviewAt: string;
+  exerciseItems: PublicWorkoutExercise[];
 };
 
 type Row = Record<string, unknown>;
@@ -40,6 +52,23 @@ export async function loadRankingProfileSummary165(studentId: string): Promise<R
   };
 }
 
+function mapWorkoutExercise(raw: unknown): PublicWorkoutExercise | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Row;
+  const name = text(row.name);
+  if (!name) return null;
+  return {
+    id: text(row.id) || `${name}-${text(row.routine)}`,
+    name,
+    muscleGroup: text(row.muscleGroup) || "Outros",
+    equipment: text(row.equipment),
+    sets: numberValue(row.sets),
+    repsMin: numberValue(row.repsMin),
+    repsMax: numberValue(row.repsMax),
+    routine: text(row.routine) || "Treino",
+  };
+}
+
 export async function loadPublicWorkoutSummary(studentId: string): Promise<PublicWorkoutSummary | null> {
   if (!isSupabaseConfigured || !studentId) return null;
   const newest = await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_7", {
@@ -51,6 +80,9 @@ export async function loadPublicWorkoutSummary(studentId: string): Promise<Publi
   if (response.error) throw response.error;
   if (!response.data || typeof response.data !== "object") return null;
   const row = response.data as Row;
+  const exerciseItems = Array.isArray(row.exerciseItems)
+    ? row.exerciseItems.map(mapWorkoutExercise).filter((item): item is PublicWorkoutExercise => Boolean(item))
+    : [];
   return {
     programName: text(row.programName) || "Treino atual",
     split: text(row.split) || "—",
@@ -58,5 +90,6 @@ export async function loadPublicWorkoutSummary(studentId: string): Promise<Publi
     routines: numberValue(row.routines),
     exercises: numberValue(row.exercises),
     reviewAt: text(row.reviewAt),
+    exerciseItems,
   };
 }
