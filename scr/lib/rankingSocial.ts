@@ -42,12 +42,15 @@ export async function loadRankingProfileSummary165(studentId: string): Promise<R
 
 export async function loadPublicWorkoutSummary(studentId: string): Promise<PublicWorkoutSummary | null> {
   if (!isSupabaseConfigured || !studentId) return null;
-  const { data, error } = await supabase.rpc("get_accqua_public_workout_summary_v1_6_5", {
+  const newest = await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_7", {
     p_student_id: studentId,
   });
-  if (error) throw error;
-  if (!data || typeof data !== "object") return null;
-  const row = data as Row;
+  const response = newest.error
+    ? await supabase.rpc("get_accqua_public_workout_summary_v1_6_5", { p_student_id: studentId })
+    : newest;
+  if (response.error) throw response.error;
+  if (!response.data || typeof response.data !== "object") return null;
+  const row = response.data as Row;
   return {
     programName: text(row.programName) || "Treino atual",
     split: text(row.split) || "—",
