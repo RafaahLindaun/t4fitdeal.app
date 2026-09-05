@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { DietHistoryDay } from "../../lib/diet";
 import { useHeatmapDiario, type HeatmapPoint } from "../../hooks/useHeatmapDiario";
+import { accquaWindowTransition, accquaWindowVariants } from "../../lib/windowMotion";
 
 function CalendarIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3.5v4M16.5 3.5v4M3.5 9.5h17"/></svg>;
@@ -61,43 +63,56 @@ export default function DietHistoryPopover({ mode, days }: { mode: "water" | "ca
 
   return <div className="diet-history-popover-root" ref={rootRef}>
     <button type="button" className="diet-history-trigger" aria-label={`Ver histórico de ${mode === "water" ? "água" : "calorias"} dos últimos 14 dias`} aria-expanded={open} onClick={() => setOpen((value) => !value)}><CalendarIcon /></button>
-    {open ? <div className={`diet-history-popover is-${mode}`} role="dialog" aria-label={`Histórico de ${mode === "water" ? "hidratação" : "calorias"}`}>
-      <header className="diet-history-header">
-        <div><span>{mode === "water" ? "HIDRATAÇÃO" : "BALANÇO CALÓRICO"}</span><strong>Últimos 14 dias</strong></div>
-        <b>{summary.headline}</b>
-        <small>{summary.detail}</small>
-      </header>
-      <div className="diet-history-days">
-        {points.map((point) => {
-          const day = dayByKey.get(point.dateKey);
-          const completeWater = mode === "water" && point.ratio >= 1 && !point.future;
-          const baseToneClass = point.tone === "future" ? "is-future" : point.tone === "empty" ? "is-empty" : point.tone === "water" ? "is-water" : `is-${point.tone}`;
-          const toneClass = `${baseToneClass}${completeWater ? " is-complete" : ""}`;
-          const visualPercent = Math.max(0, Math.min(100, point.ratio * 100));
-          return <div key={point.dateKey} className="diet-history-day" title={pointDescription(point, mode, day)}>
-            <span
-              className={toneClass}
-              style={mode === "water" && !point.future ? { "--diet-history-fill": `${visualPercent}%` } as CSSProperties : undefined}
-              aria-label={pointDescription(point, mode, day)}
-            >
-              <i />
-              {completeWater ? <CheckIcon /> : mode === "calories" && point.tone !== "empty" && !point.future ? <em>{Math.round(point.ratio * 100)}%</em> : null}
-            </span>
-            <small>{point.label.slice(0,3)}</small>
-          </div>;
-        })}
-      </div>
-      <footer className="diet-history-legend" aria-label="Legenda">
-        {mode === "water" ? <>
-          <span><i className="is-empty"/>Sem registro</span>
-          <span><i className="is-water"/>Parcial</span>
-          <span><i className="is-complete"/>Meta</span>
-        </> : <>
-          <span><i className="is-good"/>Dentro</span>
-          <span><i className="is-medium"/>Próximo</span>
-          <span><i className="is-far"/>Distante</span>
-        </>}
-      </footer>
-    </div> : null}
+    <AnimatePresence initial={false}>
+      {open ? <motion.div
+        className={`diet-history-popover is-${mode}`}
+        role="dialog"
+        aria-label={`Histórico de ${mode === "water" ? "hidratação" : "calorias"}`}
+        variants={accquaWindowVariants.popover}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        transition={accquaWindowTransition}
+        data-accqua-window-surface="popover"
+        data-accqua-motion-managed
+      >
+        <header className="diet-history-header">
+          <div><span>{mode === "water" ? "HIDRATAÇÃO" : "BALANÇO CALÓRICO"}</span><strong>Últimos 14 dias</strong></div>
+          <b>{summary.headline}</b>
+          <small>{summary.detail}</small>
+        </header>
+        <div className="diet-history-days">
+          {points.map((point) => {
+            const day = dayByKey.get(point.dateKey);
+            const completeWater = mode === "water" && point.ratio >= 1 && !point.future;
+            const baseToneClass = point.tone === "future" ? "is-future" : point.tone === "empty" ? "is-empty" : point.tone === "water" ? "is-water" : `is-${point.tone}`;
+            const toneClass = `${baseToneClass}${completeWater ? " is-complete" : ""}`;
+            const visualPercent = Math.max(0, Math.min(100, point.ratio * 100));
+            return <div key={point.dateKey} className="diet-history-day" title={pointDescription(point, mode, day)}>
+              <span
+                className={toneClass}
+                style={mode === "water" && !point.future ? { "--diet-history-fill": `${visualPercent}%` } as CSSProperties : undefined}
+                aria-label={pointDescription(point, mode, day)}
+              >
+                <i />
+                {completeWater ? <CheckIcon /> : mode === "calories" && point.tone !== "empty" && !point.future ? <em>{Math.round(point.ratio * 100)}%</em> : null}
+              </span>
+              <small>{point.label.slice(0,3)}</small>
+            </div>;
+          })}
+        </div>
+        <footer className="diet-history-legend" aria-label="Legenda">
+          {mode === "water" ? <>
+            <span><i className="is-empty"/>Sem registro</span>
+            <span><i className="is-water"/>Parcial</span>
+            <span><i className="is-complete"/>Meta</span>
+          </> : <>
+            <span><i className="is-good"/>Dentro</span>
+            <span><i className="is-medium"/>Próximo</span>
+            <span><i className="is-far"/>Distante</span>
+          </>}
+        </footer>
+      </motion.div> : null}
+    </AnimatePresence>
   </div>;
 }
