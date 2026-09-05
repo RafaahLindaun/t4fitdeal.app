@@ -43,6 +43,33 @@ function useDomTarget(selector: string, active = true) {
   return target;
 }
 
+function useAfterTargetSlot(selector: string, className: string, active = true) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!active) { setSlot(null); return; }
+    let current: HTMLElement | null = null;
+    let frame = 0;
+    const scan = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const anchor = document.querySelector<HTMLElement>(selector);
+        if (!anchor) { setSlot(null); return; }
+        if (current?.isConnected && current.previousElementSibling === anchor) { setSlot(current); return; }
+        current?.remove();
+        current = document.createElement("div");
+        current.className = className;
+        anchor.insertAdjacentElement("afterend", current);
+        setSlot(current);
+      });
+    };
+    scan();
+    const observer = new MutationObserver(scan);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => { window.cancelAnimationFrame(frame); observer.disconnect(); current?.remove(); };
+  }, [active, className, selector]);
+  return slot;
+}
+
 function readSelectedExerciseNames() {
   return new Set(
     Array.from(document.querySelectorAll<HTMLElement>(".admin-builder-exercise strong"))
@@ -115,7 +142,6 @@ function Round2ExerciseButtons({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (!active) { setSlots([]); return; }
-    const owned = new Set<HTMLElement>();
     let frame = 0;
     const scan = () => {
       window.cancelAnimationFrame(frame);
@@ -143,7 +169,6 @@ function Round2ExerciseButtons({ active }: { active: boolean }) {
               original.insertAdjacentElement("afterend", host);
             }
           }
-          owned.add(host);
           next.push({ id, host, original, name, mobileOuter });
         };
 
@@ -168,14 +193,14 @@ function Round2ExerciseButtons({ active }: { active: boolean }) {
   return <>{slots.map((slot) => slot.host.isConnected ? createPortal(<Round2ExerciseStateControl key={slot.id} slot={slot}/>, slot.host, slot.id) : null)}</>;
 }
 
-function Round2BuilderCardioSchedule({ active, studentId }: { active: boolean; studentId: string }) {
+function Round2BuilderCardioSchedule({ active, studentId, templateMode }: { active: boolean; studentId: string; templateMode: boolean }) {
   const target = useDomTarget(".admin-builder-cardio-fields", active);
   const [mode, setMode] = useState<ScheduleMode>("all");
   const [days, setDays] = useState<number[]>([]);
   const loadedStudentRef = useRef("");
 
   useEffect(() => {
-    if (!active || !studentId || loadedStudentRef.current === studentId) return;
+    if (!active || !studentId || templateMode || loadedStudentRef.current === studentId) return;
     loadedStudentRef.current = studentId;
     const localKey = `accqua:builder-cardio-schedule:${studentId}`;
     try {
@@ -189,15 +214,15 @@ function Round2BuilderCardioSchedule({ active, studentId }: { active: boolean; s
       const nextDays = Array.isArray(row.weekDays) ? row.weekDays.map(Number).filter((day) => day >= 0 && day <= 6) : [];
       setMode(nextMode); setDays(nextDays);
     });
-  }, [active, studentId]);
+  }, [active, studentId, templateMode]);
 
   useEffect(() => {
-    if (!studentId) return;
+    if (!studentId || templateMode) return;
     window.sessionStorage.setItem(`accqua:builder-cardio-schedule:${studentId}`, JSON.stringify({ mode, days }));
-  }, [days, mode, studentId]);
+  }, [days, mode, studentId, templateMode]);
 
   useEffect(() => {
-    if (!active || !studentId) return;
+    if (!active || !studentId || templateMode) return;
     const capturePublish = (event: MouseEvent) => {
       const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("button");
       if (!button || !document.querySelector(".admin-builder-screen.is-step-cardio") || !document.querySelector(".admin-builder-cardio-fields")) return;
@@ -208,7 +233,7 @@ function Round2BuilderCardioSchedule({ active, studentId }: { active: boolean; s
     };
     document.addEventListener("click", capturePublish, true);
     return () => document.removeEventListener("click", capturePublish, true);
-  }, [active, days, mode, studentId]);
+  }, [active, days, mode, studentId, templateMode]);
 
   if (!target) return null;
   return createPortal(
@@ -240,10 +265,12 @@ function Round2CardioScheduleSync({ activeBuilder }: { activeBuilder: boolean })
     let attempts = 0;
     const sync = async () => {
       attempts += 1;
-      const { data, error } = await supabase.rpc("set_active_workout_cardio_schedule_v1_6_5_7", {
+      const publishedAfter = new Date(Number(pending!.at ?? Date.now())).toISOString();
+      const { data, error } = await supabase.rpc("set_active_workout_cardio_schedule_v1_6_5_7_2", {
         p_student_id: pending!.studentId,
         p_schedule_mode: pending!.mode,
         p_week_days: pending!.mode === "specific" ? (pending!.days ?? []) : [],
+        p_published_after: publishedAfter,
       });
       if (!error && data === true) {
         window.sessionStorage.removeItem("accqua:pending-cardio-schedule");
@@ -261,7 +288,7 @@ function Round2CardioScheduleSync({ activeBuilder }: { activeBuilder: boolean })
 
 function Round2ProfessorCardioSchedule({ active }: { active: boolean }) {
   const { user } = useAuth();
-  const target = useDomTarget(".cardio-title-row", active);
+  const slot = useAfterTargetSlot(".cardio-title-row", "round2-cardio-schedule-slot", active);
   const [schedule, setSchedule] = useState<{ mode: ScheduleMode; days: number[]; notes: string } | null>(null);
 
   useEffect(() => {
@@ -279,7 +306,7 @@ function Round2ProfessorCardioSchedule({ active }: { active: boolean }) {
     return () => { cancelled = true; };
   }, [active, user?.id]);
 
-  if (!target || !schedule) return null;
+  if (!slot || !schedule) return null;
   const prescribed = schedule.mode === "all" ? new Set(WEEK_DAYS.map((day) => day.value)) : new Set(schedule.days);
   return createPortal(
     <section className="cardio-professor-schedule" aria-label="Agenda do cardio definido pelo professor">
@@ -287,7 +314,7 @@ function Round2ProfessorCardioSchedule({ active }: { active: boolean }) {
       <div className="cardio-professor-week">{WEEK_DAYS.map((day) => <span key={day.value} className={`cardio-professor-day ${prescribed.has(day.value) ? "is-prescribed" : ""}`} title={prescribed.has(day.value) ? "Cardio definido pelo professor" : undefined}>{day.label}</span>)}</div>
       {schedule.notes ? <div className="cardio-professor-instructions"><strong>Orientações</strong><br/>{schedule.notes}</div> : null}
     </section>,
-    target,
+    slot,
   );
 }
 
@@ -295,10 +322,12 @@ export default function Round2RuntimeEnhancements() {
   const location = useLocation();
   const builderActive = location.pathname.includes("/area-accqua/montar/editor");
   const cardioActive = location.pathname === "/cardio";
-  const studentId = useMemo(() => new URLSearchParams(location.search).get("student") ?? "", [location.search]);
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const studentId = params.get("student") ?? "";
+  const templateMode = params.get("modo") === "modelo";
   return <>
     <Round2ExerciseButtons active={builderActive}/>
-    <Round2BuilderCardioSchedule active={builderActive} studentId={studentId}/>
+    <Round2BuilderCardioSchedule active={builderActive} studentId={studentId} templateMode={templateMode}/>
     <Round2CardioScheduleSync activeBuilder={builderActive}/>
     <Round2ProfessorCardioSchedule active={cardioActive}/>
   </>;
