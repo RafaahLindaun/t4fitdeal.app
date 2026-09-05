@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "../lib/supabase";
 
@@ -228,7 +229,13 @@ function Round2BuilderCardioSchedule({ active, studentId, templateMode }: { acti
       if (!button || !document.querySelector(".admin-builder-screen.is-step-cardio") || !document.querySelector(".admin-builder-cardio-fields")) return;
       const isPublish = button.matches(".admin-builder-mobile-primary") || button.matches(".admin-builder-footer-actions .is-publish");
       if (!isPublish) return;
-      if (mode === "specific" && !days.length) return;
+      if (mode === "specific" && !days.length) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        toast.error("Selecione pelo menos um dia para o cardio.");
+        return;
+      }
       window.sessionStorage.setItem("accqua:pending-cardio-schedule", JSON.stringify({ studentId, mode, days, at: Date.now() }));
     };
     document.addEventListener("click", capturePublish, true);
