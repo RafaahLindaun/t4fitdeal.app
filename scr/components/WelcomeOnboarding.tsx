@@ -3,6 +3,12 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import AccquaLogo from "./AccquaLogo";
 import { useAuth } from "../auth/AuthProvider";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 
 const welcomeFeatures = [
   ["Treino", "Sua ficha, séries e progresso."],
@@ -64,23 +70,29 @@ export default function WelcomeOnboarding() {
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {open ? (
         <motion.div
           className="accqua-welcome-overlay"
           role="dialog"
           aria-modal="true"
           aria-labelledby="accqua-welcome-title"
-          initial={reduceMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          variants={accquaOverlayVariants}
+          initial={reduceMotion ? false : "hidden"}
+          animate="visible"
+          exit="exit"
+          transition={reduceMotion ? { duration: 0 } : accquaOverlayTransition}
+          data-accqua-window-overlay
+          data-accqua-motion-managed
         >
           <motion.section
             className="accqua-welcome-card"
-            initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.99 }}
-            transition={{ duration: 0.28, ease: [0.2, 0.82, 0.2, 1] }}
+            variants={accquaWindowVariants.center}
+            initial={reduceMotion ? false : "hidden"}
+            animate="visible"
+            exit="exit"
+            transition={reduceMotion ? { duration: 0 } : accquaWindowTransition}
+            data-accqua-window-surface="center"
           >
             <div className="accqua-welcome-logo"><AccquaLogo /></div>
             <span>NOVO APP ACCQUA</span>
