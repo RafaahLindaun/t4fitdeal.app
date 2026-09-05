@@ -26,8 +26,11 @@ export default function CenteredModal({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="centered-modal-overlay-v164" />
-        <Dialog.Content className={`centered-modal-content-v164 ${className}`.trim()}>
+        <Dialog.Overlay className="centered-modal-overlay-v164" data-accqua-window-overlay />
+        <Dialog.Content
+          className={`centered-modal-content-v164 ${className}`.trim()}
+          data-accqua-window-surface="center"
+        >
           <header className="centered-modal-header-v164">
             <div>
               <Dialog.Title>{title}</Dialog.Title>
