@@ -19,10 +19,13 @@ const numberValue = (value: unknown) => {
 
 export async function loadRankingProfileSummary165(studentId: string): Promise<RankingProfileSummary | null> {
   if (!isSupabaseConfigured || !studentId) return null;
-  const newest = await supabase.rpc("get_accqua_ranking_profile_summary_v9_7", { p_student_id: studentId });
-  const response = newest.error
+  const v98 = await supabase.rpc("get_accqua_ranking_profile_summary_v9_8", { p_student_id: studentId });
+  const v97 = v98.error
+    ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_7", { p_student_id: studentId })
+    : v98;
+  const response = v97.error
     ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_6", { p_student_id: studentId })
-    : newest;
+    : v97;
   if (response.error || !response.data) return null;
   const raw = (Array.isArray(response.data) ? response.data[0] : response.data) as Row | undefined;
   if (!raw) return null;
@@ -32,7 +35,7 @@ export async function loadRankingProfileSummary165(studentId: string): Promise<R
     memberSince: text(raw.member_since),
     ageYears: Number.isFinite(rawAge) && rawAge >= 0 ? rawAge : null,
     totalWorkouts: numberValue(raw.total_workouts),
-    currentSplit: text(raw.current_split) || "Não informado",
+    currentSplit: text(raw.current_split) || "—",
     objective: text(raw.objective),
   };
 }
@@ -47,7 +50,7 @@ export async function loadPublicWorkoutSummary(studentId: string): Promise<Publi
   const row = data as Row;
   return {
     programName: text(row.programName) || "Treino atual",
-    split: text(row.split) || "Não informada",
+    split: text(row.split) || "—",
     focus: text(row.focus),
     routines: numberValue(row.routines),
     exercises: numberValue(row.exercises),
