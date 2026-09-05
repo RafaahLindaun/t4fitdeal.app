@@ -30,6 +30,7 @@ import "./styles/login-1.6.5.3.css";
 import "./styles/window-motion-1.6.5.6.css";
 import "./styles/build-1.6.5.7-round2.css";
 import "./styles/ranking-1.6.5.7.css";
+import "./styles/profile-partners-1.6.5.7.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
