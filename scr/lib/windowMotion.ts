@@ -1,6 +1,6 @@
 import type { Transition, Variants } from "framer-motion";
 
-export type AccquaWindowMotionKind = "center" | "sheet" | "viewer";
+export type AccquaWindowMotionKind = "center" | "sheet" | "viewer" | "popover";
 
 export const ACCQUA_WINDOW_MOTION = {
   overlayOpenMs: 190,
@@ -70,6 +70,20 @@ export const accquaWindowVariants: Record<AccquaWindowMotionKind, Variants> = {
       opacity: 0,
       scale: 0.975,
       filter: "blur(4px)",
+      transition: {
+        duration: ACCQUA_WINDOW_MOTION.panelCloseMs / 1000,
+        ease: ACCQUA_WINDOW_MOTION.easeIn,
+      },
+    },
+  },
+  popover: {
+    hidden: { opacity: 0, y: 8, scale: 0.985, filter: "blur(3px)" },
+    visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
+    exit: {
+      opacity: 0,
+      y: 5,
+      scale: 0.992,
+      filter: "blur(2px)",
       transition: {
         duration: ACCQUA_WINDOW_MOTION.panelCloseMs / 1000,
         ease: ACCQUA_WINDOW_MOTION.easeIn,
