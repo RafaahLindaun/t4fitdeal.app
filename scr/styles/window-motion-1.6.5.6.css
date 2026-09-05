@@ -14,7 +14,8 @@
 .responsive-dialog-overlay[data-state="open"],
 .centered-modal-overlay-v164[data-state="open"],
 .accqua-delete-overlay[data-state="open"],
-.diet-alert-overlay[data-state="open"] {
+.diet-alert-overlay[data-state="open"],
+.admin-v11-library-overlay[data-state="open"] {
   animation: accqua-window-overlay-in var(--accqua-window-overlay-open) var(--accqua-window-ease-out) both !important;
 }
 
@@ -22,7 +23,8 @@
 .responsive-dialog-overlay[data-state="closed"],
 .centered-modal-overlay-v164[data-state="closed"],
 .accqua-delete-overlay[data-state="closed"],
-.diet-alert-overlay[data-state="closed"] {
+.diet-alert-overlay[data-state="closed"],
+.admin-v11-library-overlay[data-state="closed"] {
   animation: accqua-window-overlay-out var(--accqua-window-overlay-close) var(--accqua-window-ease-in) both !important;
 }
 
@@ -47,13 +49,27 @@
 /* Vaul already owns the sheet translate. We add opacity/blur so it shares the
    same ACCQUA feel without fighting drag-to-close physics. */
 [data-accqua-window-surface="sheet"][data-state="open"],
-.responsive-dialog-drawer[data-state="open"] {
+.responsive-dialog-drawer[data-state="open"],
+.admin-v11-library-drawer[data-state="open"] {
   animation: accqua-window-sheet-soft-in var(--accqua-window-panel-open) var(--accqua-window-ease-out) both !important;
 }
 
 [data-accqua-window-surface="sheet"][data-state="closed"],
-.responsive-dialog-drawer[data-state="closed"] {
+.responsive-dialog-drawer[data-state="closed"],
+.admin-v11-library-drawer[data-state="closed"] {
   animation: accqua-window-sheet-soft-out var(--accqua-window-panel-close) var(--accqua-window-ease-in) both !important;
+}
+
+/* Anchored Radix popovers use the ACCQUA motion without changing their
+   collision/positioning calculation. Radix keeps the element mounted for exit. */
+.admin-quick-popover-v1483[data-state="open"] {
+  transform-origin: var(--radix-popover-content-transform-origin, 50% 0%);
+  animation: accqua-window-popover-in var(--accqua-window-panel-open) var(--accqua-window-ease-out) both !important;
+}
+
+.admin-quick-popover-v1483[data-state="closed"] {
+  transform-origin: var(--radix-popover-content-transform-origin, 50% 0%);
+  animation: accqua-window-popover-out var(--accqua-window-panel-close) var(--accqua-window-ease-in) both !important;
 }
 
 /* Legacy/manual windows get the same entrance while they are migrated to
@@ -159,6 +175,16 @@
   to { opacity: 0; filter: blur(2px); }
 }
 
+@keyframes accqua-window-popover-in {
+  from { opacity: 0; transform: translateY(8px) scale(.985); filter: blur(3px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes accqua-window-popover-out {
+  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  to { opacity: 0; transform: translateY(5px) scale(.992); filter: blur(2px); }
+}
+
 @keyframes accqua-window-legacy-center-in {
   from { opacity: 0; transform: translateY(18px) scale(.965); filter: blur(5px); }
   to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
@@ -191,6 +217,9 @@
   .accqua-delete-dialog,
   .diet-alert-overlay,
   .diet-alert-dialog,
+  .admin-v11-library-overlay,
+  .admin-v11-library-drawer,
+  .admin-quick-popover-v1483,
   .profile-photo-viewer,
   .profile-photo-viewer > figure,
   .workout-media-viewer,
