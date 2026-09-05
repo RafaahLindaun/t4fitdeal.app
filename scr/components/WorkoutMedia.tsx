@@ -5,10 +5,17 @@ import {
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import type {
   WorkoutExerciseRecord,
   WorkoutMediaType,
 } from "../lib/workout";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 
 function youtubeId(url: string) {
   try {
@@ -192,60 +199,79 @@ export default function WorkoutMedia({
     return <div className="workout-media-compact">{renderMedia(false)}</div>;
   }
 
-  const overlay =
-    expanded && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            className="workout-media-viewer"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Demonstração de ${exercise.name}`}
-          >
-            <button
-              type="button"
-              className="workout-media-viewer-backdrop"
-              onClick={() => setExpanded(false)}
-              aria-label="Fechar demonstração"
-            />
+  const overlay = typeof document !== "undefined"
+    ? createPortal(
+        <AnimatePresence initial={false}>
+          {expanded ? (
+            <motion.div
+              key="workout-media-viewer"
+              className="workout-media-viewer"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Demonstração de ${exercise.name}`}
+              variants={accquaOverlayVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={accquaOverlayTransition}
+              data-accqua-window-overlay
+              data-accqua-motion-managed
+            >
+              <button
+                type="button"
+                className="workout-media-viewer-backdrop"
+                onClick={() => setExpanded(false)}
+                aria-label="Fechar demonstração"
+              />
 
-            <section className="workout-media-viewer-card">
-              <header>
-                <div>
-                  <span>DEMONSTRAÇÃO DO EXERCÍCIO</span>
-                  <strong>{exercise.name}</strong>
-                  <small>
-                    {exercise.equipment ||
-                      exercise.muscleGroup ||
-                      "Execução guiada"}
-                  </small>
+              <motion.section
+                className="workout-media-viewer-card"
+                variants={accquaWindowVariants.viewer}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={accquaWindowTransition}
+                data-accqua-window-surface="viewer"
+              >
+                <header>
+                  <div>
+                    <span>DEMONSTRAÇÃO DO EXERCÍCIO</span>
+                    <strong>{exercise.name}</strong>
+                    <small>
+                      {exercise.equipment ||
+                        exercise.muscleGroup ||
+                        "Execução guiada"}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="workout-media-viewer-close"
+                    onClick={() => setExpanded(false)}
+                    aria-label="Fechar demonstração"
+                  >
+                    <span className="workout-close-icon" aria-hidden="true" />
+                  </button>
+                </header>
+
+                <div className="workout-media-viewer-content">
+                  {renderMedia(true)}
                 </div>
-                <button
-                  type="button"
-                  className="workout-media-viewer-close"
-                  onClick={() => setExpanded(false)}
-                  aria-label="Fechar demonstração"
-                >
-                  <span className="workout-close-icon" aria-hidden="true" />
-                </button>
-              </header>
 
-              <div className="workout-media-viewer-content">
-                {renderMedia(true)}
-              </div>
-
-              <footer>
-                <span>{mediaFailed ? "SEM MÍDIA" : labelFor(exercise.mediaType)}</span>
-                <p>
-                  {mediaFailed
-                    ? "O exercício continua disponível normalmente pelo nome e pelas orientações cadastradas."
-                    : "Observe a postura e siga as orientações cadastradas pelo professor."}
-                </p>
-              </footer>
-            </section>
-          </div>,
-          document.body,
-        )
-      : null;
+                <footer>
+                  <span>{mediaFailed ? "SEM MÍDIA" : labelFor(exercise.mediaType)}</span>
+                  <p>
+                    {mediaFailed
+                      ? "O exercício continua disponível normalmente pelo nome e pelas orientações cadastradas."
+                      : "Observe a postura e siga as orientações cadastradas pelo professor."}
+                  </p>
+                </footer>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>,
+        document.body,
+      )
+    : null;
 
   return (
     <>
