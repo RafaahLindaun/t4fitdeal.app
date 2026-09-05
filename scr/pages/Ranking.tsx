@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import AccquaLogo from "../components/AccquaLogo";
@@ -24,6 +25,12 @@ import {
   addTrainingPartner,
   isTrainingPartner,
 } from "../lib/trainingPartners";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 import "./ranking.css";
 import "./ranking-social.css";
 
@@ -107,16 +114,23 @@ function PrizeDialog({ open, onClose, prize, entry }: { open: boolean; onClose: 
 function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry: RankingEntry | null; currentUserId: string; onClose: () => void; onPhoto: (entry: RankingEntry) => void }) {
   const queryClient = useQueryClient();
   const [showWorkout, setShowWorkout] = useState(false);
-  const isMe = entry?.studentId === currentUserId;
-  const profileQuery = useQuery({ queryKey: ["ranking-profile", "1.6.5", entry?.studentId], queryFn: () => loadRankingProfileSummary165(entry!.studentId), enabled: Boolean(entry?.studentId), staleTime: 30_000 });
-  const partnerStatusQuery = useQuery({ queryKey: ["training-partner-status", entry?.studentId], queryFn: () => isTrainingPartner(entry!.studentId), enabled: Boolean(entry?.studentId && !isMe), staleTime: 20_000 });
-  const workoutQuery = useQuery({ queryKey: ["ranking-public-workout", "1.6.5", entry?.studentId], queryFn: () => loadPublicWorkoutSummary(entry!.studentId), enabled: Boolean(entry?.studentId && showWorkout), staleTime: 30_000 });
+  const [visibleEntry, setVisibleEntry] = useState<RankingEntry | null>(entry);
+
+  useEffect(() => {
+    if (entry) setVisibleEntry(entry);
+  }, [entry]);
+
+  const activeEntry = entry ?? visibleEntry;
+  const isMe = activeEntry?.studentId === currentUserId;
+  const profileQuery = useQuery({ queryKey: ["ranking-profile", "1.6.5", activeEntry?.studentId], queryFn: () => loadRankingProfileSummary165(activeEntry!.studentId), enabled: Boolean(activeEntry?.studentId), staleTime: 30_000 });
+  const partnerStatusQuery = useQuery({ queryKey: ["training-partner-status", activeEntry?.studentId], queryFn: () => isTrainingPartner(activeEntry!.studentId), enabled: Boolean(activeEntry?.studentId && !isMe), staleTime: 20_000 });
+  const workoutQuery = useQuery({ queryKey: ["ranking-public-workout", "1.6.5", activeEntry?.studentId], queryFn: () => loadPublicWorkoutSummary(activeEntry!.studentId), enabled: Boolean(activeEntry?.studentId && showWorkout), staleTime: 30_000 });
   const addPartnerMutation = useMutation({
-    mutationFn: () => addTrainingPartner(entry!.studentId),
+    mutationFn: () => addTrainingPartner(activeEntry!.studentId),
     onSuccess: async () => {
-      toast.success("Parceiro de treino adicionado", { description: `${entry?.firstName ?? "Aluno"} agora está na sua lista.` });
+      toast.success("Parceiro de treino adicionado", { description: `${activeEntry?.firstName ?? "Aluno"} agora está na sua lista.` });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["training-partner-status", entry?.studentId] }),
+        queryClient.invalidateQueries({ queryKey: ["training-partner-status", activeEntry?.studentId] }),
         queryClient.invalidateQueries({ queryKey: ["training-partners", "mine"] }),
         queryClient.invalidateQueries({ queryKey: ["training-partners", "count"] }),
       ]);
@@ -124,7 +138,7 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry
     onError: () => toast.error("Não foi possível adicionar esse parceiro agora."),
   });
 
-  useEffect(() => { setShowWorkout(false); }, [entry?.studentId]);
+  useEffect(() => { setShowWorkout(false); }, [activeEntry?.studentId]);
   useEffect(() => {
     if (!entry) return;
     const previousOverflow = document.body.style.overflow;
@@ -134,34 +148,68 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
   }, [entry, onClose]);
 
-  if (!entry) return null;
+  if (!activeEntry) return null;
   const summary = profileQuery.data;
-  const displayName = isMe ? "Você" : entry.firstName;
+  const displayName = isMe ? "Você" : activeEntry.firstName;
   const achievement = summary ? rankingAchievement(summary.memberSince) : null;
   const alreadyPartner = Boolean(partnerStatusQuery.data);
 
-  return <div className="ranking-sheet-backdrop" role="presentation" onClick={onClose}>
-    <section className="ranking-sheet ranking-profile-sheet ranking-profile-sheet-165" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-      <span className="ranking-sheet-handle" aria-hidden="true"/><ModalCloseButton className="ranking-sheet-close" onClick={onClose} ariaLabel="Fechar perfil resumido"/>
-      <header className="ranking-profile-header">
-        {entry.avatarUrl ? <button type="button" className="ranking-profile-avatar-button" onClick={() => onPhoto(entry)}><span className="ranking-profile-avatar has-photo"><img src={entry.avatarUrl} alt={`Foto de ${displayName}`}/></span></button> : <span className="ranking-profile-avatar" aria-hidden="true">{initials(entry.firstName)}</span>}
-        <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"} neste mês</p></div>
-      </header>
+  return (
+    <AnimatePresence
+      initial={false}
+      onExitComplete={() => {
+        if (!entry) setVisibleEntry(null);
+      }}
+    >
+      {entry ? (
+        <motion.div
+          key={`ranking-profile-${activeEntry.studentId}`}
+          className="ranking-sheet-backdrop"
+          role="presentation"
+          onClick={onClose}
+          variants={accquaOverlayVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          transition={accquaOverlayTransition}
+          data-accqua-window-overlay
+          data-accqua-motion-managed
+        >
+          <motion.section
+            className="ranking-sheet ranking-profile-sheet ranking-profile-sheet-165"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+            variants={accquaWindowVariants.sheet}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={accquaWindowTransition}
+            data-accqua-window-surface="sheet"
+          >
+            <span className="ranking-sheet-handle" aria-hidden="true"/><ModalCloseButton className="ranking-sheet-close" onClick={onClose} ariaLabel="Fechar perfil resumido"/>
+            <header className="ranking-profile-header">
+              {activeEntry.avatarUrl ? <button type="button" className="ranking-profile-avatar-button" onClick={() => onPhoto(activeEntry)}><span className="ranking-profile-avatar has-photo"><img src={activeEntry.avatarUrl} alt={`Foto de ${displayName}`}/></span></button> : <span className="ranking-profile-avatar" aria-hidden="true">{initials(activeEntry.firstName)}</span>}
+              <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{activeEntry.points} dia{activeEntry.points === 1 ? "" : "s"} treinado{activeEntry.points === 1 ? "" : "s"} neste mês</p></div>
+            </header>
 
-      {!isMe ? <div className="ranking-profile-social-actions"><button type="button" className={`ranking-profile-add ${alreadyPartner ? "is-added" : ""}`} disabled={partnerStatusQuery.isLoading || alreadyPartner || addPartnerMutation.isPending} onClick={() => addPartnerMutation.mutate()}>{partnerStatusQuery.isLoading || addPartnerMutation.isPending ? "Adicionando…" : alreadyPartner ? "✓ Adicionado" : "+ Adicionar"}</button><button type="button" className="ranking-profile-workout-button" onClick={() => setShowWorkout((value) => !value)}>{showWorkout ? "Ocultar treino" : "Ver treino"}</button></div> : <button type="button" className="ranking-profile-workout-button is-self" onClick={() => setShowWorkout((value) => !value)}>{showWorkout ? "Ocultar treino" : "Ver meu treino"}</button>}
+            {!isMe ? <div className="ranking-profile-social-actions"><button type="button" className={`ranking-profile-add ${alreadyPartner ? "is-added" : ""}`} disabled={partnerStatusQuery.isLoading || alreadyPartner || addPartnerMutation.isPending} onClick={() => addPartnerMutation.mutate()}>{partnerStatusQuery.isLoading || addPartnerMutation.isPending ? "Adicionando…" : alreadyPartner ? "✓ Adicionado" : "+ Adicionar"}</button><button type="button" className="ranking-profile-workout-button" onClick={() => setShowWorkout((value) => !value)}>{showWorkout ? "Ocultar treino" : "Ver treino"}</button></div> : <button type="button" className="ranking-profile-workout-button is-self" onClick={() => setShowWorkout((value) => !value)}>{showWorkout ? "Ocultar treino" : "Ver meu treino"}</button>}
 
-      {profileQuery.isLoading ? <div className="ranking-sheet-loading"><span/><p>Carregando perfil...</p></div> : !summary ? <div className="ranking-sheet-error"><p>Não foi possível carregar os detalhes deste perfil agora.</p></div> : <div className="ranking-profile-data">
-        <article><span>Idade</span><strong>{summary.ageYears === null ? "Não informada" : `${summary.ageYears} anos`}</strong></article>
-        <article><span>Tempo no app</span><strong>{formatAppTime(summary.memberSince)}</strong></article>
-        <article><span>Treinos feitos</span><strong>{summary.totalWorkouts}</strong></article>
-        <article><span>Divisão atual</span><strong>{summary.currentSplit || "Não informada"}</strong></article>
-        <article className="ranking-profile-objective-v163"><span>Objetivo</span><strong>{summary.objective || "Não informado"}</strong></article>
-        {achievement ? <span className="ranking-achievement-v163">★ {achievement.label}</span> : null}
-      </div>}
+            {profileQuery.isLoading ? <div className="ranking-sheet-loading"><span/><p>Carregando perfil...</p></div> : !summary ? <div className="ranking-sheet-error"><p>Não foi possível carregar os detalhes deste perfil agora.</p></div> : <div className="ranking-profile-data">
+              <article><span>Idade</span><strong>{summary.ageYears === null ? "Não informada" : `${summary.ageYears} anos`}</strong></article>
+              <article><span>Tempo no app</span><strong>{formatAppTime(summary.memberSince)}</strong></article>
+              <article><span>Treinos feitos</span><strong>{summary.totalWorkouts}</strong></article>
+              <article><span>Divisão atual</span><strong>{summary.currentSplit || "Não informada"}</strong></article>
+              <article className="ranking-profile-objective-v163"><span>Objetivo</span><strong>{summary.objective || "Não informado"}</strong></article>
+              {achievement ? <span className="ranking-achievement-v163">★ {achievement.label}</span> : null}
+            </div>}
 
-      {showWorkout ? <section className="ranking-public-workout" aria-label="Resumo do treino atual">{workoutQuery.isLoading ? <div className="ranking-public-workout-loading"><span/><p>Buscando treino atual...</p></div> : workoutQuery.isError ? <p className="ranking-public-workout-empty">Não foi possível carregar o treino agora.</p> : !workoutQuery.data ? <p className="ranking-public-workout-empty">Nenhum treino ativo disponível para mostrar.</p> : <><div className="ranking-public-workout-title"><small>TREINO ATUAL</small><strong>{workoutQuery.data.programName}</strong><span>{workoutQuery.data.split}</span></div><div className="ranking-public-workout-grid"><article><strong>{workoutQuery.data.routines}</strong><span>rotinas</span></article><article><strong>{workoutQuery.data.exercises}</strong><span>exercícios</span></article></div>{workoutQuery.data.focus ? <p><b>Foco:</b> {workoutQuery.data.focus}</p> : null}{workoutQuery.data.reviewAt ? <small>Revisão prevista: {new Date(`${workoutQuery.data.reviewAt}T12:00:00`).toLocaleDateString("pt-BR")}</small> : null}</>}</section> : null}
-    </section>
-  </div>;
+            {showWorkout ? <section className="ranking-public-workout" aria-label="Resumo do treino atual">{workoutQuery.isLoading ? <div className="ranking-public-workout-loading"><span/><p>Buscando treino atual...</p></div> : workoutQuery.isError ? <p className="ranking-public-workout-empty">Não foi possível carregar o treino agora.</p> : !workoutQuery.data ? <p className="ranking-public-workout-empty">Nenhum treino ativo disponível para mostrar.</p> : <><div className="ranking-public-workout-title"><small>TREINO ATUAL</small><strong>{workoutQuery.data.programName}</strong><span>{workoutQuery.data.split}</span></div><div className="ranking-public-workout-grid"><article><strong>{workoutQuery.data.routines}</strong><span>rotinas</span></article><article><strong>{workoutQuery.data.exercises}</strong><span>exercícios</span></article></div>{workoutQuery.data.focus ? <p><b>Foco:</b> {workoutQuery.data.focus}</p> : null}{workoutQuery.data.reviewAt ? <small>Revisão prevista: {new Date(`${workoutQuery.data.reviewAt}T12:00:00`).toLocaleDateString("pt-BR")}</small> : null}</>}</section> : null}
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
 }
 
 export default function Ranking() {
