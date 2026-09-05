@@ -12,7 +12,8 @@ import {
 } from "../lib/staffNotifications";
 import { loadFeedbackPreferences, playAccquaChime } from "../lib/appFeedback";
 
-const STAFF_ALERT_POLL_MS = 90_000;
+const STAFF_ALERT_POLL_MS = 180_000;
+const STAFF_ALERT_MIN_GAP_MS = 20_000;
 
 function dispatchAlerts(alerts: WorkoutRequiredAlert[]) {
   window.dispatchEvent(
@@ -26,6 +27,7 @@ export default function StaffWorkoutAlerts() {
   const { user, profile } = useAuth();
   const notifying = useRef(new Set<string>());
   const inFlight = useRef(false);
+  const lastRefreshAt = useRef(0);
 
   const isStaff =
     profile?.role === "professor" ||
@@ -40,9 +42,12 @@ export default function StaffWorkoutAlerts() {
 
     let cancelled = false;
 
-    const refresh = async () => {
+    const refresh = async (force = false) => {
       if (cancelled || inFlight.current || document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (!force && now - lastRefreshAt.current < STAFF_ALERT_MIN_GAP_MS) return;
       inFlight.current = true;
+      lastRefreshAt.current = now;
       try {
         const alerts = await loadWorkoutRequiredAlerts();
         if (cancelled) return;
@@ -71,7 +76,7 @@ export default function StaffWorkoutAlerts() {
       }
     };
 
-    void refresh();
+    void refresh(true);
     const interval = window.setInterval(() => void refresh(), STAFF_ALERT_POLL_MS);
 
     const handleVisibility = () => {
@@ -79,7 +84,7 @@ export default function StaffWorkoutAlerts() {
     };
 
     const handleFocus = () => void refresh();
-    const handleRefreshEvent = () => void refresh();
+    const handleRefreshEvent = () => void refresh(true);
 
     window.addEventListener("focus", handleFocus);
     window.addEventListener(WORKOUT_ALERTS_REFRESH_EVENT, handleRefreshEvent);
