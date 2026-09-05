@@ -94,7 +94,10 @@ export default function StaffLayout() {
           <strong>{sidebarCollapsed ? "Mostrar barra" : "Ocultar barra lateral"}</strong>
         </button>
 
-        <div className="accqua-staff-sidebar-heading">
+        <div
+          className="accqua-staff-sidebar-heading"
+          style={{ position: "relative", paddingRight: isOwner && !sidebarCollapsed ? 44 : undefined }}
+        >
           <small>ÁREA ACCQUA</small>
           <strong>Gestão da equipe</strong>
           <span>{isOwner ? `${role} · DONO` : role}</span>
@@ -105,6 +108,21 @@ export default function StaffLayout() {
               onClick={() => setOwnerManagerOpen(true)}
               aria-label="Gerenciar acessos da equipe"
               title="Gerenciar equipe"
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 2,
+                width: 36,
+                height: 36,
+                display: "grid",
+                placeItems: "center",
+                padding: 0,
+                color: "#ffd11e",
+                border: "1px solid rgba(255,209,30,.18)",
+                borderRadius: 12,
+                background: "rgba(255,209,30,.065)",
+                cursor: "pointer",
+              }}
             >
               <OwnerMenuIcon />
             </button>
