@@ -1,4 +1,11 @@
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 import "./profile-photo-viewer.css";
 import ModalCloseButton from "./ModalCloseButton";
 
@@ -31,21 +38,38 @@ export default function ProfilePhotoViewer({
     };
   }, [onClose, open]);
 
-  if (!open || !imageUrl) return null;
-
   return (
-    <div
-      className="profile-photo-viewer"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Foto de ${name}`}
-      onClick={onClose}
-    >
-      <figure onClick={(event) => event.stopPropagation()}>
-<ModalCloseButton className="profile-photo-viewer-close" ariaLabel="Fechar foto" onClick={onClose} />
-        <img src={imageUrl} alt={`Foto de ${name}`} />
-        <figcaption>{name}</figcaption>
-      </figure>
-    </div>
+    <AnimatePresence initial={false}>
+      {open && imageUrl ? (
+        <motion.div
+          key="profile-photo-viewer"
+          className="profile-photo-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Foto de ${name}`}
+          onClick={onClose}
+          variants={accquaOverlayVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          transition={accquaOverlayTransition}
+          data-accqua-window-overlay
+        >
+          <motion.figure
+            onClick={(event) => event.stopPropagation()}
+            variants={accquaWindowVariants.viewer}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={accquaWindowTransition}
+            data-accqua-window-surface="viewer"
+          >
+            <ModalCloseButton className="profile-photo-viewer-close" ariaLabel="Fechar foto" onClick={onClose} />
+            <img src={imageUrl} alt={`Foto de ${name}`} />
+            <figcaption>{name}</figcaption>
+          </motion.figure>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
