@@ -1,9 +1,16 @@
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  acceptTrainingPartner,
+  callTrainingPartner,
+  declineTrainingPartner,
   loadMyTrainingPartners,
   removeTrainingPartner,
+  requestTrainingPartner,
+  searchTrainingPartnerCandidates,
+  type TrainingPartnerStatus,
 } from "../lib/trainingPartners";
 import "./profile-training-partners.css";
 
@@ -12,47 +19,104 @@ function initials(value: string) {
   return `${parts[0]?.[0] ?? "A"}${parts.length > 1 ? parts.at(-1)?.[0] ?? "" : ""}`.toUpperCase();
 }
 
+function invalidatePartners(queryClient: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["training-partners", "mine"] }),
+    queryClient.invalidateQueries({ queryKey: ["training-partners", "count"] }),
+    queryClient.invalidateQueries({ queryKey: ["training-partner-status"] }),
+    queryClient.invalidateQueries({ queryKey: ["training-partner-candidates"] }),
+  ]);
+}
+
+function statusCopy(value: TrainingPartnerStatus) {
+  if (value === "accepted") return "Parceiro";
+  if (value === "incoming_pending") return "Quer ser seu parceiro";
+  if (value === "outgoing_pending") return "Convite enviado";
+  return "Disponível";
+}
+
 export default function ProfileTrainingPartners() {
   const reduceMotion = Boolean(useReducedMotion());
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+
   const query = useQuery({
     queryKey: ["training-partners", "mine"],
     queryFn: loadMyTrainingPartners,
-    staleTime: 20_000,
+    staleTime: 15_000,
     refetchOnWindowFocus: false,
   });
-  const remove = useMutation({
-    mutationFn: removeTrainingPartner,
-    onSuccess: async () => {
-      toast.success("Parceiro removido.");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["training-partners", "mine"] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partners", "count"] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partner-status"] }),
-      ]);
-    },
-    onError: () => toast.error("Não foi possível remover esse parceiro agora."),
+  const candidates = useQuery({
+    queryKey: ["training-partner-candidates", search],
+    queryFn: () => searchTrainingPartnerCandidates(search),
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
   });
 
-  const partners = query.data ?? [];
+  const action = useMutation({
+    mutationFn: async ({ kind, id }: { kind: "request" | "accept" | "decline" | "remove" | "call"; id: string }) => {
+      if (kind === "request") return requestTrainingPartner(id);
+      if (kind === "accept") return acceptTrainingPartner(id);
+      if (kind === "decline") return declineTrainingPartner(id);
+      if (kind === "call") return callTrainingPartner(id);
+      return removeTrainingPartner(id);
+    },
+    onSuccess: async (_, variables) => {
+      if (variables.kind === "request") toast.success("Convite de parceria enviado.");
+      else if (variables.kind === "accept") toast.success("Parceria aceita.");
+      else if (variables.kind === "decline") toast.success("Convite recusado.");
+      else if (variables.kind === "call") toast.success("Convite para treinar enviado.");
+      else toast.success("Parceiro removido.");
+      await invalidatePartners(queryClient);
+    },
+    onError: () => toast.error("Não foi possível concluir essa ação agora."),
+  });
+
+  const relations = query.data ?? [];
+  const accepted = relations.filter((item) => item.status === "accepted");
+  const incoming = relations.filter((item) => item.status === "incoming_pending");
+  const candidateRows = (candidates.data ?? []).filter((item) => !relations.some((relation) => relation.id === item.id));
 
   return (
     <section className="profile-partners-panel" aria-label="Meus parceiros de treino">
       <div className="profile-partners-panel-heading">
         <div>
           <small>PARCEIROS DE TREINO</small>
-          <h2>{partners.length ? `${partners.length} adicionado${partners.length === 1 ? "" : "s"}` : "Sua lista"}</h2>
+          <h2>{accepted.length ? `${accepted.length} parceiro${accepted.length === 1 ? "" : "s"}` : "Encontre alguém para treinar"}</h2>
         </div>
         <span aria-hidden="true">⌁</span>
       </div>
+
+      <label className="profile-partners-search">
+        <span aria-hidden="true">⌕</span>
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar aluno..." autoComplete="off" />
+      </label>
+
+      {incoming.length ? (
+        <div className="profile-partners-requests">
+          <small>CONVITES RECEBIDOS</small>
+          {incoming.map((partner) => (
+            <article key={`incoming-${partner.id}`}>
+              <span className={`profile-partners-avatar ${partner.avatarUrl ? "has-photo" : ""}`}>
+                {partner.avatarUrl ? <img src={partner.avatarUrl} alt="" /> : initials(partner.firstName)}
+              </span>
+              <div><strong>{partner.firstName}</strong><small>{partner.objective || statusCopy(partner.status)}</small></div>
+              <div className="profile-partners-request-actions">
+                <button type="button" className="is-accept" disabled={action.isPending} onClick={() => action.mutate({ kind: "accept", id: partner.id })}>Aceitar</button>
+                <button type="button" disabled={action.isPending} onClick={() => action.mutate({ kind: "decline", id: partner.id })}>Recusar</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       {query.isLoading ? (
         <div className="profile-partners-empty">Buscando seus parceiros...</div>
       ) : query.isError ? (
         <div className="profile-partners-empty">Não foi possível carregar seus parceiros agora.</div>
-      ) : partners.length ? (
+      ) : accepted.length ? (
         <div className="profile-partners-list">
-          {partners.map((partner) => (
+          {accepted.map((partner) => (
             <motion.article
               key={partner.id}
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
@@ -62,22 +126,32 @@ export default function ProfileTrainingPartners() {
               <span className={`profile-partners-avatar ${partner.avatarUrl ? "has-photo" : ""}`}>
                 {partner.avatarUrl ? <img src={partner.avatarUrl} alt="" /> : initials(partner.firstName)}
               </span>
-              <div>
-                <strong>{partner.firstName}</strong>
-                <small>{partner.objective || "Parceiro ACCQUA"}</small>
+              <div><strong>{partner.firstName}</strong><small>{partner.objective || "Parceiro ACCQUA"}</small></div>
+              <div className="profile-partners-row-actions">
+                <button type="button" className="is-call" disabled={action.isPending} onClick={() => action.mutate({ kind: "call", id: partner.id })}>Chamar para treinar</button>
+                <button type="button" className="is-remove" disabled={action.isPending} onClick={() => action.mutate({ kind: "remove", id: partner.id })}>Remover</button>
               </div>
-              <button type="button" disabled={remove.isPending} onClick={() => remove.mutate(partner.id)}>
-                Remover
-              </button>
             </motion.article>
           ))}
         </div>
       ) : (
-        <div className="profile-partners-empty">
-          <strong>Nenhum parceiro adicionado ainda.</strong>
-          <p>Abra o perfil de alguém no Ranking e toque em Adicionar.</p>
-        </div>
+        <div className="profile-partners-empty"><strong>Nenhum parceiro aceito ainda.</strong><p>Envie um convite abaixo ou aceite um convite recebido.</p></div>
       )}
+
+      <div className="profile-partners-discover">
+        <small>DESCOBRIR ALUNOS</small>
+        {candidates.isLoading ? <div className="profile-partners-empty">Buscando alunos...</div> : candidateRows.length ? candidateRows.map((student) => (
+          <article key={`candidate-${student.id}`}>
+            <span className={`profile-partners-avatar ${student.avatarUrl ? "has-photo" : ""}`}>
+              {student.avatarUrl ? <img src={student.avatarUrl} alt="" /> : initials(student.firstName)}
+            </span>
+            <div><strong>{student.firstName}</strong><small>{student.objective || "Aluno ACCQUA"}</small></div>
+            {student.status === "outgoing_pending" ? <span className="profile-partners-pending">Convite enviado</span> : student.status === "accepted" ? <span className="profile-partners-pending">Parceiro</span> : (
+              <button type="button" disabled={action.isPending} onClick={() => action.mutate({ kind: student.status === "incoming_pending" ? "accept" : "request", id: student.id })}>{student.status === "incoming_pending" ? "Aceitar" : "Adicionar parceiro"}</button>
+            )}
+          </article>
+        )) : <div className="profile-partners-empty">Nenhum aluno encontrado.</div>}
+      </div>
     </section>
   );
 }
