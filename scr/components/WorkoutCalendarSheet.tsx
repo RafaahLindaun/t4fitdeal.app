@@ -1,9 +1,16 @@
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   type WorkoutExerciseRecord,
   type WorkoutPlanRecord,
 } from "../lib/workout";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 import { WorkoutCheckIcon } from "./WorkoutIcons";
 import { useTreinoStatus } from "../hooks/useTreinoStatus";
 import { deriveRitmoSemanal, localDateKey } from "../lib/workoutStatus";
@@ -80,7 +87,7 @@ export default function WorkoutCalendarSheet({
     };
   }, [open, onClose]);
 
-  if (!open || typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null;
 
   const canonicalDates = monthlyStatus.data?.completedDates ?? [];
   const trainedDates = new Set(canonicalDates);
@@ -94,75 +101,101 @@ export default function WorkoutCalendarSheet({
   const todayKey = localDateKey(now);
 
   return createPortal(
-    <div className="workout-calendar-overlay" role="dialog" aria-modal="true" aria-label="Calendário de treinos">
-      <button className="workout-calendar-backdrop" type="button" onClick={onClose} aria-label="Fechar calendário" />
-      <section className="workout-calendar-sheet">
-        <PageHeader
-          className="workout-calendar-page-header"
-          ariaLabel="Cabeçalho do calendário de treinos"
-          left={null}
-          center={<div className="workout-calendar-heading"><span>PLANEJAMENTO DE TREINO</span><h2>Seu calendário</h2></div>}
-          right={<ModalCloseButton onClick={onClose} ariaLabel="Fechar calendário" />}
-        />
+    <AnimatePresence initial={false}>
+      {open ? (
+        <motion.div
+          key="workout-calendar-window"
+          className="workout-calendar-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Calendário de treinos"
+          variants={accquaOverlayVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          transition={accquaOverlayTransition}
+          data-accqua-window-overlay
+          data-accqua-motion-managed
+        >
+          <button className="workout-calendar-backdrop" type="button" onClick={onClose} aria-label="Fechar calendário" />
+          <motion.section
+            className="workout-calendar-sheet"
+            variants={accquaWindowVariants.sheet}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={accquaWindowTransition}
+            data-accqua-window-surface="sheet"
+          >
+            <PageHeader
+              className="workout-calendar-page-header"
+              ariaLabel="Cabeçalho do calendário de treinos"
+              left={null}
+              center={<div className="workout-calendar-heading"><span>PLANEJAMENTO DE TREINO</span><h2>Seu calendário</h2></div>}
+              right={<ModalCloseButton onClick={onClose} ariaLabel="Fechar calendário" />}
+            />
 
-        <main className="workout-calendar-scroll">
-          <p className="workout-calendar-intro">Acompanhe os dias planejados, o que já foi concluído e os exercícios que ainda faltam hoje.</p>
+            <main className="workout-calendar-scroll">
+              <p className="workout-calendar-intro">Acompanhe os dias planejados, o que já foi concluído e os exercícios que ainda faltam hoje.</p>
 
-          <section className="workout-calendar-current">
-            <div className="workout-calendar-current-copy"><span>TREINO EM ANDAMENTO</span><strong>{plan.name}</strong><p>Exercício {currentExerciseIndex + 1} de {exercises.length} • {remainingExercises} exercício(s) restante(s)</p></div>
-            <div className="workout-calendar-progress"><strong>{exerciseProgress}%</strong><span>concluído</span></div>
-          </section>
+              <section className="workout-calendar-current">
+                <div className="workout-calendar-current-copy"><span>TREINO EM ANDAMENTO</span><strong>{plan.name}</strong><p>Exercício {currentExerciseIndex + 1} de {exercises.length} • {remainingExercises} exercício(s) restante(s)</p></div>
+                <div className="workout-calendar-progress"><strong>{exerciseProgress}%</strong><span>concluído</span></div>
+              </section>
 
-          <div className="workout-calendar-summary">
-            <article><span>Dias treinados no mês</span><strong>{monthlyStatus.isError ? "—" : (monthlyStatus.data?.completedDates.length ?? 0)}</strong><small>{currentMonthLabel}</small></article>
-            <article><span>Treinos feitos na semana</span><strong>{monthlyStatus.isError ? "—" : trainedThisWeek}</strong><small>{planDays.length ? `${remainingThisWeek} ainda previsto(s)` : "Sem frequência semanal definida"}</small></article>
-            <article><span>Próximo dia planejado</span><strong className="text-value">{nextScheduledDay(planDays, now)}</strong><small>{planDays.length ? `${planDays.length} dia(s) planejado(s) por semana` : "Peça ao professor para definir os dias"}</small></article>
-          </div>
+              <div className="workout-calendar-summary">
+                <article><span>Dias treinados no mês</span><strong>{monthlyStatus.isError ? "—" : (monthlyStatus.data?.completedDates.length ?? 0)}</strong><small>{currentMonthLabel}</small></article>
+                <article><span>Treinos feitos na semana</span><strong>{monthlyStatus.isError ? "—" : trainedThisWeek}</strong><small>{planDays.length ? `${remainingThisWeek} ainda previsto(s)` : "Sem frequência semanal definida"}</small></article>
+                <article><span>Próximo dia planejado</span><strong className="text-value">{nextScheduledDay(planDays, now)}</strong><small>{planDays.length ? `${planDays.length} dia(s) planejado(s) por semana` : "Peça ao professor para definir os dias"}</small></article>
+              </div>
 
-          <section className="workout-calendar-week-section">
-            <header><div><strong>Plano semanal</strong><span>Amarelo indica os dias definidos pelo professor.</span></div></header>
-            <div className="workout-calendar-days">
-              {WEEK_LABELS.map((label, dayIndex) => {
-                const active = planDays.includes(dayIndex);
-                const today = now.getDay() === dayIndex;
-                return <div key={label} className={`${active ? "scheduled" : ""} ${today ? "today" : ""}`}>
-                  <span>{label}</span>
-                  {today ? <em className="workout-today-badge">HOJE</em> : null}
-                  <strong>{active ? "TREINO" : "LIVRE"}</strong>
-                  <i />
-                </div>;
-              })}
-            </div>
-          </section>
+              <section className="workout-calendar-week-section">
+                <header><div><strong>Plano semanal</strong><span>Amarelo indica os dias definidos pelo professor.</span></div></header>
+                <div className="workout-calendar-days">
+                  {WEEK_LABELS.map((label, dayIndex) => {
+                    const active = planDays.includes(dayIndex);
+                    const today = now.getDay() === dayIndex;
+                    return <div key={label} className={`${active ? "scheduled" : ""} ${today ? "today" : ""}`}>
+                      <span>{label}</span>
+                      {today ? <em className="workout-today-badge">HOJE</em> : null}
+                      <strong>{active ? "TREINO" : "LIVRE"}</strong>
+                      <i />
+                    </div>;
+                  })}
+                </div>
+              </section>
 
-          <section className="workout-month-card">
-            <div className="workout-month-title"><div><strong>{currentMonthLabel}</strong><span>Os dias amarelos representam treinos concluídos.</span></div><small>{monthlyStatus.isLoading ? "Atualizando..." : monthlyStatus.isError ? "Não foi possível atualizar" : `${trainedDates.size} registro(s)`}</small></div>
-            <div className="workout-month-weekdays">{CALENDAR_WEEK_LABELS.map((label) => <span key={label}>{label}</span>)}</div>
-            <div className="workout-month-grid">
-              {monthCells.map((cell) => {
-                const trained = trainedDates.has(cell.key);
-                const today = cell.key === todayKey;
-                return <div key={cell.key} className={`${cell.inMonth ? "" : "outside"} ${trained ? "trained" : ""} ${today ? "today" : ""}`}><span>{cell.day}</span>{trained ? <i /> : null}</div>;
-              })}
-            </div>
-          </section>
+              <section className="workout-month-card">
+                <div className="workout-month-title"><div><strong>{currentMonthLabel}</strong><span>Os dias amarelos representam treinos concluídos.</span></div><small>{monthlyStatus.isLoading ? "Atualizando..." : monthlyStatus.isError ? "Não foi possível atualizar" : `${trainedDates.size} registro(s)`}</small></div>
+                <div className="workout-month-weekdays">{CALENDAR_WEEK_LABELS.map((label) => <span key={label}>{label}</span>)}</div>
+                <div className="workout-month-grid">
+                  {monthCells.map((cell) => {
+                    const trained = trainedDates.has(cell.key);
+                    const today = cell.key === todayKey;
+                    return <div key={cell.key} className={`${cell.inMonth ? "" : "outside"} ${trained ? "trained" : ""} ${today ? "today" : ""}`}><span>{cell.day}</span>{trained ? <i /> : null}</div>;
+                  })}
+                </div>
+              </section>
 
-          <section className="workout-calendar-list">
-            <div className="workout-calendar-list-title"><div><strong>Exercícios de hoje</strong><span>Toque em um exercício para abri-lo diretamente.</span></div><small>{completedExerciseCount}/{exercises.length}</small></div>
-            <div className="workout-calendar-exercises">
-              {exercises.map((exercise, index) => {
-                const done = index < completedExerciseCount;
-                const current = index === currentExerciseIndex;
-                return <button type="button" key={exercise.id} className={`${done ? "done" : ""} ${current ? "current" : ""}`} onClick={() => { onSelectExercise(index); onClose(); }}>
-                  <i>{done ? <WorkoutCheckIcon size={17} /> : index + 1}</i>
-                  <div><strong>{exercise.name}</strong><span>{exercise.sets} séries • {exercise.repsMin}–{exercise.repsMax} repetições • {exercise.restSeconds}s de descanso</span></div>
-                  {current ? <small>AGORA</small> : null}
-                </button>;
-              })}
-            </div>
-          </section>
-        </main>
-      </section>
-    </div>, document.body,
+              <section className="workout-calendar-list">
+                <div className="workout-calendar-list-title"><div><strong>Exercícios de hoje</strong><span>Toque em um exercício para abri-lo diretamente.</span></div><small>{completedExerciseCount}/{exercises.length}</small></div>
+                <div className="workout-calendar-exercises">
+                  {exercises.map((exercise, index) => {
+                    const done = index < completedExerciseCount;
+                    const current = index === currentExerciseIndex;
+                    return <button type="button" key={exercise.id} className={`${done ? "done" : ""} ${current ? "current" : ""}`} onClick={() => { onSelectExercise(index); onClose(); }}>
+                      <i>{done ? <WorkoutCheckIcon size={17} /> : index + 1}</i>
+                      <div><strong>{exercise.name}</strong><span>{exercise.sets} séries • {exercise.repsMin}–{exercise.repsMax} repetições • {exercise.restSeconds}s de descanso</span></div>
+                      {current ? <small>AGORA</small> : null}
+                    </button>;
+                  })}
+                </div>
+              </section>
+            </main>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
   );
 }
