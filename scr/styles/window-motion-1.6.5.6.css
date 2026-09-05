@@ -56,32 +56,32 @@
   animation: accqua-window-sheet-soft-out var(--accqua-window-panel-close) var(--accqua-window-ease-in) both !important;
 }
 
-/* Legacy/manual windows: unified entrance immediately. These selectors are
-   intentionally limited to real foreground windows, never ordinary cards. */
-.profile-photo-viewer,
-.workout-media-viewer,
-.onboarding-overlay,
-.cardio-modal-overlay,
-.workout-modal-overlay,
-.workout-calendar-overlay,
-.profile-logout-backdrop,
-.ranking-sheet-backdrop {
+/* Legacy/manual windows get the same entrance while they are migrated to
+   presence-managed close animations. Managed windows opt out to avoid double motion. */
+.profile-photo-viewer:not([data-accqua-motion-managed]),
+.workout-media-viewer:not([data-accqua-motion-managed]),
+.onboarding-overlay:not([data-accqua-motion-managed]),
+.cardio-modal-overlay:not([data-accqua-motion-managed]),
+.workout-modal-overlay:not([data-accqua-motion-managed]),
+.workout-calendar-overlay:not([data-accqua-motion-managed]),
+.profile-logout-backdrop:not([data-accqua-motion-managed]),
+.ranking-sheet-backdrop:not([data-accqua-motion-managed]) {
   animation: accqua-window-overlay-in var(--accqua-window-overlay-open) var(--accqua-window-ease-out) both;
 }
 
-.profile-photo-viewer > figure,
-.workout-media-viewer > *:not(button),
-.onboarding-card,
-.profile-logout-dialog {
+.profile-photo-viewer:not([data-accqua-motion-managed]) > figure,
+.workout-media-viewer:not([data-accqua-motion-managed]) > *:not(button),
+.onboarding-overlay:not([data-accqua-motion-managed]) .onboarding-card,
+.profile-logout-backdrop:not([data-accqua-motion-managed]) .profile-logout-dialog {
   transform-origin: 50% 62%;
   animation: accqua-window-legacy-center-in var(--accqua-window-panel-open) var(--accqua-window-ease-out) both;
 }
 
-.cardio-settings-sheet,
-.cardio-history-sheet,
-.workout-modal-overlay > section,
-.workout-calendar-sheet,
-.ranking-sheet {
+.cardio-modal-overlay:not([data-accqua-motion-managed]) .cardio-settings-sheet,
+.cardio-modal-overlay:not([data-accqua-motion-managed]) .cardio-history-sheet,
+.workout-modal-overlay:not([data-accqua-motion-managed]) > section,
+.workout-calendar-overlay:not([data-accqua-motion-managed]) .workout-calendar-sheet,
+.ranking-sheet-backdrop:not([data-accqua-motion-managed]) .ranking-sheet {
   animation: accqua-window-legacy-sheet-in var(--accqua-window-panel-open) var(--accqua-window-ease-out) both;
 }
 
@@ -170,10 +170,10 @@
 }
 
 @media (min-width: 768px) {
-  .cardio-settings-sheet,
-  .cardio-history-sheet,
-  .workout-calendar-sheet,
-  .ranking-sheet {
+  .cardio-modal-overlay:not([data-accqua-motion-managed]) .cardio-settings-sheet,
+  .cardio-modal-overlay:not([data-accqua-motion-managed]) .cardio-history-sheet,
+  .workout-calendar-overlay:not([data-accqua-motion-managed]) .workout-calendar-sheet,
+  .ranking-sheet-backdrop:not([data-accqua-motion-managed]) .ranking-sheet {
     transform-origin: 50% 62%;
     animation-name: accqua-window-legacy-center-in;
   }
