@@ -91,7 +91,8 @@ export async function getTrainingPartnerStatus(partnerId: string): Promise<Train
 }
 
 export async function isTrainingPartner(partnerId: string): Promise<boolean> {
-  return (await getTrainingPartnerStatus(partnerId)) === "accepted";
+  const relationship = await getTrainingPartnerStatus(partnerId);
+  return relationship === "accepted" || relationship === "outgoing_pending";
 }
 
 export async function requestTrainingPartner(partnerId: string): Promise<TrainingPartnerStatus> {
