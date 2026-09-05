@@ -16,6 +16,7 @@ type ResponsiveDialogProps = {
   bodyClassName?: string;
   closeButton?: ReactNode;
   ariaDescriptionId?: string;
+  presentation?: "responsive" | "center";
 };
 
 let openDialogCount = 0;
@@ -47,12 +48,17 @@ export default function ResponsiveDialog({
   className,
   bodyClassName,
   ariaDescriptionId,
+  presentation = "responsive",
 }: ResponsiveDialogProps) {
   const desktop = useMediaQuery("(min-width: 768px)");
+  // Recipe AI predates the presentation prop; keep it centered without forcing
+  // a risky rewrite of the large StoreAdmin page. New callers should use the prop.
+  const legacyCentered = className?.split(/\s+/).includes("recipe-ai-dialog") ?? false;
+  const centered = desktop || presentation === "center" || legacyCentered;
 
   useEffect(() => syncModalAccessibility(open), [open]);
 
-  if (desktop) {
+  if (centered) {
     return (
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Portal>
