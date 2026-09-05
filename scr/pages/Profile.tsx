@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { motion, useMotionValueEvent, useReducedMotion, useSpring } from "framer-motion";
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useSpring } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthProvider";
 import AccquaLogo from "../components/AccquaLogo";
@@ -27,6 +27,12 @@ import { cacheFeedbackPreferences, performHaptic, playAccquaChime } from "../lib
 import { useTreinoStatus } from "../hooks/useTreinoStatus";
 import { cancelMyReservation, loadMyReservations } from "../lib/store";
 import { loadMyTrainingPartnerCount } from "../lib/trainingPartners";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 import "./profile.css";
 import "./profile-social.css";
 
@@ -105,132 +111,33 @@ function ProfileIcon({ name, size = 22 }: { name: IconName; size?: number }) {
     star: <><path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9L12 3Z" /></>,
     home: <><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /><path d="M9 20v-6h6v6" /></>,
   };
-
   return <svg {...common}>{paths[name]}</svg>;
 }
 
-const viewTitles: Record<ProfileView, string> = {
-  main: "Perfil",
-  personal: "Dados pessoais",
-  history: "Histórico",
-  workouts: "Meus treinos",
-  classes: "Minhas aulas",
-  partners: "Parceiros de treino",
-  notifications: "Notificações",
-  settings: "Configurações",
-  security: "Segurança",
-  support: "Ajuda e suporte",
-};
-
+const viewTitles: Record<ProfileView, string> = { main: "Perfil", personal: "Dados pessoais", history: "Histórico", workouts: "Meus treinos", classes: "Minhas aulas", partners: "Parceiros de treino", notifications: "Notificações", settings: "Configurações", security: "Segurança", support: "Ajuda e suporte" };
 const emptyDashboard: ProfileDashboard = {
-  details: {
-    id: "",
-    email: "",
-    fullName: "",
-    cpf: "",
-    phone: "",
-    emergencyPhone: "",
-    birthDate: "",
-    objective: "",
-    registrationCode: "",
-    gympassNumber: "",
-    avatarUrl: "",
-    memberSince: "",
-    showInRanking: true,
-    role: "student",
-    status: "active",
-  },
-  preferences: {
-    workoutNotifications: true,
-    classNotifications: true,
-    activityReminders: true,
-    newsNotifications: false,
-    soundEnabled: true,
-    vibrationEnabled: true,
-    restRequired: true,
-    classReminderMinutes: 120,
-  },
-  activities: [],
-  classes: [],
-  activeWorkout: null,
-  rankingPoints: 0,
-  totalWorkoutSessions: 0,
-  totalCardioMinutes: 0,
-  totalClasses: 0,
-  totalCalories: 0,
+  details: { id: "", email: "", fullName: "", cpf: "", phone: "", emergencyPhone: "", birthDate: "", objective: "", registrationCode: "", gympassNumber: "", avatarUrl: "", memberSince: "", showInRanking: true, role: "student", status: "active" },
+  preferences: { workoutNotifications: true, classNotifications: true, activityReminders: true, newsNotifications: false, soundEnabled: true, vibrationEnabled: true, restRequired: true, classReminderMinutes: 120 },
+  activities: [], classes: [], activeWorkout: null, rankingPoints: 0, totalWorkoutSessions: 0, totalCardioMinutes: 0, totalClasses: 0, totalCalories: 0,
 };
-
-function formatMemberSince(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Membro ACCQUA";
-  return `Membro desde ${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date)}`;
-}
-function formatDate(value: string, withTime = false) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Data não informada";
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) }).format(date);
-}
-function formatDuration(seconds: number) {
-  const totalMinutes = Math.max(0, Math.round(seconds / 60));
-  const hours = Math.floor(totalMinutes / 60); const minutes = totalMinutes % 60;
-  if (hours) return `${hours}h ${String(minutes).padStart(2, "0")}min`;
-  return `${minutes} min`;
-}
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-  return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-}
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-}
-function initials(name: string) {
-  const pieces = name.trim().split(/\s+/).filter(Boolean);
-  if (!pieces.length) return "AS";
-  return `${pieces[0]?.[0] ?? ""}${pieces.length > 1 ? pieces.at(-1)?.[0] ?? "" : ""}`.toUpperCase();
-}
-function firstNameFromStaffEmail(email: string) {
-  const localPart = email.trim().split("@")[0] ?? "";
-  const firstPart = localPart.split(/[._\-+]+/).filter(Boolean)[0] ?? "";
-  if (!firstPart) return "Equipe ACCQUA";
-  return `${firstPart.charAt(0).toUpperCase()}${firstPart.slice(1).toLowerCase()}`;
-}
-function staffRoleLabel(role: string) {
-  const normalized = role.trim().toLowerCase();
-  if (normalized === "professor") return "Professor";
-  if (normalized === "reception" || normalized === "recepcao") return "Recepção";
-  if (normalized === "admin") return "Administração";
-  return "Equipe ACCQUA";
-}
+function formatMemberSince(value: string) { const date = new Date(value); if (Number.isNaN(date.getTime())) return "Membro ACCQUA"; return `Membro desde ${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date)}`; }
+function formatDate(value: string, withTime = false) { const date = new Date(value); if (Number.isNaN(date.getTime())) return "Data não informada"; return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) }).format(date); }
+function formatDuration(seconds: number) { const totalMinutes = Math.max(0, Math.round(seconds / 60)); const hours = Math.floor(totalMinutes / 60); const minutes = totalMinutes % 60; return hours ? `${hours}h ${String(minutes).padStart(2, "0")}min` : `${minutes} min`; }
+function formatPhone(value: string) { const digits = value.replace(/\D/g, "").slice(0, 11); if (digits.length <= 10) return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, ""); return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, ""); }
+function formatCpf(value: string) { const digits = value.replace(/\D/g, "").slice(0, 11); return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2"); }
+function initials(name: string) { const pieces = name.trim().split(/\s+/).filter(Boolean); if (!pieces.length) return "AS"; return `${pieces[0]?.[0] ?? ""}${pieces.length > 1 ? pieces.at(-1)?.[0] ?? "" : ""}`.toUpperCase(); }
+function firstNameFromStaffEmail(email: string) { const localPart = email.trim().split("@")[0] ?? ""; const firstPart = localPart.split(/[._\-+]+/).filter(Boolean)[0] ?? ""; return firstPart ? `${firstPart.charAt(0).toUpperCase()}${firstPart.slice(1).toLowerCase()}` : "Equipe ACCQUA"; }
+function staffRoleLabel(role: string) { const normalized = role.trim().toLowerCase(); if (normalized === "professor") return "Professor"; if (normalized === "reception" || normalized === "recepcao") return "Recepção"; if (normalized === "admin") return "Administração"; return "Equipe ACCQUA"; }
 function activityIcon(kind: ProfileActivityKind): IconName { if (kind === "cardio") return "cardio"; if (kind === "class") return "calendar"; return "dumbbell"; }
 function activityLabel(kind: ProfileActivityKind) { if (kind === "cardio") return "Cardio"; if (kind === "class") return "Aula"; return "Treino"; }
-function statusLabel(status: string) {
-  const normalized = status.toLowerCase();
-  if (["attended", "presente", "completed", "concluida", "concluída"].includes(normalized)) return "Concluída";
-  if (["reserved", "booked", "agendada", "reservada", "reservado"].includes(normalized)) return "Agendada";
-  if (["cancelled", "canceled", "cancelada", "cancelado"].includes(normalized)) return "Cancelada";
-  if (["missed", "faltou", "ausente"].includes(normalized)) return "Ausente";
-  return status || "Registrada";
-}
+function statusLabel(status: string) { const normalized = status.toLowerCase(); if (["attended", "presente", "completed", "concluida", "concluída"].includes(normalized)) return "Concluída"; if (["reserved", "booked", "agendada", "reservada", "reservado"].includes(normalized)) return "Agendada"; if (["cancelled", "canceled", "cancelada", "cancelado"].includes(normalized)) return "Cancelada"; if (["missed", "faltou", "ausente"].includes(normalized)) return "Ausente"; return status || "Registrada"; }
 
 function ActivityList({ activities }: { activities: ProfileActivity[] }) {
   if (!activities.length) return <div className="accqua-profile-empty"><span><ProfileIcon name="history" size={31} /></span><strong>Nenhum registro ainda</strong><p>Seus treinos, cardios e aulas aparecerão aqui.</p></div>;
-  return <div className="accqua-profile-activity-list">{activities.map((activity) => (
-    <article className="accqua-profile-activity" key={`${activity.kind}-${activity.id}`}>
-      <span className={`activity-symbol is-${activity.kind}`}><ProfileIcon name={activityIcon(activity.kind)} size={22} /></span>
-      <div className="activity-copy"><div className="activity-heading"><strong>{activity.title || activityLabel(activity.kind)}</strong>{activity.validForRanking ? <span className="activity-ranking" title="Contou para o ranking"><ProfileIcon name="star" size={13} /></span> : null}</div><span>{formatDate(activity.performedAt, true)}</span><div className="activity-meta">{activity.durationSeconds > 0 ? <i>{formatDuration(activity.durationSeconds)}</i> : null}{activity.calories > 0 ? <i>{activity.calories} kcal</i> : null}{activity.kind === "workout" ? <i>{activity.completionPercentage >= 100 ? "Treino completo" : `${Math.round(activity.completionPercentage)}% concluído`}</i> : null}{activity.kind === "class" ? <i>{statusLabel(activity.status)}</i> : null}{activity.kind === "class" && activity.instructorName ? <i>{activity.instructorName}</i> : null}</div></div>
-      <ProfileIcon name="chevron" size={18} />
-    </article>
-  ))}</div>;
+  return <div className="accqua-profile-activity-list">{activities.map((activity) => <article className="accqua-profile-activity" key={`${activity.kind}-${activity.id}`}><span className={`activity-symbol is-${activity.kind}`}><ProfileIcon name={activityIcon(activity.kind)} size={22} /></span><div className="activity-copy"><div className="activity-heading"><strong>{activity.title || activityLabel(activity.kind)}</strong>{activity.validForRanking ? <span className="activity-ranking" title="Contou para o ranking"><ProfileIcon name="star" size={13} /></span> : null}</div><span>{formatDate(activity.performedAt, true)}</span><div className="activity-meta">{activity.durationSeconds > 0 ? <i>{formatDuration(activity.durationSeconds)}</i> : null}{activity.calories > 0 ? <i>{activity.calories} kcal</i> : null}{activity.kind === "workout" ? <i>{activity.completionPercentage >= 100 ? "Treino completo" : `${Math.round(activity.completionPercentage)}% concluído`}</i> : null}{activity.kind === "class" ? <i>{statusLabel(activity.status)}</i> : null}{activity.kind === "class" && activity.instructorName ? <i>{activity.instructorName}</i> : null}</div></div><ProfileIcon name="chevron" size={18} /></article>)}</div>;
 }
 
-function AnimatedProfileNumber({ value }: { value: number }) {
-  const reduceMotion = useReducedMotion(); const spring = useSpring(0, { stiffness: 145, damping: 22, mass: 0.7 }); const [display, setDisplay] = useState(0);
-  useMotionValueEvent(spring, "change", (latest) => setDisplay(Math.max(0, Math.round(latest))));
-  useEffect(() => { if (reduceMotion) { setDisplay(Math.max(0, Math.round(value))); return; } spring.set(Math.max(0, value)); }, [reduceMotion, spring, value]);
-  return <>{display.toLocaleString("pt-BR")}</>;
-}
+function AnimatedProfileNumber({ value }: { value: number }) { const reduceMotion = useReducedMotion(); const spring = useSpring(0, { stiffness: 145, damping: 22, mass: 0.7 }); const [display, setDisplay] = useState(0); useMotionValueEvent(spring, "change", (latest) => setDisplay(Math.max(0, Math.round(latest)))); useEffect(() => { if (reduceMotion) { setDisplay(Math.max(0, Math.round(value))); return; } spring.set(Math.max(0, value)); }, [reduceMotion, spring, value]); return <>{display.toLocaleString("pt-BR")}</>; }
 const profileStatsVariants = { hidden: {}, visible: { transition: { staggerChildren: 0.055, delayChildren: 0.04 } } };
 const profileStatVariants = { hidden: { opacity: 0, y: 9, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.24 } } };
 
@@ -245,38 +152,24 @@ export default function Profile() {
   const [historyFilter, setHistoryFilter] = useState<"all" | ProfileActivityKind>("all"); const [saving, setSaving] = useState(false);
   const [personalForm, setPersonalForm] = useState<PersonalProfileInput>({ fullName: "", phone: "", emergencyPhone: "", birthDate: "", objective: "", gympassNumber: "", showInRanking: true });
   const [passwordForm, setPasswordForm] = useState({ password: "", confirmation: "" }); const [uploadingAvatar, setUploadingAvatar] = useState(false); const [photoViewerOpen, setPhotoViewerOpen] = useState(false); const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false); const [loggingOut, setLoggingOut] = useState(false); const [showAvatarHint, setShowAvatarHint] = useState(false);
-
   useEffect(() => { if (view !== "main" || loadingDashboard) return; const section = new URLSearchParams(window.location.search).get("section"); if (section !== "reservas") return; const frame = window.requestAnimationFrame(() => document.getElementById("profile-reservations")?.scrollIntoView({ behavior: "smooth", block: "start" })); return () => window.cancelAnimationFrame(frame); }, [loadingDashboard, view]);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">("Notification" in window ? Notification.permission : "unsupported");
   const avatarInputRef = useRef<HTMLInputElement>(null); const contentRef = useRef<HTMLElement>(null);
-
-  const reload = async () => {
-    if (!user?.id) return; setLoadingDashboard(true);
-    try { const next = await loadProfileDashboard(user.id, profile, user.created_at); setDashboard(next); cacheFeedbackPreferences(user.id, { soundEnabled: next.preferences.soundEnabled, vibrationEnabled: next.preferences.vibrationEnabled, classNotifications: next.preferences.classNotifications, classReminderMinutes: next.preferences.classReminderMinutes }); setPersonalForm({ fullName: next.details.fullName, phone: next.details.phone, emergencyPhone: next.details.emergencyPhone, birthDate: next.details.birthDate ? next.details.birthDate.slice(0, 10) : "", objective: next.details.objective, gympassNumber: next.details.gympassNumber, showInRanking: next.details.showInRanking }); }
-    catch { setMessage("Não foi possível atualizar o perfil agora."); } finally { setLoadingDashboard(false); }
-  };
+  const reload = async () => { if (!user?.id) return; setLoadingDashboard(true); try { const next = await loadProfileDashboard(user.id, profile, user.created_at); setDashboard(next); cacheFeedbackPreferences(user.id, { soundEnabled: next.preferences.soundEnabled, vibrationEnabled: next.preferences.vibrationEnabled, classNotifications: next.preferences.classNotifications, classReminderMinutes: next.preferences.classReminderMinutes }); setPersonalForm({ fullName: next.details.fullName, phone: next.details.phone, emergencyPhone: next.details.emergencyPhone, birthDate: next.details.birthDate ? next.details.birthDate.slice(0, 10) : "", objective: next.details.objective, gympassNumber: next.details.gympassNumber, showInRanking: next.details.showInRanking }); } catch { setMessage("Não foi possível atualizar o perfil agora."); } finally { setLoadingDashboard(false); } };
   useEffect(() => { void reload(); }, [user?.id]);
   useEffect(() => { if (!message) return; const timer = window.setTimeout(() => setMessage(""), 2600); return () => window.clearTimeout(timer); }, [message]);
   useEffect(() => { if (loadingDashboard || dashboard.details.avatarUrl) { setShowAvatarHint(false); return; } const key = "accqua:profile-avatar-hint-seen"; if (window.sessionStorage.getItem(key)) return; setShowAvatarHint(true); const timer = window.setTimeout(() => { setShowAvatarHint(false); window.sessionStorage.setItem(key, "1"); }, 4200); return () => window.clearTimeout(timer); }, [loadingDashboard, dashboard.details.avatarUrl]);
   useEffect(() => { if (!logoutConfirmOpen) return; const handleEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setLogoutConfirmOpen(false); }; window.addEventListener("keydown", handleEscape); return () => window.removeEventListener("keydown", handleEscape); }, [logoutConfirmOpen]);
-
   const filteredHistory = useMemo(() => historyFilter === "all" ? dashboard.activities : dashboard.activities.filter((item) => item.kind === historyFilter), [dashboard.activities, historyFilter]);
   const workoutHistory = useMemo(() => dashboard.activities.filter((item) => item.kind === "workout"), [dashboard.activities]);
   const upcomingClasses = useMemo(() => { const now = Date.now(); return dashboard.classes.filter((item) => { const scheduled = new Date(item.performedAt).getTime(); return scheduled >= now && !["cancelled", "canceled", "cancelada", "cancelado"].includes(item.status.toLowerCase()); }); }, [dashboard.classes]);
   const pastClasses = useMemo(() => { const now = Date.now(); return dashboard.classes.filter((item) => new Date(item.performedAt).getTime() < now); }, [dashboard.classes]);
 
   if (loading) return <LoadingSplash />; if (!user) return <Navigate to="/login" replace />; if (landingPath !== "/menu-teste") return <Navigate to={landingPath} replace />; if (loadingDashboard) return <LoadingSplash />;
-
-  const details = dashboard.details; const active = details.status === "active" || profile?.status === "active"; const resolvedRole = String(details.role || profile?.role || "student").toLowerCase();
-  const isStaffProfile = ["professor", "reception", "recepcao", "admin"].includes(resolvedRole);
-  const profileDisplayName = isStaffProfile ? firstNameFromStaffEmail(details.email || user.email || "") : details.fullName || "Aluno ACCQUA";
-  const profileStatusLabel = isStaffProfile ? staffRoleLabel(resolvedRole) : active ? "Matrícula ativa" : "Conta autorizada";
-  const statsAreEmpty = !treinoStatus.isLoading && (treinoStatus.data?.totalCompleted ?? 0) === 0 && dashboard.totalCardioMinutes === 0 && dashboard.totalClasses === 0 && dashboard.rankingPoints === 0;
-
+  const details = dashboard.details; const active = details.status === "active" || profile?.status === "active"; const resolvedRole = String(details.role || profile?.role || "student").toLowerCase(); const isStaffProfile = ["professor", "reception", "recepcao", "admin"].includes(resolvedRole); const profileDisplayName = isStaffProfile ? firstNameFromStaffEmail(details.email || user.email || "") : details.fullName || "Aluno ACCQUA"; const profileStatusLabel = isStaffProfile ? staffRoleLabel(resolvedRole) : active ? "Matrícula ativa" : "Conta autorizada"; const statsAreEmpty = !treinoStatus.isLoading && (treinoStatus.data?.totalCompleted ?? 0) === 0 && dashboard.totalCardioMinutes === 0 && dashboard.totalClasses === 0 && dashboard.rankingPoints === 0;
   const openView = (nextView: ProfileView) => { setView(nextView); contentRef.current?.scrollTo({ top: 0, behavior: "smooth" }); };
   const goBack = () => { if (view === "main") { navigate("/menu-teste"); return; } setView("main"); contentRef.current?.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleBottomNavigation = async (label: string) => { if (label === "Início") { window.sessionStorage.setItem("accqua:skip-next-menu-splash", "1"); navigate("/menu-teste"); return; } if (label === "Perfil") { setView("main"); contentRef.current?.scrollTo({ top: 0, behavior: "smooth" }); return; } if (label === "Aulas") { navigate("/aulas"); return; } if (label === "Treino") { const cardio = await loadActiveWorkoutCardioPrescription(user.id); navigate(cardio?.timing === "before" ? "/cardio" : "/treino"); } };
-
   const enableDeviceNotifications = async () => { if (!("Notification" in window)) { setMessage("Este navegador não oferece notificações do sistema."); return; } try { const permission = await Notification.requestPermission(); setNotificationPermission(permission); setMessage(permission === "granted" ? "Notificações do celular ativadas." : "Permissão de notificação não concedida."); } catch { setMessage("Não foi possível solicitar a permissão neste navegador."); } };
   const chooseAvatar = () => avatarInputRef.current?.click();
   const changeAvatar = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file || !user?.id) return; setUploadingAvatar(true); const result = await uploadProfileAvatar(user.id, file); setUploadingAvatar(false); if (result.error) { setMessage(result.error); return; } await reload(); await queryClient.invalidateQueries({ queryKey: ["primary-sidebar-avatar", user.id] }); setMessage("Foto de perfil atualizada."); };
@@ -288,31 +181,18 @@ export default function Profile() {
   return <div className="accqua-profile-screen">
     <div className="accqua-profile-background" aria-hidden="true"><span className="profile-orbit orbit-a" /><span className="profile-orbit orbit-b" /><span className="profile-glow" /></div>
     <main className="accqua-profile-shell">
-      <div className="accqua-profile-top">
-        <PageHeader className="accqua-profile-header" ariaLabel="Cabeçalho do perfil" left={view === "main" ? <span className="profile-header-space"/> : <button type="button" onClick={goBack} aria-label="Voltar"><AppBackIcon size={25}/></button>} center={<div className="accqua-profile-brand"><AccquaLogo compact /></div>} right={<span className="profile-header-space"/>}/>
-        <div className="accqua-profile-title-row"><div><span>CONTA ACCQUA</span><h1>{viewTitles[view]}</h1></div><span className="profile-title-space" aria-hidden="true" /></div>
-      </div>
+      <div className="accqua-profile-top"><PageHeader className="accqua-profile-header" ariaLabel="Cabeçalho do perfil" left={view === "main" ? <span className="profile-header-space"/> : <button type="button" onClick={goBack} aria-label="Voltar"><AppBackIcon size={25}/></button>} center={<div className="accqua-profile-brand"><AccquaLogo compact /></div>} right={<span className="profile-header-space"/>}/><div className="accqua-profile-title-row"><div><span>CONTA ACCQUA</span><h1>{viewTitles[view]}</h1></div><span className="profile-title-space" aria-hidden="true" /></div></div>
       <section className={`accqua-profile-content ${view === "main" ? "is-main-view" : "is-subview"}`} ref={contentRef}>
         {view === "main" ? <>
-          <section className="profile-identity-card">
-            <motion.div className="profile-avatar-wrap" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.28 }}><motion.div className={`profile-avatar ${details.avatarUrl ? "is-clickable" : ""}`} role={details.avatarUrl ? "button" : undefined} tabIndex={details.avatarUrl ? 0 : undefined} aria-label={details.avatarUrl ? "Ampliar foto de perfil" : undefined} onClick={() => details.avatarUrl && setPhotoViewerOpen(true)} onKeyDown={(event) => { if (details.avatarUrl && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setPhotoViewerOpen(true); } }}>{details.avatarUrl ? <img src={details.avatarUrl} alt="Foto do perfil" /> : <strong>{initials(profileDisplayName)}</strong>}<span className={active ? "is-active" : ""} /></motion.div><motion.button className="profile-avatar-action" type="button" onClick={chooseAvatar} aria-label="Alterar foto de perfil" disabled={uploadingAvatar} animate={showAvatarHint ? { scale: [1, 1.12, 1], boxShadow: ["0 8px 18px rgba(0,0,0,.24)", "0 0 0 8px rgba(255,209,40,.12)", "0 8px 18px rgba(0,0,0,.24)"] } : undefined} transition={showAvatarHint ? { duration: 1.15, repeat: 2, repeatDelay: 0.35 } : undefined} whileTap={{ scale: 0.92 }}>{uploadingAvatar ? "…" : <ProfileIcon name="edit" size={15} />}</motion.button></motion.div>
-            <div className="profile-identity-copy"><h2>{profileDisplayName}</h2><p>{formatMemberSince(details.memberSince)}</p><div className="profile-identity-tags"><span className={isStaffProfile ? "is-role" : "is-status"}><i />{profileStatusLabel}</span>{!isStaffProfile && details.registrationCode ? <span>#{details.registrationCode}</span> : null}</div></div>
-          </section>
-          <motion.section className={`profile-stats-grid ${!isStaffProfile ? "has-partners" : ""}`} aria-label="Resumo do perfil" variants={profileStatsVariants} initial="hidden" animate="visible">
-            <motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="dumbbell" /></span><strong>{treinoStatus.isLoading ? "…" : treinoStatus.isError ? "—" : <AnimatedProfileNumber value={treinoStatus.data?.totalCompleted ?? 0} />}</strong></div><p>Treinos</p></motion.article>
-            <motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="cardio" /></span><strong><AnimatedProfileNumber value={dashboard.totalCardioMinutes} /></strong></div><p>Min. cardio</p></motion.article>
-            <motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="calendar" /></span><strong><AnimatedProfileNumber value={dashboard.totalClasses} /></strong></div><p>Aulas</p></motion.article>
-            <motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="trophy" /></span><strong><AnimatedProfileNumber value={dashboard.rankingPoints} /></strong></div><p>Pontos</p></motion.article>
-            {!isStaffProfile ? <motion.button type="button" className="profile-stat-partners" variants={profileStatVariants} onClick={() => openView("partners")} whileTap={{ scale: .97 }} aria-label="Abrir parceiros de treino"><div className="profile-stat-value"><span><ProfileIcon name="user" /></span><strong>{partnerCountQuery.isLoading ? "…" : <AnimatedProfileNumber value={partnerCountQuery.data ?? 0} />}</strong></div><p>Parceiros</p></motion.button> : null}
-          </motion.section>
+          <section className="profile-identity-card"><motion.div className="profile-avatar-wrap" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.28 }}><motion.div className={`profile-avatar ${details.avatarUrl ? "is-clickable" : ""}`} role={details.avatarUrl ? "button" : undefined} tabIndex={details.avatarUrl ? 0 : undefined} aria-label={details.avatarUrl ? "Ampliar foto de perfil" : undefined} onClick={() => details.avatarUrl && setPhotoViewerOpen(true)} onKeyDown={(event) => { if (details.avatarUrl && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setPhotoViewerOpen(true); } }}>{details.avatarUrl ? <img src={details.avatarUrl} alt="Foto do perfil" /> : <strong>{initials(profileDisplayName)}</strong>}<span className={active ? "is-active" : ""} /></motion.div><motion.button className="profile-avatar-action" type="button" onClick={chooseAvatar} aria-label="Alterar foto de perfil" disabled={uploadingAvatar} animate={showAvatarHint ? { scale: [1, 1.12, 1], boxShadow: ["0 8px 18px rgba(0,0,0,.24)", "0 0 0 8px rgba(255,209,40,.12)", "0 8px 18px rgba(0,0,0,.24)"] } : undefined} transition={showAvatarHint ? { duration: 1.15, repeat: 2, repeatDelay: 0.35 } : undefined} whileTap={{ scale: 0.92 }}>{uploadingAvatar ? "…" : <ProfileIcon name="edit" size={15} />}</motion.button></motion.div><div className="profile-identity-copy"><h2>{profileDisplayName}</h2><p>{formatMemberSince(details.memberSince)}</p><div className="profile-identity-tags"><span className={isStaffProfile ? "is-role" : "is-status"}><i />{profileStatusLabel}</span>{!isStaffProfile && details.registrationCode ? <span>#{details.registrationCode}</span> : null}</div></div></section>
+          <motion.section className={`profile-stats-grid ${!isStaffProfile ? "has-partners" : ""}`} aria-label="Resumo do perfil" variants={profileStatsVariants} initial="hidden" animate="visible"><motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="dumbbell" /></span><strong>{treinoStatus.isLoading ? "…" : treinoStatus.isError ? "—" : <AnimatedProfileNumber value={treinoStatus.data?.totalCompleted ?? 0} />}</strong></div><p>Treinos</p></motion.article><motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="cardio" /></span><strong><AnimatedProfileNumber value={dashboard.totalCardioMinutes} /></strong></div><p>Min. cardio</p></motion.article><motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="calendar" /></span><strong><AnimatedProfileNumber value={dashboard.totalClasses} /></strong></div><p>Aulas</p></motion.article><motion.article variants={profileStatVariants}><div className="profile-stat-value"><span><ProfileIcon name="trophy" /></span><strong><AnimatedProfileNumber value={dashboard.rankingPoints} /></strong></div><p>Pontos</p></motion.article>{!isStaffProfile ? <motion.button type="button" className="profile-stat-partners" variants={profileStatVariants} onClick={() => openView("partners")} whileTap={{ scale: .97 }} aria-label="Abrir parceiros de treino"><div className="profile-stat-value"><span><ProfileIcon name="user" /></span><strong>{partnerCountQuery.isLoading ? "…" : <AnimatedProfileNumber value={partnerCountQuery.data ?? 0} />}</strong></div><p>Parceiros</p></motion.button> : null}</motion.section>
           {statsAreEmpty ? <section className="profile-zero-summary" aria-label="Comece seu histórico"><span className="profile-zero-summary-icon"><ProfileIcon name="star" size={24} /></span><div><strong>Seu progresso começa no primeiro registro</strong><p>Treinos, cardio, aulas e pontos aparecem aqui assim que você começar a usar o app.</p></div><button type="button" onClick={() => dashboard.activeWorkout ? openView("workouts") : void handleBottomNavigation("Início")}>{dashboard.activeWorkout ? "Ver meu treino" : "Ir para início"}</button></section> : null}
-          {dashboard.activeWorkout ? <button className="profile-current-workout" type="button" onClick={() => openView("workouts")}><span className="current-workout-icon"><ProfileIcon name="dumbbell" size={27} /></span><div><small>SEU TREINO ATUAL</small><strong>{dashboard.activeWorkout.programName}</strong><p>{dashboard.activeWorkout.splitType || "PERSONALIZADO"} · {dashboard.activeWorkout.routines} ficha{dashboard.activeWorkout.routines === 1 ? "" : "s"}</p></div><ProfileIcon name="chevron" size={20} /></button> : null}
+          {dashboard.activeWorkout ? <button className="profile-current-workout" type="button" onClick={() => openView("workouts")}><span className="current-workout-icon"><ProfileIcon name="dumbbell" size={27} /></span><div><small>SEU TREINO ATUAL</small><strong>{dashboard.activeWorkout.programName}</strong><p>{dashboard.activeWorkout.splitType || "PERSONALIZADO"} · {dashboard.activeWorkout.routines} ficha{dashboard.activeWorkout.routines === 1 ? "" : "s"}</p>{dashboard.activeWorkout.reviewAt ? <i>Revisão em {formatDate(dashboard.activeWorkout.reviewAt)}</i> : null}</div><ProfileIcon name="chevron" size={20} /></button> : null}
           <section className="profile-menu-section is-account-menu"><h3>Minha conta</h3><div className="profile-menu-card"><ProfileMenuItem icon={<ProfileIcon name="user" size={22} />} title="Dados pessoais" subtitle="Nome, contato, CPF e objetivo" onClick={() => openView("personal")} /><ProfileMenuItem icon={<ProfileIcon name="history" size={22} />} title="Histórico de registros" subtitle="Treinos, cardio e aulas" onClick={() => openView("history")} /><ProfileMenuItem icon={<ProfileIcon name="dumbbell" size={22} />} title="Meus treinos" subtitle="Ficha atual e treinos concluídos" onClick={() => openView("workouts")} /><ProfileMenuItem icon={<ProfileIcon name="calendar" size={22} />} title="Minhas aulas" subtitle="Agendadas e já realizadas" onClick={() => openView("classes")} /></div></section>
           <section className="profile-menu-section is-preferences-menu"><h3>Preferências e privacidade</h3><div className="profile-menu-card"><ProfileMenuItem icon={<ProfileIcon name="bell" size={22} />} title="Notificações" subtitle="Lembretes e avisos do aplicativo" onClick={() => openView("notifications")} /><ProfileMenuItem icon={<ProfileIcon name="settings" size={22} />} title="Configurações" subtitle="Ranking, som e vibração" onClick={() => openView("settings")} /><ProfileMenuItem icon={<ProfileIcon name="lock" size={22} />} title="Segurança" subtitle="Senha e acesso à conta" onClick={() => openView("security")} /><ProfileMenuItem icon={<ProfileIcon name="help" size={22} />} title="Ajuda e suporte" subtitle="Orientações e recepção" onClick={() => openView("support")} /></div></section>
           <section id="profile-reservations" className="profile-menu-section profile-reservations-section"><div className="profile-section-heading"><div><small>LOJA ACCQUA</small><h3>Minhas peças reservadas</h3></div>{(reservationsQuery.data?.length ?? 0) > 0 ? <strong>{reservationsQuery.data?.length}</strong> : null}</div>{reservationsQuery.isLoading ? <div className="profile-reservation-empty">Carregando reservas...</div> : (reservationsQuery.data?.length ?? 0) ? <div className="profile-reservation-list">{reservationsQuery.data?.map((reservation) => <article key={reservation.id}><div className="profile-reservation-thumb">{reservation.product?.imageUrl ? <img src={reservation.product.imageUrl} alt="" /> : <ProfileIcon name="star" size={20} />}</div><div><strong>{reservation.product?.name ?? "Produto ACCQUA"}</strong><span>{new Date(reservation.reservedAt).toLocaleDateString("pt-BR")} · {reservation.status}</span></div>{reservation.status === "reservado" ? <button type="button" disabled={cancelReservationMutation.isPending} onClick={() => cancelReservationMutation.mutate(reservation.id)}>Cancelar</button> : <span className={`profile-reservation-status is-${reservation.status}`}>{reservation.status}</span>}</article>)}</div> : <div className="profile-reservation-empty">Você ainda não reservou nenhum item. <button type="button" onClick={() => navigate("/loja")}>Abrir Loja</button></div>}</section>
           <button type="button" className="profile-logout-button" onClick={() => setLogoutConfirmOpen(true)}><ProfileIcon name="logout" size={20} />Sair da conta</button>
         </> : null}
-
         {view === "partners" ? <section className="profile-subview"><ProfileTrainingPartners /></section> : null}
         {view === "personal" ? <form className="profile-form" onSubmit={savePersonal}><section className="profile-detail-hero"><button type="button" className="profile-avatar is-small" onClick={chooseAvatar} aria-label="Alterar foto">{details.avatarUrl ? <img src={details.avatarUrl} alt="Foto do perfil" /> : initials(personalForm.fullName)}<i className="profile-avatar-camera"><ProfileIcon name="edit" size={13} /></i></button><div><strong>{personalForm.fullName || "Seu perfil"}</strong><p>Atualize seus dados de contato e objetivo.</p></div></section><div className="profile-form-card"><label>Nome completo<input value={personalForm.fullName} onChange={(event) => setPersonalForm({ ...personalForm, fullName: event.target.value })} /></label><label>E-mail<input value={details.email} disabled /></label><label>CPF<input value={formatCpf(details.cpf)} disabled /></label><label>Matrícula<input value={details.registrationCode || "Não informada"} disabled /></label><label>Número do Gympass<input value={personalForm.gympassNumber} onChange={(event) => setPersonalForm({ ...personalForm, gympassNumber: event.target.value })} placeholder="Opcional" autoComplete="off" /></label><label>Telefone<input inputMode="tel" value={formatPhone(personalForm.phone)} onChange={(event) => setPersonalForm({ ...personalForm, phone: event.target.value.replace(/\D/g, "") })} /></label><label>Telefone de emergência<input inputMode="tel" value={formatPhone(personalForm.emergencyPhone)} onChange={(event) => setPersonalForm({ ...personalForm, emergencyPhone: event.target.value.replace(/\D/g, "") })} /></label><label>Data de nascimento<input type="date" value={personalForm.birthDate} onChange={(event) => setPersonalForm({ ...personalForm, birthDate: event.target.value })} /></label><label>Objetivo<select value={personalForm.objective} onChange={(event) => setPersonalForm({ ...personalForm, objective: event.target.value })}><option value="">Selecione</option><option>Hipertrofia</option><option>Emagrecimento</option><option>Condicionamento</option><option>Saúde e qualidade de vida</option><option>Reabilitação</option></select></label></div><button className="profile-primary-button" type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar dados"}</button></form> : null}
         {view === "history" ? <section className="profile-subview"><div className="profile-history-summary"><article><ProfileIcon name="clock" /><strong>{formatDuration(dashboard.activities.reduce((sum, item) => sum + item.durationSeconds, 0))}</strong><span>Tempo registrado</span></article><article><ProfileIcon name="flame" /><strong>{dashboard.totalCalories.toLocaleString("pt-BR")}</strong><span>Calorias</span></article></div><div className="profile-filter-tabs">{(["all", "workout", "cardio", "class"] as const).map((filter) => <button type="button" className={historyFilter === filter ? "is-active" : ""} onClick={() => setHistoryFilter(filter)} key={filter}>{filter === "all" ? "Tudo" : filter === "workout" ? "Treinos" : filter === "cardio" ? "Cardio" : "Aulas"}</button>)}</div><ActivityList activities={filteredHistory} /></section> : null}
@@ -325,7 +205,9 @@ export default function Profile() {
       </section>
       <input ref={avatarInputRef} className="profile-avatar-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void changeAvatar(event)} />
     </main>
-    {logoutConfirmOpen ? <div className="profile-logout-backdrop" role="presentation"><section className="profile-logout-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-logout-title"><span className="profile-logout-dialog-icon"><ProfileIcon name="logout" size={25} /></span><div><h2 id="profile-logout-title">Sair da conta?</h2><p>Você precisará entrar novamente com seu e-mail e senha para acessar o aplicativo.</p></div><div className="profile-logout-dialog-actions"><button type="button" autoFocus onClick={() => setLogoutConfirmOpen(false)} disabled={loggingOut}>Cancelar</button><button type="button" className="is-danger" onClick={() => void logout()} disabled={loggingOut}>{loggingOut ? "Saindo..." : "Sair"}</button></div></section></div> : null}
+    <AnimatePresence initial={false}>
+      {logoutConfirmOpen ? <motion.div key="profile-logout-window" className="profile-logout-backdrop" role="presentation" variants={accquaOverlayVariants} initial="hidden" animate="visible" exit="exit" transition={accquaOverlayTransition} data-accqua-window-overlay data-accqua-motion-managed><motion.section className="profile-logout-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-logout-title" variants={accquaWindowVariants.center} initial="hidden" animate="visible" exit="exit" transition={accquaWindowTransition} data-accqua-window-surface="center"><span className="profile-logout-dialog-icon"><ProfileIcon name="logout" size={25} /></span><div><h2 id="profile-logout-title">Sair da conta?</h2><p>Você precisará entrar novamente com seu e-mail e senha para acessar o aplicativo.</p></div><div className="profile-logout-dialog-actions"><button type="button" autoFocus onClick={() => setLogoutConfirmOpen(false)} disabled={loggingOut}>Cancelar</button><button type="button" className="is-danger" onClick={() => void logout()} disabled={loggingOut}>{loggingOut ? "Saindo..." : "Sair"}</button></div></motion.section></motion.div> : null}
+    </AnimatePresence>
     <ProfilePhotoViewer open={photoViewerOpen} imageUrl={details.avatarUrl} name={profileDisplayName} onClose={() => setPhotoViewerOpen(false)} />
     {message ? <div className="accqua-profile-toast" role="status">{message}</div> : null}
   </div>;
