@@ -56,10 +56,11 @@ export default function ResponsiveDialog({
     return (
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Portal>
-          <Dialog.Overlay className="responsive-dialog-overlay" />
+          <Dialog.Overlay className="responsive-dialog-overlay" data-accqua-window-overlay />
           <Dialog.Content
             className={clsx("responsive-dialog-content", className)}
             aria-describedby={description ? ariaDescriptionId : undefined}
+            data-accqua-window-surface="center"
           >
             <header className="responsive-dialog-header">
               <div>
@@ -78,10 +79,11 @@ export default function ResponsiveDialog({
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Overlay className="responsive-dialog-overlay" />
+        <Drawer.Overlay className="responsive-dialog-overlay" data-accqua-window-overlay />
         <Drawer.Content
           className={clsx("responsive-dialog-drawer", className)}
           aria-describedby={description ? ariaDescriptionId : undefined}
+          data-accqua-window-surface="sheet"
         >
           <div className="responsive-dialog-handle" aria-hidden="true" />
           <header className="responsive-dialog-header">
