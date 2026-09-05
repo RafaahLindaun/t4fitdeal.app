@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { MenuShieldIcon } from "../MenuIcons";
 import { statusMatricula, type MembershipHealth } from "../../lib/home";
@@ -27,24 +28,26 @@ export default function MembershipShield({ validUntil }: { validUntil: string })
 
   return (
     <>
-      <button
+      <motion.button
         className={`accqua-membership-shield is-${status}`}
         data-membership-status={status}
         type="button"
         aria-label={`${label}. Abrir detalhes`}
         title={label}
         onClick={() => setOpen(true)}
+        whileTap={{ scale: 0.9, opacity: 0.86 }}
+        transition={{ duration: 0.12 }}
       >
         <MenuShieldIcon size={23} />
-      </button>
+      </motion.button>
       <ResponsiveDialog
         open={open}
         onOpenChange={setOpen}
         title={label}
         description={copyFor(status, validUntil)}
-        className="membership-status-dialog"
+        presentation="center"
+        className="membership-status-dialog membership-status-dialog-v1657"
         bodyClassName="membership-status-dialog-body"
-        closeButton={<button type="button" aria-label="Fechar">×</button>}
       >
         <div className={`membership-status-card is-${status}`}>
           <span className="membership-status-card-icon"><MenuShieldIcon size={34} /></span>
