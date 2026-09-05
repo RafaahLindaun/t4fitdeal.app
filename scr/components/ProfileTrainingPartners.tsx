@@ -79,6 +79,11 @@ export default function ProfileTrainingPartners() {
 
   return (
     <section className="profile-partners-panel" aria-label="Meus parceiros de treino">
+      <nav className="profile-partners-tabs" aria-label="Perfil e parceiros">
+        <button type="button" onClick={() => window.location.assign("/perfil")}>Perfil</button>
+        <button type="button" className="is-active" aria-current="page">Parceiros</button>
+      </nav>
+
       <div className="profile-partners-panel-heading">
         <div>
           <small>PARCEIROS DE TREINO</small>
@@ -117,12 +122,7 @@ export default function ProfileTrainingPartners() {
       ) : accepted.length ? (
         <div className="profile-partners-list">
           {accepted.map((partner) => (
-            <motion.article
-              key={partner.id}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              whileHover={reduceMotion ? undefined : { y: -2 }}
-            >
+            <motion.article key={partner.id} initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} whileHover={reduceMotion ? undefined : { y: -2 }}>
               <span className={`profile-partners-avatar ${partner.avatarUrl ? "has-photo" : ""}`}>
                 {partner.avatarUrl ? <img src={partner.avatarUrl} alt="" /> : initials(partner.firstName)}
               </span>
