@@ -54,6 +54,7 @@ export default function ProfilePhotoViewer({
           exit="exit"
           transition={accquaOverlayTransition}
           data-accqua-window-overlay
+          data-accqua-motion-managed
         >
           <motion.figure
             onClick={(event) => event.stopPropagation()}
