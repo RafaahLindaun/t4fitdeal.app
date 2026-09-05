@@ -96,27 +96,176 @@
   flex: 1 1 100% !important;
 }
 
+/* Um único footer já é compartilhado pelos 4 steps no JSX. A camada abaixo
+   padroniza seu comportamento para Programa, Dias, Exercícios e Revisão. */
 @media (max-width: 767px) {
-  .admin-builder-screen.is-step-cardio .admin-builder-shell {
-    padding-bottom: max(146px, calc(126px + env(safe-area-inset-bottom))) !important;
+  .admin-builder-screen .admin-builder-shell {
+    min-height: 0 !important;
+    padding-bottom: max(150px, calc(128px + env(safe-area-inset-bottom))) !important;
   }
 
-  .admin-builder-screen.is-step-cardio .admin-builder-mobile-footer {
+  .admin-builder-screen .admin-builder-footer {
     position: sticky !important;
+    left: 0 !important;
+    right: 0 !important;
     bottom: 0 !important;
-    z-index: 35 !important;
+    z-index: 45 !important;
     width: 100% !important;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
-    background: linear-gradient(180deg, rgba(7,22,45,0), rgba(7,22,45,.94) 18%, #07162d 100%) !important;
+    margin: 0 !important;
+    pointer-events: none;
   }
 
-  .admin-builder-screen.is-step-cardio .admin-builder-mobile-primary {
-    min-width: 148px !important;
+  .admin-builder-screen .admin-builder-mobile-footer {
+    position: relative !important;
+    inset: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) minmax(128px,auto) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 14px max(12px, env(safe-area-inset-bottom)) !important;
+    background: linear-gradient(180deg, rgba(7,22,45,.76), #07162d 24%, #07162d 100%) !important;
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+    box-sizing: border-box !important;
+    pointer-events: auto;
+  }
+
+  .admin-builder-screen .admin-builder-mobile-footer-copy,
+  .admin-builder-screen .admin-builder-mobile-footer-copy > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .admin-builder-screen .admin-builder-mobile-primary {
+    justify-self: stretch !important;
+    min-width: 128px !important;
     max-width: 58vw !important;
     min-height: 48px !important;
+    padding: 0 15px !important;
     white-space: normal !important;
     line-height: 1.15 !important;
   }
+
+  .admin-builder-screen .admin-builder-footer-summary,
+  .admin-builder-screen .admin-builder-footer-actions,
+  .admin-builder-screen .admin-builder-save-warning {
+    pointer-events: auto;
+  }
+}
+
+/* Busca do wizard: a segunda linha nunca pode ficar atrás da mídia/badge. */
+.admin-builder-mobile-search-results > :is(button,article),
+.admin-v11-library-results > article,
+.admin-builder-library-list > article {
+  min-height: 58px !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.admin-builder-mobile-search-results > :is(button,article) > span:first-of-type,
+.admin-v11-library-results > article > div,
+.admin-builder-library-list > article > div {
+  position: relative !important;
+  z-index: 3 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.admin-builder-mobile-search-results small,
+.admin-v11-library-results article > div > small,
+.admin-builder-library-list article > div > small {
+  position: relative !important;
+  z-index: 4 !important;
+  display: block !important;
+  min-height: 16px !important;
+  margin-top: 3px !important;
+  line-height: 1.25 !important;
+  visibility: visible !important;
+  opacity: .68 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Três estados previsíveis do botão compartilhado pelo wizard. */
+.admin-builder-add-exercise-button {
+  position: relative !important;
+  z-index: 5 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  min-height: 36px !important;
+  padding: 0 11px !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
+}
+.admin-builder-add-exercise-button.is-add {
+  background: #ffd11e !important;
+  color: #171304 !important;
+}
+.admin-builder-add-exercise-button.is-added {
+  border: 1px solid rgba(255,209,30,.38) !important;
+  background: rgba(255,255,255,.06) !important;
+  color: #ffd11e !important;
+}
+.admin-builder-add-exercise-button.is-remove {
+  border: 1px solid rgba(248,113,113,.42) !important;
+  background: rgba(248,113,113,.1) !important;
+  color: #fca5a5 !important;
+}
+
+/* Cardio opcional: frequência + dias + orientação. */
+.admin-builder-cardio-schedule {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,.025);
+}
+.admin-builder-cardio-schedule > span {
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-builder-cardio-frequency {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 8px;
+}
+.admin-builder-cardio-frequency button,
+.admin-builder-cardio-days button {
+  min-height: 40px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 12px;
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.72);
+  font-weight: 800;
+}
+.admin-builder-cardio-frequency button.is-active,
+.admin-builder-cardio-days button.is-active {
+  border-color: rgba(255,209,30,.44);
+  background: rgba(255,209,30,.11);
+  color: #ffd11e;
+}
+.admin-builder-cardio-days {
+  display: grid;
+  grid-template-columns: repeat(7,minmax(38px,1fr));
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.admin-builder-cardio-days button {
+  min-width: 38px;
+  padding: 0 6px;
+  font-size: 11px;
 }
 
 /* Modelos salvos e Assistente guiado: popup central, não sheet. */
@@ -159,10 +308,21 @@
   overflow-wrap: break-word;
 }
 
+/* Assistente: pergunta + progresso, sem explicações redundantes. */
+.workout-entry-guide-v158 .responsive-dialog-description,
+.workout-entry-guide-v158 .workout-entry-guide-question > p,
+.admin-builder-guide-sheet > header p,
+.admin-builder-guide-sheet > section small,
+.admin-builder-guide-sheet .admin-builder-guide-options small,
+.admin-builder-guide-sheet .admin-builder-level-options small,
+.admin-builder-guide-sheet .admin-builder-guide-preview p {
+  display: none !important;
+}
+
 /* --------------------------------------------------------------------------
    BIBLIOTECA STAFF — tela começa na busca + biblioteca; botão + 44x44 centrado.
    -------------------------------------------------------------------------- */
-.admin-area-screen:has(.admin-dashboard-resource) .admin-work-queue.admin-dashboard-statbar {
+.admin-area-shell.is-library-view .admin-work-queue.admin-dashboard-statbar {
   display: none !important;
 }
 
@@ -213,7 +373,6 @@
   overflow-y: auto !important;
 }
 
-/* A frase oficial fica no description do Dialog. */
 .recipe-ai-dialog .recipe-ai-prompt > small {
   display: none !important;
 }
@@ -225,11 +384,8 @@
   min-height: 46px !important;
 }
 
-/* Reservas: desktop revela ação destrutiva; mobile permite arrastar a linha
-   horizontalmente até os botões existentes (Retirado / Cancelar). */
-.store-admin-list > article:has(.store-admin-row-actions) {
-  min-width: 0;
-}
+/* Reservas: desktop revela ação destrutiva; mobile permite arrastar a linha. */
+.store-admin-list > article:has(.store-admin-row-actions) { min-width: 0; }
 
 @media (min-width: 768px) {
   .store-admin-list > article:has(.store-admin-row-actions) .store-admin-row-actions .danger {
@@ -242,9 +398,7 @@
     opacity: .62;
     transition: opacity 150ms ease, transform 150ms ease, background-color 150ms ease !important;
   }
-  .store-admin-list > article:has(.store-admin-row-actions):hover .store-admin-row-actions .danger {
-    opacity: 1;
-  }
+  .store-admin-list > article:has(.store-admin-row-actions):hover .store-admin-row-actions .danger { opacity: 1; }
   .store-admin-list > article:has(.store-admin-row-actions) .store-admin-row-actions .danger::before {
     content: "";
     display: block;
@@ -320,10 +474,7 @@
     flex-wrap: nowrap !important;
   }
   .accqua-checkin-control,
-  .accqua-checkin-button {
-    min-width: 0 !important;
-    margin: 0 !important;
-  }
+  .accqua-checkin-button { min-width: 0 !important; margin: 0 !important; }
   .accqua-checkin-button {
     display: inline-flex !important;
     align-items: center !important;
@@ -359,10 +510,7 @@
     transform: none !important;
     transform-origin: center !important;
   }
-  /* Não tocar em animation do badge: a versão anterior já foi aprovada. */
-  .accqua-notification-badge {
-    transform-origin: center !important;
-  }
+  .accqua-notification-badge { transform-origin: center !important; }
 }
 
 /* Benefícios: duas opções lado a lado, descrição dentro do próprio card. */
@@ -394,9 +542,7 @@
 }
 .checkin-provider-list > button > i { display: none !important; }
 .checkin-provider-list > button > b { justify-self: start !important; }
-@media (max-width: 370px) {
-  .checkin-provider-list { grid-template-columns: 1fr !important; }
-}
+@media (max-width: 370px) { .checkin-provider-list { grid-template-columns: 1fr !important; } }
 
 /* Escudo/plano: SVG perfeitamente centralizado + transição própria da janela. */
 .accqua-membership-shield { align-items:center !important; justify-content:center !important; }
@@ -446,11 +592,8 @@
   color: #ffd11e;
   font-size: 12px;
 }
-.ranking-title p::after {
-  content: " Quem mais treinar no mês disputa o prêmio.";
-}
+.ranking-title p::after { content: " Quem mais treinar no mês disputa o prêmio."; }
 
-/* Perfil do Ranking: sempre popup central, inclusive mobile. */
 .ranking-sheet-backdrop:has(.ranking-profile-sheet-165) {
   display: flex !important;
   align-items: center !important;
@@ -460,10 +603,6 @@
 .ranking-profile-sheet-165 {
   position: relative !important;
   inset: auto !important;
-  top: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  left: auto !important;
   width: min(400px, 92vw) !important;
   max-width: 400px !important;
   max-height: min(82dvh, 720px) !important;
@@ -535,9 +674,7 @@
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
 }
-.ranking-profile-sheet-165 .ranking-profile-objective-v163 {
-  grid-column:1 / -1 !important;
-}
+.ranking-profile-sheet-165 .ranking-profile-objective-v163 { grid-column:1 / -1 !important; }
 .ranking-profile-sheet-165 .ranking-profile-objective-v163 strong:empty::after {
   content:"Não informado";
   color:rgba(255,255,255,.38);
@@ -546,13 +683,150 @@
   grid-column:1 / -1 !important;
   justify-self:start !important;
 }
-.ranking-profile-sheet-165 .ranking-public-workout {
-  max-height: min(46dvh, 430px) !important;
-  overflow-y:auto !important;
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
+
+/* Segundo popup: treino atual do perfil do Ranking. */
+.ranking-workout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(2,8,22,.72);
+  backdrop-filter: blur(8px);
+}
+.ranking-workout-modal {
+  width: min(400px,92vw);
+  max-height: 80dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  background: #0b1530;
+  box-shadow: 0 26px 70px rgba(0,0,0,.4);
+}
+.ranking-workout-modal-header {
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr);
+  align-items: center;
+  gap: 10px;
+}
+.ranking-workout-modal-back {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.78);
+}
+.ranking-workout-modal-header > div { min-width: 0; }
+.ranking-workout-modal-header small { color:#ffd11e; font-size:10px; font-weight:900; letter-spacing:.12em; }
+.ranking-workout-modal-header h2 {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color:#fff;
+  font-size:18px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.ranking-workout-modal-meta { margin: 6px 0 14px 44px; color:rgba(255,255,255,.5); font-size:12px; }
+.ranking-workout-exercises { display:grid; gap:9px; }
+.ranking-workout-exercise {
+  display:grid;
+  grid-template-columns:4px minmax(0,1fr) auto;
+  align-items:stretch;
+  min-width:0;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:13px;
+  background:#101d3a;
+}
+.ranking-workout-exercise::before { content:""; background:#ffd11e; }
+.ranking-workout-exercise > div { min-width:0; padding:11px 9px; }
+.ranking-workout-exercise strong,
+.ranking-workout-exercise small {
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.ranking-workout-exercise strong { color:#fff; font-size:13px; }
+.ranking-workout-exercise small { margin-top:3px; color:rgba(255,255,255,.52); font-size:11px; }
+.ranking-workout-exercise > span {
+  align-self:center;
+  flex:0 0 auto;
+  margin-right:10px;
+  padding:5px 9px;
+  border-radius:999px;
+  background:#ffd11e;
+  color:#2c2205;
+  font-size:11px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.ranking-workout-empty,
+.ranking-workout-loading { padding:24px 12px; color:rgba(255,255,255,.6); text-align:center; }
+
+/* Cardio prescrito do aluno: agenda semanal com pulso distinto. */
+.cardio-professor-schedule {
+  display:grid;
+  gap:10px;
+  margin: 0 0 14px;
+  padding: 12px 13px;
+  border:1px solid rgba(255,209,30,.15);
+  border-radius:16px;
+  background:rgba(255,209,30,.045);
+}
+.cardio-professor-schedule > div:first-child {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.cardio-professor-schedule strong { color:#fff; font-size:13px; }
+.cardio-professor-schedule p { margin:2px 0 0; color:rgba(255,255,255,.58); font-size:11px; line-height:1.35; }
+.cardio-professor-week { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
+.cardio-professor-day {
+  position:relative;
+  min-width:0;
+  min-height:38px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;
+  background:rgba(255,255,255,.03);
+  color:rgba(255,255,255,.46);
+  font-size:10px;
+  font-weight:800;
+}
+.cardio-professor-day.is-prescribed { color:#fff; border-color:rgba(255,209,30,.22); }
+.cardio-professor-day.is-prescribed::after {
+  content:"";
+  position:absolute;
+  right:5px;
+  top:5px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#ffd11e;
+  animation: accqua-cardio-professor-pulse 1.4s ease-in-out infinite;
+}
+@keyframes accqua-cardio-professor-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.82)} }
+.cardio-professor-instructions {
+  padding-top:9px;
+  border-top:1px solid rgba(255,255,255,.06);
+  color:rgba(255,255,255,.68);
+  font-size:12px;
+  line-height:1.45;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .membership-status-dialog-v1657[data-state] { animation-duration:1ms !important; }
+  .cardio-professor-day.is-prescribed::after { animation:none !important; }
 }
