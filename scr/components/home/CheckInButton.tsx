@@ -76,31 +76,30 @@ export default function CheckInButton() {
       <ResponsiveDialog
         open={open}
         onOpenChange={setOpen}
-        title="Fazer check-in"
-        description="Escolha o benefício usado hoje. Sua escolha fica salva para o próximo acesso."
+        title="Escolha o seu tipo de benefício"
+        description="Selecione como você fará o check-in hoje."
+        presentation="center"
         className="checkin-provider-dialog"
         bodyClassName="checkin-provider-dialog-body"
-        closeButton={<button type="button" aria-label="Fechar">×</button>}
       >
         <div className="checkin-provider-list">
           {providersQuery.isLoading ? (
-            <div className="checkin-provider-state">Carregando parceiros...</div>
+            <div className="checkin-provider-state">Carregando benefícios...</div>
           ) : providers.length ? providers.map((provider) => (
             <button key={provider.id} type="button" onClick={() => launch(provider)}>
               <span className="checkin-provider-logo">
-                {provider.logoUrl ? <img src={provider.logoUrl} alt="" /> : <MenuCheckinIcon size={22} />}
+                {provider.logoUrl ? <img src={provider.logoUrl} alt="" /> : <QrCheckinIcon size={23} />}
               </span>
               <span>
                 <strong>{provider.name}</strong>
-                <small>{provider.deepLinkScheme ? "Abrir aplicativo de check-in" : "Abrir canal oficial do parceiro"}</small>
+                <small>{provider.deepLinkScheme ? "Abrir aplicativo do benefício" : "Abrir canal oficial"}</small>
               </span>
               {preferredId === provider.id ? <b>Preferido</b> : <i aria-hidden="true">›</i>}
             </button>
           )) : (
-            <div className="checkin-provider-state">Nenhum parceiro de check-in está habilitado no momento.</div>
+            <div className="checkin-provider-state">Nenhum benefício de check-in está habilitado no momento.</div>
           )}
         </div>
-        <p className="checkin-provider-note">O aplicativo ACCQUA não realiza nem valida o check-in. Ele apenas abre o canal oficial configurado para o parceiro.</p>
       </ResponsiveDialog>
     </>
   );
