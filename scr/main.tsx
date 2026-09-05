@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
+import { installStaffDestructiveActionGuard } from "./lib/staffDestructiveActions";
 import "./index.css";
 import "./styles/build-1.4.5-hardening.css";
 import "./styles/build-1.4.6.css";
@@ -30,6 +31,7 @@ import "./styles/window-motion-1.6.5.6.css";
 import "./styles/build-1.6.5.7-round2.css";
 
 installInfrastructureToastGuard();
+installStaffDestructiveActionGuard();
 
 const queryClient = new QueryClient({
   defaultOptions: {
