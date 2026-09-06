@@ -1,0 +1,254 @@
+/* ACCQUA Sports — Build 1.6.5.9 / rodada 2
+   Ajustes estritamente de Perfil/Parceiros e Ranking. */
+
+/* --------------------------------------------------------------------------
+   PERFIL <-> PARCEIROS — gesto horizontal suave, tabs estáveis.
+   -------------------------------------------------------------------------- */
+.accqua-profile-screen .accqua-profile-content {
+  min-width: 0;
+  touch-action: pan-y;
+  overscroll-behavior-x: contain;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.profile-main-tabs-host,
+.profile-partners-panel > .profile-partners-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  padding-top: 2px;
+  background: linear-gradient(180deg, rgba(7,22,45,.98) 0%, rgba(7,22,45,.9) 72%, rgba(7,22,45,0) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.profile-main-tabs,
+.profile-partners-panel > .profile-partners-tabs {
+  position: relative;
+  isolation: isolate;
+}
+
+.profile-main-tabs button,
+.profile-partners-panel > .profile-partners-tabs button {
+  transition: color 220ms ease, background-color 220ms ease, transform 180ms ease, opacity 180ms ease;
+}
+
+.profile-main-tabs button:active,
+.profile-partners-panel > .profile-partners-tabs button:active {
+  transform: scale(.97);
+}
+
+/* --------------------------------------------------------------------------
+   RANKING — scroll tem um único dono e alcança o último aluno no iPhone.
+   -------------------------------------------------------------------------- */
+.accqua-ranking-screen {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  touch-action: pan-y;
+}
+
+.accqua-ranking-shell {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.accqua-ranking-screen .ranking-content {
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scroll-behavior: smooth;
+  scroll-padding-bottom: max(120px, calc(86px + env(safe-area-inset-bottom)));
+  padding-bottom: max(120px, calc(86px + env(safe-area-inset-bottom))) !important;
+}
+
+.accqua-ranking-screen .ranking-list {
+  min-height: min-content;
+  padding-bottom: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   PERFIL DO RANKING — uma única foto; ação de parceiro fica sobre o avatar.
+   -------------------------------------------------------------------------- */
+.ranking-profile-add[data-avatar-partner-proxy="1"] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.ranking-profile-social-actions {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ranking-profile-avatar.has-partner-action {
+  position: relative !important;
+  overflow: visible !important;
+  isolation: isolate;
+}
+
+.ranking-profile-avatar.has-partner-action > img {
+  border-radius: inherit;
+}
+
+.ranking-profile-avatar-partner-action {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  z-index: 8;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #0b1625;
+  border-radius: 50%;
+  background: #ffd11e;
+  color: #07162d;
+  box-shadow: 0 6px 18px rgba(0,0,0,.34);
+  cursor: pointer;
+  transition: transform 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.ranking-profile-avatar-partner-action:hover {
+  transform: scale(1.06);
+}
+
+.ranking-profile-avatar-partner-action:active {
+  transform: scale(.94);
+}
+
+.ranking-profile-avatar-partner-action svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ranking-profile-avatar-partner-action[data-partner-state="pending"] {
+  background: #162132;
+  color: #ffd11e;
+}
+
+.ranking-profile-avatar-partner-action[data-partner-state="accepted"] {
+  background: #132a22;
+  color: #8be0aa;
+}
+
+.ranking-profile-avatar-partner-action[data-partner-state="incoming"] {
+  animation: rankingAvatarInvitePulse1659 1.25s ease-in-out infinite;
+}
+
+.ranking-profile-avatar-partner-action[aria-disabled="true"] {
+  cursor: default;
+}
+
+@keyframes rankingAvatarInvitePulse1659 {
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 7px rgba(255,209,30,.10), 0 6px 18px rgba(0,0,0,.34);
+  }
+}
+
+/* Ver treino recebe o muque sem duplicar texto no JSX. */
+.ranking-profile-workout-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.ranking-profile-workout-button::before {
+  content: "💪";
+  display: inline-block;
+  font-size: 17px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   CELULAR — resumo compacto do treino: exercício + séries/repetições.
+   -------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  .ranking-workout-modal-backdrop {
+    align-items: end !important;
+    padding: 0 !important;
+  }
+
+  .ranking-workout-modal {
+    width: 100% !important;
+    max-height: min(72dvh, 590px) !important;
+    border-radius: 24px 24px 0 0 !important;
+  }
+
+  .ranking-workout-modal-header {
+    min-height: 60px !important;
+    padding: 10px 14px !important;
+    grid-template-columns: 38px minmax(0,1fr) !important;
+  }
+
+  .ranking-workout-modal-header h2 {
+    font-size: 17px !important;
+  }
+
+  .ranking-workout-modal-meta {
+    padding: 9px 14px 7px !important;
+    font-size: 11px !important;
+  }
+
+  .ranking-workout-exercises {
+    gap: 6px !important;
+    padding: 3px 14px max(20px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .ranking-workout-exercise {
+    min-height: 48px !important;
+    padding: 9px 10px !important;
+    border-radius: 13px !important;
+  }
+
+  .ranking-workout-exercise strong {
+    font-size: 13px !important;
+  }
+
+  .ranking-workout-exercise small {
+    display: none !important;
+  }
+
+  .ranking-workout-exercise > span {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .accqua-ranking-screen .ranking-content {
+    padding-bottom: max(138px, calc(96px + env(safe-area-inset-bottom))) !important;
+    scroll-padding-bottom: max(138px, calc(96px + env(safe-area-inset-bottom)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ranking-profile-avatar-partner-action {
+    animation: none !important;
+  }
+
+  .accqua-ranking-screen .ranking-content {
+    scroll-behavior: auto;
+  }
+}
