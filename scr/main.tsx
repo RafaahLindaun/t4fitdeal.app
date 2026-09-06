@@ -6,6 +6,7 @@ import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
 import ProfileHighlights from "./components/ProfileHighlights";
 import Round2RuntimeEnhancements from "./components/Round2RuntimeEnhancements";
+import Build1658Runtime from "./components/Build1658Runtime";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
 import { installStaffDestructiveActionGuard } from "./lib/staffDestructiveActions";
 import "./index.css";
@@ -34,6 +35,7 @@ import "./styles/build-1.6.5.7-round2.css";
 import "./styles/ranking-1.6.5.7.css";
 import "./styles/profile-partners-1.6.5.7.css";
 import "./styles/round2-runtime-1.6.5.7.css";
+import "./styles/builder-menu-1.6.5.8.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
@@ -62,6 +64,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <App />
           <ProfileHighlights />
           <Round2RuntimeEnhancements />
+          <Build1658Runtime />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
