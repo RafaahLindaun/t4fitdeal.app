@@ -40,8 +40,10 @@ export default function SwipeableListItem({
   };
   const remove = async () => {
     if (disabled) return;
-    await onDelete();
+    // Fecha a ação revelada antes de qualquer confirmação/modal. Assim a faixa
+    // destrutiva nunca fica aparecendo por trás da janela de confirmação.
     close();
+    await onDelete();
   };
 
   return (
