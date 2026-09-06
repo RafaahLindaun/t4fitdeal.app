@@ -1,0 +1,313 @@
+/* ACCQUA Sports — Build 1.6.5.8
+   Ajustes focados: Montar Treino desktop/mobile e topo do Menu mobile. */
+
+/* --------------------------------------------------------------------------
+   MONTAR TREINO — DESKTOP
+   Área principal larga + Biblioteca como janela lateral rolável.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .admin-builder-screen.is-step-exercicios .admin-builder-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 390px) !important;
+    column-gap: 18px !important;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-stage-v163.is-exercicios {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 390px) !important;
+    grid-template-areas:
+      "workout library"
+      "review library" !important;
+    align-items: start !important;
+    gap: 18px !important;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-selected {
+    grid-area: workout !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: calc(100dvh - 230px) !important;
+    max-height: calc(100dvh - 168px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-review-summary {
+    grid-area: review !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: calc(100dvh - 230px) !important;
+    max-height: calc(100dvh - 168px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-library {
+    grid-area: library !important;
+    position: sticky !important;
+    top: 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: calc(100dvh - 168px) !important;
+    max-height: calc(100dvh - 168px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-library > header,
+  .admin-builder-screen.is-step-exercicios .admin-builder-library > .admin-builder-search,
+  .admin-builder-screen.is-step-exercicios .admin-builder-library > .admin-builder-groups {
+    flex: 0 0 auto !important;
+  }
+
+  .admin-builder-screen.is-step-exercicios .admin-builder-library-list {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+  }
+
+  /* O resumo lateral do aluno cede espaço somente na seleção de exercícios. */
+  .admin-builder-screen.is-step-exercicios .admin-builder-desktop-aside {
+    display: none !important;
+  }
+
+  .admin-builder-screen.is-step-exercicios :is(
+    .admin-builder-progress-v162,
+    .admin-builder-step-nav,
+    .admin-builder-readiness,
+    .admin-builder-guided-sticky
+  ) {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MONTAR TREINO — MOBILE
+   Rodapé compacto por ícones e desaparecimento suave ao rolar para baixo.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .admin-builder-footer {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    padding: 7px 8px !important;
+    border-radius: 18px !important;
+    transition:
+      transform 280ms cubic-bezier(.2,.82,.22,1),
+      opacity 220ms ease,
+      box-shadow 220ms ease !important;
+    will-change: transform, opacity;
+  }
+
+  .admin-builder-footer.is-scroll-hidden-1658 {
+    transform: translateY(calc(100% + 24px)) !important;
+    opacity: .08 !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+  }
+
+  .admin-builder-mobile-footer {
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) 50px !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .admin-builder-mobile-footer-copy {
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 42px !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .admin-builder-mobile-footer-copy > small {
+    display: none !important;
+  }
+
+  .admin-builder-mobile-footer-copy > strong {
+    min-width: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .admin-builder-mobile-save-template {
+    position: relative !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid color-mix(in srgb, var(--builder-line) 86%, transparent) !important;
+    border-radius: 13px !important;
+    background: color-mix(in srgb, var(--surface-raised) 72%, var(--surface-deep)) !important;
+    color: var(--text-primary) !important;
+    font-size: 0 !important;
+    text-decoration: none !important;
+  }
+
+  .admin-builder-mobile-save-template::before,
+  .admin-builder-screen.is-step-cardio .admin-builder-mobile-primary::before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    display: block;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3h11l3 3v15H5z'/%3E%3Cpath d='M8 3v6h8V3'/%3E%3Cpath d='M8 21v-7h8v7'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3h11l3 3v15H5z'/%3E%3Cpath d='M8 3v6h8V3'/%3E%3Cpath d='M8 21v-7h8v7'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .admin-builder-mobile-primary {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-radius: 15px !important;
+    font-size: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-builder-mobile-primary > svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-mobile-primary > svg {
+    display: none !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-mobile-primary {
+    color: #07162d !important;
+  }
+
+  /* Revisão/Cardio: texto não pode ser cortado nem comprimido. */
+  .admin-builder-screen.is-step-cardio .admin-builder-stage-v163.is-revisao,
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio,
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-fields {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-stage-v163.is-revisao {
+    padding-bottom: 118px !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 14px !important;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) 46px !important;
+    grid-template-areas:
+      "icon copy switch"
+      "state state state" !important;
+    align-items: center !important;
+    gap: 10px 11px !important;
+    overflow: visible !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle > span:first-child {
+    grid-area: icon !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle > div {
+    grid-area: copy !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle > i {
+    grid-area: switch !important;
+    justify-self: end !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-state-label {
+    grid-area: state !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.35 !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle :is(small, strong, p),
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-fields :is(span, small, label, textarea) {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MENU MOBILE — recorte superior limpo, sem moldura azul-escura aparente.
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .accqua-menu-shell {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+
+  .accqua-menu-header {
+    width: calc(100% + 30px) !important;
+    max-width: none !important;
+    margin-left: -15px !important;
+    margin-right: -15px !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+    clip-path: inset(0 0 0 0) !important;
+  }
+
+  .accqua-menu-header::before,
+  .accqua-menu-header::after {
+    display: none !important;
+    content: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-builder-footer {
+    transition-duration: 1ms !important;
+  }
+}
