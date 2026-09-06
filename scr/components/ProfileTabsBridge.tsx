@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const SWIPE_DISTANCE = 72;
 const SWIPE_MAX_VERTICAL = 54;
@@ -68,6 +68,7 @@ async function animateViewChange(direction: "forward" | "back", action: () => vo
 
 export default function ProfileTabsBridge() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [host, setHost] = useState<HTMLElement | null>(null);
   const transitionLock = useRef(false);
 
@@ -125,14 +126,19 @@ export default function ProfileTabsBridge() {
       if (!isMainView()) return;
       const realButton = document.querySelector<HTMLButtonElement>(".profile-stat-partners");
       if (!realButton) return;
-      void runTransition("forward", () => realButton.click());
+      void runTransition("back", () => realButton.click());
     };
 
     const openMain = () => {
       if (!isPartnersView()) return;
       const back = document.querySelector<HTMLButtonElement>(".accqua-profile-header button[aria-label='Voltar']");
       if (!back) return;
-      void runTransition("back", () => back.click());
+      void runTransition("forward", () => back.click());
+    };
+
+    const openClasses = () => {
+      if (!isMainView()) return;
+      void runTransition("forward", () => navigate("/aulas"));
     };
 
     let pointerId: number | null = null;
@@ -147,7 +153,7 @@ export default function ProfileTabsBridge() {
       const main = isMainView();
       const partners = isPartnersView();
       if (!main && !partners) return;
-      if (partners && event.clientX <= IOS_EDGE_GUARD) return;
+      if (event.clientX <= IOS_EDGE_GUARD) return;
 
       pointerId = event.pointerId;
       startX = event.clientX;
@@ -171,13 +177,15 @@ export default function ProfileTabsBridge() {
       const duration = performance.now() - startedAt;
       const horizontalEnough = Math.abs(dx) >= SWIPE_DISTANCE && Math.abs(dy) <= Math.min(SWIPE_MAX_VERTICAL, Math.abs(dx) * 0.58);
       const fastEnough = duration <= SWIPE_MAX_DURATION;
-      const goPartners = startedInMain && dx <= -SWIPE_DISTANCE;
-      const goProfile = startedInPartners && dx >= SWIPE_DISTANCE;
+      const partnersToProfile = startedInPartners && dx <= -SWIPE_DISTANCE;
+      const profileToClasses = startedInMain && dx <= -SWIPE_DISTANCE;
+      const profileToPartners = startedInMain && dx >= SWIPE_DISTANCE;
       clearGesture();
 
       if (!horizontalEnough || !fastEnough) return;
-      if (goPartners) openPartners();
-      else if (goProfile) openMain();
+      if (partnersToProfile) openMain();
+      else if (profileToClasses) openClasses();
+      else if (profileToPartners) openPartners();
     };
 
     const pointerCancel = (event: PointerEvent) => {
@@ -198,7 +206,7 @@ export default function ProfileTabsBridge() {
       document.removeEventListener("pointercancel", pointerCancel);
       clearGesture();
     };
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   if (!host) return null;
 
@@ -207,7 +215,7 @@ export default function ProfileTabsBridge() {
     const realButton = document.querySelector<HTMLButtonElement>(".profile-stat-partners");
     if (!realButton) return;
     transitionLock.current = true;
-    void animateViewChange("forward", () => realButton.click()).finally(() => {
+    void animateViewChange("back", () => realButton.click()).finally(() => {
       window.setTimeout(() => { transitionLock.current = false; }, 320);
     });
   };
