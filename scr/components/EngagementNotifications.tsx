@@ -3,7 +3,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { searchWorkoutStudents } from "../lib/admin";
 import { loadFeedbackPreferences, playAccquaChime } from "../lib/appFeedback";
 import { classDateTime, loadMyClasses } from "../lib/classes";
-import { supabase } from "../lib/supabase";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 const REMINDER_HOUR = 16;
 const STUDENT_POLL_MS = 120_000;
@@ -104,6 +104,7 @@ export default function EngagementNotifications() {
   const { user, profile } = useAuth();
   const [toast, setToast] = useState<Toast>(null);
   const busy = useRef(false);
+  const queued = useRef(false);
   const lastCheckAt = useRef(0);
   const isStaff = Boolean(profile && ["professor", "reception", "admin"].includes(profile.role));
 
@@ -140,16 +141,12 @@ export default function EngagementNotifications() {
       }
 
       const now = new Date();
-
       if (preferences.classNotifications) {
         const reservations = await loadMyClasses();
         const leadMs = Math.max(30, preferences.classReminderMinutes || 120) * 60_000;
         const nextClass = reservations
           .filter((reservation) => reservation.status === "reservado")
-          .map((reservation) => ({
-            reservation,
-            startsAt: classDateTime(reservation.date, reservation.startTime),
-          }))
+          .map((reservation) => ({ reservation, startsAt: classDateTime(reservation.date, reservation.startTime) }))
           .filter(({ startsAt }) => startsAt.getTime() > now.getTime() && startsAt.getTime() - now.getTime() <= leadMs)
           .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
 
@@ -193,9 +190,7 @@ export default function EngagementNotifications() {
       const previous = localStorage.getItem(key);
       if (signature !== previous && pending.length > 0) {
         const previousIds = new Set((previous ?? "").split(",").filter(Boolean));
-        const newPending = previous === null
-          ? pending
-          : pending.filter((student) => !previousIds.has(student.id));
+        const newPending = previous === null ? pending : pending.filter((student) => !previousIds.has(student.id));
         if (newPending.length > 0) {
           const first = newPending[0];
           await announce(
@@ -213,7 +208,11 @@ export default function EngagementNotifications() {
     };
 
     const check = async (force = false) => {
-      if (busy.current || cancelled || document.visibilityState !== "visible") return;
+      if (cancelled || document.visibilityState !== "visible") return;
+      if (busy.current) {
+        if (force) queued.current = true;
+        return;
+      }
       const now = Date.now();
       if (!force && now - lastCheckAt.current < MIN_FOCUS_GAP_MS) return;
       busy.current = true;
@@ -222,23 +221,37 @@ export default function EngagementNotifications() {
         if (isStaff) await checkStaff();
         else if (profile.status === "active") await checkStudent();
       } catch {
-        // Notificações são best-effort e nunca podem pressionar o app em caso de backend lento.
+        // Best-effort: eventos realtime têm polling de segurança como fallback.
       } finally {
         busy.current = false;
+        if (!cancelled && queued.current) {
+          queued.current = false;
+          window.setTimeout(() => void check(true), 80);
+        }
       }
     };
 
     void check(true);
-    const interval = window.setInterval(
-      () => void check(),
-      isStaff ? STAFF_POLL_MS : STUDENT_POLL_MS,
-    );
+    const interval = window.setInterval(() => void check(), isStaff ? STAFF_POLL_MS : STUDENT_POLL_MS);
     const handleFocus = () => void check();
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") void check();
+      if (document.visibilityState === "visible") void check(true);
     };
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibility);
+
+    const realtime = isSupabaseConfigured
+      ? isStaff
+        ? supabase
+            .channel(`engagement-staff-${user.id}`)
+            .on("postgres_changes", { event: "*", schema: "public", table: "accqua_app_approval" }, () => void check(true))
+            .subscribe()
+        : supabase
+            .channel(`engagement-student-${user.id}`)
+            .on("postgres_changes", { event: "*", schema: "public", table: "workout_programs", filter: `student_id=eq.${user.id}` }, () => void check(true))
+            .on("postgres_changes", { event: "*", schema: "public", table: "reservas_aula", filter: `aluno_id=eq.${user.id}` }, () => void check(true))
+            .subscribe()
+      : null;
 
     return () => {
       cancelled = true;
@@ -246,6 +259,8 @@ export default function EngagementNotifications() {
       window.clearTimeout(toastTimer);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
+      if (realtime) void supabase.removeChannel(realtime);
+      queued.current = false;
     };
   }, [isStaff, profile?.status, user?.id]);
 
