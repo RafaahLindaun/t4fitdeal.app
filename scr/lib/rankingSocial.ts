@@ -10,6 +10,16 @@ export type PublicWorkoutExercise = {
   repsMin: number;
   repsMax: number;
   routine: string;
+  routineName: string;
+};
+
+export type PublicWorkoutRoutine = {
+  id: string;
+  code: string;
+  name: string;
+  focus: string;
+  weekDays: number[];
+  exerciseCount: number;
 };
 
 export type PublicWorkoutSummary = {
@@ -19,6 +29,7 @@ export type PublicWorkoutSummary = {
   routines: number;
   exercises: number;
   reviewAt: string;
+  routineItems: PublicWorkoutRoutine[];
   exerciseItems: PublicWorkoutExercise[];
 };
 
@@ -66,22 +77,46 @@ function mapWorkoutExercise(raw: unknown): PublicWorkoutExercise | null {
     repsMin: numberValue(row.repsMin),
     repsMax: numberValue(row.repsMax),
     routine: text(row.routine) || "Treino",
+    routineName: text(row.routineName) || text(row.routine) || "Treino",
+  };
+}
+
+function mapWorkoutRoutine(raw: unknown): PublicWorkoutRoutine | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Row;
+  const id = text(row.id);
+  if (!id) return null;
+  return {
+    id,
+    code: text(row.code) || "Treino",
+    name: text(row.name) || text(row.code) || "Treino",
+    focus: text(row.focus),
+    weekDays: Array.isArray(row.weekDays)
+      ? row.weekDays.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+      : [],
+    exerciseCount: numberValue(row.exerciseCount),
   };
 }
 
 export async function loadPublicWorkoutSummary(studentId: string): Promise<PublicWorkoutSummary | null> {
   if (!isSupabaseConfigured || !studentId) return null;
-  const newest = await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_7", {
+  const v1659 = await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_9", {
     p_student_id: studentId,
   });
-  const response = newest.error
+  const v1657 = v1659.error
+    ? await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_7", { p_student_id: studentId })
+    : v1659;
+  const response = v1657.error
     ? await supabase.rpc("get_accqua_public_workout_summary_v1_6_5", { p_student_id: studentId })
-    : newest;
+    : v1657;
   if (response.error) throw response.error;
   if (!response.data || typeof response.data !== "object") return null;
   const row = response.data as Row;
   const exerciseItems = Array.isArray(row.exerciseItems)
     ? row.exerciseItems.map(mapWorkoutExercise).filter((item): item is PublicWorkoutExercise => Boolean(item))
+    : [];
+  const routineItems = Array.isArray(row.routineItems)
+    ? row.routineItems.map(mapWorkoutRoutine).filter((item): item is PublicWorkoutRoutine => Boolean(item))
     : [];
   return {
     programName: text(row.programName) || "Treino atual",
@@ -90,6 +125,7 @@ export async function loadPublicWorkoutSummary(studentId: string): Promise<Publi
     routines: numberValue(row.routines),
     exercises: numberValue(row.exercises),
     reviewAt: text(row.reviewAt),
+    routineItems,
     exerciseItems,
   };
 }
