@@ -1,0 +1,125 @@
+/* ACCQUA Sports — interaction polish / Build 1.6.5.9
+   Floating social tabs and final gesture-layer visual contracts. */
+
+.profile-main-tabs-host {
+  position: sticky !important;
+  top: max(8px, calc(env(safe-area-inset-top) + 4px)) !important;
+  z-index: 34 !important;
+  width: 100% !important;
+  padding: 5px 0 9px !important;
+  margin: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none;
+}
+
+.profile-main-tabs,
+.profile-partners-panel > .profile-partners-tabs {
+  position: relative !important;
+  isolation: isolate;
+  width: min(226px, calc(100% - 32px)) !important;
+  min-height: 46px !important;
+  margin: 7px auto 14px !important;
+  padding: 4px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 3px !important;
+  border: 1px solid rgba(255,255,255,.105) !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(180deg, rgba(17,38,67,.88), rgba(6,21,43,.82)) !important;
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.065),
+    0 0 0 1px rgba(0,0,0,.10) !important;
+  backdrop-filter: blur(22px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.18) !important;
+  pointer-events: auto;
+}
+
+.profile-partners-panel > .profile-partners-tabs {
+  position: sticky !important;
+  top: max(8px, calc(env(safe-area-inset-top) + 4px)) !important;
+  z-index: 34 !important;
+}
+
+.profile-main-tabs::before,
+.profile-partners-panel > .profile-partners-tabs::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255,255,255,.015);
+  pointer-events: none;
+}
+
+.profile-main-tabs button,
+.profile-partners-panel > .profile-partners-tabs button {
+  min-width: 0 !important;
+  min-height: 38px !important;
+  padding: 0 15px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: rgba(226,235,247,.64) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  font-weight: 850 !important;
+  letter-spacing: -.01em !important;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 220ms ease,
+    transform 170ms cubic-bezier(.2,.8,.2,1) !important;
+}
+
+.profile-main-tabs button.is-active,
+.profile-main-tabs button[aria-current="page"],
+.profile-partners-panel > .profile-partners-tabs button.is-active,
+.profile-partners-panel > .profile-partners-tabs button[aria-current="page"] {
+  color: #07162d !important;
+  background: linear-gradient(180deg, #ffdb3c, #ffd11e) !important;
+  box-shadow:
+    0 7px 18px rgba(255,209,30,.16),
+    inset 0 1px 0 rgba(255,255,255,.42) !important;
+}
+
+.profile-main-tabs button:active,
+.profile-partners-panel > .profile-partners-tabs button:active {
+  transform: scale(.965) !important;
+}
+
+@media (max-width: 560px) {
+  .profile-main-tabs-host {
+    padding-top: 3px !important;
+  }
+
+  .profile-main-tabs,
+  .profile-partners-panel > .profile-partners-tabs {
+    width: min(214px, calc(100% - 40px)) !important;
+    min-height: 44px !important;
+    margin-top: 5px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .profile-main-tabs button,
+  .profile-partners-panel > .profile-partners-tabs button {
+    min-height: 36px !important;
+    padding-inline: 12px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-main-tabs button,
+  .profile-partners-panel > .profile-partners-tabs button {
+    transition-duration: 1ms !important;
+  }
+}
