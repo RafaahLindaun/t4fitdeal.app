@@ -2,10 +2,13 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const SWIPE_DISTANCE = 72;
-const SWIPE_MAX_VERTICAL = 54;
-const SWIPE_MAX_DURATION = 620;
+const SWIPE_DISTANCE = 64;
+const SWIPE_MAX_VERTICAL = 56;
+const SWIPE_MAX_DURATION = 680;
 const IOS_EDGE_GUARD = 22;
+const CLICK_SUPPRESS_MS = 420;
+
+type SpatialDestination = "left" | "right";
 
 function profileContent() {
   return document.querySelector<HTMLElement>(".accqua-profile-content");
@@ -21,16 +24,21 @@ function isPartnersView() {
 
 function shouldIgnoreGesture(target: EventTarget | null) {
   const element = target instanceof Element ? target : null;
-  return Boolean(element?.closest("button,input,select,textarea,a,[role='button'],[data-tab-swipe-ignore],.accqua-swipe-item,.profile-partners-swipe"));
+  return Boolean(element?.closest(
+    "input,select,textarea,[contenteditable='true'],[data-tab-swipe-ignore],.accqua-swipe-item,.profile-partners-swipe",
+  ));
 }
 
 function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-async function animateViewChange(direction: "forward" | "back", action: () => void) {
+async function animateViewChange(destination: SpatialDestination, action: () => void) {
   const current = profileContent();
-  const sign = direction === "forward" ? -1 : 1;
+  // A página de destino fica espacialmente à esquerda ou à direita da atual.
+  // Para ir à esquerda, a página atual acompanha o dedo para a direita; para ir
+  // à direita, a atual acompanha para a esquerda.
+  const currentExitSign = destination === "left" ? 1 : -1;
 
   if (!current || reducedMotion()) {
     action();
@@ -41,12 +49,12 @@ async function animateViewChange(direction: "forward" | "back", action: () => vo
     await current.animate(
       [
         { transform: "translate3d(0,0,0)", opacity: 1 },
-        { transform: `translate3d(${sign * 18}px,0,0)`, opacity: 0.72 },
+        { transform: `translate3d(${currentExitSign * 22}px,0,0)`, opacity: 0.74 },
       ],
-      { duration: 125, easing: "cubic-bezier(.4,0,1,1)" },
+      { duration: 122, easing: "cubic-bezier(.4,0,1,1)" },
     ).finished;
   } catch {
-    // A view pode trocar antes de a animação terminar.
+    // A troca pode desmontar a view antes do fim da animação.
   }
 
   action();
@@ -57,10 +65,10 @@ async function animateViewChange(direction: "forward" | "back", action: () => vo
       if (!next || reducedMotion()) return;
       next.animate(
         [
-          { transform: `translate3d(${-sign * 22}px,0,0)`, opacity: 0.68 },
+          { transform: `translate3d(${-currentExitSign * 28}px,0,0)`, opacity: 0.68 },
           { transform: "translate3d(0,0,0)", opacity: 1 },
         ],
-        { duration: 285, easing: "cubic-bezier(.16,1,.3,1)" },
+        { duration: 290, easing: "cubic-bezier(.16,1,.3,1)" },
       );
     });
   });
@@ -71,6 +79,7 @@ export default function ProfileTabsBridge() {
   const navigate = useNavigate();
   const [host, setHost] = useState<HTMLElement | null>(null);
   const transitionLock = useRef(false);
+  const suppressClickUntil = useRef(0);
 
   useEffect(() => {
     if (location.pathname !== "/perfil") {
@@ -115,30 +124,30 @@ export default function ProfileTabsBridge() {
   useEffect(() => {
     if (location.pathname !== "/perfil") return;
 
-    const runTransition = async (direction: "forward" | "back", action: () => void) => {
+    const runTransition = async (destination: SpatialDestination, action: () => void) => {
       if (transitionLock.current) return;
       transitionLock.current = true;
-      await animateViewChange(direction, action);
-      window.setTimeout(() => { transitionLock.current = false; }, 320);
+      await animateViewChange(destination, action);
+      window.setTimeout(() => { transitionLock.current = false; }, 330);
     };
 
     const openPartners = () => {
       if (!isMainView()) return;
       const realButton = document.querySelector<HTMLButtonElement>(".profile-stat-partners");
       if (!realButton) return;
-      void runTransition("back", () => realButton.click());
+      void runTransition("right", () => realButton.click());
     };
 
     const openMain = () => {
       if (!isPartnersView()) return;
       const back = document.querySelector<HTMLButtonElement>(".accqua-profile-header button[aria-label='Voltar']");
       if (!back) return;
-      void runTransition("forward", () => back.click());
+      void runTransition("left", () => back.click());
     };
 
     const openClasses = () => {
       if (!isMainView()) return;
-      void runTransition("forward", () => navigate("/aulas"));
+      void runTransition("left", () => navigate("/aulas"));
     };
 
     let pointerId: number | null = null;
@@ -159,7 +168,7 @@ export default function ProfileTabsBridge() {
       startX = event.clientX;
       startY = event.clientY;
       startedAt = performance.now();
-      startedInMain = main;
+      startedInMain = main && !partners;
       startedInPartners = partners;
     };
 
@@ -175,7 +184,8 @@ export default function ProfileTabsBridge() {
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
       const duration = performance.now() - startedAt;
-      const horizontalEnough = Math.abs(dx) >= SWIPE_DISTANCE && Math.abs(dy) <= Math.min(SWIPE_MAX_VERTICAL, Math.abs(dx) * 0.58);
+      const horizontalEnough = Math.abs(dx) >= SWIPE_DISTANCE
+        && Math.abs(dy) <= Math.min(SWIPE_MAX_VERTICAL, Math.abs(dx) * 0.62);
       const fastEnough = duration <= SWIPE_MAX_DURATION;
       const partnersToProfile = startedInPartners && dx <= -SWIPE_DISTANCE;
       const profileToClasses = startedInMain && dx <= -SWIPE_DISTANCE;
@@ -183,6 +193,8 @@ export default function ProfileTabsBridge() {
       clearGesture();
 
       if (!horizontalEnough || !fastEnough) return;
+
+      suppressClickUntil.current = performance.now() + CLICK_SUPPRESS_MS;
       if (partnersToProfile) openMain();
       else if (profileToClasses) openClasses();
       else if (profileToPartners) openPartners();
@@ -192,18 +204,27 @@ export default function ProfileTabsBridge() {
       if (pointerId !== null && event.pointerId === pointerId) clearGesture();
     };
 
+    const suppressClickAfterSwipe = (event: MouseEvent) => {
+      if (performance.now() > suppressClickUntil.current) return;
+      suppressClickUntil.current = 0;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
     const openMainEvent = () => openMain();
 
     window.addEventListener("accqua:profile-open-main", openMainEvent);
     document.addEventListener("pointerdown", pointerDown, { passive: true });
     document.addEventListener("pointerup", pointerUp, { passive: true });
     document.addEventListener("pointercancel", pointerCancel, { passive: true });
+    document.addEventListener("click", suppressClickAfterSwipe, true);
 
     return () => {
       window.removeEventListener("accqua:profile-open-main", openMainEvent);
       document.removeEventListener("pointerdown", pointerDown);
       document.removeEventListener("pointerup", pointerUp);
       document.removeEventListener("pointercancel", pointerCancel);
+      document.removeEventListener("click", suppressClickAfterSwipe, true);
       clearGesture();
     };
   }, [location.pathname, navigate]);
@@ -215,8 +236,8 @@ export default function ProfileTabsBridge() {
     const realButton = document.querySelector<HTMLButtonElement>(".profile-stat-partners");
     if (!realButton) return;
     transitionLock.current = true;
-    void animateViewChange("back", () => realButton.click()).finally(() => {
-      window.setTimeout(() => { transitionLock.current = false; }, 320);
+    void animateViewChange("right", () => realButton.click()).finally(() => {
+      window.setTimeout(() => { transitionLock.current = false; }, 330);
     });
   };
 
