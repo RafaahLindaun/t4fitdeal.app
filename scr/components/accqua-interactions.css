@@ -1,22 +1,256 @@
-.accqua-sonner-toast {
-  min-height: 52px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-md) !important;
-  color: var(--white) !important;
-  background: color-mix(in srgb, var(--navy-bottom) 94%, transparent) !important;
-  box-shadow: var(--shadow-lg) !important;
-  backdrop-filter: blur(18px) !important;
+/* ACCQUA ephemeral messages — top notification language */
+[data-sonner-toaster] {
+  top: max(10px, calc(env(safe-area-inset-top) + 8px)) !important;
+  left: 50% !important;
+  right: auto !important;
+  width: min(430px, calc(100vw - 24px)) !important;
+  transform: translateX(-50%) !important;
+  z-index: 1600 !important;
 }
 
-.accqua-sonner-title { color: var(--white) !important; font-weight: 850 !important; }
-.accqua-sonner-description { color: var(--muted) !important; }
+.accqua-sonner-toast {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 72px !important;
+  padding: 17px 16px 15px 16px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 209, 30, .17) !important;
+  border-radius: 20px !important;
+  color: var(--white) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 209, 30, .10), transparent 34%),
+    color-mix(in srgb, var(--navy-bottom) 95%, transparent) !important;
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, .34),
+    inset 0 1px 0 rgba(255, 255, 255, .055) !important;
+  backdrop-filter: blur(22px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.18) !important;
+  touch-action: pan-y !important;
+}
+
+.accqua-sonner-toast::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: 6px;
+  left: 50%;
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .24);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.accqua-sonner-toast::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 209, 30, .58), transparent);
+  pointer-events: none;
+}
+
+.accqua-sonner-toast [data-close-button] {
+  display: none !important;
+}
+
+.accqua-sonner-toast [data-icon] {
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 12px !important;
+  color: var(--yellow) !important;
+  background: rgba(255, 209, 30, .10) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 30, .13) !important;
+}
+
+.accqua-sonner-title {
+  color: var(--white) !important;
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+  font-weight: 900 !important;
+  letter-spacing: -.01em !important;
+}
+
+.accqua-sonner-description {
+  margin-top: 3px !important;
+  color: rgba(226, 235, 247, .72) !important;
+  font-size: 11px !important;
+  line-height: 1.42 !important;
+}
+
 .accqua-sonner-action {
-  min-height: 40px !important;
+  min-height: 38px !important;
+  padding-inline: 14px !important;
+  border-radius: 12px !important;
   color: var(--navy-bottom) !important;
   background: var(--yellow) !important;
+  font-weight: 900 !important;
+}
+
+.accqua-sonner-cancel {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  color: rgba(255, 255, 255, .82) !important;
+  background: rgba(255, 255, 255, .07) !important;
+}
+
+/* Mensagens antigas/específicas também usam o mesmo idioma visual. */
+.workout-toast,
+.cardio-toast,
+.accqua-engagement-toast,
+.workout-rest-confirmation {
+  position: fixed !important;
+  z-index: 1550 !important;
+  top: max(10px, calc(env(safe-area-inset-top) + 8px)) !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: auto !important;
+  width: min(430px, calc(100vw - 24px)) !important;
+  max-width: min(430px, calc(100vw - 24px)) !important;
+  min-height: 66px !important;
+  margin: 0 auto !important;
+  padding: 16px 16px 14px 16px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 209, 30, .17) !important;
+  border-radius: 20px !important;
+  color: #fff !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 209, 30, .10), transparent 34%),
+    rgba(5, 20, 42, .95) !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255,255,255,.055) !important;
+  backdrop-filter: blur(22px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.18) !important;
+  transform-origin: top center !important;
+  touch-action: pan-y !important;
+}
+
+.workout-toast::before,
+.cardio-toast::before,
+.accqua-engagement-toast::before,
+.workout-rest-confirmation::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.24);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.workout-toast::after,
+.cardio-toast::after {
+  content: "ACCQUA  ·  deslize para cima para dispensar";
+  display: block;
+  margin-top: 5px;
+  color: rgba(215, 226, 241, .48);
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.workout-toast {
+  text-align: left !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
   font-weight: 850 !important;
 }
-.accqua-sonner-cancel { min-height: 40px !important; }
+
+.cardio-toast {
+  display: block !important;
+  text-align: left !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  font-weight: 850 !important;
+}
+
+.cardio-toast > span {
+  color: #fff !important;
+}
+
+.accqua-engagement-toast {
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 11px !important;
+  text-align: left !important;
+}
+
+.accqua-engagement-toast > span {
+  width: 36px !important;
+  height: 36px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 12px !important;
+  color: var(--yellow) !important;
+  background: rgba(255, 209, 30, .10) !important;
+}
+
+.accqua-engagement-toast strong {
+  display: block !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  font-weight: 900 !important;
+}
+
+.accqua-engagement-toast p {
+  margin: 3px 0 0 !important;
+  color: rgba(226,235,247,.68) !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.workout-rest-confirmation {
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  align-items: center !important;
+  justify-items: stretch !important;
+  gap: 10px !important;
+  text-align: left !important;
+}
+
+.workout-rest-confirmation > span {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  color: var(--yellow) !important;
+  background: rgba(255,209,30,.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,209,30,.14) !important;
+}
+
+.workout-rest-confirmation > span svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.workout-rest-confirmation > strong {
+  max-width: none !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  line-height: 1.36 !important;
+  font-weight: 900 !important;
+}
+
+.workout-rest-confirmation > strong::after {
+  content: "Descanso atualizado · deslize para cima para dispensar";
+  display: block;
+  margin-top: 3px;
+  color: rgba(226,235,247,.55);
+  font-size: 9px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
 
 .accqua-pressable {
   -webkit-tap-highlight-color: transparent;
@@ -51,6 +285,20 @@
 @media (hover: hover) {
   .accqua-pressable:hover:not(:disabled) {
     opacity: var(--interactive-hover-opacity);
+  }
+}
+
+@media (max-width: 560px) {
+  [data-sonner-toaster] {
+    width: calc(100vw - 20px) !important;
+  }
+
+  .accqua-sonner-toast,
+  .workout-toast,
+  .cardio-toast,
+  .accqua-engagement-toast,
+  .workout-rest-confirmation {
+    border-radius: 18px !important;
   }
 }
 
