@@ -71,6 +71,33 @@
   box-shadow:0 8px 20px rgba(0,0,0,.2);
 }
 .accqua-swipe-item.is-open .accqua-swipe-content{box-shadow:-8px 0 22px rgba(0,0,0,.2)}
+
+/* Parceiros: a ação destrutiva fica recortada dentro do card, sem um bloco
+   vermelho chapado escapando pelas bordas enquanto a confirmação abre. */
+.profile-partners-swipe{
+  --accqua-swipe-radius:18px;
+}
+.profile-partners-swipe .accqua-swipe-delete{
+  inset:4px 4px 4px auto;
+  width:76px;
+  border-radius:13px;
+  background:rgba(111,34,41,.62);
+  box-shadow:inset 0 0 0 1px rgba(255,137,142,.12);
+}
+.profile-partners-swipe .accqua-swipe-delete>button{
+  width:76px;
+  color:#ffd9db;
+  background:linear-gradient(180deg,rgba(132,40,47,.78),rgba(82,25,32,.78));
+  box-shadow:none;
+}
+.profile-partners-swipe .accqua-swipe-delete svg{
+  width:18px;
+  height:18px;
+}
+.profile-partners-swipe.is-open .accqua-swipe-content{
+  box-shadow:-6px 0 18px rgba(0,0,0,.18);
+}
+
 @media (hover:hover) and (pointer:fine){
   .accqua-swipe-item{overflow:visible;background:transparent}
   .accqua-swipe-delete{display:none}
