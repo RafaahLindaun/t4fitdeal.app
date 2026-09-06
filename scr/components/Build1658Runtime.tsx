@@ -1,6 +1,22 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
+function syncCardioReviewCopy() {
+  const toggle = document.querySelector<HTMLElement>(".admin-builder-cardio-toggle");
+  if (!toggle) return;
+
+  const eyebrow = toggle.querySelector<HTMLElement>("div > small");
+  const state = toggle.querySelector<HTMLElement>(".admin-builder-cardio-state-label");
+  const enabled = toggle.getAttribute("aria-pressed") === "true";
+
+  if (eyebrow && eyebrow.textContent !== "REVISÃO · CARDIO") {
+    eyebrow.textContent = "REVISÃO · CARDIO";
+  }
+
+  const nextState = enabled ? "Cardio incluído" : "Sem cardio";
+  if (state && state.textContent !== nextState) state.textContent = nextState;
+}
+
 export default function Build1658Runtime() {
   const location = useLocation();
 
@@ -16,6 +32,8 @@ export default function Build1658Runtime() {
     const bind = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
+        syncCardioReviewCopy();
+
         const nextShell = document.querySelector<HTMLElement>(".admin-builder-shell");
         const nextFooter = document.querySelector<HTMLElement>(".admin-builder-footer");
         if (!nextShell || !nextFooter) return;
@@ -64,7 +82,12 @@ export default function Build1658Runtime() {
 
     bind();
     const observer = new MutationObserver(bind);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-pressed"],
+    });
 
     return () => {
       window.cancelAnimationFrame(frame);
