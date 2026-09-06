@@ -7,6 +7,8 @@ function TrashIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
+const SPRING = { type: "spring" as const, stiffness: 520, damping: 42, mass: 0.7 };
+
 export default function SwipeableListItem({
   children,
   onDelete,
@@ -27,7 +29,7 @@ export default function SwipeableListItem({
 
   const settle = (target: number) => {
     if (reduceMotion) { x.set(target); return; }
-    animate(x, target, { type: "spring", stiffness: 520, damping: 42, mass: 0.7 });
+    animate(x, target, SPRING);
   };
   const reveal = () => {
     if (disabled) return;
@@ -38,11 +40,18 @@ export default function SwipeableListItem({
     setOpen(false);
     settle(0);
   };
+  const closeBeforeAction = async () => {
+    setOpen(false);
+    if (reduceMotion) {
+      x.set(0);
+      return;
+    }
+    await animate(x, 0, SPRING);
+  };
   const remove = async () => {
     if (disabled) return;
-    // Fecha a ação revelada antes de qualquer confirmação/modal. Assim a faixa
-    // destrutiva nunca fica aparecendo por trás da janela de confirmação.
-    close();
+    // A confirmação só abre depois que a faixa destrutiva terminou de recolher.
+    await closeBeforeAction();
     await onDelete();
   };
 
