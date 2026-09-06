@@ -6,6 +6,8 @@ const SOURCE_SELECTOR = [
   ".cardio-toast",
   ".accqua-engagement-toast",
   ".workout-rest-confirmation",
+  ".accqua-profile-toast",
+  ".accqua-menu-toast",
 ].join(",");
 
 const TOAST_DURATION = 4200;
@@ -34,6 +36,22 @@ function messageFromSource(element: HTMLElement) {
     return {
       title: "Cardio",
       description: message || "Atualização do seu cardio.",
+    };
+  }
+
+  if (element.matches(".accqua-profile-toast")) {
+    const message = cleanText(element.textContent);
+    return {
+      title: "Perfil",
+      description: message || "Seu perfil foi atualizado.",
+    };
+  }
+
+  if (element.matches(".accqua-menu-toast")) {
+    const message = cleanText(element.textContent);
+    return {
+      title: "ACCQUA",
+      description: message || "Ação concluída.",
     };
   }
 
