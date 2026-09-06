@@ -135,15 +135,6 @@ export default function ProfileTabsBridge() {
       void runTransition("back", () => back.click());
     };
 
-    const interceptPartnerTab = (event: MouseEvent) => {
-      const target = event.target instanceof Element ? event.target : null;
-      const profileTab = target?.closest<HTMLButtonElement>(".profile-partners-panel .profile-partners-tabs button:first-child");
-      if (!profileTab) return;
-      event.preventDefault();
-      event.stopPropagation();
-      openMain();
-    };
-
     let pointerId: number | null = null;
     let startX = 0;
     let startY = 0;
@@ -193,13 +184,15 @@ export default function ProfileTabsBridge() {
       if (pointerId !== null && event.pointerId === pointerId) clearGesture();
     };
 
-    document.addEventListener("click", interceptPartnerTab, true);
+    const openMainEvent = () => openMain();
+
+    window.addEventListener("accqua:profile-open-main", openMainEvent);
     document.addEventListener("pointerdown", pointerDown, { passive: true });
     document.addEventListener("pointerup", pointerUp, { passive: true });
     document.addEventListener("pointercancel", pointerCancel, { passive: true });
 
     return () => {
-      document.removeEventListener("click", interceptPartnerTab, true);
+      window.removeEventListener("accqua:profile-open-main", openMainEvent);
       document.removeEventListener("pointerdown", pointerDown);
       document.removeEventListener("pointerup", pointerUp);
       document.removeEventListener("pointercancel", pointerCancel);
