@@ -2,9 +2,11 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const SWIPE_DISTANCE = 64;
-const SWIPE_MAX_VERTICAL = 56;
-const SWIPE_MAX_DURATION = 680;
+const SWIPE_DISTANCE = 56;
+const SWIPE_FAST_DISTANCE = 38;
+const SWIPE_FAST_MS = 260;
+const SWIPE_MAX_VERTICAL = 60;
+const SWIPE_MAX_DURATION = 720;
 const IOS_EDGE_GUARD = 22;
 const CLICK_SUPPRESS_MS = 420;
 
@@ -46,9 +48,9 @@ async function animateViewChange(direction: SwipeDirection, action: () => void) 
     await current.animate(
       [
         { transform: "translate3d(0,0,0)", opacity: 1 },
-        { transform: `translate3d(${currentExitSign * 22}px,0,0)`, opacity: 0.74 },
+        { transform: `translate3d(${currentExitSign * 24}px,0,0)`, opacity: 0.72 },
       ],
-      { duration: 122, easing: "cubic-bezier(.4,0,1,1)" },
+      { duration: 118, easing: "cubic-bezier(.4,0,1,1)" },
     ).finished;
   } catch {
     // A troca pode desmontar a view antes do fim da animação.
@@ -62,10 +64,10 @@ async function animateViewChange(direction: SwipeDirection, action: () => void) 
       if (!next || reducedMotion()) return;
       next.animate(
         [
-          { transform: `translate3d(${-currentExitSign * 28}px,0,0)`, opacity: 0.68 },
+          { transform: `translate3d(${-currentExitSign * 30}px,0,0)`, opacity: 0.66 },
           { transform: "translate3d(0,0,0)", opacity: 1 },
         ],
-        { duration: 290, easing: "cubic-bezier(.16,1,.3,1)" },
+        { duration: 300, easing: "cubic-bezier(.16,1,.3,1)" },
       );
     });
   });
@@ -125,26 +127,29 @@ export default function ProfileTabsBridge() {
       if (transitionLock.current) return;
       transitionLock.current = true;
       await animateViewChange(direction, action);
-      window.setTimeout(() => { transitionLock.current = false; }, 330);
+      window.setTimeout(() => { transitionLock.current = false; }, 340);
     };
 
+    // Ordem espacial no celular: Aulas | Perfil | Parceiros.
+    // Portanto: esquerda no Perfil -> Parceiros; direita no Perfil -> Aulas;
+    // direita em Parceiros -> Perfil.
     const openPartners = () => {
       if (!isMainView()) return;
       const realButton = document.querySelector<HTMLButtonElement>(".profile-stat-partners");
       if (!realButton) return;
-      void runTransition("right", () => realButton.click());
+      void runTransition("left", () => realButton.click());
     };
 
     const openMain = () => {
       if (!isPartnersView()) return;
       const back = document.querySelector<HTMLButtonElement>(".accqua-profile-header button[aria-label='Voltar']");
       if (!back) return;
-      void runTransition("left", () => back.click());
+      void runTransition("right", () => back.click());
     };
 
     const openClasses = () => {
       if (!isMainView()) return;
-      void runTransition("left", () => navigate("/aulas"));
+      void runTransition("right", () => navigate("/aulas"));
     };
 
     let pointerId: number | null = null;
@@ -181,20 +186,22 @@ export default function ProfileTabsBridge() {
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
       const duration = performance.now() - startedAt;
-      const horizontalEnough = Math.abs(dx) >= SWIPE_DISTANCE
-        && Math.abs(dy) <= Math.min(SWIPE_MAX_VERTICAL, Math.abs(dx) * 0.62);
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      const distanceEnough = absX >= SWIPE_DISTANCE || (absX >= SWIPE_FAST_DISTANCE && duration <= SWIPE_FAST_MS);
+      const horizontalIntent = absX > absY * 1.35;
+      const verticalSafe = absY <= Math.min(SWIPE_MAX_VERTICAL, absX * 0.68);
       const fastEnough = duration <= SWIPE_MAX_DURATION;
-      const partnersToProfile = startedInPartners && dx <= -SWIPE_DISTANCE;
-      const profileToClasses = startedInMain && dx <= -SWIPE_DISTANCE;
-      const profileToPartners = startedInMain && dx >= SWIPE_DISTANCE;
+      const startedFromMain = startedInMain;
+      const startedFromPartners = startedInPartners;
       clearGesture();
 
-      if (!horizontalEnough || !fastEnough) return;
+      if (!distanceEnough || !horizontalIntent || !verticalSafe || !fastEnough) return;
 
       suppressClickUntil.current = performance.now() + CLICK_SUPPRESS_MS;
-      if (partnersToProfile) openMain();
-      else if (profileToClasses) openClasses();
-      else if (profileToPartners) openPartners();
+      if (startedFromPartners && dx > 0) openMain();
+      else if (startedFromMain && dx < 0) openPartners();
+      else if (startedFromMain && dx > 0) openClasses();
     };
 
     const pointerCancel = (event: PointerEvent) => {
@@ -233,8 +240,8 @@ export default function ProfileTabsBridge() {
     const realButton = document.querySelector<HTMLButtonElement>(".profile-stat-partners");
     if (!realButton) return;
     transitionLock.current = true;
-    void animateViewChange("right", () => realButton.click()).finally(() => {
-      window.setTimeout(() => { transitionLock.current = false; }, 330);
+    void animateViewChange("left", () => realButton.click()).finally(() => {
+      window.setTimeout(() => { transitionLock.current = false; }, 340);
     });
   };
 
