@@ -49,7 +49,6 @@ function syncAvatarPartnerAction(button: HTMLButtonElement) {
     proxy.setAttribute("role", "button");
     proxy.tabIndex = 0;
     proxy.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
       event.stopPropagation();
     });
     proxy.addEventListener("click", (event) => {
@@ -70,10 +69,12 @@ function syncAvatarPartnerAction(button: HTMLButtonElement) {
     avatar.appendChild(proxy);
   }
 
-  proxy.dataset.partnerState = state;
   proxy.setAttribute("aria-label", ariaForState(state));
   proxy.setAttribute("aria-disabled", button.disabled ? "true" : "false");
-  proxy.replaceChildren(personPlusSvg(state));
+  if (proxy.dataset.partnerState !== state) {
+    proxy.dataset.partnerState = state;
+    proxy.replaceChildren(personPlusSvg(state));
+  }
 }
 
 function cleanupLegacyCompactUi() {
