@@ -77,11 +77,12 @@ export default function ProfileTrainingPartners() {
   const incoming = visibleRelations.filter((item) => item.status === "incoming_pending");
   const outgoing = visibleRelations.filter((item) => item.status === "outgoing_pending");
   const acceptedTotal = relations.filter((item) => item.status === "accepted").length;
+  const openProfile = () => window.dispatchEvent(new CustomEvent("accqua:profile-open-main"));
 
   return (
     <section className="profile-partners-panel" aria-label="Meus parceiros de treino">
       <nav className="profile-partners-tabs" aria-label="Perfil e parceiros">
-        <button type="button" onClick={() => window.location.assign("/perfil")}>Perfil</button>
+        <button type="button" onClick={openProfile}>Perfil</button>
         <button type="button" className="is-active" aria-current="page">Parceiros</button>
       </nav>
 
