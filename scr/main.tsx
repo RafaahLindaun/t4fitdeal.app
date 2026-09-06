@@ -43,6 +43,7 @@ import "./styles/builder-menu-1.6.5.8.css";
 import "./styles/build-1.6.5.9.css";
 import "./styles/profile-ranking-1.6.5.9-r2.css";
 import "./styles/interaction-polish-1.6.5.9.css";
+import "./styles/build-1.6.5.9-r3.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
