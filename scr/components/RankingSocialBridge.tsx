@@ -1,53 +1,86 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-function personPlusSvg() {
+function personPlusSvg(state: string) {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
-  svg.innerHTML = '<path d="M15 19c0-3-2.2-5-5-5s-5 2-5 5"/><circle cx="10" cy="8" r="3.2"/><path d="M18 7v6M15 10h6"/>';
+  if (state === "accepted") {
+    svg.innerHTML = '<path d="m6.5 12.5 3.2 3.2 7.8-8"/>';
+  } else if (state === "pending") {
+    svg.innerHTML = '<circle cx="12" cy="12" r="7"/><path d="M12 8v4l2.5 1.5"/>';
+  } else {
+    svg.innerHTML = '<path d="M15 19c0-3-2.2-5-5-5s-5 2-5 5"/><circle cx="10" cy="8" r="3.2"/><path d="M18 7v6M15 10h6"/>';
+  }
   return svg;
 }
 
-function decoratePartnerButton(button: HTMLButtonElement) {
-  if (button.dataset.compactPartner1659 === "1") return;
+function stateFromButton(button: HTMLButtonElement) {
   const original = button.textContent?.trim() ?? "";
-  const state = original.includes("Convite enviado")
-    ? "pending"
-    : original.includes("Parceiro")
-      ? "accepted"
-      : original.includes("Aceitar")
-        ? "incoming"
-        : original.includes("Aguarde")
-          ? "busy"
-          : "add";
+  if (original.includes("Convite enviado")) return "pending";
+  if (original.includes("Parceiro")) return "accepted";
+  if (original.includes("Aceitar")) return "incoming";
+  if (original.includes("Aguarde")) return "busy";
+  return "add";
+}
+
+function ariaForState(state: string) {
+  if (state === "pending") return "Convite de parceria enviado";
+  if (state === "accepted") return "Parceiro de treino";
+  if (state === "incoming") return "Aceitar convite de parceria";
+  if (state === "busy") return "Atualizando parceria";
+  return "Adicionar parceiro de treino";
+}
+
+function syncAvatarPartnerAction(button: HTMLButtonElement) {
+  const state = stateFromButton(button);
   button.dataset.partnerState = state;
-  button.dataset.compactPartner1659 = "1";
-  button.setAttribute(
-    "aria-label",
-    state === "pending" ? "Convite de parceria enviado" : state === "accepted" ? "Parceiro de treino" : state === "incoming" ? "Aceitar convite de parceria" : "Adicionar parceiro",
-  );
+  button.dataset.avatarPartnerProxy = "1";
 
-  const avatar = document.querySelector<HTMLImageElement>(".ranking-profile-header .ranking-profile-avatar img");
-  const fallback = document.querySelector<HTMLElement>(".ranking-profile-header .ranking-profile-avatar")?.textContent?.trim().slice(0, 2) || "AS";
-  button.replaceChildren();
+  const avatar = document.querySelector<HTMLElement>(".ranking-profile-header .ranking-profile-avatar");
+  if (!avatar) return;
+  avatar.classList.add("has-partner-action");
 
-  const mini = document.createElement("span");
-  mini.className = "ranking-partner-mini-avatar";
-  if (avatar?.src) {
-    const image = document.createElement("img");
-    image.src = avatar.src;
-    image.alt = "";
-    mini.appendChild(image);
-  } else {
-    mini.textContent = fallback;
+  let proxy = avatar.querySelector<HTMLElement>(".ranking-profile-avatar-partner-action");
+  if (!proxy) {
+    proxy = document.createElement("span");
+    proxy.className = "ranking-profile-avatar-partner-action";
+    proxy.setAttribute("role", "button");
+    proxy.tabIndex = 0;
+    proxy.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    proxy.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const source = document.querySelector<HTMLButtonElement>(".ranking-profile-add[data-avatar-partner-proxy='1']");
+      if (!source || source.disabled) return;
+      source.click();
+    });
+    proxy.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      event.stopPropagation();
+      const source = document.querySelector<HTMLButtonElement>(".ranking-profile-add[data-avatar-partner-proxy='1']");
+      if (!source || source.disabled) return;
+      source.click();
+    });
+    avatar.appendChild(proxy);
   }
 
-  const glyph = document.createElement("span");
-  glyph.className = "ranking-partner-person-plus";
-  glyph.appendChild(personPlusSvg());
-  button.append(mini, glyph);
+  proxy.dataset.partnerState = state;
+  proxy.setAttribute("aria-label", ariaForState(state));
+  proxy.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+  proxy.replaceChildren(personPlusSvg(state));
+}
+
+function cleanupLegacyCompactUi() {
+  document.querySelectorAll(".ranking-partner-mini-avatar,.ranking-partner-person-plus").forEach((element) => element.remove());
+  document.querySelectorAll<HTMLButtonElement>(".ranking-profile-add").forEach((button) => {
+    button.removeAttribute("data-compact-partner1659");
+  });
 }
 
 export default function RankingSocialBridge() {
@@ -59,18 +92,20 @@ export default function RankingSocialBridge() {
     const scan = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        document.querySelectorAll<HTMLButtonElement>(".ranking-profile-add").forEach((button) => {
-          if (button.dataset.compactPartner1659 === "1") {
-            const hasReactText = /Adicionar|Convite|Parceiro|Aceitar|Aguarde/.test(button.textContent ?? "");
-            if (hasReactText) delete button.dataset.compactPartner1659;
-          }
-          decoratePartnerButton(button);
-        });
+        cleanupLegacyCompactUi();
+        document.querySelectorAll<HTMLButtonElement>(".ranking-profile-add").forEach(syncAvatarPartnerAction);
       });
     };
+
     scan();
     const observer = new MutationObserver(scan);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["disabled", "class"],
+    });
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
