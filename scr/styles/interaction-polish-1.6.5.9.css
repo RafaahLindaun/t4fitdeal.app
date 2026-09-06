@@ -96,6 +96,74 @@
   transform: scale(.965) !important;
 }
 
+/* Parceiros: o estado destrutivo fica recortado atrás do card. O vermelho deixa
+   de ser um bloco e passa a existir somente como sinal semântico no ícone/texto. */
+.profile-partners-swipe {
+  overflow: hidden !important;
+  isolation: isolate !important;
+  background: transparent !important;
+}
+
+.profile-partners-swipe .accqua-swipe-delete {
+  z-index: 0 !important;
+  top: 7px !important;
+  right: 7px !important;
+  bottom: 7px !important;
+  width: 70px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,126,134,.16) !important;
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, rgba(9,38,72,.98), rgba(5,25,51,.98)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.profile-partners-swipe .accqua-swipe-delete > button {
+  width: 70px !important;
+  border-radius: 11px !important;
+  color: #ff858c !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.profile-partners-swipe .accqua-swipe-delete > button span {
+  color: #ff9ca1 !important;
+}
+
+.profile-partners-swipe > .accqua-swipe-content {
+  z-index: 2 !important;
+  overflow: hidden !important;
+  border-radius: 19px !important;
+  background: #08264d !important;
+}
+
+.profile-partners-swipe > .accqua-swipe-content > .profile-partner-card {
+  position: relative !important;
+  z-index: 2 !important;
+  background: linear-gradient(145deg, rgba(13,49,89,.99), rgba(7,35,69,.99)) !important;
+}
+
+/* Fontes antigas de mensagens são espelhadas para o toaster global. Esta regra
+   garante que nunca exista uma segunda caixa gigante por baixo da notificação. */
+.accqua-ephemeral-source-hidden {
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  min-width: 0 !important;
+  max-width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  max-height: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  clip-path: inset(50%) !important;
+}
+
 @media (max-width: 560px) {
   .profile-main-tabs-host {
     padding-top: 3px !important;
