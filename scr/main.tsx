@@ -8,6 +8,7 @@ import ProfileHighlights from "./components/ProfileHighlights";
 import Round2RuntimeEnhancements from "./components/Round2RuntimeEnhancements";
 import Build1658Runtime from "./components/Build1658Runtime";
 import RealtimeNotificationBridge from "./components/RealtimeNotificationBridge";
+import EphemeralMessageBridge from "./components/EphemeralMessageBridge";
 import ProfileTabsBridge from "./components/ProfileTabsBridge";
 import RankingSocialBridge from "./components/RankingSocialBridge";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
@@ -72,6 +73,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <Round2RuntimeEnhancements />
           <Build1658Runtime />
           <RealtimeNotificationBridge />
+          <EphemeralMessageBridge />
           <ProfileTabsBridge />
           <RankingSocialBridge />
         </AuthProvider>
