@@ -8,7 +8,7 @@ const SWIPE_MAX_DURATION = 680;
 const IOS_EDGE_GUARD = 22;
 const CLICK_SUPPRESS_MS = 420;
 
-type SpatialDestination = "left" | "right";
+type SwipeDirection = "left" | "right";
 
 function profileContent() {
   return document.querySelector<HTMLElement>(".accqua-profile-content");
@@ -33,12 +33,9 @@ function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-async function animateViewChange(destination: SpatialDestination, action: () => void) {
+async function animateViewChange(direction: SwipeDirection, action: () => void) {
   const current = profileContent();
-  // A página de destino fica espacialmente à esquerda ou à direita da atual.
-  // Para ir à esquerda, a página atual acompanha o dedo para a direita; para ir
-  // à direita, a atual acompanha para a esquerda.
-  const currentExitSign = destination === "left" ? 1 : -1;
+  const currentExitSign = direction === "left" ? -1 : 1;
 
   if (!current || reducedMotion()) {
     action();
@@ -124,10 +121,10 @@ export default function ProfileTabsBridge() {
   useEffect(() => {
     if (location.pathname !== "/perfil") return;
 
-    const runTransition = async (destination: SpatialDestination, action: () => void) => {
+    const runTransition = async (direction: SwipeDirection, action: () => void) => {
       if (transitionLock.current) return;
       transitionLock.current = true;
-      await animateViewChange(destination, action);
+      await animateViewChange(direction, action);
       window.setTimeout(() => { transitionLock.current = false; }, 330);
     };
 
