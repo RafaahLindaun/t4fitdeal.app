@@ -18,14 +18,6 @@ export default function RealtimeNotificationBridge() {
       window.dispatchEvent(new CustomEvent("accqua:notifications:changed"));
     };
 
-    const refreshPartners = () => {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["training-partners", "mine"] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partners", "count"] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partner-status"] }),
-      ]);
-    };
-
     const direct = supabase
       .channel(`accqua-direct-notifications-${user.id}`)
       .on(
@@ -44,19 +36,9 @@ export default function RealtimeNotificationBridge() {
       )
       .subscribe();
 
-    const partners = supabase
-      .channel(`accqua-training-partners-${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "accqua_training_partners" },
-        refreshPartners,
-      )
-      .subscribe();
-
     return () => {
       void supabase.removeChannel(direct);
       void supabase.removeChannel(central);
-      void supabase.removeChannel(partners);
     };
   }, [queryClient, user?.id]);
 
