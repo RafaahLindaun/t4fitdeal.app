@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import AccquaLogo from "../components/AccquaLogo";
 import AppBackIcon from "../components/AppBackIcon";
@@ -17,16 +16,7 @@ import {
   type RankingEntry,
   type RankingPrize,
 } from "../lib/ranking";
-import {
-  loadPublicWorkoutSummary,
-  loadRankingProfileSummary165,
-} from "../lib/rankingSocial";
-import {
-  acceptTrainingPartner,
-  getTrainingPartnerStatus,
-  requestTrainingPartner,
-  type TrainingPartnerStatus,
-} from "../lib/trainingPartners";
+import { loadRankingProfileSummary165 } from "../lib/rankingSocial";
 import {
   accquaOverlayTransition,
   accquaOverlayVariants,
@@ -77,9 +67,11 @@ function rankingAchievement(memberSince: string) {
 function InfoIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10.4v6"/><circle cx="12" cy="7.2" r=".9" fill="currentColor" stroke="none"/></svg>;
 }
+
 function GiftIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 7h18v3H3z"/><path d="M12 7v13"/><path d="M12 7c-2.8 0-5-1-5-2.8C7 2.8 8 2 9.2 2 11 2 12 4.2 12 7Zm0 0c2.8 0 5-1 5-2.8C17 2.8 16 2 14.8 2 13 2 12 4.2 12 7Z"/></svg>;
 }
+
 function Medal({ position }: { position: 1 | 2 | 3 }) {
   return <span className={`ranking-medal ranking-medal-${position}`} aria-hidden="true">{position}</span>;
 }
@@ -113,44 +105,17 @@ function PrizeDialog({ open, onClose, prize, entry }: { open: boolean; onClose: 
   </ResponsiveDialog>;
 }
 
-function partnerButtonCopy(status: TrainingPartnerStatus, busy: boolean) {
-  if (busy) return "Aguarde…";
-  if (status === "accepted") return "✓ Parceiro";
-  if (status === "outgoing_pending") return "Convite enviado";
-  if (status === "incoming_pending") return "Aceitar parceria";
-  return "+ Adicionar";
-}
-
 function RankingProfileSkeleton() {
   return <div className="ranking-profile-skeleton" aria-label="Carregando perfil"><span/><span/><span/><span/><span className="is-wide"/></div>;
 }
 
-function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto, onWorkout }: { entry: RankingEntry | null; currentUserId: string; onClose: () => void; onPhoto: (entry: RankingEntry) => void; onWorkout: (entry: RankingEntry) => void }) {
-  const queryClient = useQueryClient();
+function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry: RankingEntry | null; currentUserId: string; onClose: () => void; onPhoto: (entry: RankingEntry) => void }) {
   const [visibleEntry, setVisibleEntry] = useState<RankingEntry | null>(entry);
 
   useEffect(() => { if (entry) setVisibleEntry(entry); }, [entry]);
   const activeEntry = entry ?? visibleEntry;
   const isMe = activeEntry?.studentId === currentUserId;
   const profileQuery = useQuery({ queryKey: ["ranking-profile", "1.6.5.7", activeEntry?.studentId], queryFn: () => loadRankingProfileSummary165(activeEntry!.studentId), enabled: Boolean(activeEntry?.studentId), staleTime: 30_000 });
-  const partnerStatusQuery = useQuery({ queryKey: ["training-partner-status", activeEntry?.studentId], queryFn: () => getTrainingPartnerStatus(activeEntry!.studentId), enabled: Boolean(activeEntry?.studentId && !isMe), staleTime: 15_000 });
-  const partnerMutation = useMutation({
-    mutationFn: async () => {
-      if (!activeEntry) return;
-      if (partnerStatusQuery.data === "incoming_pending") await acceptTrainingPartner(activeEntry.studentId);
-      else await requestTrainingPartner(activeEntry.studentId);
-    },
-    onSuccess: async () => {
-      toast.success(partnerStatusQuery.data === "incoming_pending" ? "Parceria aceita." : "Convite de parceria enviado.");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["training-partner-status", activeEntry?.studentId] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partners", "mine"] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partners", "count"] }),
-        queryClient.invalidateQueries({ queryKey: ["training-partner-candidates"] }),
-      ]);
-    },
-    onError: () => toast.error("Não foi possível atualizar a parceria agora."),
-  });
 
   useEffect(() => {
     if (!entry) return;
@@ -165,8 +130,6 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto, onWorkout
   const summary = profileQuery.data;
   const displayName = isMe ? "Você" : activeEntry.firstName;
   const achievement = summary ? rankingAchievement(summary.memberSince) : null;
-  const partnerStatus = partnerStatusQuery.data ?? "none";
-  const partnerDisabled = partnerStatusQuery.isLoading || partnerMutation.isPending || partnerStatus === "accepted" || partnerStatus === "outgoing_pending";
 
   return <AnimatePresence initial={false} onExitComplete={() => { if (!entry) setVisibleEntry(null); }}>
     {entry ? <motion.div key={`ranking-profile-${activeEntry.studentId}`} className="ranking-sheet-backdrop" role="presentation" onClick={onClose} variants={accquaOverlayVariants} initial="hidden" animate="visible" exit="exit" transition={accquaOverlayTransition} data-accqua-window-overlay data-accqua-motion-managed>
@@ -176,8 +139,6 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto, onWorkout
           {activeEntry.avatarUrl ? <button type="button" className="ranking-profile-avatar-button" onClick={() => onPhoto(activeEntry)}><span className="ranking-profile-avatar has-photo"><img src={activeEntry.avatarUrl} alt={`Foto de ${displayName}`}/></span></button> : <span className="ranking-profile-avatar" aria-hidden="true">{initials(activeEntry.firstName)}</span>}
           <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{activeEntry.points} dia{activeEntry.points === 1 ? "" : "s"} treinado{activeEntry.points === 1 ? "" : "s"} neste mês</p></div>
         </header>
-
-        {!isMe ? <div className="ranking-profile-social-actions"><button type="button" className={`ranking-profile-add ${partnerStatus === "accepted" ? "is-added" : ""}`} disabled={partnerDisabled} onClick={() => partnerMutation.mutate()}>{partnerButtonCopy(partnerStatus, partnerMutation.isPending || partnerStatusQuery.isLoading)}</button><button type="button" className="ranking-profile-workout-button" onClick={() => onWorkout(activeEntry)}>Ver treino</button></div> : <button type="button" className="ranking-profile-workout-button is-self" onClick={() => onWorkout(activeEntry)}>Ver meu treino</button>}
 
         {profileQuery.isLoading ? <RankingProfileSkeleton/> : !summary ? <div className="ranking-sheet-error"><p>Não foi possível carregar os detalhes deste perfil agora.</p></div> : <div className="ranking-profile-data">
           <article><span>Idade</span><strong>{summary.ageYears === null ? "Não informada" : `${summary.ageYears} anos`}</strong></article>
@@ -192,39 +153,12 @@ function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto, onWorkout
   </AnimatePresence>;
 }
 
-function repsLabel(sets: number, min: number, max: number) {
-  const reps = min && max && min !== max ? `${min}–${max}` : String(max || min || "—");
-  return `${sets || "—"}x${reps}`;
-}
-
-function RankingWorkoutModal({ entry, onBack }: { entry: RankingEntry | null; onBack: () => void }) {
-  const workoutQuery = useQuery({ queryKey: ["ranking-public-workout", "1.6.5.7", entry?.studentId], queryFn: () => loadPublicWorkoutSummary(entry!.studentId), enabled: Boolean(entry?.studentId), staleTime: 30_000 });
-
-  useEffect(() => {
-    if (!entry) return;
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onBack(); };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [entry, onBack]);
-
-  return <AnimatePresence initial={false}>{entry ? <motion.div className="ranking-workout-modal-backdrop" role="presentation" onClick={onBack} variants={accquaOverlayVariants} initial="hidden" animate="visible" exit="exit" transition={accquaOverlayTransition}>
-    <motion.section className="ranking-workout-modal" role="dialog" aria-modal="true" aria-label={`Treino atual de ${entry.firstName}`} onClick={(event) => event.stopPropagation()} variants={accquaWindowVariants.center} initial="hidden" animate="visible" exit="exit" transition={accquaWindowTransition}>
-      <header className="ranking-workout-modal-header"><button type="button" className="ranking-workout-modal-back" onClick={onBack} aria-label="Voltar ao perfil do Ranking"><AppBackIcon size={18}/></button><div><small>TREINO ATUAL</small><h2>Treino de {entry.firstName}</h2></div></header>
-      {workoutQuery.isLoading ? <div className="ranking-workout-loading"><span className="ranking-sheet-loading"><span/></span><p>Buscando treino ativo...</p></div> : workoutQuery.isError ? <div className="ranking-workout-empty"><strong>Não foi possível carregar o treino.</strong><p>Tente novamente em alguns instantes.</p></div> : !workoutQuery.data ? <div className="ranking-workout-empty"><strong>Sem treino publicado</strong><p>Este aluno ainda não tem um programa ativo.</p></div> : <>
-        <p className="ranking-workout-modal-meta">Divisão · {workoutQuery.data.split} · {workoutQuery.data.exercises} exercício{workoutQuery.data.exercises === 1 ? "" : "s"}</p>
-        {workoutQuery.data.exerciseItems.length ? <div className="ranking-workout-exercises">{workoutQuery.data.exerciseItems.map((item) => <article className="ranking-workout-exercise" key={item.id}><div><strong>{item.name}</strong><small>{item.muscleGroup}{item.equipment ? ` · ${item.equipment}` : ""}</small></div><span>{repsLabel(item.sets, item.repsMin, item.repsMax)}</span></article>)}</div> : <div className="ranking-workout-empty"><strong>Sem exercícios publicados</strong><p>O programa ativo ainda não possui exercícios disponíveis para visualização.</p></div>}
-      </>}
-    </motion.section>
-  </motion.div> : null}</AnimatePresence>;
-}
-
 export default function Ranking() {
   const navigate = useNavigate();
   const { user, loading, landingPath } = useAuth();
   const [infoOpen, setInfoOpen] = useState(false);
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<RankingEntry | null>(null);
-  const [workoutProfile, setWorkoutProfile] = useState<RankingEntry | null>(null);
   const [photo, setPhoto] = useState<RankingEntry | null>(null);
   const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6"], queryFn: loadAccquaRanking, staleTime: 20_000 });
   const prizeQuery = useQuery({ queryKey: ["ranking-prize", "current"], queryFn: () => loadRankingPrize(), staleTime: 60_000 });
@@ -242,5 +176,5 @@ export default function Ranking() {
     <header className="ranking-header"><button type="button" className="ranking-header-action ranking-back-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar"><AppBackIcon size={24}/></button><div className="ranking-header-logo"><AccquaLogo compact/></div><div className="ranking-header-actions"><button type="button" className="ranking-prize-fab" onClick={() => setPrizeOpen(true)} aria-label="Ver prêmio deste mês"><GiftIcon/></button><button type="button" className="ranking-info-fab" onClick={() => setInfoOpen(true)} aria-label="Como funciona o ranking"><InfoIcon/></button></div></header>
     <section className="ranking-title"><h1>Ranking</h1><p>Cada dia treinado soma pontos.</p></section>
     <section className="ranking-content">{rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <><section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section><div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></button>; })}</div></>}</section>
-  </main><RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)}/><PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/><RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => { setWorkoutProfile(null); setSelectedProfile(null); }} onPhoto={setPhoto} onWorkout={setWorkoutProfile}/><RankingWorkoutModal entry={workoutProfile} onBack={() => setWorkoutProfile(null)}/><ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/></div>;
+  </main><RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)}/><PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/><RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => setSelectedProfile(null)} onPhoto={setPhoto}/><ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/></div>;
 }
