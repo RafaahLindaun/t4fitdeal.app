@@ -9,8 +9,6 @@ import Round2RuntimeEnhancements from "./components/Round2RuntimeEnhancements";
 import Build1658Runtime from "./components/Build1658Runtime";
 import RealtimeNotificationBridge from "./components/RealtimeNotificationBridge";
 import EphemeralMessageBridge from "./components/EphemeralMessageBridge";
-import ProfileTabsBridge from "./components/ProfileTabsBridge";
-import RankingSocialBridge from "./components/RankingSocialBridge";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
 import { installStaffDestructiveActionGuard } from "./lib/staffDestructiveActions";
 import "./index.css";
@@ -44,6 +42,7 @@ import "./styles/build-1.6.5.9.css";
 import "./styles/profile-ranking-1.6.5.9-r2.css";
 import "./styles/interaction-polish-1.6.5.9.css";
 import "./styles/build-1.6.5.9-r3.css";
+import "./styles/retire-partners-1.6.5.9.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
@@ -75,8 +74,6 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <Build1658Runtime />
           <RealtimeNotificationBridge />
           <EphemeralMessageBridge />
-          <ProfileTabsBridge />
-          <RankingSocialBridge />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
