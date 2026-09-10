@@ -1,0 +1,266 @@
+/* ACCQUA Sports — Build 1.7.0
+   Onboarding, navegação, tours e estados iniciais. */
+
+:root {
+  --accqua-170-yellow: #ffd11e;
+  --accqua-170-navy: #06162c;
+  --accqua-170-panel: #0c1d36;
+  --accqua-170-muted: #aab8cf;
+}
+
+/* --------------------------------------------------------------------------
+   ONBOARDING PAGINADO
+   -------------------------------------------------------------------------- */
+.accqua-welcome-overlay-170 {
+  padding: max(18px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+}
+
+.accqua-welcome-card-170 {
+  width: min(430px, 100%) !important;
+  max-height: min(720px, calc(100dvh - 36px));
+  overflow: hidden;
+  padding: clamp(20px, 4.8vw, 28px) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 50% -14%, rgba(255,209,30,.09), transparent 36%),
+    linear-gradient(160deg, rgba(16,37,69,.98), rgba(6,22,44,.99)) !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  box-shadow: 0 28px 80px rgba(0,0,0,.38), inset 0 1px rgba(255,255,255,.05) !important;
+}
+
+.accqua-welcome-head-170 {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.accqua-welcome-logo-170 {
+  width: min(210px, 62vw);
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  margin: 0 0 15px;
+  padding: 0 0 13px;
+  position: relative;
+}
+
+.accqua-welcome-logo-170::before,
+.accqua-welcome-logo-170::after { display: none !important; content: none !important; }
+.accqua-welcome-logo-170 > * { max-width: 100%; }
+.accqua-welcome-logo-170::marker { display:none; }
+.accqua-welcome-logo-170 + span,
+.accqua-welcome-head-170 > span {
+  color: var(--accqua-170-yellow);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.accqua-welcome-logo-170::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 32%;
+  right: 32%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,209,30,.7), transparent);
+}
+
+.accqua-welcome-head-170 h2 {
+  margin: 8px 0 4px;
+  color: #fff;
+  font-size: clamp(27px, 7vw, 34px);
+  line-height: 1.02;
+  letter-spacing: -.035em;
+}
+
+.accqua-welcome-head-170 p {
+  margin: 0;
+  color: var(--accqua-170-muted) !important;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.accqua-welcome-stage-170 {
+  min-height: 224px;
+  margin-top: 15px;
+  display: grid;
+  place-items: stretch;
+}
+
+.accqua-welcome-slide-170 {
+  min-height: 216px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 18px;
+  border-radius: 23px;
+  border: 1px solid rgba(255,255,255,.07);
+  background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  text-align: center;
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+
+.accqua-welcome-slide-icon-170 {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 3px;
+  border-radius: 21px;
+  border: 1px solid rgba(255,209,30,.17);
+  background: rgba(255,209,30,.085);
+  color: var(--accqua-170-yellow);
+  box-shadow: 0 13px 30px rgba(0,0,0,.14);
+}
+.accqua-welcome-slide-icon-170 svg { width: 31px; height: 31px; }
+.accqua-welcome-slide-170 > strong { color:#fff; font-size:20px; line-height:1.1; }
+.accqua-welcome-slide-170 > p { max-width: 300px; margin:0; color:#b8c5d9 !important; font-size:14px; line-height:1.5; }
+
+.accqua-welcome-dots-170 {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  min-height:28px;
+  margin: 9px 0 12px;
+}
+.accqua-welcome-dots-170 button {
+  width:7px;
+  height:7px;
+  min-width:7px;
+  padding:0;
+  border:0;
+  border-radius:999px;
+  background:rgba(255,255,255,.18);
+  transition: width .24s cubic-bezier(.2,.8,.2,1), background .2s ease, opacity .2s ease;
+}
+.accqua-welcome-dots-170 button.is-complete { background:rgba(255,209,30,.45); }
+.accqua-welcome-dots-170 button.is-current { width:25px; background:var(--accqua-170-yellow); }
+
+.accqua-welcome-actions-170 { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:center; }
+.accqua-welcome-skip-170 {
+  min-width:65px;
+  height:48px;
+  border:0;
+  background:transparent;
+  color:#aebbd0;
+  font:inherit;
+  font-size:13px;
+  font-weight:800;
+}
+.accqua-welcome-start-170 {
+  width:100%;
+  height:48px;
+  min-height:48px;
+  margin:0 !important;
+  border-radius:15px !important;
+  background:var(--accqua-170-yellow) !important;
+  color:#07162d !important;
+  font-size:14px !important;
+  font-weight:900 !important;
+}
+
+@media (max-width:390px) {
+  .accqua-welcome-card-170 { padding:18px !important; border-radius:24px !important; }
+  .accqua-welcome-stage-170 { min-height:205px; }
+  .accqua-welcome-slide-170 { min-height:198px; padding:18px 14px; }
+  .accqua-welcome-slide-icon-170 { width:58px; height:58px; border-radius:19px; }
+}
+
+/* --------------------------------------------------------------------------
+   HOME — logo único e empty states guiados
+   -------------------------------------------------------------------------- */
+@media (min-width:1024px) {
+  .accqua-menu-header .accqua-menu-logo { display:none !important; }
+  .accqua-menu-header { justify-content:flex-end !important; }
+}
+.accqua-workout-hero-empty:not(.is-error) h2 { color:#fff; }
+.accqua-workout-hero-empty:not(.is-error) p { color:#aebbd0 !important; }
+.accqua-streak-card.is-empty-170 .accqua-streak-flame { filter:saturate(.72); opacity:.85; }
+
+/* --------------------------------------------------------------------------
+   LOADING ESPECÍFICO POR ROTA
+   -------------------------------------------------------------------------- */
+.accqua-route-skeleton-170 {
+  min-height:100dvh;
+  width:100%;
+  padding:max(22px,env(safe-area-inset-top)) 18px max(90px,env(safe-area-inset-bottom));
+  display:grid;
+  align-content:start;
+  gap:16px;
+  box-sizing:border-box;
+  background:#06162c;
+  overflow:hidden;
+}
+.accqua-route-skeleton-170 .skeleton-head { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.accqua-route-skeleton-170 .skeleton-logo { width:136px; height:30px; }
+.accqua-route-skeleton-170 .skeleton-actions { display:flex; gap:8px; }
+.accqua-route-skeleton-170 .skeleton-actions i { width:40px; height:40px; border-radius:14px; }
+.accqua-route-skeleton-170 .skeleton-title { width:min(230px,65%); height:32px; margin-top:8px; }
+.accqua-route-skeleton-170 .skeleton-card { width:100%; height:154px; border-radius:24px; }
+.accqua-route-skeleton-170 .skeleton-card.is-short { height:92px; }
+.accqua-route-skeleton-170 .skeleton-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.accqua-route-skeleton-170 .skeleton-grid i { height:120px; border-radius:20px; }
+.accqua-route-skeleton-170 i,
+.accqua-route-skeleton-170 span {
+  display:block;
+  background:linear-gradient(105deg,rgba(255,255,255,.045) 20%,rgba(255,255,255,.095) 37%,rgba(255,255,255,.045) 54%);
+  background-size:220% 100%;
+  animation:accqua-skeleton-shimmer-170 1.25s linear infinite;
+}
+@keyframes accqua-skeleton-shimmer-170 { to { background-position-x:-220%; } }
+
+/* --------------------------------------------------------------------------
+   TOUR GUIADO — spotlight no elemento real
+   -------------------------------------------------------------------------- */
+.accqua-tour-overlay-170 { position:fixed; inset:0; z-index:1850; pointer-events:none; }
+.accqua-tour-shade-170 { position:absolute; inset:0; background:rgba(1,7,18,.54); backdrop-filter:blur(1.5px); -webkit-backdrop-filter:blur(1.5px); }
+.accqua-tour-spotlight-170 {
+  position:fixed;
+  z-index:1;
+  border:2px solid rgba(255,209,30,.94);
+  border-radius:22px;
+  box-shadow:0 0 0 9999px rgba(1,7,18,.69), 0 0 0 5px rgba(255,209,30,.10), 0 18px 46px rgba(0,0,0,.26);
+  transition:left .26s cubic-bezier(.2,.8,.2,1), top .26s cubic-bezier(.2,.8,.2,1), width .26s cubic-bezier(.2,.8,.2,1), height .26s cubic-bezier(.2,.8,.2,1);
+}
+.accqua-tour-card-170 {
+  position:fixed;
+  z-index:2;
+  left:50%;
+  bottom:max(24px,calc(env(safe-area-inset-bottom) + 16px));
+  width:min(390px,calc(100vw - 28px));
+  transform:translateX(-50%);
+  pointer-events:auto;
+  padding:18px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:22px;
+  background:linear-gradient(155deg,rgba(16,37,68,.985),rgba(7,23,45,.995));
+  box-shadow:0 26px 70px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.04);
+}
+.accqua-tour-card-170 header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.accqua-tour-card-170 small { color:var(--accqua-170-yellow); font-size:10px; font-weight:900; letter-spacing:.13em; }
+.accqua-tour-card-170 h3 { margin:5px 0 7px; color:#fff; font-size:20px; line-height:1.12; }
+.accqua-tour-card-170 p { margin:0; color:#b5c2d6; font-size:13px; line-height:1.48; }
+.accqua-tour-card-170 .tour-close { width:36px; height:36px; flex:0 0 auto; display:grid; place-items:center; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:rgba(255,255,255,.035); color:#dce5f4; font-size:20px; }
+.accqua-tour-card-170 footer { margin-top:15px; display:flex; align-items:center; gap:12px; }
+.accqua-tour-card-170 footer > span { margin-right:auto; color:#8292ab; font-size:11px; font-weight:800; }
+.accqua-tour-card-170 footer button { min-height:42px; padding:0 16px; border:0; border-radius:13px; background:var(--accqua-170-yellow); color:#07162d; font:inherit; font-size:13px; font-weight:900; }
+.accqua-tour-reopen-170 { width:100%; margin-top:14px; min-height:48px; border:1px solid rgba(255,209,30,.2); border-radius:15px; background:rgba(255,209,30,.07); color:#ffd11e; font:inherit; font-size:13px; font-weight:850; }
+
+/* --------------------------------------------------------------------------
+   PERFIL / CONFIGURAÇÕES — capacidades reais do dispositivo
+   -------------------------------------------------------------------------- */
+.accqua-capability-note-170 { margin-top:8px; padding:11px 12px; border:1px solid rgba(255,255,255,.07); border-radius:13px; background:rgba(255,255,255,.026); color:#93a4bc; font-size:12px; line-height:1.4; }
+.accqua-capability-note-170 strong { color:#d8e2ef; }
+
+@media (prefers-reduced-motion:reduce) {
+  .accqua-route-skeleton-170 i,.accqua-route-skeleton-170 span { animation:none; }
+  .accqua-tour-spotlight-170 { transition:none; }
+}
