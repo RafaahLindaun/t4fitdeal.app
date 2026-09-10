@@ -42,6 +42,7 @@ import "./styles/profile-ranking-1.6.5.9-r2.css";
 import "./styles/interaction-polish-1.6.5.9.css";
 import "./styles/build-1.6.5.9-r3.css";
 import "./styles/retire-partners-1.6.5.9.css";
+import "./styles/build-1.7.0.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
@@ -50,6 +51,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
+      gcTime: 5 * 60_000,
       refetchOnWindowFocus: false,
       retry: 1,
     },
