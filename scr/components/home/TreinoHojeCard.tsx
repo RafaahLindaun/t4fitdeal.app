@@ -87,7 +87,6 @@ export default function TreinoHojeCard({
       resolvedOnce.current = true;
       previousCompleted.current = completedToday;
       if (completedToday) {
-        // Só anima quando a conclusão aconteceu nesta navegação da sessão.
         if (consumeWorkoutCompletionTransition(userId)) beginCompletion();
         else setPhase("hidden");
       } else {
@@ -103,7 +102,6 @@ export default function TreinoHojeCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedToday, statusLoading, userId]);
 
-  // Evita qualquer flash do hero no cold start quando o treino já chegou concluído.
   if (statusLoading || !initialized) return null;
 
   const progressPercentage = workout?.exerciseCount
@@ -172,9 +170,10 @@ export default function TreinoHojeCard({
                 <p>{workout.reason || "Tente novamente em instantes. Sua ficha não foi removida."}</p>
               </div>
             ) : (
-              <div className="accqua-workout-hero-empty">
-                <h2>Seu próximo treino aparece aqui</h2>
-                <p>{workout?.reason || "Quando uma ficha for atribuída pelo professor, você começa direto por este card."}</p>
+              <div className="accqua-workout-hero-empty is-guided-170">
+                <h2>Vamos começar sua jornada?</h2>
+                <p>Assim que seu professor publicar sua ficha, o treino do dia e seu progresso aparecem aqui automaticamente.</p>
+                <span className="accqua-workout-empty-hint-170">Fale com seu professor para preparar seu primeiro treino.</span>
               </div>
             )}
           </motion.section>
