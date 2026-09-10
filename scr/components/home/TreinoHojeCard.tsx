@@ -173,7 +173,6 @@ export default function TreinoHojeCard({
               <div className="accqua-workout-hero-empty is-guided-170">
                 <h2>Vamos começar sua jornada?</h2>
                 <p>Assim que seu professor publicar sua ficha, o treino do dia e seu progresso aparecem aqui automaticamente.</p>
-                <span className="accqua-workout-empty-hint-170">Fale com seu professor para preparar seu primeiro treino.</span>
               </div>
             )}
           </motion.section>
