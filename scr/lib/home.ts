@@ -70,49 +70,6 @@ function rowTimestamp(row: Row, candidates: string[]) {
   return "";
 }
 
-function rowMatchesUser(row: Row, userId: string) {
-  const identities = [row.user_id, row.student_id, row.aluno_id, row.profile_id, row.recipient_id]
-    .map(text)
-    .filter(Boolean);
-  return !identities.length || identities.includes(userId);
-}
-
-async function rowsByIdentity(
-  table: string,
-  userId: string,
-  columns: string[],
-  limit = 600,
-): Promise<Row[]> {
-  if (!isSupabaseConfigured) return [];
-
-  const merged = new Map<string, Row>();
-  let successful = false;
-
-  for (const column of columns) {
-    const response = await (supabase.from(table) as any)
-      .select("*")
-      .eq(column, userId)
-      .limit(limit);
-
-    if (response.error) continue;
-    successful = true;
-    for (const row of (response.data ?? []) as Row[]) {
-      const key = text(row.id) || `${column}:${JSON.stringify(row)}`;
-      merged.set(key, row);
-    }
-  }
-
-  return successful ? [...merged.values()] : [];
-}
-
-async function rowsByIds(table: string, ids: string[], column = "id") {
-  if (!isSupabaseConfigured || !ids.length) return [] as Row[];
-  const response = await (supabase.from(table) as any)
-    .select("*")
-    .in(column, ids);
-  return response.error ? [] : ((response.data ?? []) as Row[]);
-}
-
 function estimateWorkoutMinutes(exercises: WorkoutExerciseRecord[]) {
   const seconds = exercises.reduce((total, exercise, index) => {
     const sets = Math.max(1, numberValue(exercise.sets));
@@ -150,26 +107,29 @@ async function loadWorkoutSummary(userId: string): Promise<HomeWorkoutSummary> {
   let completedExercises = 0;
 
   if (isSupabaseConfigured) {
-    const sessions = await rowsByIdentity("workout_sessions", userId, ["student_id", "user_id", "aluno_id"], 120);
-    const todaySessions = sessions
-      .filter((row) => {
-        const planId = text(row.plan_id ?? row.workout_plan_id);
-        const timestamp = rowTimestamp(row, ["started_at", "completed_at", "created_at"]);
-        return planId === plan.id && localDayKey(timestamp) === todayKey && rowMatchesUser(row, userId);
-      })
-      .sort((a, b) => {
-        const aTime = new Date(rowTimestamp(a, ["started_at", "created_at", "completed_at"])).getTime() || 0;
-        const bTime = new Date(rowTimestamp(b, ["started_at", "created_at", "completed_at"])).getTime() || 0;
-        return bTime - aTime;
-      });
+    // Build 1.7.0: student_id é a identidade canônica de workout_sessions.
+    // Removidos os fallbacks user_id/aluno_id que geravam até 3 requests para a mesma informação.
+    const sessionsResponse = await supabase
+      .from("workout_sessions")
+      .select("id,plan_id,started_at,completed_at,created_at")
+      .eq("student_id", userId)
+      .eq("plan_id", plan.id)
+      .order("started_at", { ascending: false })
+      .limit(12);
 
+    const sessions = sessionsResponse.error ? [] : ((sessionsResponse.data ?? []) as Row[]);
+    const todaySessions = sessions.filter((row) => localDayKey(rowTimestamp(row, ["started_at", "completed_at", "created_at"])) === todayKey);
     const openSession = todaySessions.find((row) => !row.completed_at);
     const progressSession = openSession ?? todaySessions[0];
     sessionId = openSession ? text(openSession.id) || null : null;
 
     const progressSessionId = progressSession ? text(progressSession.id) : "";
     if (progressSessionId) {
-      const logs = await rowsByIds("workout_set_logs", [progressSessionId], "session_id");
+      const logsResponse = await supabase
+        .from("workout_set_logs")
+        .select("workout_exercise_id,exercise_id,exercicio_id,set_number,serie_numero")
+        .eq("session_id", progressSessionId);
+      const logs = logsResponse.error ? [] : ((logsResponse.data ?? []) as Row[]);
       const exerciseSetCounts = new Map<string, Set<number>>();
       for (const log of logs) {
         const exerciseId = text(log.workout_exercise_id ?? log.exercise_id ?? log.exercicio_id);
@@ -211,27 +171,7 @@ export async function loadHomeDashboard(userId: string): Promise<HomeDashboardDa
 
 export async function loadUnreadNotificationCount(userId: string) {
   if (!isSupabaseConfigured || !userId) return 0;
-
-  const currentCount = await loadUnreadNotificationCountV153(userId);
-  if (currentCount > 0) return currentCount;
-
-  // Fallback para registros legados anteriores à central 1.5.3.
-  const ids = new Set<string>();
-  let successful = false;
-  for (const identity of ["user_id", "student_id", "recipient_id"]) {
-    const response = await (supabase.from("notifications") as any)
-      .select("id,lida")
-      .eq(identity, userId)
-      .eq("lida", false)
-      .limit(100);
-
-    if (response.error) continue;
-    successful = true;
-    for (const row of (response.data ?? []) as Row[]) {
-      const id = text(row.id);
-      if (id) ids.add(id);
-    }
-  }
-
-  return successful ? ids.size : 0;
+  // V1.5.3 já soma a central atual + notifications legadas por user_id.
+  // O fallback antigo repetia a mesma busca por três colunas quando o total era zero.
+  return loadUnreadNotificationCountV153(userId);
 }
