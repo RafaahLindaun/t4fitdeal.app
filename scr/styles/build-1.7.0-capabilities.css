@@ -1,5 +1,9 @@
 /* ACCQUA Sports — Build 1.7.0 / capacidades reais e tema */
 
+/* A marca passa a aparecer limpa no onboarding: sem as duas barras decorativas antigas. */
+.accqua-welcome-card-170 .accqua-logo-line { display:none !important; }
+.accqua-welcome-card-170 .accqua-logo { gap:0 !important; }
+
 .accqua-workout-empty-hint-170 {
   display:inline-flex;
   margin-top:11px;
