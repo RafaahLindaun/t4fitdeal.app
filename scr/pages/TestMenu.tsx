@@ -263,7 +263,7 @@ export default function TestMenu() {
   const streakLabel = ritmo.streakDays === 1 ? "1 dia de sequência" : `${ritmo.streakDays} dias de sequência`;
   const plannedBadge = ritmo.plannedDays
     ? `${ritmo.completedPlannedDays}/${ritmo.plannedDays} treinos concluídos`
-    : "Plano sem dias definidos";
+    : "";
 
   return (
     <div className="accqua-menu-screen">
