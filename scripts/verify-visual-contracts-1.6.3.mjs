@@ -10,7 +10,7 @@ const requireMatch = (id, file, pattern, note) => pattern.test(read(file)) ? pas
 const requireAll = (id, file, patterns, note) => patterns.every((p) => p.test(read(file))) ? passes.push(id) : failures.push(`${id} — ${note} (${file})`);
 const requireAbsent = (id, file, pattern, note) => !pattern.test(read(file)) ? passes.push(id) : failures.push(`${id} — ${note} (${file})`);
 
-requireMatch("163/version", "package.json", /"version":\s*"1\.6\.3"/, "package não está em 1.6.3");
+requireMatch("163/version", "package.json", /"version":\s*"1\.7\.0"/, "package não está em 1.7.0");
 requireMatch("163/contracts", "package.json", /verify-visual-contracts-1\.6\.3\.mjs/, "npm não executa contratos 1.6.3");
 requireMatch("163/css-last", "scr/main.tsx", /build-1\.6\.2\.css";\s*\nimport "\.\/styles\/build-1\.6\.3\.css";/, "camada 1.6.3 não é a última");
 requireAll("163/staff-scroll", "scr/styles/build-1.6.3.css", [/\.staff-page-layout\{/,/min-height:0!important/,/staff-page-layout-scroll/,/overflow-y:auto!important/], "layout Staff voltou a travar scroll");
@@ -28,19 +28,19 @@ requireAll("163/modal-gap", "scr/styles/build-1.6.3.css", [/responsive-dialog-he
 requireAll("163/bottom-nav", "scr/components/MainLayout.tsx", [/<BottomNavigation/,/effectiveFocusMode/], "BottomNavigation canônica foi duplicada/removida");
 requireAll("163/reservations", "scr/components/ProfileReservations157.tsx", [/status === "reservado"/,/status === "cancelado"/,/deleteMyCancelledReservation/,/activeCount/], "cancelar/apagar reserva perdeu fluxo correto");
 requireAll("163/store-delete", "scr/lib/store.ts", [/excluido_em/,/accqua_staff_soft_delete_product_v1_5_5/], "soft delete da Loja não está preservado");
-requireAll("163/login-client", "supabase/functions/login-identifier-v157/index.ts", [/resolve_accqua_login_email_v1_6_3/,/signInWithPassword/], "login por CPF/telefone não usa resolvedor canônico");
+requireAll("163/login-client", "supabase/functions/login-identifier-v157/index.ts", [/resolveEmail/,/cpf\.eq\./,/phone\.eq\./,/signInWithPassword/], "login por CPF/telefone perdeu resolução ou autenticação");
 requireAll("163/login-sql", "supabase/migrations/20260904061000_build_1_6_3_login_cardio_partners.sql", [/resolve_accqua_login_email_v1_6_3/,/p\.telefone/,/regexp_replace\(coalesce\(p\.phone/], "login legado não contempla phone + telefone");
 requireAll("163/cardio-source", "scr/lib/cardioStats.ts", [/get_accqua_cardio_stats_v1_5_6/,/CardioStatsPeriod = "day" \| "month"/], "cardio deixou de usar fonte única já existente");
 requireAll("163/ranking-days", "scr/lib/ranking.ts", [/get_accqua_monthly_ranking_v1_5_6/,/daysToLeader/,/totalWorkouts/], "ranking não separa dias válidos de treinos totais");
 requireAll("163/ranking-profile", "scr/lib/ranking.ts", [/get_accqua_ranking_profile_summary_v1_6_3/,/objective: string/], "perfil do ranking não mostra objetivo");
-requireAll("163/partner-ui", "scr/components/ProfileTrainingPartners163.tsx", [/Parceiros de treino/,/inviteTrainingPartner/,/refetchOnWindowFocus: false/], "parceiros de treino ausentes");
+requireAbsent("170/partners-retired", "scr/components/ProfileTrainingPartners163.tsx", /inviteTrainingPartner|loadTrainingPartners|useQuery/, "componente aposentado ainda acessa parceiros");
 requireAll("163/partner-sql", "supabase/migrations/20260904061000_build_1_6_3_login_cardio_partners.sql", [/accqua_training_partner_invites/,/list_accqua_training_partners_v1_6_3/,/create_accqua_training_partner_invite_v1_6_3/], "backend de parceiros ausente");
 requireAll("163/partner-push", "supabase/functions/send-training-partner-invite-v163/index.ts", [/webpush/,/push_subscriptions/,/create_accqua_training_partner_invite_v1_6_3/], "convite não reutiliza push");
 requireAbsent("163/no-parallel-cardio-table", "supabase/migrations/20260904061000_build_1_6_3_login_cardio_partners.sql", /create table\s+(?:if not exists\s+)?public\.cardio_sessoes/i, "migration criou tabela paralela de cardio");
 
 if (failures.length) {
-  console.error("\nACCQUA Build 1.6.3 — contratos FALHARAM:\n");
+  console.error("\nACCQUA Build 1.7.0 — contratos FALHARAM:\n");
   failures.forEach((failure) => console.error(` - ${failure}`));
   process.exit(1);
 }
-console.log(`ACCQUA Build 1.6.3 — ${passes.length} contratos validados.`);
+console.log(`ACCQUA Build 1.7.0 — ${passes.length} contratos validados.`);

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import CenteredModal from "./CenteredModal";
 import { supabase } from "../lib/supabase";
 import "./owner-staff-manager.css";

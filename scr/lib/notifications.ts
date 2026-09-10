@@ -89,7 +89,7 @@ async function loadCentralNotifications(userId: string): Promise<AccquaNotificat
 
   const noticeMap = new Map(((notices.data ?? []) as Row[]).map((row) => [t(row.id), row]));
   return rows
-    .map((receipt) => {
+    .map((receipt): AccquaNotification | null => {
       const notice = noticeMap.get(t(receipt.notificacao_id));
       if (!notice) return null;
       return {

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ResponsiveDialog from "../ResponsiveDialog";
-import { MenuCheckinIcon } from "../MenuIcons";
 import { loadCheckinProviders, openCheckinProvider, type CheckinProvider } from "../../lib/checkin";
 
 const STORAGE_KEY = "accqua:preferred-checkin-provider";

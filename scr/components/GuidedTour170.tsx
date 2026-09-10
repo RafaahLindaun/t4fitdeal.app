@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { toast } from "sonner";
 
 type TourKey = "home" | "treino" | "cardio";
 type TourStep = { selector: string; title: string; body: string };
@@ -119,7 +120,12 @@ export default function GuidedTour170() {
     setReplay(false);
     if (!key || !mark || !user?.id) return;
     setSeen((value) => ({ ...value, [key]: new Date().toISOString() }));
-    await supabase.rpc("mark_my_accqua_tour_v1_7_0", { p_tour: key }).catch(() => undefined);
+    try {
+      const { error } = await supabase.rpc("mark_my_accqua_tour_v1_7_0", { p_tour: key });
+      if (error) throw error;
+    } catch {
+      toast.warning("Não foi possível salvar o tour. Ele poderá aparecer novamente no próximo acesso.");
+    }
   }, [activeTour, user?.id]);
 
   useEffect(() => {
