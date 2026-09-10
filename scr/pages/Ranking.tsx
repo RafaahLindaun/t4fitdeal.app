@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "../auth/AuthProvider";
 import AccquaLogo from "../components/AccquaLogo";
+import AppBackIcon from "../components/AppBackIcon";
 import LoadingSplash from "../components/LoadingSplash";
 import ProfilePhotoViewer from "../components/ProfilePhotoViewer";
 import ResponsiveDialog from "../components/ResponsiveDialog";
@@ -10,13 +12,19 @@ import ModalCloseButton from "../components/ModalCloseButton";
 import {
   loadAccquaRanking,
   loadRankingPrize,
-  loadRankingProfileSummary,
   loadRankingPrizeName,
   type RankingEntry,
-  type RankingProfileSummary,
   type RankingPrize,
 } from "../lib/ranking";
+import { loadRankingProfileSummary165 } from "../lib/rankingSocial";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 import "./ranking.css";
+import "./ranking-social.css";
 
 function initials(name: string) {
   return name.trim().slice(0, 2).toUpperCase() || "AS";
@@ -42,8 +50,18 @@ function formatAppTime(value: string) {
     : `${years} ${years === 1 ? "ano" : "anos"} no app`;
 }
 
-function BackIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7"/><path d="M8 12h11"/></svg>;
+function rankingAchievement(memberSince: string) {
+  const start = new Date(memberSince);
+  if (Number.isNaN(start.getTime())) return null;
+  const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / 86_400_000));
+  const levels = [
+    { days: 365, label: "LENDÁRIO" },
+    { days: 180, label: "IMPARÁVEL" },
+    { days: 90, label: "CONSISTENTE" },
+    { days: 50, label: "INSANO" },
+    { days: 30, label: "NO RITMO" },
+  ];
+  return levels.find((level) => days >= level.days) ?? null;
 }
 
 function InfoIcon() {
@@ -60,32 +78,19 @@ function Medal({ position }: { position: 1 | 2 | 3 }) {
 
 function PodiumEntry({ entry, position, currentUserId, onSelect }: { entry: RankingEntry; position: 1 | 2 | 3; currentUserId: string; onSelect: (entry: RankingEntry) => void }) {
   const isMe = entry.studentId === currentUserId;
-  return (
-    <button type="button" className={`ranking-podium-card is-position-${position} ${isMe ? "is-me" : ""}`} onClick={() => onSelect(entry)}>
-      <span className={`ranking-podium-avatar is-position-${position} ${entry.avatarUrl ? "has-photo" : ""}`}>
-        {entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}
-        <Medal position={position}/>
-      </span>
-      <strong>{isMe ? "Você" : entry.firstName}</strong>
-      {isMe ? <em className="ranking-you-badge">Você</em> : null}
-      <small>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"}</small>
-    </button>
-  );
+  return <button type="button" className={`ranking-podium-card is-position-${position} ${isMe ? "is-me" : ""}`} onClick={() => onSelect(entry)}>
+    <span className={`ranking-podium-avatar is-position-${position} ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}<Medal position={position}/></span>
+    <strong>{isMe ? "Você" : entry.firstName}</strong>{isMe ? <em className="ranking-you-badge">Você</em> : null}
+    <small>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"}</small>
+  </button>;
 }
 
 function RankingInfoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const prizeQuery = useQuery({ queryKey: ["ranking-config", "nome-premio"], queryFn: loadRankingPrizeName, enabled: open, staleTime: 5 * 60_000 });
   const prizeName = prizeQuery.data?.trim() || "um prêmio especial";
-  return (
-    <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Como funciona" description="Entenda como sua posição no Ranking ACCQUA é calculada." className="ranking-info-responsive-dialog" bodyClassName="ranking-info-dialog-body" closeButton={<button type="button" className="ranking-sheet-close" aria-label="Fechar">×</button>}>
-      <div className="ranking-info-list">
-        <article><strong>Dias treinados do mês</strong><p>Cada dia válido conta no máximo uma vez no ranking, mesmo que você registre mais de um treino no mesmo dia.</p></article>
-        <article><strong>Presença com lastro</strong><p>O dia só entra na disputa quando há matrícula válida naquela data ou presença registrada em uma aula.</p></article>
-        <article><strong>Prêmio para o 1º lugar</strong><p>Quem terminar o mês em primeiro lugar ganha: {prizeName}.</p></article>
-        <article><strong>Todo mês começa do zero</strong><p>No primeiro dia de cada mês começa um novo período de disputa.</p></article>
-      </div>
-    </ResponsiveDialog>
-  );
+  return <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Como funciona" description="Detalhes do Ranking ACCQUA." className="ranking-info-responsive-dialog" bodyClassName="ranking-info-dialog-body" closeButton={<button type="button" className="ranking-sheet-close" aria-label="Fechar">×</button>}>
+    <div className="ranking-info-list"><article><strong>Dias treinados do mês</strong><p>Cada dia válido conta no máximo uma vez, mesmo com mais de um treino no dia.</p></article><article><strong>Prêmio para o 1º lugar</strong><p>Quem terminar o mês em primeiro lugar ganha: {prizeName}.</p></article><article><strong>Novo mês, nova disputa</strong><p>No primeiro dia do mês o ranking recomeça.</p></article></div>
+  </ResponsiveDialog>;
 }
 
 function daysToMonthEnd() {
@@ -95,59 +100,57 @@ function daysToMonthEnd() {
 }
 
 function PrizeDialog({ open, onClose, prize, entry }: { open: boolean; onClose: () => void; prize: RankingPrize | null | undefined; entry: RankingEntry | undefined }) {
-  return (
-    <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Prêmio deste mês" description="Treine, suba no ranking e dispute o prêmio mensal." className="ranking-prize-responsive-dialog" bodyClassName="ranking-prize-dialog-body">
-      {!prize ? (
-        <div className="ranking-prize-empty"><GiftIcon/><strong>Prêmio deste mês ainda não anunciado</strong><p>Assim que a equipe publicar, ele aparece aqui.</p></div>
-      ) : (
-        <div className="ranking-prize-content">
-          {prize.imageUrl ? <img className="ranking-prize-image" src={prize.imageUrl} alt={prize.name}/> : <div className="ranking-prize-image-placeholder"><GiftIcon/></div>}
-          <div><h3>{prize.name}</h3>{prize.description ? <p>{prize.description}</p> : null}</div>
-          <div className="ranking-prize-progress">
-            {!entry ? <p>Faça seu primeiro treino do mês para entrar na disputa.</p> : entry.position === 1 ? <p>🏆 Você está em <strong>1º lugar</strong>! Continue treinando para garantir.</p> : <p>Você está em <strong>{entry.position}º lugar</strong> — faltam <strong>{entry.daysToLeader} dia{entry.daysToLeader === 1 ? "" : "s"} treinado{entry.daysToLeader === 1 ? "" : "s"}</strong> para alcançar o líder.</p>}
-          </div>
-          <small>⏳ Faltam {daysToMonthEnd()} dias para o fim do período. O ranking reinicia todo mês.</small>
-        </div>
-      )}
-    </ResponsiveDialog>
-  );
+  return <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Prêmio deste mês" description="Treine, suba no ranking e dispute o prêmio mensal." className="ranking-prize-responsive-dialog" bodyClassName="ranking-prize-dialog-body">
+    {!prize ? <div className="ranking-prize-empty"><GiftIcon/><strong>Prêmio deste mês ainda não anunciado</strong><p>Assim que a equipe publicar, ele aparece aqui.</p></div> : <div className="ranking-prize-content">{prize.imageUrl ? <img className="ranking-prize-image" src={prize.imageUrl} alt={prize.name}/> : <div className="ranking-prize-image-placeholder"><GiftIcon/></div>}<div><h3>{prize.name}</h3>{prize.description ? <p>{prize.description}</p> : null}</div><div className="ranking-prize-progress">{!entry ? <p>Faça seu primeiro treino do mês para entrar na disputa.</p> : entry.position === 1 ? <p>🏆 Você está em <strong>1º lugar</strong>! Continue treinando para garantir.</p> : <p>Você está em <strong>{entry.position}º lugar</strong> — faltam <strong>{entry.daysToLeader} dia{entry.daysToLeader === 1 ? "" : "s"} treinado{entry.daysToLeader === 1 ? "" : "s"}</strong> para alcançar o líder.</p>}</div><small>⏳ Faltam {daysToMonthEnd()} dias para o fim do período. O ranking reinicia todo mês.</small></div>}
+  </ResponsiveDialog>;
+}
+
+function RankingProfileSkeleton() {
+  return <div className="ranking-profile-skeleton" aria-label="Carregando perfil"><span/><span/><span/><span/><span className="is-wide"/></div>;
 }
 
 function RankingProfileSheet({ entry, currentUserId, onClose, onPhoto }: { entry: RankingEntry | null; currentUserId: string; onClose: () => void; onPhoto: (entry: RankingEntry) => void }) {
-  const [summary, setSummary] = useState<RankingProfileSummary | null>(null);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!entry) { setSummary(null); setLoading(false); return; }
-    let alive = true; setLoading(true); setSummary(null);
-    void loadRankingProfileSummary(entry.studentId).then((data) => { if (alive) setSummary(data); }).finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [entry?.studentId]);
+  const [visibleEntry, setVisibleEntry] = useState<RankingEntry | null>(entry);
+
+  useEffect(() => { if (entry) setVisibleEntry(entry); }, [entry]);
+  const activeEntry = entry ?? visibleEntry;
+  const isMe = activeEntry?.studentId === currentUserId;
+  const profileQuery = useQuery({ queryKey: ["ranking-profile", "1.6.5.7", activeEntry?.studentId], queryFn: () => loadRankingProfileSummary165(activeEntry!.studentId), enabled: Boolean(activeEntry?.studentId), staleTime: 30_000 });
+
   useEffect(() => {
     if (!entry) return;
-    const previousOverflow = document.body.style.overflow; document.body.style.overflow = "hidden";
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKeyDown);
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
   }, [entry, onClose]);
-  if (!entry) return null;
-  const displayName = entry.studentId === currentUserId ? "Você" : entry.firstName;
-  return (
-    <div className="ranking-sheet-backdrop" role="presentation" onClick={onClose}>
-      <section className="ranking-sheet ranking-profile-sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-        <span className="ranking-sheet-handle" aria-hidden="true"/><ModalCloseButton className="ranking-sheet-close" onClick={onClose} ariaLabel="Fechar perfil resumido"/>
+
+  if (!activeEntry) return null;
+  const summary = profileQuery.data;
+  const displayName = isMe ? "Você" : activeEntry.firstName;
+  const achievement = summary ? rankingAchievement(summary.memberSince) : null;
+
+  return <AnimatePresence initial={false} onExitComplete={() => { if (!entry) setVisibleEntry(null); }}>
+    {entry ? <motion.div key={`ranking-profile-${activeEntry.studentId}`} className="ranking-sheet-backdrop" role="presentation" onClick={onClose} variants={accquaOverlayVariants} initial="hidden" animate="visible" exit="exit" transition={accquaOverlayTransition} data-accqua-window-overlay data-accqua-motion-managed>
+      <motion.section className="ranking-sheet ranking-profile-sheet ranking-profile-sheet-165" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} variants={accquaWindowVariants.center} initial="hidden" animate="visible" exit="exit" transition={accquaWindowTransition} data-accqua-window-surface="center">
+        <ModalCloseButton className="ranking-sheet-close" onClick={onClose} ariaLabel="Fechar perfil resumido"/>
         <header className="ranking-profile-header">
-          {entry.avatarUrl ? <button type="button" className="ranking-profile-avatar-button" onClick={() => onPhoto(entry)}><span className="ranking-profile-avatar has-photo"><img src={entry.avatarUrl} alt={`Foto de ${displayName}`}/></span></button> : <span className="ranking-profile-avatar" aria-hidden="true">{initials(entry.firstName)}</span>}
-          <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"} neste mês</p></div>
+          {activeEntry.avatarUrl ? <button type="button" className="ranking-profile-avatar-button" onClick={() => onPhoto(activeEntry)}><span className="ranking-profile-avatar has-photo"><img src={activeEntry.avatarUrl} alt={`Foto de ${displayName}`}/></span></button> : <span className="ranking-profile-avatar" aria-hidden="true">{initials(activeEntry.firstName)}</span>}
+          <div><small>PERFIL DO RANKING</small><h2>{displayName}</h2><p>{activeEntry.points} dia{activeEntry.points === 1 ? "" : "s"} treinado{activeEntry.points === 1 ? "" : "s"} neste mês</p></div>
         </header>
-        {loading ? <div className="ranking-sheet-loading"><span/><p>Carregando perfil...</p></div> : !summary ? <div className="ranking-sheet-error"><p>Não foi possível carregar os detalhes deste perfil agora.</p></div> : <div className="ranking-profile-data">
+
+        {profileQuery.isLoading ? <RankingProfileSkeleton/> : !summary ? <div className="ranking-sheet-error"><p>Não foi possível carregar os detalhes deste perfil agora.</p></div> : <div className="ranking-profile-data">
           <article><span>Idade</span><strong>{summary.ageYears === null ? "Não informada" : `${summary.ageYears} anos`}</strong></article>
           <article><span>Tempo no app</span><strong>{formatAppTime(summary.memberSince)}</strong></article>
           <article><span>Treinos feitos</span><strong>{summary.totalWorkouts}</strong></article>
-          <article><span>Divisão atual</span><strong>{summary.currentSplit || "Não informada"}</strong></article>
+          <article><span>Divisão atual</span><strong>{summary.currentSplit || "—"}</strong></article>
+          <article className="ranking-profile-objective-v163"><span>Objetivo</span><strong className={!summary.objective ? "is-muted" : ""}>{summary.objective || "Não informado"}</strong></article>
+          {achievement ? <span className="ranking-achievement-v163">★ {achievement.label}</span> : null}
         </div>}
-      </section>
-    </div>
-  );
+      </motion.section>
+    </motion.div> : null}
+  </AnimatePresence>;
 }
 
 export default function Ranking() {
@@ -169,28 +172,9 @@ export default function Ranking() {
   if (!user) return <Navigate to="/login" replace/>;
   if (landingPath !== "/menu-teste") return <Navigate to={landingPath} replace/>;
 
-  return (
-    <div className="accqua-ranking-screen"><main className="accqua-ranking-shell">
-      <header className="ranking-header">
-        <button type="button" className="ranking-header-action ranking-back-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar"><BackIcon/></button>
-        <div className="ranking-header-logo"><AccquaLogo compact/></div>
-        <div className="ranking-header-actions">
-          <button type="button" className="ranking-prize-fab" onClick={() => setPrizeOpen(true)} aria-label="Ver prêmio deste mês"><GiftIcon/></button>
-          <button type="button" className="ranking-info-fab" onClick={() => setInfoOpen(true)} aria-label="Como funciona o ranking"><InfoIcon/></button>
-        </div>
-      </header>
-      <section className="ranking-title"><h1>Ranking</h1><p>Alunos com mais dias treinados</p></section>
-      <section className="ranking-content">
-        {rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <>
-          <section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section>
-          <div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></button>; })}</div>
-        </>}
-      </section>
-    </main>
-    <RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)}/>
-    <PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/>
-    <RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => setSelectedProfile(null)} onPhoto={setPhoto}/>
-    <ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/>
-    </div>
-  );
+  return <div className="accqua-ranking-screen"><main className="accqua-ranking-shell">
+    <header className="ranking-header"><button type="button" className="ranking-header-action ranking-back-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar"><AppBackIcon size={24}/></button><div className="ranking-header-logo"><AccquaLogo compact/></div><div className="ranking-header-actions"><button type="button" className="ranking-prize-fab" onClick={() => setPrizeOpen(true)} aria-label="Ver prêmio deste mês"><GiftIcon/></button><button type="button" className="ranking-info-fab" onClick={() => setInfoOpen(true)} aria-label="Como funciona o ranking"><InfoIcon/></button></div></header>
+    <section className="ranking-title"><h1>Ranking</h1><p>Cada dia treinado soma pontos.</p></section>
+    <section className="ranking-content">{rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <><section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section><div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></button>; })}</div></>}</section>
+  </main><RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)}/><PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/><RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => setSelectedProfile(null)} onPhoto={setPhoto}/><ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/></div>;
 }

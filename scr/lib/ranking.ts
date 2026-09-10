@@ -201,11 +201,15 @@ export type RankingProfileSummary = {
   ageYears: number | null;
   totalWorkouts: number;
   currentSplit: string;
+  objective: string;
 };
 
 export async function loadRankingProfileSummary(studentId: string): Promise<RankingProfileSummary | null> {
   if (!isSupabaseConfigured || !studentId) return null;
-  const newestResponse = await supabase.rpc("get_accqua_ranking_profile_summary_v9_7", { p_student_id: studentId });
+  const v163 = await supabase.rpc("get_accqua_ranking_profile_summary_v1_6_3", { p_student_id: studentId });
+  const newestResponse = v163.error
+    ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_7", { p_student_id: studentId })
+    : v163;
   const response = newestResponse.error
     ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_6", { p_student_id: studentId })
     : newestResponse;
@@ -219,6 +223,7 @@ export async function loadRankingProfileSummary(studentId: string): Promise<Rank
     ageYears: Number.isFinite(rawAge) && rawAge >= 0 ? rawAge : null,
     totalWorkouts: Math.max(0, Number(raw.total_workouts ?? 0)),
     currentSplit: t(raw.current_split) || "Não informado",
+    objective: t(raw.objective),
   };
 }
 

@@ -1,0 +1,29 @@
+/* ACCQUA Sports — Build 1.6.5.9
+   Parceiros de treino e visualização pública de treino retirados do produto. */
+
+.profile-stat-partners,
+.profile-partners-panel,
+.profile-main-tabs-host,
+.ranking-profile-social-actions,
+.ranking-profile-workout-button,
+.ranking-profile-avatar-partner-action,
+.ranking-partner-mini-avatar,
+.ranking-partner-person-plus,
+.ranking-workout-modal-backdrop,
+.ranking-workout-modal {
+  display: none !important;
+}
+
+.profile-stats-grid.has-partners {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.ranking-profile-sheet-165 .ranking-profile-data {
+  margin-top: 14px;
+}
+
+@media (max-width: 760px) {
+  .profile-stats-grid.has-partners {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

@@ -10,6 +10,43 @@
   min-width: 0;
 }
 
+/* Build 1.6.5.2 — a faixa de grupos musculares nunca pode ser comprimida
+   pela lista rolável da Biblioteca. */
+.admin-builder-library > header,
+.admin-builder-library > .admin-builder-search,
+.admin-builder-library > .admin-builder-groups {
+  flex: 0 0 auto;
+}
+
+.admin-builder-library > .admin-builder-groups {
+  position: relative;
+  z-index: 3;
+  min-height: 46px;
+  box-sizing: border-box;
+  align-items: center;
+  margin-top: 7px;
+  padding: 4px 24px 8px 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.admin-builder-library > .admin-builder-groups > button {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding-inline: 14px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.admin-builder-library > .admin-builder-library-list {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  margin-top: 2px !important;
+}
+
 @media (max-width: 1023px) {
   .admin-builder-screen {
     height: 100dvh;

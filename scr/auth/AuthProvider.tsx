@@ -209,7 +209,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const approval = await loadCanonicalAccessStatus(user.id);
     setProfile({
       ...resolvedProfile,
-      status: approval ? approvalToMembershipStatus(approval) : "pending",
+      // Falha temporária do backend não pode transformar uma conta ativa em pending.
+      // Só substituímos o status quando a fonte canônica realmente respondeu.
+      status: approval ? approvalToMembershipStatus(approval) : resolvedProfile.status,
     });
   }, []);
 

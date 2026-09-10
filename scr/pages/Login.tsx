@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import AccquaLogo from "../components/AccquaLogo";
 import {
   AppleIcon,
@@ -12,6 +13,12 @@ import {
   UserIcon,
 } from "../components/Icons";
 import { useAuth, type FirstAccessInput } from "../auth/AuthProvider";
+import {
+  accquaOverlayTransition,
+  accquaOverlayVariants,
+  accquaWindowTransition,
+  accquaWindowVariants,
+} from "../lib/windowMotion";
 
 const WHATSAPP =
   "https://wa.me/551147181730?text=Olá,%20preciso%20de%20ajuda%20para%20acessar%20o%20app%20da%20Accqua%20Sports.";
@@ -121,8 +128,6 @@ export default function Login() {
     const viewportMeta = document.querySelector('meta[name="viewport"]');
     const previousViewportContent = viewportMeta?.getAttribute("content") ?? "";
 
-    // Evita que Chrome/Android redimensione o layout quando o teclado abre.
-    // No Safari, o font-size de 16px nos inputs evita o zoom automático.
     if (viewportMeta && !previousViewportContent.includes("interactive-widget")) {
       viewportMeta.setAttribute(
         "content",
@@ -143,8 +148,6 @@ export default function Login() {
       const current = stableViewport.current;
       const orientationChanged = current.width > 0 && Math.abs(measuredWidth - current.width) > 80;
 
-      // Durante a digitação, mantém exatamente as medidas anteriores.
-      // Assim a tela e o modal não sobem, encolhem ou recalculam o scale.
       if (
         force ||
         current.width === 0 ||
@@ -270,8 +273,6 @@ export default function Login() {
       setFeedback({ type: "error", text: result.error });
     }
   };
-
-
 
   const openRegister = () => {
     setRegisterFeedback("");
@@ -418,178 +419,201 @@ export default function Login() {
         </a>
       </main>
 
-      {registerOpen ? (
-        <div className="onboarding-overlay" role="dialog" aria-modal="true" aria-label="Primeiro acesso">
-          <section className="onboarding-card">
-            <header className="onboarding-header">
-              <button
-                className="onboarding-back"
-                type="button"
-                onClick={registerStep === 0 ? closeRegister : previousRegisterStep}
-                aria-label={registerStep === 0 ? "Fechar" : "Voltar"}
-              >
-                ←
-              </button>
+      <AnimatePresence initial={false}>
+        {registerOpen ? (
+          <motion.div
+            key="login-first-access"
+            className="onboarding-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Primeiro acesso"
+            variants={accquaOverlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={accquaOverlayTransition}
+            data-accqua-window-overlay
+            data-accqua-motion-managed
+          >
+            <motion.section
+              className="onboarding-card"
+              variants={accquaWindowVariants.center}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={accquaWindowTransition}
+              data-accqua-window-surface="center"
+            >
+              <header className="onboarding-header">
+                <button
+                  className="onboarding-back"
+                  type="button"
+                  onClick={registerStep === 0 ? closeRegister : previousRegisterStep}
+                  aria-label={registerStep === 0 ? "Fechar" : "Voltar"}
+                >
+                  ←
+                </button>
 
-              <div className="onboarding-progress" aria-label={`Etapa ${registerStep + 1} de 4`}>
-                <span style={{ width: `${((registerStep + 1) / 4) * 100}%` }} />
+                <div className="onboarding-progress" aria-label={`Etapa ${registerStep + 1} de 4`}>
+                  <span style={{ width: `${((registerStep + 1) / 4) * 100}%` }} />
+                </div>
+
+                <button className="onboarding-close" type="button" onClick={closeRegister} aria-label="Fechar">
+                  ×
+                </button>
+              </header>
+
+              <div className="onboarding-body">
+                {registerStep === 0 ? (
+                  <div className="onboarding-step">
+                    <div className="onboarding-illustration">👋</div>
+                    <span className="onboarding-kicker">Etapa 1 de 4</span>
+                    <h2>Vamos começar por você</h2>
+                    <p>Esses dados serão conferidos pela recepção antes da liberação.</p>
+
+                    <div className="onboarding-fields">
+                      <label>
+                        Nome completo
+                        <input
+                          value={register.fullName}
+                          onChange={(event) => setRegister({ ...register, fullName: event.target.value })}
+                          placeholder="Como você se chama?"
+                        />
+                      </label>
+                      <label>
+                        CPF
+                        <input
+                          value={register.cpf}
+                          onChange={(event) => setRegister({ ...register, cpf: maskCpf(event.target.value) })}
+                          placeholder="000.000.000-00"
+                          inputMode="numeric"
+                        />
+                      </label>
+                      <label>
+                        Data de nascimento
+                        <input
+                          value={register.birthDate}
+                          onChange={(event) => setRegister({ ...register, birthDate: event.target.value })}
+                          type="date"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+
+                {registerStep === 1 ? (
+                  <div className="onboarding-step">
+                    <div className="onboarding-illustration">📱</div>
+                    <span className="onboarding-kicker">Etapa 2 de 4</span>
+                    <h2>Como podemos falar com você?</h2>
+                    <p>Esses contatos ficam vinculados à sua conta e ao contato de emergência.</p>
+
+                    <div className="onboarding-fields">
+                      <label>
+                        E-mail
+                        <input
+                          value={register.email}
+                          onChange={(event) => setRegister({ ...register, email: event.target.value })}
+                          placeholder="voce@email.com"
+                          type="email"
+                        />
+                      </label>
+                      <label>
+                        Telefone
+                        <input
+                          value={register.phone}
+                          onChange={(event) => setRegister({ ...register, phone: maskPhone(event.target.value) })}
+                          placeholder="(11) 99999-9999"
+                          inputMode="tel"
+                        />
+                      </label>
+                      <label>
+                        Telefone de emergência
+                        <input
+                          value={register.emergencyPhone}
+                          onChange={(event) =>
+                            setRegister({ ...register, emergencyPhone: maskPhone(event.target.value) })
+                          }
+                          placeholder="(11) 99999-9999"
+                          inputMode="tel"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+
+                {registerStep === 2 ? (
+                  <div className="onboarding-step">
+                    <div className="onboarding-illustration">🎯</div>
+                    <span className="onboarding-kicker">Etapa 3 de 4</span>
+                    <h2>Qual é o seu objetivo?</h2>
+                    <p>Isso ajuda o professor e personaliza sua futura experiência de dieta.</p>
+
+                    <div className="objective-grid">
+                      {["Hipertrofia", "Emagrecimento", "Condicionamento", "Saúde"].map((objective) => (
+                        <button
+                          key={objective}
+                          type="button"
+                          className={register.objective === objective ? "selected" : ""}
+                          onClick={() => setRegister({ ...register, objective })}
+                        >
+                          {objective}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="onboarding-fields">
+                      <label>
+                        Crie sua senha
+                        <input
+                          value={register.password}
+                          onChange={(event) => setRegister({ ...register, password: event.target.value })}
+                          placeholder="Mínimo de 6 caracteres"
+                          type="password"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+
+                {registerStep === 3 ? (
+                  <div className="onboarding-step review-step">
+                    <div className="onboarding-illustration">✅</div>
+                    <span className="onboarding-kicker">Última etapa</span>
+                    <h2>Revise seu cadastro</h2>
+                    <p>Depois de enviar, sua conta ficará aguardando liberação.</p>
+
+                    <div className="review-list">
+                      <div><span>Nome</span><strong>{register.fullName}</strong></div>
+                      <div><span>CPF</span><strong>{register.cpf}</strong></div>
+                      <div><span>E-mail</span><strong>{register.email}</strong></div>
+                      <div><span>Objetivo</span><strong>{register.objective}</strong></div>
+                    </div>
+
+                    <div className="register-note">
+                      Depois do envio, a equipe da ACCQUA confere os dados e libera o acesso ao aplicativo.
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
-              <button className="onboarding-close" type="button" onClick={closeRegister} aria-label="Fechar">
-                ×
-              </button>
-            </header>
-
-            <div className="onboarding-body">
-              {registerStep === 0 ? (
-                <div className="onboarding-step">
-                  <div className="onboarding-illustration">👋</div>
-                  <span className="onboarding-kicker">Etapa 1 de 4</span>
-                  <h2>Vamos começar por você</h2>
-                  <p>Esses dados serão conferidos pela recepção antes da liberação.</p>
-
-                  <div className="onboarding-fields">
-                    <label>
-                      Nome completo
-                      <input
-                        value={register.fullName}
-                        onChange={(event) => setRegister({ ...register, fullName: event.target.value })}
-                        placeholder="Como você se chama?"
-                      />
-                    </label>
-                    <label>
-                      CPF
-                      <input
-                        value={register.cpf}
-                        onChange={(event) => setRegister({ ...register, cpf: maskCpf(event.target.value) })}
-                        placeholder="000.000.000-00"
-                        inputMode="numeric"
-                      />
-                    </label>
-                    <label>
-                      Data de nascimento
-                      <input
-                        value={register.birthDate}
-                        onChange={(event) => setRegister({ ...register, birthDate: event.target.value })}
-                        type="date"
-                      />
-                    </label>
-                  </div>
-                </div>
-              ) : null}
-
-              {registerStep === 1 ? (
-                <div className="onboarding-step">
-                  <div className="onboarding-illustration">📱</div>
-                  <span className="onboarding-kicker">Etapa 2 de 4</span>
-                  <h2>Como podemos falar com você?</h2>
-                  <p>Esses contatos ficam vinculados à sua conta e ao contato de emergência.</p>
-
-                  <div className="onboarding-fields">
-                    <label>
-                      E-mail
-                      <input
-                        value={register.email}
-                        onChange={(event) => setRegister({ ...register, email: event.target.value })}
-                        placeholder="voce@email.com"
-                        type="email"
-                      />
-                    </label>
-                    <label>
-                      Telefone
-                      <input
-                        value={register.phone}
-                        onChange={(event) => setRegister({ ...register, phone: maskPhone(event.target.value) })}
-                        placeholder="(11) 99999-9999"
-                        inputMode="tel"
-                      />
-                    </label>
-                    <label>
-                      Telefone de emergência
-                      <input
-                        value={register.emergencyPhone}
-                        onChange={(event) =>
-                          setRegister({ ...register, emergencyPhone: maskPhone(event.target.value) })
-                        }
-                        placeholder="(11) 99999-9999"
-                        inputMode="tel"
-                      />
-                    </label>
-                  </div>
-                </div>
-              ) : null}
-
-              {registerStep === 2 ? (
-                <div className="onboarding-step">
-                  <div className="onboarding-illustration">🎯</div>
-                  <span className="onboarding-kicker">Etapa 3 de 4</span>
-                  <h2>Qual é o seu objetivo?</h2>
-                  <p>Isso ajuda o professor e personaliza sua futura experiência de dieta.</p>
-
-                  <div className="objective-grid">
-                    {["Hipertrofia", "Emagrecimento", "Condicionamento", "Saúde"].map((objective) => (
-                      <button
-                        key={objective}
-                        type="button"
-                        className={register.objective === objective ? "selected" : ""}
-                        onClick={() => setRegister({ ...register, objective })}
-                      >
-                        {objective}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="onboarding-fields">
-                    <label>
-                      Crie sua senha
-                      <input
-                        value={register.password}
-                        onChange={(event) => setRegister({ ...register, password: event.target.value })}
-                        placeholder="Mínimo de 6 caracteres"
-                        type="password"
-                      />
-                    </label>
-                  </div>
-                </div>
-              ) : null}
-
-              {registerStep === 3 ? (
-                <div className="onboarding-step review-step">
-                  <div className="onboarding-illustration">✅</div>
-                  <span className="onboarding-kicker">Última etapa</span>
-                  <h2>Revise seu cadastro</h2>
-                  <p>Depois de enviar, sua conta ficará aguardando liberação.</p>
-
-                  <div className="review-list">
-                    <div><span>Nome</span><strong>{register.fullName}</strong></div>
-                    <div><span>CPF</span><strong>{register.cpf}</strong></div>
-                    <div><span>E-mail</span><strong>{register.email}</strong></div>
-                    <div><span>Objetivo</span><strong>{register.objective}</strong></div>
-                  </div>
-
-                  <div className="register-note">
-                    Depois do envio, a equipe da ACCQUA confere os dados e libera o acesso ao aplicativo.
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <footer className="onboarding-footer">
-              {registerFeedback ? <div className="onboarding-feedback">{registerFeedback}</div> : null}
-              {registerStep < 3 ? (
-                <button className="onboarding-primary" type="button" disabled={!stepValid} onClick={nextRegisterStep}>
-                  Continuar
-                </button>
-              ) : (
-                <button className="onboarding-primary" type="button" disabled={busy} onClick={handleRegister}>
-                  {busy ? "Enviando..." : "Enviar para liberação"}
-                </button>
-              )}
-              <span>Etapa {registerStep + 1} de 4</span>
-            </footer>
-          </section>
-        </div>
-      ) : null}
+              <footer className="onboarding-footer">
+                {registerFeedback ? <div className="onboarding-feedback">{registerFeedback}</div> : null}
+                {registerStep < 3 ? (
+                  <button className="onboarding-primary" type="button" disabled={!stepValid} onClick={nextRegisterStep}>
+                    Continuar
+                  </button>
+                ) : (
+                  <button className="onboarding-primary" type="button" disabled={busy} onClick={handleRegister}>
+                    {busy ? "Enviando..." : "Enviar para liberação"}
+                  </button>
+                )}
+                <span>Etapa {registerStep + 1} de 4</span>
+              </footer>
+            </motion.section>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -59,6 +59,9 @@ export type BuilderExercise = ExerciseLibraryItem & {
   initialLoadKg: number;
   notes: string;
   position: number;
+  setType?: "normal" | "biset" | "triset";
+  setGroupId?: string;
+  setGroupOrder?: number;
 };
 
 export type CreateExerciseLibraryInput = {
@@ -311,7 +314,7 @@ export const FALLBACK_EXERCISE_LIBRARY: ExerciseLibraryItem[] = [
     defaultRestSeconds: 75,
   }),
   createLibraryExercise("Elevação lateral", "Ombros", "Halteres", {
-    mediaUrl: "/gifs/elevacao-lateral.GIF",
+    mediaUrl: "/gifs/elevacao-lateral.gif",
     defaultRepsMin: 12,
     defaultRepsMax: 15,
     beginnerTip: "Use pouca carga, cotovelos levemente flexionados e não ultrapasse muito a linha dos ombros.",
@@ -375,7 +378,7 @@ export const FALLBACK_EXERCISE_LIBRARY: ExerciseLibraryItem[] = [
     defaultRestSeconds: 90,
   }),
   createLibraryExercise("Cadeira extensora", "Quadríceps", "Máquina", {
-    mediaUrl: "/gifs/cadeira-extensora.GIF",
+    mediaUrl: "/gifs/cadeira-extensora.gif",
     defaultRepsMin: 12,
     defaultRepsMax: 15,
   }),
@@ -981,6 +984,9 @@ export function createBuilderExercise(
     initialLoadKg: 0,
     notes: "",
     position,
+    setType: "normal",
+    setGroupId: "",
+    setGroupOrder: 0,
   };
 }
 
@@ -1178,6 +1184,9 @@ function exercisePayload(exercise: BuilderExercise, planId?: string) {
     initial_load_kg: Math.max(0, exercise.initialLoadKg),
     notes: exercise.notes.trim(),
     position: exercise.position,
+    set_type: exercise.setType ?? "normal",
+    set_group_id: exercise.setGroupId || null,
+    set_group_order: Math.max(0, exercise.setGroupOrder ?? 0),
   };
 }
 

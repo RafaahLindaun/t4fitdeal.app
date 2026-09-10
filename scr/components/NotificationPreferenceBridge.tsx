@@ -103,8 +103,9 @@ export default function NotificationPreferenceBridge() {
   if (!host || !user?.id || !isStudent) return null;
 
   const iosInstallHint = isIosBrowser() && !isStandaloneApp();
-  const note = pushState === "ios_install" || iosInstallHint
-    ? "No iPhone, para receber push, adicione o ACCQUA à Tela de Início e abra por lá."
+  const requiresInstall = pushState === "ios_install" || iosInstallHint;
+  const note = requiresInstall
+    ? "No iPhone, o push só pode ser ativado depois que o ACCQUA estiver instalado na Tela de Início."
     : pushState === "denied"
       ? "A permissão do navegador está bloqueada. Você continua vendo os avisos no sino do app."
       : pushState === "unsupported"
@@ -130,7 +131,19 @@ export default function NotificationPreferenceBridge() {
         />
         <i aria-hidden="true"><b /></i>
       </label>
-      {enabled && loaded && pushState !== "ready" && !(iosInstallHint || pushState === "ios_install") ? (
+
+      {enabled && loaded && requiresInstall ? (
+        <div className="accqua-ios-install-guide-170" role="note">
+          <strong>Ativar no iPhone</strong>
+          <ol>
+            <li>Toque em <b>Compartilhar</b> no Safari.</li>
+            <li>Escolha <b>Adicionar à Tela de Início</b>.</li>
+            <li>Abra o ACCQUA pelo novo ícone e volte aqui para ativar o push.</li>
+          </ol>
+        </div>
+      ) : null}
+
+      {enabled && loaded && pushState !== "ready" && !requiresInstall ? (
         <button type="button" onClick={() => void ensurePush()} disabled={saving}>
           Ativar push neste celular
         </button>

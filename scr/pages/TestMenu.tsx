@@ -263,7 +263,7 @@ export default function TestMenu() {
   const streakLabel = ritmo.streakDays === 1 ? "1 dia de sequência" : `${ritmo.streakDays} dias de sequência`;
   const plannedBadge = ritmo.plannedDays
     ? `${ritmo.completedPlannedDays}/${ritmo.plannedDays} treinos concluídos`
-    : null;
+    : "";
 
   return (
     <div className="accqua-menu-screen">
@@ -321,9 +321,7 @@ export default function TestMenu() {
                 <small>SEU RITMO</small>
                 <strong><span className="accqua-streak-flame" aria-hidden="true">🔥</span>{ritmoLoading ? "Atualizando sequência" : streakLabel}</strong>
               </div>
-              {ritmoLoading || plannedBadge ? (
-                <span>{ritmoLoading ? "Atualizando..." : plannedBadge}</span>
-              ) : null}
+              <span>{ritmoLoading ? "Atualizando..." : plannedBadge}</span>
             </div>
             <div className="accqua-streak-days">
               {ritmo.days.map((day) => {

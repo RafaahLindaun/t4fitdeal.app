@@ -10,6 +10,11 @@ import NotificationPreferenceBridge from "./components/NotificationPreferenceBri
 import ProfileReservations157 from "./components/ProfileReservations157";
 import Build157UiBridge from "./components/Build157UiBridge";
 import AccquaToaster from "./components/AccquaToaster";
+import GuidedTour170 from "./components/GuidedTour170";
+import RoutePrefetch170 from "./components/RoutePrefetch170";
+import RouteLoadingSkeleton170 from "./components/RouteLoadingSkeleton170";
+import HomeGuidance170 from "./components/HomeGuidance170";
+import ProfileSettings170 from "./components/ProfileSettings170";
 import { SyncQueueProvider } from "./hooks/useSyncQueue";
 import MainLayout from "./components/MainLayout";
 import StaffLayout from "./components/StaffLayout";
@@ -46,12 +51,16 @@ export default function App() {
         <StaffWorkoutAlerts />
         <EngagementNotifications />
         <WelcomeOnboarding />
+        <GuidedTour170 />
+        <RoutePrefetch170 />
+        <HomeGuidance170 />
+        <ProfileSettings170 />
         <NotificationPreferenceBridge />
         <ProfileReservations157 />
         <Build157UiBridge />
         <AccquaToaster />
         <LayoutGroup id="accqua-workout-shared-layout">
-          <Suspense fallback={<LoadingSplash />}>
+          <Suspense fallback={<RouteLoadingSkeleton170 />}>
             <Routes>
               <Route path="/" element={<Navigate to={landingPath} replace />} />
               <Route path="/login" element={<Login />} />

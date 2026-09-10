@@ -3,18 +3,30 @@ import { motion } from "framer-motion";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Build158MotionBridge from "./Build158MotionBridge";
+import OwnerStaffManager from "./OwnerStaffManager";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import { staffButtonVariants, staffMotionTransition } from "../lib/staffMotion";
 import "./staff-layout.css";
 import "./staff-layout-v1484.css";
 
 const STAFF_ROLES = ["professor", "reception", "admin"] as const;
+const OWNER_EMAIL = "rafaalexandrowitch@professor.com";
 
 function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
   return (
     <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false" className={collapsed ? "is-collapsed" : ""}>
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
       <path d="M9 4v16" />
+    </svg>
+  );
+}
+
+function OwnerMenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="5" r="1.6" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.6" fill="currentColor" />
     </svg>
   );
 }
@@ -27,9 +39,12 @@ export default function StaffLayout() {
   const active = staffNavKeyForLocation(location.pathname, location.search);
   const mobileItemRefs = useRef<Partial<Record<StaffNavKey, HTMLButtonElement | null>>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [ownerManagerOpen, setOwnerManagerOpen] = useState(false);
   const isStaff = Boolean(
     profile && STAFF_ROLES.includes(profile.role as (typeof STAFF_ROLES)[number]),
   );
+  const isOwner = Boolean(user?.email && user.email.trim().toLowerCase() === OWNER_EMAIL);
+  const isBuilder = location.pathname.startsWith("/area-accqua/montar");
   const role = profile?.role === "admin"
     ? "ADMINISTRAÇÃO"
     : profile?.role === "reception"
@@ -37,15 +52,6 @@ export default function StaffLayout() {
       : profile?.role === "professor"
         ? "PROFESSOR"
         : "EQUIPE";
-
-  const usesDocumentScroll = [
-    "students",
-    "alerts",
-    "approvals",
-    "library",
-    "templates",
-  ].includes(active);
-  const usesInternalPageScroll = ["classes", "ranking", "notifications"].includes(active);
 
   useEffect(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
@@ -56,12 +62,10 @@ export default function StaffLayout() {
     });
   }, [active]);
 
-  // Build 1.5.8: todo o fluxo de montagem precisa da maior largura útil possível.
-  // A sidebar continua disponível, apenas entra no mesmo estado compacto do botão manual.
   useEffect(() => {
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
-    if (location.pathname.startsWith("/area-accqua/montar")) setSidebarCollapsed(true);
-  }, [location.pathname]);
+    if (isBuilder) setSidebarCollapsed(true);
+  }, [isBuilder]);
 
   if (!user) return <Navigate to="/login" replace />;
   if (!profile || profile.status !== "active") return <Navigate to="/aguardando" replace />;
@@ -69,7 +73,7 @@ export default function StaffLayout() {
 
   return (
     <div
-      className={`accqua-staff-layout ${usesDocumentScroll ? "uses-document-scroll" : ""} ${usesInternalPageScroll ? "uses-internal-page-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+      className={`accqua-staff-layout uses-unified-mobile-scroll ${isBuilder ? "uses-builder-internal-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <aside
         className={`accqua-staff-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}
@@ -90,10 +94,39 @@ export default function StaffLayout() {
           <strong>{sidebarCollapsed ? "Mostrar barra" : "Ocultar barra lateral"}</strong>
         </button>
 
-        <div className="accqua-staff-sidebar-heading">
+        <div
+          className="accqua-staff-sidebar-heading"
+          style={{ position: "relative", paddingRight: isOwner && !sidebarCollapsed ? 44 : undefined }}
+        >
           <small>ÁREA ACCQUA</small>
           <strong>Gestão da equipe</strong>
-          <span>{role}</span>
+          <span>{isOwner ? `${role} · DONO` : role}</span>
+          {isOwner && !sidebarCollapsed ? (
+            <button
+              type="button"
+              className="accqua-owner-staff-menu-button"
+              onClick={() => setOwnerManagerOpen(true)}
+              aria-label="Gerenciar acessos da equipe"
+              title="Gerenciar equipe"
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 2,
+                width: 36,
+                height: 36,
+                display: "grid",
+                placeItems: "center",
+                padding: 0,
+                color: "#ffd11e",
+                border: "1px solid rgba(255,209,30,.18)",
+                borderRadius: 12,
+                background: "rgba(255,209,30,.065)",
+                cursor: "pointer",
+              }}
+            >
+              <OwnerMenuIcon />
+            </button>
+          ) : null}
         </div>
         <nav>
           {items.map((item) => (
@@ -118,9 +151,9 @@ export default function StaffLayout() {
           ))}
         </nav>
         <div className="accqua-staff-sidebar-account" aria-hidden={sidebarCollapsed ? "true" : undefined}>
-          <small>{role}</small>
+          <small>{isOwner ? "DONO" : role}</small>
           <strong>{profile.fullName || user.email || "Equipe ACCQUA"}</strong>
-          <span>Gestão operacional</span>
+          <span>{isOwner ? "Controle de acessos Staff" : "Gestão operacional"}</span>
         </div>
       </aside>
 
@@ -143,14 +176,34 @@ export default function StaffLayout() {
             <span>{item.label}</span>
           </motion.button>
         ))}
+        {isOwner ? (
+          <motion.button
+            type="button"
+            className="accqua-owner-staff-mobile-button"
+            onClick={() => setOwnerManagerOpen(true)}
+            aria-label="Gerenciar acessos da equipe"
+            initial="idle"
+            animate="idle"
+            whileTap="tap"
+            variants={staffButtonVariants}
+            transition={staffMotionTransition}
+          >
+            <OwnerMenuIcon />
+            <span>Equipe</span>
+          </motion.button>
+        ) : null}
       </nav>
 
       <section className="accqua-staff-content" aria-live="polite">
         <div className="accqua-staff-route" key={location.pathname} data-staff-route={location.pathname}>
           <Outlet />
-          {location.pathname.startsWith("/area-accqua/montar") ? <Build158MotionBridge /> : null}
+          {isBuilder ? <Build158MotionBridge /> : null}
         </div>
       </section>
+
+      {isOwner ? (
+        <OwnerStaffManager open={ownerManagerOpen} onOpenChange={setOwnerManagerOpen} />
+      ) : null}
     </div>
   );
 }

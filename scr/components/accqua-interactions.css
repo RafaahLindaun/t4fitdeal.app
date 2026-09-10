@@ -1,22 +1,176 @@
-.accqua-sonner-toast {
-  min-height: 52px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-md) !important;
-  color: var(--white) !important;
-  background: color-mix(in srgb, var(--navy-bottom) 94%, transparent) !important;
-  box-shadow: var(--shadow-lg) !important;
-  backdrop-filter: blur(18px) !important;
+/* ACCQUA notifications — one compact visual system for the whole app. */
+[data-sonner-toaster][data-y-position="top"] {
+  --width: min(368px, calc(100vw - 20px)) !important;
+  --offset: max(10px, calc(env(safe-area-inset-top, 0px) + 8px)) !important;
+  width: var(--width) !important;
+  z-index: 1700 !important;
 }
 
-.accqua-sonner-title { color: var(--white) !important; font-weight: 850 !important; }
-.accqua-sonner-description { color: var(--muted) !important; }
-.accqua-sonner-action {
-  min-height: 40px !important;
-  color: var(--navy-bottom) !important;
-  background: var(--yellow) !important;
-  font-weight: 850 !important;
+.accqua-sonner-toast {
+  --accqua-toast-duration: 4200ms;
+  position: relative !important;
+  width: var(--width) !important;
+  min-height: 58px !important;
+  padding: 13px 13px 14px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.105) !important;
+  border-radius: 17px !important;
+  color: #fff !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255,209,30,.075), transparent 33%),
+    linear-gradient(145deg, rgba(9,39,75,.985), rgba(5,24,50,.975)) !important;
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.31),
+    inset 0 1px 0 rgba(255,255,255,.05) !important;
+  backdrop-filter: blur(20px) saturate(1.15) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.15) !important;
+  touch-action: pan-y !important;
 }
-.accqua-sonner-cancel { min-height: 40px !important; }
+
+/* Pequeno indicador de gesto: não compete com o conteúdo. */
+.accqua-sonner-toast::before {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  top: 4px;
+  left: 50%;
+  width: 25px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Contagem visual real do tempo em tela: amarelo cheio → vazio em 4,2 s. */
+.accqua-sonner-toast::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(90deg, #ffd11e, #ffe269) !important;
+  box-shadow: 0 0 8px rgba(255,209,30,.27);
+  transform: scaleX(1);
+  transform-origin: left center;
+  animation: accqua-toast-countdown var(--accqua-toast-duration) linear forwards;
+  pointer-events: none;
+}
+
+@keyframes accqua-toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+[data-sonner-toaster][data-paused="true"] .accqua-sonner-toast::after,
+.accqua-sonner-toast:hover::after,
+.accqua-sonner-toast:focus-within::after {
+  animation-play-state: paused;
+}
+
+.accqua-sonner-toast [data-close-button] {
+  display: none !important;
+}
+
+.accqua-sonner-toast [data-icon] {
+  flex: 0 0 30px !important;
+  width: 30px !important;
+  height: 30px !important;
+  margin: 1px 0 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 10px !important;
+  color: #ffd11e !important;
+  background: rgba(255,209,30,.09) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,209,30,.11) !important;
+}
+
+.accqua-sonner-toast [data-icon] svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.accqua-sonner-toast [data-content] {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  padding-top: 1px !important;
+}
+
+.accqua-sonner-title {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  font-weight: 900 !important;
+  letter-spacing: -.012em !important;
+}
+
+.accqua-sonner-description {
+  margin-top: 3px !important;
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  color: rgba(226,235,247,.68) !important;
+  font-size: 11.5px !important;
+  line-height: 1.34 !important;
+  font-weight: 600 !important;
+}
+
+.accqua-sonner-action,
+.accqua-sonner-cancel {
+  flex: 0 0 auto !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 0 11px !important;
+  border-radius: 10px !important;
+  font-size: 10.5px !important;
+  line-height: 1 !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.accqua-sonner-action {
+  color: #07162d !important;
+  background: #ffd11e !important;
+}
+
+.accqua-sonner-cancel {
+  color: rgba(255,255,255,.78) !important;
+  background: rgba(255,255,255,.065) !important;
+}
+
+/* Os avisos antigos de Treino/Cardio/Descanso são espelhados para Sonner pelo
+   EphemeralMessageBridge. A fonte original fica invisível e não interfere no layout. */
+.accqua-ephemeral-source-hidden {
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  min-width: 0 !important;
+  max-width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  max-height: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  clip-path: inset(50%) !important;
+}
 
 .accqua-pressable {
   -webkit-tap-highlight-color: transparent;
@@ -54,7 +208,34 @@
   }
 }
 
+@media (max-width: 560px) {
+  [data-sonner-toaster][data-y-position="top"] {
+    --width: calc(100vw - 16px) !important;
+    --offset: max(7px, calc(env(safe-area-inset-top, 0px) + 5px)) !important;
+  }
+
+  .accqua-sonner-toast {
+    min-height: 54px !important;
+    padding: 12px 12px 13px !important;
+    gap: 9px !important;
+    border-radius: 15px !important;
+  }
+
+  .accqua-sonner-title {
+    font-size: 12.5px !important;
+  }
+
+  .accqua-sonner-description {
+    font-size: 11px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .accqua-sonner-toast::after {
+    animation: none !important;
+    transform: scaleX(.45);
+  }
+
   .accqua-pressable {
     transition-duration: 1ms !important;
   }

@@ -1,0 +1,131 @@
+import { isSupabaseConfigured, supabase } from "./supabase";
+import type { RankingProfileSummary } from "./ranking";
+
+export type PublicWorkoutExercise = {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  equipment: string;
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  routine: string;
+  routineName: string;
+};
+
+export type PublicWorkoutRoutine = {
+  id: string;
+  code: string;
+  name: string;
+  focus: string;
+  weekDays: number[];
+  exerciseCount: number;
+};
+
+export type PublicWorkoutSummary = {
+  programName: string;
+  split: string;
+  focus: string;
+  routines: number;
+  exercises: number;
+  reviewAt: string;
+  routineItems: PublicWorkoutRoutine[];
+  exerciseItems: PublicWorkoutExercise[];
+};
+
+type Row = Record<string, unknown>;
+const text = (value: unknown) => String(value ?? "").trim();
+const numberValue = (value: unknown) => {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+};
+
+export async function loadRankingProfileSummary165(studentId: string): Promise<RankingProfileSummary | null> {
+  if (!isSupabaseConfigured || !studentId) return null;
+  const v98 = await supabase.rpc("get_accqua_ranking_profile_summary_v9_8", { p_student_id: studentId });
+  const v97 = v98.error
+    ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_7", { p_student_id: studentId })
+    : v98;
+  const response = v97.error
+    ? await supabase.rpc("get_accqua_ranking_profile_summary_v9_6", { p_student_id: studentId })
+    : v97;
+  if (response.error || !response.data) return null;
+  const raw = (Array.isArray(response.data) ? response.data[0] : response.data) as Row | undefined;
+  if (!raw) return null;
+  const rawAge = Number(raw.age_years);
+  return {
+    studentId: text(raw.student_id) || studentId,
+    memberSince: text(raw.member_since),
+    ageYears: Number.isFinite(rawAge) && rawAge >= 0 ? rawAge : null,
+    totalWorkouts: numberValue(raw.total_workouts),
+    currentSplit: text(raw.current_split) || "—",
+    objective: text(raw.objective),
+  };
+}
+
+function mapWorkoutExercise(raw: unknown): PublicWorkoutExercise | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Row;
+  const name = text(row.name);
+  if (!name) return null;
+  return {
+    id: text(row.id) || `${name}-${text(row.routine)}`,
+    name,
+    muscleGroup: text(row.muscleGroup) || "Outros",
+    equipment: text(row.equipment),
+    sets: numberValue(row.sets),
+    repsMin: numberValue(row.repsMin),
+    repsMax: numberValue(row.repsMax),
+    routine: text(row.routine) || "Treino",
+    routineName: text(row.routineName) || text(row.routine) || "Treino",
+  };
+}
+
+function mapWorkoutRoutine(raw: unknown): PublicWorkoutRoutine | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Row;
+  const id = text(row.id);
+  if (!id) return null;
+  return {
+    id,
+    code: text(row.code) || "Treino",
+    name: text(row.name) || text(row.code) || "Treino",
+    focus: text(row.focus),
+    weekDays: Array.isArray(row.weekDays)
+      ? row.weekDays.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+      : [],
+    exerciseCount: numberValue(row.exerciseCount),
+  };
+}
+
+export async function loadPublicWorkoutSummary(studentId: string): Promise<PublicWorkoutSummary | null> {
+  if (!isSupabaseConfigured || !studentId) return null;
+  const v1659 = await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_9", {
+    p_student_id: studentId,
+  });
+  const v1657 = v1659.error
+    ? await supabase.rpc("get_accqua_public_workout_summary_v1_6_5_7", { p_student_id: studentId })
+    : v1659;
+  const response = v1657.error
+    ? await supabase.rpc("get_accqua_public_workout_summary_v1_6_5", { p_student_id: studentId })
+    : v1657;
+  if (response.error) throw response.error;
+  if (!response.data || typeof response.data !== "object") return null;
+  const row = response.data as Row;
+  const exerciseItems = Array.isArray(row.exerciseItems)
+    ? row.exerciseItems.map(mapWorkoutExercise).filter((item): item is PublicWorkoutExercise => Boolean(item))
+    : [];
+  const routineItems = Array.isArray(row.routineItems)
+    ? row.routineItems.map(mapWorkoutRoutine).filter((item): item is PublicWorkoutRoutine => Boolean(item))
+    : [];
+  return {
+    programName: text(row.programName) || "Treino atual",
+    split: text(row.split) || "—",
+    focus: text(row.focus),
+    routines: numberValue(row.routines),
+    exercises: numberValue(row.exercises),
+    reviewAt: text(row.reviewAt),
+    routineItems,
+    exerciseItems,
+  };
+}

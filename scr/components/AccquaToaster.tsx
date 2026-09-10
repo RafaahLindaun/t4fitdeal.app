@@ -4,10 +4,14 @@ import "./accqua-interactions.css";
 export default function AccquaToaster() {
   return (
     <Toaster
-      position="bottom-center"
-      richColors
-      closeButton
-      duration={2600}
+      position="top-center"
+      richColors={false}
+      expand={false}
+      closeButton={false}
+      duration={4200}
+      visibleToasts={3}
+      gap={8}
+      swipeDirections={["top"]}
       toastOptions={{
         classNames: {
           toast: "accqua-sonner-toast",

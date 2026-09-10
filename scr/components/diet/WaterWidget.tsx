@@ -82,8 +82,8 @@ export default function WaterWidget({ currentMl, targetMl, busy, onAdd, onReset,
           </button>
         </AlertDialog.Trigger>
         <AlertDialog.Portal>
-          <AlertDialog.Overlay className="diet-alert-overlay" />
-          <AlertDialog.Content className="diet-alert-dialog">
+          <AlertDialog.Overlay className="diet-alert-overlay" data-accqua-window-overlay />
+          <AlertDialog.Content className="diet-alert-dialog" data-accqua-window-surface="center">
             <span className="diet-alert-icon"><DietUndoIcon size={23} /></span>
             <AlertDialog.Title>Zerar a água de hoje?</AlertDialog.Title>
             <AlertDialog.Description>Todos os registros de água de hoje serão removidos. Essa ação não altera sua meta diária.</AlertDialog.Description>

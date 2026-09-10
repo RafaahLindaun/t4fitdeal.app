@@ -4,7 +4,13 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
+import ProfileHighlights from "./components/ProfileHighlights";
+import Round2RuntimeEnhancements from "./components/Round2RuntimeEnhancements";
+import Build1658Runtime from "./components/Build1658Runtime";
+import RealtimeNotificationBridge from "./components/RealtimeNotificationBridge";
+import EphemeralMessageBridge from "./components/EphemeralMessageBridge";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
+import { installStaffDestructiveActionGuard } from "./lib/staffDestructiveActions";
 import "./index.css";
 import "./styles/build-1.4.5-hardening.css";
 import "./styles/build-1.4.6.css";
@@ -23,14 +29,31 @@ import "./styles/build-1.5.7.css";
 import "./styles/build-1.5.8.css";
 import "./styles/build-1.5.9.css";
 import "./styles/build-1.6.0.css";
+import "./styles/build-1.6.2.css";
+import "./styles/build-1.6.3.css";
+import "./styles/login-1.6.5.3.css";
+import "./styles/window-motion-1.6.5.6.css";
+import "./styles/build-1.6.5.7-round2.css";
+import "./styles/ranking-1.6.5.7.css";
+import "./styles/round2-runtime-1.6.5.7.css";
+import "./styles/builder-menu-1.6.5.8.css";
+import "./styles/build-1.6.5.9.css";
+import "./styles/profile-ranking-1.6.5.9-r2.css";
+import "./styles/interaction-polish-1.6.5.9.css";
+import "./styles/build-1.6.5.9-r3.css";
+import "./styles/retire-partners-1.6.5.9.css";
+import "./styles/build-1.7.0.css";
+import "./styles/build-1.7.0-capabilities.css";
 
 installInfrastructureToastGuard();
+installStaffDestructiveActionGuard();
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 15_000,
-      refetchOnWindowFocus: true,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
@@ -48,6 +71,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <BrowserRouter>
         <AuthProvider>
           <App />
+          <ProfileHighlights />
+          <Round2RuntimeEnhancements />
+          <Build1658Runtime />
+          <RealtimeNotificationBridge />
+          <EphemeralMessageBridge />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -1,0 +1,240 @@
+/* ACCQUA Sports — Build 1.6.5.9 / rodada 3
+   Correções visuais finais do Montar Treino, Ranking e Cardio. */
+
+/* --------------------------------------------------------------------------
+   MONTAR TREINO — progresso com 4 etapas realmente conectadas.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .admin-builder-progress-v162 {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 9px 8px 12px !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-builder-progress-v162 > ol {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: start !important;
+    list-style: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-builder-progress-v162 > ol > li {
+    position: relative !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .admin-builder-progress-v162 > ol > li > button {
+    position: relative !important;
+    isolation: isolate !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 2px !important;
+    display: grid !important;
+    justify-items: center !important;
+    align-content: start !important;
+    gap: 7px !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: inherit !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-builder-progress-v162 > ol > li:not(:last-child) > button::after {
+    content: "";
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    z-index: 0;
+    width: 100%;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(151, 174, 207, .20);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+    transition: background-color 220ms ease, box-shadow 220ms ease;
+    pointer-events: none;
+  }
+
+  .admin-builder-progress-v162 > ol > li:not(:last-child) > button.is-complete::after {
+    background: #ffd11e;
+    box-shadow: 0 0 12px rgba(255,209,30,.18);
+  }
+
+  .admin-builder-progress-v162 .admin-builder-step-orb {
+    position: relative !important;
+    z-index: 2 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 2px solid rgba(151,174,207,.25) !important;
+    border-radius: 50% !important;
+    background: #0b1c32 !important;
+    box-shadow: 0 0 0 4px #06162c !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-builder-progress-v162 .admin-builder-step-orb > i {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    color: rgba(194,209,231,.52) !important;
+    font-style: normal !important;
+    font-size: 17px !important;
+    font-weight: 900 !important;
+  }
+
+  .admin-builder-progress-v162 button.is-complete .admin-builder-step-orb {
+    border-color: #ffd11e !important;
+    background: #ffd11e !important;
+  }
+
+  .admin-builder-progress-v162 button.is-complete .admin-builder-step-orb > i {
+    color: #07162d !important;
+  }
+
+  .admin-builder-progress-v162 button.is-current .admin-builder-step-orb {
+    border-color: #ffd11e !important;
+    background: #102037 !important;
+    box-shadow: 0 0 0 4px #06162c, 0 0 0 6px rgba(255,209,30,.20) !important;
+  }
+
+  .admin-builder-progress-v162 button.is-current .admin-builder-step-orb > i {
+    color: #ffd11e !important;
+  }
+
+  .admin-builder-progress-v162 > ol > li > button > small {
+    position: relative !important;
+    z-index: 2 !important;
+    max-width: 100% !important;
+    color: rgba(205,219,239,.58) !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-builder-progress-v162 button.is-current > small,
+  .admin-builder-progress-v162 button.is-complete > small {
+    color: #f7f9fd !important;
+  }
+
+  /* O rodapé ficava preso ao containing block animado e ocupava só parte da tela.
+     50vw + largura em vw força a geometria a acompanhar a viewport real do iPhone. */
+  .admin-builder-footer {
+    position: fixed !important;
+    left: 50vw !important;
+    right: auto !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    width: min(500px, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    transform: translate3d(-50%, 0, 0) !important;
+    box-sizing: border-box !important;
+    border-radius: 18px !important;
+    z-index: 148 !important;
+  }
+
+  .admin-builder-footer.is-scroll-hidden-1658 {
+    transform: translate3d(-50%, calc(100% + 26px), 0) !important;
+  }
+
+  .admin-builder-mobile-footer {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) 50px !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-builder-mobile-footer-copy {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) 42px !important;
+  }
+
+  .admin-builder-mobile-primary,
+  .admin-builder-mobile-save-template {
+    flex: 0 0 auto !important;
+  }
+
+  .admin-builder-save-warning {
+    left: 50vw !important;
+    right: auto !important;
+    width: min(490px, calc(100vw - 28px)) !important;
+    transform: translateX(-50%) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Cardio: remover a frase redundante “opcional habilitado/desabilitado”. */
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle > div > small {
+    font-size: 0 !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle > div > small::after {
+    content: "REVISÃO · CARDIO";
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: .08em;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-state-label {
+    font-size: 0 !important;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-state-label::after {
+    content: "Sem cardio";
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 999px;
+    color: rgba(216,226,241,.62);
+    background: rgba(255,255,255,.035);
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 850;
+  }
+
+  .admin-builder-screen.is-step-cardio .admin-builder-cardio-toggle[aria-pressed="true"] .admin-builder-cardio-state-label::after {
+    content: "Cardio incluído";
+    border-color: rgba(255,209,30,.22);
+    color: #ffd11e;
+    background: rgba(255,209,30,.08);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   RANKING — “Ver treino” precisa ficar acima do perfil resumido (z=1200).
+   -------------------------------------------------------------------------- */
+.ranking-workout-modal-backdrop {
+  z-index: 1320 !important;
+  pointer-events: auto !important;
+}
+
+.ranking-workout-modal {
+  z-index: 1 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-builder-progress-v162 > ol > li:not(:last-child) > button::after {
+    transition-duration: 1ms !important;
+  }
+}

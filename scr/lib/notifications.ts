@@ -18,6 +18,7 @@ export type AccquaNotification = {
   icon: NotificationIcon;
   read: boolean;
   createdAt: string;
+  source?: "central" | "direct";
 };
 
 export type StaffNotificationInput = {
@@ -44,21 +45,28 @@ function icon(value: unknown): NotificationIcon {
     : "megafone";
 }
 
-function normalizeLegacyNotification(raw: Row): AccquaNotification {
+function directIcon(title: string): NotificationIcon {
+  const normalized = title.toLowerCase();
+  if (normalized.includes("treino") || normalized.includes("parceria") || normalized.includes("parceiro")) return "treino";
+  if (normalized.includes("prêmio") || normalized.includes("premio")) return "presente";
+  return "megafone";
+}
+
+function normalizeDirectNotification(raw: Row): AccquaNotification {
+  const title = t(raw.title) || "Notificação ACCQUA";
   return {
     id: t(raw.id),
-    receiptId: t(raw.id),
-    title: t(raw.title) || "Notificação ACCQUA",
+    receiptId: `direct:${t(raw.id)}`,
+    title,
     body: t(raw.body),
-    icon: "megafone",
+    icon: directIcon(title),
     read: Boolean(raw.lida),
     createdAt: t(raw.created_at),
+    source: "direct",
   };
 }
 
-export async function loadAccquaNotifications(userId: string): Promise<AccquaNotification[]> {
-  if (!isSupabaseConfigured || !userId) return [];
-
+async function loadCentralNotifications(userId: string): Promise<AccquaNotification[]> {
   const receipts = await supabase
     .from("notificacoes_leitura")
     .select("id,notificacao_id,lida,lida_em,excluida")
@@ -67,99 +75,124 @@ export async function loadAccquaNotifications(userId: string): Promise<AccquaNot
     .order("id", { ascending: false })
     .limit(80);
 
-  if (!receipts.error && receipts.data?.length) {
-    const rows = receipts.data as Row[];
-    const notificationIds = [...new Set(rows.map((row) => t(row.notificacao_id)).filter(Boolean))];
-    const notices = notificationIds.length
-      ? await supabase
-          .from("notificacoes")
-          .select("id,titulo,mensagem,icone,enviado_em,ativo")
-          .in("id", notificationIds)
-          .eq("ativo", true)
-      : { data: [], error: null };
+  if (receipts.error || !receipts.data?.length) return [];
+  const rows = receipts.data as Row[];
+  const notificationIds = [...new Set(rows.map((row) => t(row.notificacao_id)).filter(Boolean))];
+  if (!notificationIds.length) return [];
 
-    if (!notices.error) {
-      const noticeMap = new Map(
-        ((notices.data ?? []) as Row[]).map((row) => [t(row.id), row]),
-      );
-      return rows
-        .map((receipt) => {
-          const notice = noticeMap.get(t(receipt.notificacao_id));
-          if (!notice) return null;
-          return {
-            id: t(notice.id),
-            receiptId: t(receipt.id),
-            title: t(notice.titulo) || "Notificação ACCQUA",
-            body: t(notice.mensagem),
-            icon: icon(notice.icone),
-            read: Boolean(receipt.lida),
-            createdAt: t(notice.enviado_em),
-          } satisfies AccquaNotification;
-        })
-        .filter((value): value is AccquaNotification => Boolean(value))
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    }
-  }
+  const notices = await supabase
+    .from("notificacoes")
+    .select("id,titulo,mensagem,icone,enviado_em,ativo")
+    .in("id", notificationIds)
+    .eq("ativo", true);
+  if (notices.error) return [];
 
-  // Compatibilidade com avisos antigos criados antes da central 1.5.3.
-  const legacy = await supabase
+  const noticeMap = new Map(((notices.data ?? []) as Row[]).map((row) => [t(row.id), row]));
+  return rows
+    .map((receipt) => {
+      const notice = noticeMap.get(t(receipt.notificacao_id));
+      if (!notice) return null;
+      return {
+        id: t(notice.id),
+        receiptId: t(receipt.id),
+        title: t(notice.titulo) || "Notificação ACCQUA",
+        body: t(notice.mensagem),
+        icon: icon(notice.icone),
+        read: Boolean(receipt.lida),
+        createdAt: t(notice.enviado_em),
+        source: "central" as const,
+      } satisfies AccquaNotification;
+    })
+    .filter((value): value is AccquaNotification => Boolean(value));
+}
+
+async function loadDirectNotifications(userId: string): Promise<AccquaNotification[]> {
+  const direct = await supabase
     .from("notifications")
     .select("id,title,body,lida,created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(60);
+    .limit(80);
+  if (direct.error) return [];
+  return (direct.data ?? []).map((row) => normalizeDirectNotification(row as Row));
+}
 
-  if (legacy.error) return [];
-  return (legacy.data ?? []).map((row) => normalizeLegacyNotification(row as Row));
+export async function loadAccquaNotifications(userId: string): Promise<AccquaNotification[]> {
+  if (!isSupabaseConfigured || !userId) return [];
+  const [central, direct] = await Promise.all([
+    loadCentralNotifications(userId),
+    loadDirectNotifications(userId),
+  ]);
+
+  return [...central, ...direct]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 100);
 }
 
 export async function loadUnreadNotificationCountV153(userId: string) {
   if (!isSupabaseConfigured || !userId) return 0;
-  const { count, error } = await supabase
-    .from("notificacoes_leitura")
-    .select("id", { count: "exact", head: true })
-    .eq("aluno_id", userId)
-    .eq("lida", false)
-    .eq("excluida", false);
-  if (!error) return Math.max(0, Number(count ?? 0));
-  return 0;
+  const [central, direct] = await Promise.all([
+    supabase
+      .from("notificacoes_leitura")
+      .select("id", { count: "exact", head: true })
+      .eq("aluno_id", userId)
+      .eq("lida", false)
+      .eq("excluida", false),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("lida", false),
+  ]);
+  return Math.max(0, Number(central.count ?? 0)) + Math.max(0, Number(direct.count ?? 0));
+}
+
+function directId(receiptId: string) {
+  return receiptId.startsWith("direct:") ? receiptId.slice(7) : "";
 }
 
 export async function markAccquaNotificationRead(receiptId: string) {
   if (!isSupabaseConfigured || !receiptId) return false;
+  const legacyId = directId(receiptId);
+  if (legacyId) {
+    const { error } = await supabase.from("notifications").update({ lida: true }).eq("id", legacyId);
+    return !error;
+  }
+
   const now = new Date().toISOString();
   const current = await supabase
     .from("notificacoes_leitura")
     .update({ lida: true, lida_em: now })
-    .eq("id", receiptId)
-    .select("id")
-    .maybeSingle();
-  if (!current.error && current.data) return true;
-
-  const legacy = await supabase.from("notifications").update({ lida: true }).eq("id", receiptId);
-  return !legacy.error;
+    .eq("id", receiptId);
+  return !current.error;
 }
 
 export async function markAllAccquaNotificationsRead(userId: string) {
   if (!isSupabaseConfigured || !userId) return false;
   const now = new Date().toISOString();
-  const current = await supabase
-    .from("notificacoes_leitura")
-    .update({ lida: true, lida_em: now })
-    .eq("aluno_id", userId)
-    .eq("lida", false)
-    .eq("excluida", false);
-
-  const legacy = await supabase
-    .from("notifications")
-    .update({ lida: true })
-    .eq("user_id", userId)
-    .eq("lida", false);
-  return !current.error || !legacy.error;
+  const [current, direct] = await Promise.all([
+    supabase
+      .from("notificacoes_leitura")
+      .update({ lida: true, lida_em: now })
+      .eq("aluno_id", userId)
+      .eq("lida", false)
+      .eq("excluida", false),
+    supabase
+      .from("notifications")
+      .update({ lida: true })
+      .eq("user_id", userId)
+      .eq("lida", false),
+  ]);
+  return !current.error || !direct.error;
 }
 
 export async function deleteAccquaNotificationForMe(receiptId: string) {
   if (!isSupabaseConfigured || !receiptId) return false;
+  const legacyId = directId(receiptId);
+  if (legacyId) {
+    const { error } = await supabase.from("notifications").delete().eq("id", legacyId);
+    return !error;
+  }
   const { error } = await supabase
     .from("notificacoes_leitura")
     .update({ excluida: true, excluida_em: new Date().toISOString() })
