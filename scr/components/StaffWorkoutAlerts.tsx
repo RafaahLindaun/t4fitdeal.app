@@ -13,8 +13,8 @@ import {
 import { loadFeedbackPreferences, playAccquaChime } from "../lib/appFeedback";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
-const STAFF_ALERT_POLL_MS = 180_000;
-const STAFF_ALERT_MIN_GAP_MS = 1_200;
+const STAFF_ALERT_POLL_MS = 300_000;
+const STAFF_ALERT_MIN_GAP_MS = 30_000;
 
 function dispatchAlerts(alerts: WorkoutRequiredAlert[]) {
   window.dispatchEvent(new CustomEvent(WORKOUT_ALERTS_EVENT, { detail: alerts }));
@@ -72,7 +72,7 @@ export default function StaffWorkoutAlerts() {
         inFlight.current = false;
         if (!cancelled && queuedRefresh.current) {
           queuedRefresh.current = false;
-          window.setTimeout(() => void refresh(true), 80);
+          window.setTimeout(() => void refresh(false), 120);
         }
       }
     };
@@ -81,9 +81,9 @@ export default function StaffWorkoutAlerts() {
     const interval = window.setInterval(() => void refresh(), STAFF_ALERT_POLL_MS);
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") void refresh(true);
+      if (document.visibilityState === "visible") void refresh(false);
     };
-    const handleFocus = () => void refresh(true);
+    const handleFocus = () => void refresh(false);
     const handleRefreshEvent = () => void refresh(true);
 
     window.addEventListener("focus", handleFocus);
