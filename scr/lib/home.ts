@@ -107,12 +107,11 @@ async function loadWorkoutSummary(userId: string): Promise<HomeWorkoutSummary> {
   let completedExercises = 0;
 
   if (isSupabaseConfigured) {
-    // Build 1.7.0: student_id é a identidade canônica de workout_sessions.
-    // Removidos os fallbacks user_id/aluno_id que geravam até 3 requests para a mesma informação.
+    // Uma única consulta cobre sessões novas (student_id) e sessões legadas (user_id).
     const sessionsResponse = await supabase
       .from("workout_sessions")
-      .select("id,plan_id,started_at,completed_at,created_at")
-      .eq("student_id", userId)
+      .select("id,plan_id,started_at,completed_at,created_at,student_id,user_id")
+      .or(`student_id.eq.${userId},user_id.eq.${userId}`)
       .eq("plan_id", plan.id)
       .order("started_at", { ascending: false })
       .limit(12);
@@ -127,15 +126,15 @@ async function loadWorkoutSummary(userId: string): Promise<HomeWorkoutSummary> {
     if (progressSessionId) {
       const logsResponse = await supabase
         .from("workout_set_logs")
-        .select("workout_exercise_id,exercise_id,exercicio_id,set_number,serie_numero")
+        .select("workout_exercise_id,set_number")
         .eq("session_id", progressSessionId);
       const logs = logsResponse.error ? [] : ((logsResponse.data ?? []) as Row[]);
       const exerciseSetCounts = new Map<string, Set<number>>();
       for (const log of logs) {
-        const exerciseId = text(log.workout_exercise_id ?? log.exercise_id ?? log.exercicio_id);
+        const exerciseId = text(log.workout_exercise_id);
         if (!exerciseId) continue;
         const bucket = exerciseSetCounts.get(exerciseId) ?? new Set<number>();
-        bucket.add(Math.max(1, numberValue(log.set_number ?? log.serie_numero)));
+        bucket.add(Math.max(1, numberValue(log.set_number)));
         exerciseSetCounts.set(exerciseId, bucket);
       }
 
@@ -171,7 +170,5 @@ export async function loadHomeDashboard(userId: string): Promise<HomeDashboardDa
 
 export async function loadUnreadNotificationCount(userId: string) {
   if (!isSupabaseConfigured || !userId) return 0;
-  // V1.5.3 já soma a central atual + notifications legadas por user_id.
-  // O fallback antigo repetia a mesma busca por três colunas quando o total era zero.
   return loadUnreadNotificationCountV153(userId);
 }
