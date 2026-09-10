@@ -13,6 +13,8 @@ import AccquaToaster from "./components/AccquaToaster";
 import GuidedTour170 from "./components/GuidedTour170";
 import RoutePrefetch170 from "./components/RoutePrefetch170";
 import RouteLoadingSkeleton170 from "./components/RouteLoadingSkeleton170";
+import HomeGuidance170 from "./components/HomeGuidance170";
+import ProfileSettings170 from "./components/ProfileSettings170";
 import { SyncQueueProvider } from "./hooks/useSyncQueue";
 import MainLayout from "./components/MainLayout";
 import StaffLayout from "./components/StaffLayout";
@@ -51,6 +53,8 @@ export default function App() {
         <WelcomeOnboarding />
         <GuidedTour170 />
         <RoutePrefetch170 />
+        <HomeGuidance170 />
+        <ProfileSettings170 />
         <NotificationPreferenceBridge />
         <ProfileReservations157 />
         <Build157UiBridge />
