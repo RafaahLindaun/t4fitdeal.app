@@ -120,6 +120,7 @@ export default function Login() {
   } | null>(null);
   const [registerFeedback, setRegisterFeedback] = useState("");
   const [typedIntro, setTypedIntro] = useState("");
+  const [accessInfoOpen, setAccessInfoOpen] = useState(false);
 
   const stableViewport = useRef({ width: 0, height: 0 });
 
@@ -360,11 +361,17 @@ export default function Login() {
           </p>
         </section>
 
-        <section className="concept-access-banner">
-          <div className="access-banner-icon">
+        <section className={`concept-access-banner ${accessInfoOpen ? "is-open" : ""}`} aria-label="Acesso exclusivo para alunos">
+          <button
+            className="access-banner-icon"
+            type="button"
+            onClick={() => setAccessInfoOpen((value) => !value)}
+            aria-expanded={accessInfoOpen}
+            aria-label={accessInfoOpen ? "Ocultar informações de acesso" : "Mostrar informações de acesso"}
+          >
             <LockIcon size={23} />
-          </div>
-          <div>
+          </button>
+          <div className="access-banner-copy">
             <strong>Acesso exclusivo para alunos</strong>
             <span>Entre com os dados da sua matrícula ativa.</span>
           </div>

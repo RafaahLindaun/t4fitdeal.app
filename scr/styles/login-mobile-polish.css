@@ -6,6 +6,13 @@
   min-height: 34px;
 }
 
+.concept-login .access-banner-icon {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
 .login-typing-caret {
   display: inline-block;
   width: 2px;
@@ -24,12 +31,14 @@
 
 @media (max-width: 899px) {
   .concept-login .concept-access-banner {
-    top: 246px !important;
+    top: 236px !important;
     height: 86px !important;
     min-height: 86px !important;
     padding: 12px 14px 12px 12px !important;
-    grid-template-columns: 46px minmax(0, 1fr) !important;
-    gap: 11px !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 1fr !important;
+    justify-items: center !important;
+    gap: 0 !important;
     border-color: rgba(255, 209, 40, .3) !important;
     border-left: 3px solid var(--yellow) !important;
     border-radius: 19px !important;
@@ -47,6 +56,23 @@
     box-shadow: 0 0 0 5px rgba(255, 209, 40, .045) !important;
   }
 
+  .concept-login .concept-access-banner .access-banner-copy {
+    display: none !important;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .concept-login .concept-access-banner.is-open {
+    grid-template-rows: 43px minmax(0, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  .concept-login .concept-access-banner.is-open .access-banner-copy {
+    display: grid !important;
+    align-content: center;
+    gap: 2px;
+  }
+
   .concept-login .concept-access-banner strong {
     font-size: 12.8px !important;
     line-height: 1.16 !important;
@@ -61,7 +87,7 @@
   }
 
   .concept-login .concept-login-form {
-    top: 340px !important;
+    top: 330px !important;
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
@@ -102,10 +128,10 @@
   }
 
   .concept-login .concept-feature-section {
-    top: 598px !important;
+    top: 610px !important;
     left: 38px !important;
     width: 374px !important;
-    height: 158px !important;
+    height: 145px !important;
   }
 
   .concept-login .concept-feature-title {
@@ -125,12 +151,12 @@
   }
 
   .concept-login .concept-feature-grid article {
-    height: 64px !important;
-    min-height: 64px !important;
+    height: 56px !important;
+    min-height: 56px !important;
     padding: 7px 9px !important;
     display: grid !important;
     grid-template-columns: 29px minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) !important;
+    grid-template-rows: 1fr !important;
     align-items: center !important;
     justify-content: initial !important;
     column-gap: 8px !important;
@@ -166,17 +192,7 @@
   }
 
   .concept-login .concept-feature-grid article > p {
-    width: 100% !important;
-    max-height: 21px !important;
-    margin: 0 !important;
-    overflow: hidden;
-    color: rgba(236, 245, 255, .66) !important;
-    font-size: 8.3px !important;
-    line-height: 1.22 !important;
-    text-align: left !important;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    display: none !important;
   }
 
   .concept-login .concept-reception-link {
