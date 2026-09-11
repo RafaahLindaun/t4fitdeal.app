@@ -35,6 +35,7 @@ import { startWorkoutSession } from "../lib/workout";
 import { useTreinoStatus } from "../hooks/useTreinoStatus";
 import { deriveRitmoSemanal } from "../lib/workoutStatus";
 import "./menu.css";
+import "../styles/menu-home-polish.css";
 import "./admin-entry.css";
 
 type IconProps = { size?: number; className?: string };

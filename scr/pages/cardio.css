@@ -551,6 +551,8 @@
 .cardio-sync-state.is-synced{border-color:rgba(98,217,145,.2);background:rgba(98,217,145,.06)}
 .cardio-sync-state.is-synced .cardio-cloud-icon{color:#62d991}
 .cardio-sync-state.is-synced strong{color:#dffbea}
+.cardio-sync-state.is-synced{width:48px;height:48px;min-height:48px;padding:0;margin:10px auto 0;display:grid;grid-template-columns:1fr;place-items:center;gap:0}
+.cardio-sync-state.is-synced .cardio-cloud-icon{margin:0}
 
 /* Build 1.4.3 — histórico pertence ao módulo Cardio */
 .cardio-history-button>span{display:none}

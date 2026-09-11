@@ -217,10 +217,12 @@ export default function GuidedTour170() {
         <motion.div className="accqua-tour-overlay-170" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="accqua-tour-shade-170" />
           {rect ? <div className="accqua-tour-spotlight-170" style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }} /> : null}
-          <motion.section className="accqua-tour-card-170" initial={reduceMotion ? false : { opacity: 0, y: 18, scale: .985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: reduceMotion ? 0 : .24 }}>
-            <header><div><small>GUIA ACCQUA · {stepIndex + 1}/{total}</small><h3>{currentStep.title}</h3><p>{currentStep.body}</p></div><button type="button" className="tour-close" aria-label="Fechar guia" onClick={() => void finish(true)}>×</button></header>
-            <footer><span>{activeTour === "home" ? "Início" : activeTour === "treino" ? "Treino" : "Cardio"}</span><button type="button" onClick={() => { if (isLast) void finish(true); else setStepIndex((value) => value + 1); }}>{isLast ? "Entendi" : "Próximo"}</button></footer>
-          </motion.section>
+          <div className="accqua-tour-card-shell-170">
+            <motion.section className="accqua-tour-card-170" initial={reduceMotion ? false : { opacity: 0, y: 18, scale: .985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: reduceMotion ? 0 : .24 }}>
+              <header><div><small className="tour-eyebrow"><span>GUIA ACCQUA</span><b>{stepIndex + 1}/{total}</b></small><h3>{currentStep.title}</h3><p>{currentStep.body}</p></div><button type="button" className="tour-close" aria-label="Fechar guia" onClick={() => void finish(true)}>×</button></header>
+              <footer><span>{activeTour === "home" ? "Início" : activeTour === "treino" ? "Treino" : "Cardio"}</span><button type="button" onClick={() => { if (isLast) void finish(true); else setStepIndex((value) => value + 1); }}>{isLast ? "Entendi" : "Próximo"}</button></footer>
+            </motion.section>
+          </div>
         </motion.div>
       ) : null}
     </AnimatePresence>

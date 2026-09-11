@@ -92,13 +92,16 @@ export default function WorkoutCalendarSheet({
   const canonicalDates = monthlyStatus.data?.completedDates ?? [];
   const trainedDates = new Set(canonicalDates);
   const planDays = plan.weekDays;
+  const todayKey = localDateKey(now);
+  const missedDates = new Set(monthCells
+    .filter((cell) => cell.inMonth && cell.key < todayKey && planDays.includes(cell.date.getDay()) && !trainedDates.has(cell.key))
+    .map((cell) => cell.key));
   const rhythm = deriveRitmoSemanal(monthlyStatus.data, planDays, now);
   const remainingExercises = Math.max(0, exercises.length - completedExerciseCount);
   const trainedThisWeek = rhythm.completedPlannedDays;
   const remainingThisWeek = Math.max(0, rhythm.plannedDays - trainedThisWeek);
   const exerciseProgress = exercises.length ? Math.round((completedExerciseCount / exercises.length) * 100) : 0;
   const currentMonthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(now);
-  const todayKey = localDateKey(now);
 
   return createPortal(
     <AnimatePresence initial={false}>
@@ -166,13 +169,15 @@ export default function WorkoutCalendarSheet({
               </section>
 
               <section className="workout-month-card">
-                <div className="workout-month-title"><div><strong>{currentMonthLabel}</strong><span>Os dias amarelos representam treinos concluídos.</span></div><small>{monthlyStatus.isLoading ? "Atualizando..." : monthlyStatus.isError ? "Não foi possível atualizar" : `${trainedDates.size} registro(s)`}</small></div>
+                <div className="workout-month-title"><div><strong>{currentMonthLabel}</strong><span>Amarelo: treino concluído · vermelho: treino planejado perdido.</span></div><small>{monthlyStatus.isLoading ? "Atualizando..." : monthlyStatus.isError ? "Não foi possível atualizar" : `${trainedDates.size} registro(s) · ${missedDates.size} falta(s)`}</small></div>
                 <div className="workout-month-weekdays">{CALENDAR_WEEK_LABELS.map((label) => <span key={label}>{label}</span>)}</div>
                 <div className="workout-month-grid">
                   {monthCells.map((cell) => {
                     const trained = trainedDates.has(cell.key);
+                    const missed = missedDates.has(cell.key);
                     const today = cell.key === todayKey;
-                    return <div key={cell.key} className={`${cell.inMonth ? "" : "outside"} ${trained ? "trained" : ""} ${today ? "today" : ""}`}><span>{cell.day}</span>{trained ? <i /> : null}</div>;
+                    const stateLabel = trained ? "Treino concluído" : missed ? "Treino planejado perdido" : today && planDays.includes(cell.date.getDay()) ? "Treino de hoje pendente" : "Sem registro";
+                    return <div key={cell.key} className={`${cell.inMonth ? "" : "outside"} ${trained ? "trained" : ""} ${missed ? "missed" : ""} ${today ? "today" : ""}`} aria-label={`${cell.day} de ${currentMonthLabel}: ${stateLabel}`}><span>{cell.day}</span>{trained ? <i /> : missed ? <i className="missed-marker">!</i> : null}</div>;
                   })}
                 </div>
               </section>

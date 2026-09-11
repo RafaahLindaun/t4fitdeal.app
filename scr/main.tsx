@@ -46,6 +46,9 @@ import "./styles/build-1.7.0.css";
 import "./styles/build-1.7.0-capabilities.css";
 import "./styles/store-staff-polish.css";
 import "./styles/login-mobile-polish.css";
+import "./styles/tour-mobile-desktop-polish.css";
+import "./styles/calendar-classes-polish.css";
+import "./styles/cardio-assignment-polish.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();

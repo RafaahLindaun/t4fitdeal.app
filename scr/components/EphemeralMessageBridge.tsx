@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 const SOURCE_SELECTOR = [
-  ".workout-toast",
   ".cardio-toast",
   ".accqua-engagement-toast",
   ".workout-rest-confirmation",

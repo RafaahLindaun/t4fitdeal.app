@@ -94,6 +94,16 @@
 .accqua-sonner-toast [data-icon] svg {
   width: 16px !important;
   height: 16px !important;
+  display: block !important;
+  transform: none !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.accqua-sonner-toast [data-icon] svg path,
+.accqua-sonner-toast [data-icon] svg polyline {
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
 }
 
 .accqua-sonner-toast [data-content] {

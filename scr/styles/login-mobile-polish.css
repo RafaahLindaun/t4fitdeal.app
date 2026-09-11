@@ -31,9 +31,9 @@
 
 @media (max-width: 899px) {
   .concept-login .concept-access-banner {
-    top: 236px !important;
-    height: 86px !important;
-    min-height: 86px !important;
+    top: 242px !important;
+    height: 76px !important;
+    min-height: 76px !important;
     padding: 12px 14px 12px 12px !important;
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr !important;
@@ -49,8 +49,8 @@
   }
 
   .concept-login .concept-access-banner .access-banner-icon {
-    width: 43px !important;
-    height: 43px !important;
+    width: 37px !important;
+    height: 37px !important;
     border: 1px solid rgba(255, 209, 40, .32) !important;
     background: rgba(255, 209, 40, .11) !important;
     box-shadow: 0 0 0 5px rgba(255, 209, 40, .045) !important;
@@ -63,8 +63,8 @@
   }
 
   .concept-login .concept-access-banner.is-open {
-    grid-template-rows: 43px minmax(0, 1fr) !important;
-    gap: 5px !important;
+    grid-template-rows: 37px minmax(0, 1fr) !important;
+    gap: 3px !important;
   }
 
   .concept-login .concept-access-banner.is-open .access-banner-copy {
@@ -74,16 +74,25 @@
   }
 
   .concept-login .concept-access-banner strong {
-    font-size: 12.8px !important;
-    line-height: 1.16 !important;
-    letter-spacing: -.1px;
+    max-width: 230px;
+    margin-inline: auto;
+    font-size: 10.2px !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0;
   }
 
   .concept-login .concept-access-banner span {
-    margin-top: 5px !important;
-    font-size: 10.5px !important;
-    line-height: 1.25 !important;
+    max-width: 240px;
+    margin: 0 auto !important;
+    font-size: 8.8px !important;
+    line-height: 1.15 !important;
     color: rgba(242, 248, 255, .76) !important;
+  }
+
+  .concept-login .concept-intro p {
+    min-height: 30px !important;
+    font-size: 12.2px !important;
+    line-height: 1.24 !important;
   }
 
   .concept-login .concept-login-form {

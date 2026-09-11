@@ -1,0 +1,20 @@
+/* Ranking: entrada do pódio em sequência, com o líder chamando atenção. */
+.ranking-podium-card.is-position-1 {
+  will-change: transform, opacity;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), 0 18px 38px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ranking-podium-card.is-position-1 .ranking-podium-avatar {
+  will-change: transform;
+}
+
+.ranking-row {
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ranking-podium-card.is-position-1,
+  .ranking-row {
+    will-change: auto;
+  }
+}

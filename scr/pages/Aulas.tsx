@@ -205,18 +205,21 @@ export default function Aulas() {
           </div>
 
           <div className="classes-day-pills" data-tab-swipe-ignore aria-label="Próximos sete dias">
-            {days.map((day) => (
-              <button
+            {days.map((day) => {
+              const dayClassCount = filtered.filter((item) => item.date === day).length;
+              return <button
                 key={day}
                 type="button"
-                className={`${day === localDateKey() ? "is-today" : ""} ${day === selectedDate ? "is-selected" : ""}`.trim()}
+                className={`${day === localDateKey() ? "is-today" : ""} ${day === selectedDate ? "is-selected" : ""} ${dayClassCount ? "has-classes" : ""}`.trim()}
                 aria-pressed={day === selectedDate}
+                aria-label={`${dateLabel(day)} ${dateShort(day)}${dayClassCount ? `, ${dayClassCount} ${dayClassCount === 1 ? "aula" : "aulas"}` : ", sem aulas"}`}
                 onClick={() => setSelectedDate(day)}
               >
                 <strong>{dayPillLabel(day)}</strong>
                 <span>{dateShort(day)}</span>
-              </button>
-            ))}
+                <small>{dayClassCount ? `${dayClassCount} ${dayClassCount === 1 ? "aula" : "aulas"}` : "Sem aula"}</small>
+              </button>;
+            })}
           </div>
 
           {agendaQuery.isLoading ? (

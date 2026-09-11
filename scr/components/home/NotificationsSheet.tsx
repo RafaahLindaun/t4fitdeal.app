@@ -91,6 +91,7 @@ export default function NotificationsSheet({
       onOpenChange={onOpenChange}
       title="Notificações"
       description="Avisos do seu app ACCQUA e atualizações importantes."
+      presentation="center"
       className="accqua-notifications-dialog"
       bodyClassName="accqua-notifications-sheet"
     >

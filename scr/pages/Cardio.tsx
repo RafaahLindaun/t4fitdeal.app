@@ -305,6 +305,7 @@ function ActivityMedia({ option, active }: { option: ActivityOption; active: boo
 function ActivityCard({
   option,
   selected,
+  prescribed,
   containerRef,
   disabled,
   onSelect,
@@ -312,6 +313,7 @@ function ActivityCard({
 }: {
   option: ActivityOption;
   selected: boolean;
+  prescribed: boolean;
   containerRef: RefObject<HTMLDivElement>;
   disabled: boolean;
   onSelect: () => void;
@@ -331,11 +333,11 @@ function ActivityCard({
     <motion.button
       ref={ref}
       type="button"
-      className={`cardio-activity-card ${selected ? "is-selected" : ""}`}
+      className={`cardio-activity-card ${selected ? "is-selected" : ""} ${selected && prescribed ? "is-prescribed" : ""}`}
       style={reducedMotion ? { opacity: 1 } : { scale, opacity }}
       onClick={onSelect}
       disabled={disabled}
-      aria-label={`Selecionar ${option.label}`}
+      aria-label={`Selecionar ${option.label}${selected && prescribed ? " · cardio prescrito pelo professor" : ""}`}
       aria-pressed={selected}
     >
       <div className="cardio-activity-media"><ActivityMedia option={option} active={selected} /></div>
@@ -347,11 +349,13 @@ function ActivityCard({
 
 function ActivityCarousel({
   activity,
+  prescribedActivity,
   disabled,
   onSelect,
   reducedMotion,
 }: {
   activity: CardioActivity;
+  prescribedActivity: CardioActivity | null;
   disabled: boolean;
   onSelect: (activity: CardioActivity) => void;
   reducedMotion: boolean;
@@ -370,6 +374,7 @@ function ActivityCarousel({
           key={option.key}
           option={option}
           selected={activity === option.key}
+          prescribed={prescribedActivity === option.key}
           containerRef={containerRef}
           disabled={disabled}
           onSelect={() => onSelect(option.key)}
@@ -432,7 +437,7 @@ function CardioSummary({ activity, elapsedSeconds, targetSeconds, distanceMeters
 
   return <div className="cardio-screen cardio-summary-screen"><div className="cardio-background" /><main className="cardio-summary-page">
     <div className="cardio-summary-kicker"><CardioCheckIcon /> CARDIO CONCLUÍDO</div><h1>{option.label} finalizada</h1>
-    {syncStatus === "synced" ? <div className="cardio-sync-state is-synced" role="status" aria-live="polite"><span className="cardio-cloud-icon" aria-hidden="true"><i /></span><div><strong>Sessão salva ✓</strong><small>{validForRanking ? "Cardio registrado e contabilizado no ranking ACCQUA." : elapsedSeconds >= 1800 ? "Cardio registrado no seu histórico." : "Cardio registrado. Para pontuar sem musculação no dia, complete pelo menos 30 minutos."}</small></div></div> : <div className={`cardio-sync-state ${syncStatus === "failed" ? "is-waiting" : ""}`} role="status" aria-live="polite"><span className="cardio-cloud-icon" aria-hidden="true"><i /></span><div><strong>Sincronizando quando a conexão voltar</strong><small>Sua sessão já está salva neste dispositivo.</small></div><button type="button" onClick={onRetrySync}>Tentar novamente</button></div>}
+    {syncStatus === "synced" ? <div className="cardio-sync-state is-synced" role="status" aria-label="Sessão salva"><span className="cardio-cloud-icon" aria-hidden="true"><i /></span></div> : <div className={`cardio-sync-state ${syncStatus === "failed" ? "is-waiting" : ""}`} role="status" aria-live="polite"><span className="cardio-cloud-icon" aria-hidden="true"><i /></span><div><strong>Sincronizando quando a conexão voltar</strong><small>Sua sessão já está salva neste dispositivo.</small></div><button type="button" onClick={onRetrySync}>Tentar novamente</button></div>}
     <section className="cardio-summary-ring"><svg viewBox="0 0 250 250" aria-hidden="true"><defs><linearGradient id="cardio-summary-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="var(--cardio-accent)" /><stop offset="100%" stopColor="var(--cardio-hot)" /></linearGradient></defs><circle cx="125" cy="125" r={radius} className="summary-ring-track" /><motion.circle cx="125" cy="125" r={radius} className="summary-ring-progress" stroke="url(#cardio-summary-gradient)" strokeDasharray={circumference} initial={reducedMotion ? false : { strokeDashoffset: circumference }} animate={{ strokeDashoffset: circumference * (1 - progress) }} transition={reducedMotion ? { duration: 0 } : { duration: 1.1, ease: [0.2, 0.8, 0.2, 1] }} /></svg><div><span>TEMPO TOTAL</span><strong><AnimatedMetric value={elapsedSeconds} formatter={(value) => formatClock(value)} reducedMotion={reducedMotion} /></strong><small>{Math.round(progress * 100)}% da meta</small></div></section>
     <section className="cardio-summary-grid"><SummaryMetric label={activity === "stairs" ? "Degraus" : "Distância"} value={distanceMeters} formatter={(value) => activity === "stairs" ? `${Math.round(value)}` : value >= 1000 ? `${(value / 1000).toFixed(2)} km` : `${Math.round(value)} m`} reducedMotion={reducedMotion} /><SummaryMetric label="Calorias" value={calories} formatter={(value) => `${Math.round(value)} kcal`} reducedMotion={reducedMotion} /><SummaryMetric label={metric.title} value={metric.value} formatter={(value) => `${metric.formatter(value)} ${metric.unit}`} reducedMotion={reducedMotion} /><SummaryMetric label="Meta" value={targetSeconds / 60} formatter={(value) => `${Math.round(value)} min`} reducedMotion={reducedMotion} /></section>
     {validForRanking ? <div className="cardio-ranking-badge">✓ Contabilizado no ranking ACCQUA</div> : null}<div className="cardio-summary-actions"><button type="button" onClick={onAgain}>Fazer outro cardio</button><button type="button" className="secondary" onClick={onMenu}>Voltar ao menu</button></div>
@@ -538,7 +543,7 @@ export default function Cardio() {
         <PageHeader className="cardio-topbar" ariaLabel="Cabeçalho Cardio" left={<button type="button" className="cardio-top-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar ao menu"><WorkoutBackIcon /></button>} center={<Tabs.Root className="cardio-context-tabs" value="cardio" onValueChange={(value) => { if (value === "musculacao") navigate("/treino"); }} aria-label="Alternar entre musculação e cardio"><Tabs.List><Tabs.Trigger value="musculacao">Musculação</Tabs.Trigger><Tabs.Trigger value="cardio">Cardio</Tabs.Trigger></Tabs.List></Tabs.Root>} right={<button type="button" className="cardio-top-button cardio-history-button" onClick={() => setHistoryOpen(true)} aria-label="Abrir histórico de cardio"><CardioHistoryIcon /><span>Histórico</span></button>} />
         <div className="cardio-scroll-area">
           <section className="cardio-title-row"><div><span>{selectedPrescription ? "TREINO DO PROFESSOR" : "SESSÃO PERSONALIZADA"}</span><h1>{currentOption.label}</h1><p>{targetDescription(selectedPrescription, targetMinutes)}</p></div><button type="button" className="cardio-settings-chip" onClick={() => setSettingsOpen(true)} aria-label="Abrir configurações do cardio"><CardioSettingsIcon /><span>{timingLabels[timing]}</span></button></section>
-          <ActivityCarousel activity={activity} disabled={cardioSession.phase !== "idle"} onSelect={selectActivity} reducedMotion={reducedMotion} />
+          <ActivityCarousel activity={activity} prescribedActivity={selectedPrescription?.activityType ?? null} disabled={cardioSession.phase !== "idle"} onSelect={selectActivity} reducedMotion={reducedMotion} />
           <section className="cardio-session-hero"><ProgressRing elapsedSeconds={cardioSession.elapsedSeconds} targetSeconds={targetSeconds} metric={metric} phase={cardioSession.phase} reducedMotion={reducedMotion} /><div className="cardio-quick-stats"><article><CardioFlameIcon /><span>Calorias</span><strong>{currentMetrics.calories}</strong><small>kcal</small></article><article><CardioPulseIcon /><span>{activity === "stairs" ? "Degraus" : "Distância"}</span><strong>{distanceLabel}</strong><small>estimado</small></article></div></section>
           <PaceChart samples={cardioSession.samples} metric={metric} />
           <section className="cardio-intensity-card"><header><div><CardioClockIcon /><span><strong>{intensityConfig.label}</strong><small>{intensityConfig.helper}</small></span></div><b>{intensityConfig.displayValue}<small>{intensityConfig.unit}</small></b></header><div className="cardio-intensity-controls"><motion.button whileTap={reducedMotion ? undefined : { scale: 0.9 }} type="button" onClick={() => setIntensityValue(intensityConfig.value - intensityConfig.step)} aria-label="Diminuir intensidade"><CardioMinusIcon /></motion.button><input type="range" min={intensityConfig.min} max={intensityConfig.max} step={intensityConfig.step} value={intensityConfig.value} onChange={(event) => setIntensityValue(Number(event.target.value))} style={{ "--slider-progress": `${((intensityConfig.value - intensityConfig.min) / (intensityConfig.max - intensityConfig.min)) * 100}%` } as CSSProperties} aria-label={intensityConfig.label} /><motion.button whileTap={reducedMotion ? undefined : { scale: 0.9 }} type="button" onClick={() => setIntensityValue(intensityConfig.value + intensityConfig.step)} aria-label="Aumentar intensidade"><CardioPlusIcon /></motion.button></div></section>

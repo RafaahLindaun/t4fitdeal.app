@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../auth/AuthProvider";
 import AccquaLogo from "../components/AccquaLogo";
 import AppBackIcon from "../components/AppBackIcon";
@@ -17,6 +17,7 @@ import {
   type RankingPrize,
 } from "../lib/ranking";
 import { loadRankingProfileSummary165 } from "../lib/rankingSocial";
+import { performHaptic } from "../lib/appFeedback";
 import {
   accquaOverlayTransition,
   accquaOverlayVariants,
@@ -25,6 +26,7 @@ import {
 } from "../lib/windowMotion";
 import "./ranking.css";
 import "./ranking-social.css";
+import "../styles/ranking-motion-polish.css";
 
 function initials(name: string) {
   return name.trim().slice(0, 2).toUpperCase() || "AS";
@@ -76,13 +78,18 @@ function Medal({ position }: { position: 1 | 2 | 3 }) {
   return <span className={`ranking-medal ranking-medal-${position}`} aria-hidden="true">{position}</span>;
 }
 
-function PodiumEntry({ entry, position, currentUserId, onSelect }: { entry: RankingEntry; position: 1 | 2 | 3; currentUserId: string; onSelect: (entry: RankingEntry) => void }) {
+function PodiumEntry({ entry, position, currentUserId, onSelect, reduceMotion }: { entry: RankingEntry; position: 1 | 2 | 3; currentUserId: string; onSelect: (entry: RankingEntry) => void; reduceMotion: boolean }) {
   const isMe = entry.studentId === currentUserId;
-  return <button type="button" className={`ranking-podium-card is-position-${position} ${isMe ? "is-me" : ""}`} onClick={() => onSelect(entry)}>
+  const initial = reduceMotion ? false : { opacity: 0, y: position === 1 ? 16 : 26, scale: position === 1 ? .9 : .97 };
+  const animate = reduceMotion ? { opacity: 1, y: 0, scale: 1 } : position === 1
+    ? { opacity: 1, y: 0, scale: [.9, 1.08, 1], rotate: [0, -1.8, 1.4, 0] }
+    : { opacity: 1, y: 0, scale: 1 };
+  const delay = position === 1 ? .08 : position === 2 ? .56 : .7;
+  return <motion.button type="button" className={`ranking-podium-card is-position-${position} ${isMe ? "is-me" : ""}`} onClick={() => onSelect(entry)} initial={initial} animate={animate} transition={reduceMotion ? { duration: 0 } : { delay, duration: position === 1 ? .68 : .46, ease: [0.2, 0.8, 0.2, 1] }}>
     <span className={`ranking-podium-avatar is-position-${position} ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}<Medal position={position}/></span>
     <strong>{isMe ? "Você" : entry.firstName}</strong>{isMe ? <em className="ranking-you-badge">Você</em> : null}
     <small>{entry.points} dia{entry.points === 1 ? "" : "s"} treinado{entry.points === 1 ? "" : "s"}</small>
-  </button>;
+  </motion.button>;
 }
 
 function RankingInfoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -160,6 +167,8 @@ export default function Ranking() {
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<RankingEntry | null>(null);
   const [photo, setPhoto] = useState<RankingEntry | null>(null);
+  const rankingCelebratedRef = useRef(false);
+  const reducedMotionPreference = useReducedMotion();
   const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6"], queryFn: loadAccquaRanking, staleTime: 20_000 });
   const prizeQuery = useQuery({ queryKey: ["ranking-prize", "current"], queryFn: () => loadRankingPrize(), staleTime: 60_000 });
   const entries = rankingQuery.data ?? [];
@@ -168,6 +177,13 @@ export default function Ranking() {
   const podiumByPosition = useMemo(() => new Map(podium.map((entry) => [entry.position, entry])), [podium]);
   const myEntry = useMemo(() => entries.find((entry) => entry.studentId === user?.id), [entries, user?.id]);
 
+  useEffect(() => {
+    if (!rankingQuery.isSuccess || !user?.id || reducedMotionPreference || rankingCelebratedRef.current) return;
+    rankingCelebratedRef.current = true;
+    const timer = window.setTimeout(() => performHaptic(user.id, [18, 32, 18]), 520);
+    return () => window.clearTimeout(timer);
+  }, [rankingQuery.isSuccess, reducedMotionPreference, user?.id]);
+
   if (loading) return <LoadingSplash/>;
   if (!user) return <Navigate to="/login" replace/>;
   if (landingPath !== "/menu-teste") return <Navigate to={landingPath} replace/>;
@@ -175,6 +191,6 @@ export default function Ranking() {
   return <div className="accqua-ranking-screen"><main className="accqua-ranking-shell">
     <header className="ranking-header"><button type="button" className="ranking-header-action ranking-back-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar"><AppBackIcon size={24}/></button><div className="ranking-header-logo"><AccquaLogo compact/></div><div className="ranking-header-actions"><button type="button" className="ranking-prize-fab" onClick={() => setPrizeOpen(true)} aria-label="Ver prêmio deste mês"><GiftIcon/></button><button type="button" className="ranking-info-fab" onClick={() => setInfoOpen(true)} aria-label="Como funciona o ranking"><InfoIcon/></button></div></header>
     <section className="ranking-title"><h1>Ranking</h1><p>Cada dia treinado soma pontos.</p></section>
-    <section className="ranking-content">{rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <><section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section><div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></button>; })}</div></>}</section>
+    <section className="ranking-content">{rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <><section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile} reduceMotion={Boolean(reducedMotionPreference)}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section><div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <motion.button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)} initial={reducedMotionPreference ? false : { opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={reducedMotionPreference ? { duration: 0 } : { delay: .92 + index * .07, duration: .38, ease: [0.2, 0.8, 0.2, 1] }}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></motion.button>; })}</div></>}</section>
   </main><RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)}/><PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/><RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => setSelectedProfile(null)} onPhoto={setPhoto}/><ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/></div>;
 }
