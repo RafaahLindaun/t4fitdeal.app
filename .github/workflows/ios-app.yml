@@ -1,0 +1,149 @@
+name: ACCQUA Sports iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "codex/**"
+      - "build/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accqua-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: Build iOS app
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      IOS_BUNDLE_ID: com.accqua.sports
+      IOS_SIGNING_READY: ${{ secrets.IOS_CERTIFICATE_BASE64 != '' && secrets.IOS_CERTIFICATE_PASSWORD != '' && secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' && secrets.IOS_TEAM_ID != '' && secrets.IOS_PROVISIONING_PROFILE_NAME != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate web app
+        run: npm run validate
+
+      - name: Install Capacitor toolchain
+        run: npm install --no-save --package-lock=false @capacitor/cli@7 @capacitor/core@7 @capacitor/ios@7
+
+      - name: Create iOS project
+        run: npx cap add ios
+
+      - name: Sync iOS wrapper
+        run: npx cap sync ios
+
+      - name: Apply ACCQUA app icon
+        run: bash scripts/prepare-ios-assets.sh
+
+      - name: Build unsigned simulator app for QA
+        if: env.IOS_SIGNING_READY != 'true'
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath build/ios-simulator \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios-simulator/Build/Products/Debug-iphonesimulator/App.app \
+            "artifacts/accqua-sports-ios-simulator-${GITHUB_SHA::7}.zip"
+
+      - name: Install Apple signing certificate
+        if: env.IOS_SIGNING_READY == 'true'
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/accqua-signing.keychain-db"
+          security create-keychain -p "${IOS_KEYCHAIN_PASSWORD:-accqua-ci}" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "${IOS_KEYCHAIN_PASSWORD:-accqua-ci}" "$keychain"
+          echo "$IOS_CERTIFICATE_BASE64" | base64 -D > "$RUNNER_TEMP/accqua-cert.p12"
+          security import "$RUNNER_TEMP/accqua-cert.p12" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${IOS_KEYCHAIN_PASSWORD:-accqua-ci}" "$keychain"
+
+      - name: Install provisioning profile
+        if: env.IOS_SIGNING_READY == 'true'
+        env:
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          profile="$RUNNER_TEMP/accqua.mobileprovision"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -D > "$profile"
+          uuid=$(security cms -D -i "$profile" | plutil -extract UUID raw -)
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$profile" "$HOME/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+
+      - name: Build signed IPA
+        if: env.IOS_SIGNING_READY == 'true'
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          IOS_PROVISIONING_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/ACCQUA.xcarchive" \
+            -destination generic/platform=iOS \
+            DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+            PRODUCT_BUNDLE_IDENTIFIER="$IOS_BUNDLE_ID" \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$IOS_PROVISIONING_PROFILE_NAME" \
+            archive
+          mkdir -p artifacts
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>ad-hoc</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>$IOS_TEAM_ID</string>
+            <key>provisioningProfiles</key>
+            <dict><key>$IOS_BUNDLE_ID</key><string>$IOS_PROVISIONING_PROFILE_NAME</string></dict>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/ACCQUA.xcarchive" \
+            -exportPath artifacts \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          mv artifacts/App.ipa "artifacts/accqua-sports-ios-${GITHUB_SHA::7}.ipa"
+
+      - name: Upload signed IPA
+        if: env.IOS_SIGNING_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: accqua-sports-ios-${{ github.sha }}
+          path: artifacts/accqua-sports-ios-*.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload simulator QA build
+        if: env.IOS_SIGNING_READY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: accqua-sports-ios-simulator-${{ github.sha }}
+          path: artifacts/accqua-sports-ios-simulator-*.zip
+          if-no-files-found: error
+          retention-days: 14
