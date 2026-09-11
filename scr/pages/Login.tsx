@@ -377,7 +377,7 @@ export default function Login() {
           </div>
         </section>
 
-        <form className="concept-login-form" onSubmit={handleLogin}>
+        <form className={`concept-login-form ${accessInfoOpen ? "is-access-open" : ""}`} onSubmit={handleLogin}>
           {feedback ? <div className={`concept-feedback ${feedback.type}`} role="alert">{feedback.text}</div> : null}
 
           <label className="concept-login-field">
