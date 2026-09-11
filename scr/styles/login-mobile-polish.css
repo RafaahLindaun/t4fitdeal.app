@@ -32,8 +32,8 @@
 @media (max-width: 899px) {
   .concept-login .concept-access-banner {
     top: 242px !important;
-    height: 76px !important;
-    min-height: 76px !important;
+    height: 64px !important;
+    min-height: 64px !important;
     padding: 12px 14px 12px 12px !important;
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr !important;
@@ -63,29 +63,35 @@
   }
 
   .concept-login .concept-access-banner.is-open {
-    grid-template-rows: 37px minmax(0, 1fr) !important;
-    gap: 3px !important;
+    height: 90px !important;
+    min-height: 90px !important;
+    grid-template-columns: 37px minmax(0, 1fr) !important;
+    grid-template-rows: 1fr !important;
+    justify-items: initial !important;
+    gap: 10px !important;
+    text-align: left !important;
   }
 
   .concept-login .concept-access-banner.is-open .access-banner-copy {
     display: grid !important;
     align-content: center;
     gap: 2px;
+    text-align: left;
   }
 
   .concept-login .concept-access-banner strong {
-    max-width: 230px;
-    margin-inline: auto;
-    font-size: 10.2px !important;
-    line-height: 1.1 !important;
+    max-width: none;
+    margin-inline: 0;
+    font-size: 11.2px !important;
+    line-height: 1.16 !important;
     letter-spacing: 0;
   }
 
   .concept-login .concept-access-banner span {
-    max-width: 240px;
-    margin: 0 auto !important;
-    font-size: 8.8px !important;
-    line-height: 1.15 !important;
+    max-width: none;
+    margin: 0 !important;
+    font-size: 9.2px !important;
+    line-height: 1.22 !important;
     color: rgba(242, 248, 255, .76) !important;
   }
 
@@ -162,24 +168,23 @@
   .concept-login .concept-feature-grid article {
     height: 56px !important;
     min-height: 56px !important;
-    padding: 7px 9px !important;
+    padding: 6px 8px !important;
     display: grid !important;
-    grid-template-columns: 29px minmax(0, 1fr) !important;
-    grid-template-rows: 1fr !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 25px auto !important;
     align-items: center !important;
-    justify-content: initial !important;
-    column-gap: 8px !important;
-    row-gap: 1px !important;
-    text-align: left !important;
+    justify-items: center !important;
+    row-gap: 3px !important;
+    text-align: center !important;
     border-color: rgba(180, 213, 251, .18) !important;
     background: linear-gradient(140deg, rgba(19, 62, 115, .9), rgba(8, 34, 72, .86)) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045), 0 8px 16px rgba(0, 0, 0, .1) !important;
   }
 
   .concept-login .concept-feature-grid .feature-icon {
-    width: 29px !important;
-    height: 29px !important;
-    grid-row: 1 / span 2 !important;
+    width: 25px !important;
+    height: 25px !important;
+    grid-row: 1 !important;
     margin: 0 !important;
     display: grid !important;
     place-items: center !important;
@@ -197,7 +202,7 @@
     width: 100% !important;
     font-size: 10.8px !important;
     line-height: 1.05 !important;
-    text-align: left !important;
+    text-align: center !important;
   }
 
   .concept-login .concept-feature-grid article > p {
