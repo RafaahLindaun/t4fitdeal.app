@@ -1,0 +1,136 @@
+/* Shared surfaces follow the active ACCQUA theme, including nested staff pages. */
+.accqua-staff-layout,
+.accqua-staff-layout .accqua-staff-content {
+  background: linear-gradient(180deg, var(--surface-base), var(--surface-deep)) !important;
+  color: var(--text-primary);
+}
+.accqua-staff-layout .accqua-staff-mobile-nav {
+  background: var(--surface-deep);
+}
+.accqua-staff-layout .staff-page-layout {
+  --staff-page-gutter: clamp(16px, 3vw, 28px);
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding: 0 !important;
+  background: transparent !important;
+}
+.accqua-staff-layout .staff-page-layout-header {
+  padding: 20px var(--staff-page-gutter) 16px !important;
+  background: transparent !important;
+}
+.accqua-staff-layout .staff-page-layout-scroll {
+  padding: 0 var(--staff-page-gutter) calc(28px + env(safe-area-inset-bottom)) !important;
+  background: transparent !important;
+}
+.accqua-staff-layout .staff-subpage-header {
+  width: 100%;
+  min-height: 64px;
+  height: auto !important;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 0 0 16px !important;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent !important;
+}
+.accqua-staff-layout .staff-subpage-header > div { min-width: 0; }
+.accqua-staff-layout .staff-subpage-logo { display: flex; align-items: center; min-height: 44px; }
+.accqua-staff-layout .staff-subpage-logo .accqua-logo { width: 112px; max-width: 100%; }
+.accqua-staff-layout .staff-subpage-heading { grid-column: 1 / -1; }
+.accqua-staff-layout .staff-subpage-back { width: 44px; height: 44px; margin: 0; }
+.accqua-staff-layout .staff-subpage-header h1 { margin: 4px 0 0; font-size: clamp(24px, 4vw, 30px); line-height: 1.15; }
+.accqua-staff-layout .staff-subpage-header p { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+.accqua-staff-layout .notifications-staff-grid,
+.accqua-staff-layout .ranking-staff-grid { margin-top: 0; align-items: start; }
+.accqua-staff-layout .notifications-staff-side { grid-template-columns: minmax(0, 1fr); }
+.notification-preview article :is(strong, p) { overflow-wrap: anywhere; }
+
+/* A lazy staff tab occupies the content panel without replacing the navigation. */
+.accqua-staff-route > .accqua-route-skeleton-170.is-embedded {
+  position: relative !important;
+  inset: auto !important;
+  width: 100%;
+  min-height: 380px;
+  height: auto;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding: 24px;
+  background: transparent !important;
+}
+
+/* Reserve enough space for the entire approval badge, including larger text. */
+.accqua-staff-layout .admin-area-header.is-dashboard-header {
+  grid-template-columns: 44px minmax(0, 1fr) auto !important;
+  align-items: center;
+  gap: 10px;
+}
+.accqua-staff-layout .admin-area-header.is-dashboard-header .admin-area-pending {
+  width: auto !important;
+  min-width: 84px !important;
+  max-width: none !important;
+  min-height: 48px;
+  height: auto !important;
+  padding: 6px 10px !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  justify-self: end;
+  box-sizing: border-box;
+  line-height: 1.15;
+}
+.accqua-staff-layout .admin-area-pending > strong { font-size: 16px; line-height: 1; }
+.accqua-staff-layout .admin-area-header.is-dashboard-header .admin-area-pending small {
+  margin: 0;
+  font-size: 12px !important;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.accqua-staff-layout .admin-area-shell.is-dashboard .admin-area-filters {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 8px;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+}
+.accqua-staff-layout .admin-area-shell.is-dashboard .admin-area-filters > button {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  width: auto !important;
+  white-space: nowrap !important;
+}
+
+/* Store uses the same logo, back action and page title hierarchy as Ranking. */
+.store-screen { background: linear-gradient(180deg, var(--surface-base), var(--surface-deep)) !important; }
+.store-heading { flex: 0 0 auto; }
+.store-screen .store-heading .store-header {
+  min-height: 76px !important;
+  padding: max(12px, env(safe-area-inset-top)) 16px 8px !important;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 12px;
+  border: 0;
+  background: transparent !important;
+  backdrop-filter: none;
+}
+.store-header .accqua-page-header-center { justify-content: flex-start; }
+.store-header .accqua-logo { width: 112px; max-width: 100%; }
+.store-header .store-header-button { border: 0; background: transparent; border-radius: 50%; }
+.store-header .store-header-reservations {
+  border-radius: 50%;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--surface-overlay) 80%, transparent);
+}
+.store-header button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.store-page-title { margin: 4px 16px 12px; color: var(--text-primary); font-size: 34px; line-height: 1.1; letter-spacing: -.035em; }
+.store-hero h2 { margin: 7px 0 8px; font-size: clamp(24px, 5vw, 30px); line-height: 1.08; letter-spacing: -.035em; }
+.owner-staff-form label > small { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
+@media (min-width: 1024px) {
+  .store-screen .store-heading .store-header { padding-inline: 4px !important; }
+  .store-page-title { margin-inline: 4px; }
+}

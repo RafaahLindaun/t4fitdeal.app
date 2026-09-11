@@ -7,7 +7,7 @@ function CardGrid({ compact = false }: { compact?: boolean }) {
   </>;
 }
 
-export default function RouteLoadingSkeleton170() {
+export default function RouteLoadingSkeleton170({ embedded = false }: { embedded?: boolean }) {
   const { pathname } = useLocation();
   const staff = pathname.startsWith("/area-accqua");
   const workout = pathname.startsWith("/treino");
@@ -16,7 +16,7 @@ export default function RouteLoadingSkeleton170() {
   const ranking = pathname.startsWith("/ranking");
 
   return (
-    <div className={`accqua-route-skeleton-170 ${staff ? "is-staff" : ""}`} role="status" aria-label="Carregando página">
+    <div className={`accqua-route-skeleton-170 ${staff ? "is-staff" : ""} ${embedded ? "is-embedded" : ""}`} role="status" aria-label="Carregando página">
       <div className="skeleton-head">
         <span className="skeleton-logo" />
         <div className="skeleton-actions"><i/><i/></div>

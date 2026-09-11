@@ -95,7 +95,9 @@ Deno.serve(async (req) => {
     const domain = STAFF_DOMAINS[role];
     const fullName = text(body?.fullName).replace(/\s+/g, " ").slice(0, 80);
     const username = normalizeUsername(body?.username);
-    const password = text(body?.password);
+    const password = typeof body?.password === "string" ? body.password : "";
+    const hasCustomEmail = Object.prototype.hasOwnProperty.call(body ?? {}, "email");
+    const customEmail = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
 
     if (!domain || !["professor", "admin", "reception"].includes(role)) {
       return response({ error: "invalid_role", message: "Selecione Professor, Administração ou Recepção." }, 400);
@@ -103,18 +105,26 @@ Deno.serve(async (req) => {
     if (fullName.length < 2) {
       return response({ error: "invalid_name", message: "Informe o nome do membro da equipe." }, 400);
     }
-    if (!/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username)) {
+    if (!hasCustomEmail && !/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username)) {
       return response({ error: "invalid_username", message: "Use um usuário com 3 a 40 caracteres, sem espaços ou acentos." }, 400);
+    }
+    const email = hasCustomEmail ? customEmail : `${username}@${domain}`;
+    const [localPart, emailDomain, extraPart] = email.split("@");
+    if (!localPart || localPart.length > 64 || email.length > 254 || extraPart !== undefined ||
+      !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(localPart) || localPart.startsWith(".") || localPart.endsWith(".") || localPart.includes("..") ||
+      !emailDomain || !emailDomain.includes(".") || emailDomain.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) {
+      return response({ error: "invalid_email", message: "Informe um e-mail completo e válido, como nome@gmail.com." }, 400);
     }
     if (password.length < 8) {
       return response({ error: "weak_password", message: "A senha precisa ter pelo menos 8 caracteres." }, 400);
     }
 
-    const email = `${username}@${domain}`;
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      // The owner chooses the role; email domains never decide the permission.
+      app_metadata: { role },
       user_metadata: {
         full_name: fullName,
         nome: fullName,
@@ -158,17 +168,6 @@ Deno.serve(async (req) => {
         updated_at: now,
       }, { onConflict: "user_id" });
       if (approvalError) throw approvalError;
-
-      const { error: metadataError } = await admin.auth.admin.updateUserById(newUserId, {
-        app_metadata: { role },
-        user_metadata: {
-          full_name: fullName,
-          nome: fullName,
-          status: "active",
-          created_by_owner: true,
-        },
-      });
-      if (metadataError) throw metadataError;
 
       const { error: auditError } = await admin.from("accqua_staff_account_audit").insert({
         action: "create",

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import AccquaLogo from "./AccquaLogo";
 
 export default function StaffSubPageHeader({
   title,
@@ -20,7 +21,8 @@ export default function StaffSubPageHeader({
       >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
       </button>
-      <div>
+      <div className="staff-subpage-logo"><AccquaLogo compact /></div>
+      <div className="staff-subpage-heading">
         <small>{eyebrow}</small>
         <h1>{title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}

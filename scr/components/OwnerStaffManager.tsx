@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import CenteredModal from "./CenteredModal";
 import { supabase } from "../lib/supabase";
 import "./owner-staff-manager.css";
@@ -15,22 +15,11 @@ type StaffMember = {
   owner?: boolean;
 };
 
-const ROLE_META: Record<StaffRole, { label: string; domain: string }> = {
-  professor: { label: "Professor", domain: "professor.com" },
-  admin: { label: "Administração", domain: "admin.com" },
-  reception: { label: "Recepção", domain: "recepcao.com" },
+const ROLE_META: Record<StaffRole, { label: string }> = {
+  professor: { label: "Professor" },
+  admin: { label: "Administração" },
+  reception: { label: "Recepção" },
 };
-
-function normalizeUsername(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, ".")
-    .replace(/[^a-z0-9._-]/g, "")
-    .replace(/^[._-]+|[._-]+$/g, "")
-    .slice(0, 40);
-}
 
 async function edgeErrorMessage(error: unknown, fallback: string) {
   const context = (error as { context?: unknown } | null)?.context as
@@ -61,12 +50,11 @@ export default function OwnerStaffManager({
   const [creating, setCreating] = useState(false);
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<StaffRole>("professor");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
-  const cleanUsername = useMemo(() => normalizeUsername(username), [username]);
-  const emailPreview = cleanUsername ? `${cleanUsername}@${ROLE_META[role].domain}` : `usuario@${ROLE_META[role].domain}`;
+  const cleanEmail = email.trim().toLowerCase();
 
   const loadStaff = async () => {
     setLoadingList(true);
@@ -94,10 +82,10 @@ export default function OwnerStaffManager({
     if (creating) return;
 
     const cleanName = fullName.trim().replace(/\s+/g, " ");
-    if (cleanName.length < 2 || cleanUsername.length < 3 || password.length < 8) {
+    if (cleanName.length < 2 || !cleanEmail || password.length < 8) {
       setMessage({
         kind: "error",
-        text: "Preencha o nome, um usuário com pelo menos 3 caracteres e uma senha com pelo menos 8 caracteres.",
+        text: "Preencha o nome, o e-mail completo e uma senha com pelo menos 8 caracteres.",
       });
       return;
     }
@@ -110,15 +98,16 @@ export default function OwnerStaffManager({
           action: "create",
           fullName: cleanName,
           role,
-          username: cleanUsername,
+          email: cleanEmail,
           password,
         },
       });
       if (error) throw error;
-      const createdEmail = String(data?.staff?.email ?? emailPreview);
+      if (!data?.success || !data?.staff?.id) throw new Error("Conta não confirmada pelo servidor.");
+      const createdEmail = String(data.staff.email ?? cleanEmail);
       setMessage({ kind: "success", text: `${createdEmail} criado e liberado para o Staff.` });
       setFullName("");
-      setUsername("");
+      setEmail("");
       setPassword("");
       await loadStaff();
     } catch (error) {
@@ -137,21 +126,13 @@ export default function OwnerStaffManager({
       className="owner-staff-modal"
       bodyClassName="owner-staff-modal-body"
     >
-      <div className="owner-staff-owner-note">
-        <span aria-hidden="true">◆</span>
-        <div>
-          <strong>Acesso do dono</strong>
-          <p>Somente rafaelalexandrowitch@professor.com pode criar novos acessos de Staff.</p>
-        </div>
-      </div>
-
       <form className="owner-staff-form" onSubmit={handleSubmit}>
         <div className="owner-staff-form-heading">
           <div>
             <small>NOVO ACESSO</small>
             <h3>Adicionar à equipe</h3>
           </div>
-          <span>{emailPreview}</span>
+          {cleanEmail ? <span title={cleanEmail}>{cleanEmail}</span> : null}
         </div>
 
         <label>
@@ -162,6 +143,8 @@ export default function OwnerStaffManager({
             placeholder="Ex.: Mariana Souza"
             maxLength={80}
             autoComplete="off"
+            required
+            disabled={creating}
           />
         </label>
 
@@ -174,6 +157,8 @@ export default function OwnerStaffManager({
                 type="button"
                 className={role === value ? "is-active" : ""}
                 onClick={() => setRole(value)}
+                aria-pressed={role === value}
+                disabled={creating}
               >
                 {ROLE_META[value].label}
               </button>
@@ -182,19 +167,22 @@ export default function OwnerStaffManager({
         </fieldset>
 
         <label>
-          <span>Usuário</span>
-          <div className="owner-staff-username-field">
+          <span>E-mail de acesso</span>
             <input
-              value={username}
-              onChange={(event) => setUsername(normalizeUsername(event.target.value))}
-              placeholder="mariana"
-              maxLength={40}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Ex.: mariana@gmail.com"
+              maxLength={254}
+              autoComplete="off"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
+              required
+              disabled={creating}
+              aria-describedby="owner-staff-email-help"
             />
-            <strong>@{ROLE_META[role].domain}</strong>
-          </div>
+          <small id="owner-staff-email-help">Pode ser Gmail, Outlook ou outro domínio. O tipo de acesso é escolhido acima.</small>
         </label>
 
         <label>
@@ -205,6 +193,8 @@ export default function OwnerStaffManager({
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Mínimo de 8 caracteres"
             minLength={8}
+            required
+            disabled={creating}
             autoComplete="new-password"
           />
         </label>

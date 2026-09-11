@@ -44,6 +44,7 @@ import "./styles/build-1.6.5.9-r3.css";
 import "./styles/retire-partners-1.6.5.9.css";
 import "./styles/build-1.7.0.css";
 import "./styles/build-1.7.0-capabilities.css";
+import "./styles/store-staff-polish.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();

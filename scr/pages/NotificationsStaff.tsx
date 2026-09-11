@@ -70,7 +70,7 @@ export default function NotificationsStaff() {
   return (
     <StaffPageLayout
       className="notifications-staff-page"
-      header={<StaffSubPageHeader title="Notificações" subtitle="Envie avisos segmentados para o sino do app e, quando autorizado, por push." />}
+      header={<StaffSubPageHeader title="Notificações" subtitle="Crie um aviso e escolha quem vai receber." />}
     >
       <div className="notifications-staff-grid">
         <form className="notifications-staff-card notifications-compose" onSubmit={(event) => void submit(event)}>
@@ -87,11 +87,7 @@ export default function NotificationsStaff() {
             <div className="notifications-section-heading"><span>PRÉVIA</span><strong>Como aparece para o aluno</strong></div>
             <article><span className="notification-preview-icon">{ICONS.find((item) => item.id === icon)?.glyph}</span><div><strong>{title.trim() || "Título da notificação"}</strong><p>{body.trim() || "Sua mensagem aparece aqui antes do envio."}</p><small>Agora · ACCQUA Sports</small></div></article>
           </section>
-          <section className="notifications-staff-card notification-delivery-info">
-            <div className="notifications-section-heading"><span>ENTREGA</span><strong>Respeita a preferência do aluno</strong></div>
-            <p>Quem desativou notificações não recebe entrada no sino nem push. iPhone precisa do app instalado na Tela de Início para Web Push.</p>
-            {lastResult ? <div className="notification-last-result"><strong>Último envio</strong><span>{lastResult.recipients} destinatário{lastResult.recipients === 1 ? "" : "s"}</span><small>{lastResult.pushDelivered} push entregue{lastResult.pushDelivered === 1 ? "" : "s"}{lastResult.pushFailed ? ` · ${lastResult.pushFailed} falharam` : ""}</small></div> : null}
-          </section>
+          {lastResult ? <div className="notification-last-result" role="status"><strong>Último envio</strong><span>{lastResult.recipients} destinatário{lastResult.recipients === 1 ? "" : "s"}</span><small>{lastResult.pushDelivered} push entregue{lastResult.pushDelivered === 1 ? "" : "s"}{lastResult.pushFailed ? ` · ${lastResult.pushFailed} falharam` : ""}</small></div> : null}
         </aside>
       </div>
     </StaffPageLayout>

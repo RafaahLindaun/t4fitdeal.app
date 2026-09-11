@@ -1,0 +1,9 @@
+{
+  "appId": "com.accqua.sports",
+  "appName": "ACCQUA Sports",
+  "webDir": "dist",
+  "server": {
+    "url": "https://fitdeal.vercel.app",
+    "cleartext": false
+  }
+}

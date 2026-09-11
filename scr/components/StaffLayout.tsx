@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Build158MotionBridge from "./Build158MotionBridge";
 import OwnerStaffManager from "./OwnerStaffManager";
+import RouteLoadingSkeleton170 from "./RouteLoadingSkeleton170";
+import { prefetchStaffRoute } from "../lib/staffRoutePrefetch";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import { staffButtonVariants, staffMotionTransition } from "../lib/staffMotion";
 import "./staff-layout.css";
@@ -38,6 +40,8 @@ export default function StaffLayout() {
   const items = getStaffNavItems();
   const active = staffNavKeyForLocation(location.pathname, location.search);
   const mobileItemRefs = useRef<Partial<Record<StaffNavKey, HTMLButtonElement | null>>>({});
+  const mobileNavRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [ownerManagerOpen, setOwnerManagerOpen] = useState(false);
   const isStaff = Boolean(
@@ -57,10 +61,18 @@ export default function StaffLayout() {
     if (window.matchMedia("(min-width: 1024px)").matches) return;
     const activeTab = mobileItemRefs.current[active];
     if (!activeTab) return;
-    window.requestAnimationFrame(() => {
-      activeTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "auto" });
+    const frame = window.requestAnimationFrame(() => {
+      const nav = mobileNavRef.current;
+      if (!nav) return;
+      // Scroll only the tab strip, never its vertical ancestors.
+      nav.scrollTo({ left: activeTab.offsetLeft - (nav.clientWidth - activeTab.offsetWidth) / 2, behavior: "instant" });
     });
+    return () => window.cancelAnimationFrame(frame);
   }, [active]);
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -138,6 +150,9 @@ export default function StaffLayout() {
               aria-label={sidebarCollapsed ? item.label : undefined}
               title={sidebarCollapsed ? item.label : undefined}
               onClick={() => navigate(item.href)}
+              onPointerEnter={() => prefetchStaffRoute(item.href)}
+              onFocus={() => prefetchStaffRoute(item.href)}
+              onPointerDown={() => prefetchStaffRoute(item.href)}
               initial="idle"
               animate="idle"
               whileHover="hover"
@@ -157,7 +172,7 @@ export default function StaffLayout() {
         </div>
       </aside>
 
-      <nav className="accqua-staff-mobile-nav" data-tab-swipe-ignore aria-label="Seções da Área ACCQUA" data-testid="staff-mobile-nav">
+      <nav ref={mobileNavRef} className="accqua-staff-mobile-nav" data-tab-swipe-ignore aria-label="Seções da Área ACCQUA" data-testid="staff-mobile-nav">
         {items.map((item) => (
           <motion.button
             ref={(node) => { mobileItemRefs.current[item.key] = node; }}
@@ -166,6 +181,9 @@ export default function StaffLayout() {
             className={active === item.key ? "is-active" : ""}
             aria-current={active === item.key ? "page" : undefined}
             onClick={() => navigate(item.href)}
+            onPointerEnter={() => prefetchStaffRoute(item.href)}
+            onFocus={() => prefetchStaffRoute(item.href)}
+            onPointerDown={() => prefetchStaffRoute(item.href)}
             initial="idle"
             animate="idle"
             whileTap="tap"
@@ -194,10 +212,12 @@ export default function StaffLayout() {
         ) : null}
       </nav>
 
-      <section className="accqua-staff-content" aria-live="polite">
-        <div className="accqua-staff-route" key={location.pathname} data-staff-route={location.pathname}>
-          <Outlet />
-          {isBuilder ? <Build158MotionBridge /> : null}
+      <section ref={contentRef} className="accqua-staff-content">
+        <div className="accqua-staff-route" data-staff-route={location.pathname}>
+          <Suspense key={`${user.id}:${profile.role}`} fallback={<RouteLoadingSkeleton170 embedded />}>
+            <Outlet />
+            {isBuilder ? <Build158MotionBridge /> : null}
+          </Suspense>
         </div>
       </section>
 

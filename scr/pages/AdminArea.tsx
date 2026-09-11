@@ -1,7 +1,6 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -9,6 +8,7 @@ import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import * as Popover from "@radix-ui/react-popover";
 import { toast as notify } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
 import ProfilePhotoViewer from "../components/ProfilePhotoViewer";
@@ -153,19 +153,20 @@ export default function AdminArea() {
   const requestedStudentId = searchParams.get("student") ?? "";
   const requestedSection = searchParams.get("section") ?? "";
   const { user, profile, loading, landingPath } = useAuth();
+  const queryClient = useQueryClient();
+  const initialStudents = queryClient.getQueryData<WorkoutStudent[]>(["staff-students", user?.id, profile?.role, ""]);
 
   const [query, setQuery] = useState("");
   const [resourceQuery, setResourceQuery] = useState("");
-  const [dashboardView, setDashboardView] = useState<AdminDashboardView>("students");
-  const [filter, setFilter] = useState<StudentFilter>("attention");
-  const [students, setStudents] = useState<WorkoutStudent[]>([]);
+  const dashboardView: AdminDashboardView = requestedSection === "library" || requestedSection === "templates" ? requestedSection : "students";
+  const [filter, setFilter] = useState<StudentFilter>(() => requestedSection === "alerts" ? "attention" : requestedSection === "approvals" ? "pending" : "all");
+  const [students, setStudents] = useState<WorkoutStudent[]>(() => initialStudents ?? []);
   const [libraryItems, setLibraryItems] = useState<ExerciseLibraryItem[]>([]);
   const [mediaManifest, setMediaManifest] = useState<string[]>([]);
   const [resourceTemplates, setResourceTemplates] = useState<AdminProgramTemplate[]>([]);
-  const [resourceLoading, setResourceLoading] = useState(false);
+  const [resourceLoading, setResourceLoading] = useState(dashboardView !== "students");
   const [resourceError, setResourceError] = useState("");
-  const [studentsLoading, setStudentsLoading] = useState(true);
-  const studentsHydratedRef = useRef(false);
+  const [studentsLoading, setStudentsLoading] = useState(!initialStudents);
   const [studentError, setStudentError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<WorkoutStudent | null>(null);
   const [studentActivities, setStudentActivities] = useState<StudentActivitySummary[]>([]);
@@ -211,32 +212,39 @@ export default function AdminArea() {
 
   useEffect(() => {
     if (!user || !canManageStudents) return;
-
+    let cancelled = false;
+    const queryKey = ["staff-students", user.id, profile?.role, query.trim()];
+    const cached = queryClient.getQueryData<WorkoutStudent[]>(queryKey);
+    if (cached) { setStudents(cached); setStudentsLoading(false); }
     const timer = window.setTimeout(async () => {
-      if (!studentsHydratedRef.current) setStudentsLoading(true);
+      if (!cached) setStudentsLoading(true);
       setStudentError("");
 
       try {
-        setStudents(await searchWorkoutStudents(query));
+        if (reloadKey > 0) await queryClient.invalidateQueries({ queryKey: ["staff-students", user.id] });
+        const result = await queryClient.fetchQuery({
+          queryKey,
+          queryFn: () => searchWorkoutStudents(query),
+          staleTime: 15_000,
+          gcTime: 60_000,
+        });
+        if (!cancelled) setStudents(result);
       } catch (error) {
-        setStudentError(
+        if (!cancelled) setStudentError(
           error instanceof Error
             ? error.message
             : "Não foi possível consultar os alunos.",
         );
       } finally {
-        studentsHydratedRef.current = true;
-        setStudentsLoading(false);
+        if (!cancelled) setStudentsLoading(false);
       }
-    }, 260);
+    }, query.trim() ? 260 : 0);
 
-    return () => window.clearTimeout(timer);
-  }, [canManageStudents, query, reloadKey, user?.id]);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [canManageStudents, query, queryClient, reloadKey, user?.id, profile?.role]);
 
   useEffect(() => {
-    if (requestedSection === "library") { setDashboardView("library"); return; }
-    if (requestedSection === "templates") { setDashboardView("templates"); return; }
-    setDashboardView("students");
+    if (requestedSection === "library" || requestedSection === "templates") return;
     if (requestedSection === "alerts") setFilter("attention");
     else if (requestedSection === "approvals") setFilter("pending");
     else setFilter("all");
@@ -251,14 +259,17 @@ export default function AdminArea() {
 
     const loadResource =
       dashboardView === "library"
-        ? loadExerciseMediaManifest().then(async (manifest) => {
+        ? queryClient.fetchQuery({ queryKey: ["staff-library", user.id, profile?.role], staleTime: 30_000, queryFn: async () => {
+            const manifest = await loadExerciseMediaManifest();
             const items = await loadSyncedExerciseLibrary(manifest);
+            return { manifest, items };
+          } }).then(({ manifest, items }) => {
             if (!cancelled) {
               setMediaManifest(manifest);
               setLibraryItems(items);
             }
           })
-        : loadAdminProgramTemplates(user.id).then((templates) => {
+        : queryClient.fetchQuery({ queryKey: ["staff-templates", user.id, profile?.role], staleTime: 30_000, queryFn: () => loadAdminProgramTemplates(user.id) }).then((templates) => {
             if (!cancelled) setResourceTemplates(templates);
           });
 
@@ -279,7 +290,7 @@ export default function AdminArea() {
     return () => {
       cancelled = true;
     };
-  }, [canManageStudents, dashboardView, user?.id]);
+  }, [canManageStudents, dashboardView, queryClient, user?.id, profile?.role]);
 
   useEffect(() => {
     if (!toast) return;
@@ -293,7 +304,11 @@ export default function AdminArea() {
   }, [toast]);
 
   useEffect(() => {
-    if (!requestedStudentId || selectedStudent?.id === requestedStudentId) {
+    if (!requestedStudentId) {
+      setSelectedStudent(null);
+      return;
+    }
+    if (selectedStudent?.id === requestedStudentId) {
       return;
     }
 
@@ -832,6 +847,7 @@ export default function AdminArea() {
         defaultRestSeconds: exerciseDraft.restSeconds,
       });
       setLibraryItems((current) => [...current, created].sort((a,b) => `${a.muscleGroup}-${a.name}`.localeCompare(`${b.muscleGroup}-${b.name}`, "pt-BR")));
+      void queryClient.invalidateQueries({ queryKey: ["staff-library", user?.id] });
       setExerciseDialogOpen(false);
       resetExerciseDraft();
       setToast("Exercício adicionado à Biblioteca.");
@@ -845,6 +861,7 @@ export default function AdminArea() {
     try {
       const result = await deleteExerciseLibraryItem(exerciseDelete.id);
       setLibraryItems((current) => current.filter((item) => item.id !== exerciseDelete.id));
+      void queryClient.invalidateQueries({ queryKey: ["staff-library", user?.id] });
       setToast(result.action === "deleted" ? "Exercício excluído." : `Exercício retirado da Biblioteca; ${result.dependencies} vínculo(s) histórico(s) foram preservados.`);
       setExerciseDelete(null);
     } catch (error) { setToast(error instanceof Error ? error.message : "Não foi possível excluir o exercício."); }
@@ -912,13 +929,12 @@ export default function AdminArea() {
       return;
     }
     if (section === "library" || section === "templates") {
-      setResourceLoading(true);
       setResourceError("");
-      setDashboardView(section);
+      setSearchParams({ section });
       return;
     }
 
-    setDashboardView("students");
+    setSearchParams(section === "students" ? {} : { section });
     if (section === "alerts") {
       setFilter("attention");
       return;
@@ -977,10 +993,11 @@ export default function AdminArea() {
                 type="button"
                 className={clsx("admin-area-pending", pendingCount > 0 && "has-pending")}
                 onClick={() => selectPrimarySection("approvals")}
-                aria-label={String(pendingCount) + " cadastros pendentes. Mostrar aprovações."}
+                aria-label={studentsLoading ? "Consultando cadastros pendentes" : String(pendingCount) + " cadastros pendentes. Mostrar aprovações."}
+                disabled={studentsLoading}
                 title="Ver aprovações pendentes"
               >
-                {pendingCount}
+                <strong>{studentsLoading ? "—" : pendingCount}</strong>
                 <small>pendentes</small>
               </button>
             ) : null}
@@ -1010,10 +1027,7 @@ export default function AdminArea() {
                     dashboardView === "students" && filter === "pending" && "is-active",
                   )}
                   aria-pressed={dashboardView === "students" && filter === "pending"}
-                  onClick={() => {
-                    setDashboardView("students");
-                    setFilter("pending");
-                  }}
+                  onClick={() => setFilter("pending")}
                 >
                   <span className="admin-dashboard-stat-icon"><AdminShieldIcon size={21} /></span>
                   <span className="admin-dashboard-stat-copy">
@@ -1031,10 +1045,7 @@ export default function AdminArea() {
                     dashboardView === "students" && filter === "unlinked" && "is-active",
                   )}
                   aria-pressed={dashboardView === "students" && filter === "unlinked"}
-                  onClick={() => {
-                    setDashboardView("students");
-                    setFilter("unlinked");
-                  }}
+                  onClick={() => setFilter("unlinked")}
                 >
                   <span className="admin-dashboard-stat-icon"><AdminLinkIcon size={21} /></span>
                   <span className="admin-dashboard-stat-copy">
@@ -1052,10 +1063,7 @@ export default function AdminArea() {
                     dashboardView === "students" && filter === "no-workout" && "is-active",
                   )}
                   aria-pressed={dashboardView === "students" && filter === "no-workout"}
-                  onClick={() => {
-                    setDashboardView("students");
-                    setFilter("no-workout");
-                  }}
+                  onClick={() => setFilter("no-workout")}
                 >
                   <span className="admin-dashboard-stat-icon"><AdminDumbbellIcon size={21} /></span>
                   <span className="admin-dashboard-stat-copy">
@@ -1072,10 +1080,7 @@ export default function AdminArea() {
                     dashboardView === "students" && filter === "mine" && "is-active",
                   )}
                   aria-pressed={dashboardView === "students" && filter === "mine"}
-                  onClick={() => {
-                    setDashboardView("students");
-                    setFilter("mine");
-                  }}
+                  onClick={() => setFilter("mine")}
                 >
                   <span className="admin-dashboard-stat-icon"><AdminUserIcon size={21} /></span>
                   <span className="admin-dashboard-stat-copy">
@@ -1144,7 +1149,6 @@ export default function AdminArea() {
                       className={clsx("accqua-pressable", filter === value && "is-active")}
                       aria-pressed={filter === value}
                       onClick={(event) => {
-                        setDashboardView("students");
                         setFilter(value as StudentFilter);
                         event.currentTarget.scrollIntoView({
                           behavior: "smooth",

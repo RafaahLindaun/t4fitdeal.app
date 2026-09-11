@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
 import LoadingSplash from "../components/LoadingSplash";
 import PageHeader from "../components/PageHeader";
+import AccquaLogo from "../components/AccquaLogo";
 import ResponsiveDialog from "../components/ResponsiveDialog";
 import ProductDetailDialog from "../components/store/ProductDetailDialog";
 import PixPaymentDialog from "../components/store/PixPaymentDialog";
@@ -58,9 +59,12 @@ export default function Store(){
   const reservedProductIds=useMemo(()=>new Set(activeReservations.map(item=>item.productId)),[activeReservations]);
   if(loading||productsQuery.isLoading)return <LoadingSplash/>; if(!user)return <Navigate to="/login" replace/>; if(landingPath!=="/menu-teste")return <Navigate to={landingPath} replace/>;
   return <div className="store-screen"><div className="store-bg" aria-hidden="true"/><main className="store-shell">
-    <PageHeader className="store-header" ariaLabel="Loja ACCQUA" left={<button className="store-header-button" type="button" onClick={()=>navigate("/menu-teste")} aria-label="Voltar"><BackIcon/></button>} center={<div className="store-header-title"><span>ACCQUA SPORTS</span><strong>Loja</strong></div>} right={<button className="store-header-icon store-header-reservations" type="button" onClick={()=>navigate("/perfil?section=reservas")} aria-label={activeReservations.length?`Minhas reservas, ${activeReservations.length} ativa${activeReservations.length===1?"":"s"}`:"Minhas reservas"} title="Minhas reservas"><MenuBagIcon size={23}/>{activeReservations.length?<b>{activeReservations.length>9?"9+":activeReservations.length}</b>:null}</button>}/>
+    <div className="store-heading">
+      <PageHeader className="store-header" ariaLabel="Loja ACCQUA" left={<button className="store-header-button" type="button" onClick={()=>navigate("/menu-teste")} aria-label="Voltar"><BackIcon/></button>} center={<AccquaLogo compact/>} right={<button className="store-header-icon store-header-reservations" type="button" onClick={()=>navigate("/perfil?section=reservas")} aria-label={activeReservations.length?`Minhas reservas, ${activeReservations.length} ativa${activeReservations.length===1?"":"s"}`:"Minhas reservas"} title="Minhas reservas"><MenuBagIcon size={23}/>{activeReservations.length?<b>{activeReservations.length>9?"9+":activeReservations.length}</b>:null}</button>}/>
+      <h1 className="store-page-title">Loja</h1>
+    </div>
     <div className="store-scroll">
-      <section className="store-hero"><span>EXCLUSIVO PARA ALUNOS</span><h1>Reserve agora.<br/>Retire na recepção.</h1><p>Reserve para pagar na recepção ou pague agora via Pix com confirmação automática.</p></section>
+      <section className="store-hero"><span>EXCLUSIVO PARA ALUNOS</span><h2>Reserve agora.<br/>Retire na recepção.</h2><p>Reserve para pagar na recepção ou pague agora via Pix com confirmação automática.</p></section>
       <div className="store-filter-row" role="tablist" aria-label="Categorias da loja">{categories.map(item=><button key={item} type="button" role="tab" aria-selected={category===item} className={category===item?"is-active":""} onClick={()=>setCategory(item)}>{productCategoryLabel(item)}</button>)}</div>
       {products.length?<section className="store-grid" aria-label="Produtos disponíveis">{products.map(product=>{const alreadyReserved=reservedProductIds.has(product.id);return <motion.article key={product.id} className="store-card" whileHover={reduceMotion?undefined:{y:-2}} whileTap={reduceMotion?undefined:{scale:.992}} role="button" tabIndex={0} aria-label={`Ver detalhes de ${product.name}`} onClick={()=>setSelectedProduct(product)} onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();setSelectedProduct(product)}}}>
         <ProductArt product={product}/>

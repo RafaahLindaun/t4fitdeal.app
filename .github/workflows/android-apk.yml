@@ -1,0 +1,73 @@
+name: ACCQUA Sports Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "codex/**"
+      - "build/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accqua-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install web dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate web app
+        run: |
+          npm run visual:contracts
+          npm run typecheck
+          npm run build
+
+      - name: Install Capacitor toolchain
+        run: npm install --no-save --package-lock=false @capacitor/cli@7 @capacitor/core@7 @capacitor/android@7
+
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Sync Android wrapper
+        run: npx cap sync android
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK with version and commit
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp android/app/build/outputs/apk/debug/app-debug.apk "artifacts/accqua-sports-${GITHUB_SHA::7}.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: accqua-sports-android-${{ github.sha }}
+          path: artifacts/accqua-sports-*.apk
+          if-no-files-found: error
+          retention-days: 14
