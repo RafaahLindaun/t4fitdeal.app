@@ -25,6 +25,7 @@ const WHATSAPP =
 
 const ARTBOARD_WIDTH = 450;
 const ARTBOARD_HEIGHT = 780;
+const INTRO_COPY = "Treinos, evolução, aulas e orientações em um só lugar.";
 
 const initialForm: FirstAccessInput = {
   fullName: "",
@@ -41,22 +42,22 @@ const featureItems = [
   {
     icon: <DumbbellIcon />,
     title: "Treino",
-    text: "Acesse seus treinos e acompanhe sua performance.",
+    text: "Treinos e sua performance.",
   },
   {
     icon: <AppleIcon />,
     title: "Dieta",
-    text: "Veja sua dieta e receba dicas personalizadas.",
+    text: "Dieta e dicas personalizadas.",
   },
   {
     icon: <CalendarIcon />,
     title: "Aulas",
-    text: "Confira horários e reserve sua vaga nas aulas.",
+    text: "Horários e reservas de aulas.",
   },
   {
     icon: <ChartIcon />,
     title: "Evolução",
-    text: "Acompanhe seus resultados e evolua sempre.",
+    text: "Acompanhe seus resultados.",
   },
 ];
 
@@ -118,6 +119,7 @@ export default function Login() {
     text: string;
   } | null>(null);
   const [registerFeedback, setRegisterFeedback] = useState("");
+  const [typedIntro, setTypedIntro] = useState("");
 
   const stableViewport = useRef({ width: 0, height: 0 });
 
@@ -221,6 +223,22 @@ export default function Login() {
       document.body.style.overflow = previous;
     };
   }, [registerOpen]);
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setTypedIntro(INTRO_COPY);
+      return;
+    }
+
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setTypedIntro(INTRO_COPY.slice(0, index));
+      if (index >= INTRO_COPY.length) window.clearInterval(timer);
+    }, 34);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const stepValid = useMemo(() => {
     if (registerStep === 0) {
@@ -336,7 +354,10 @@ export default function Login() {
             Bem-vindo ao app<br />
             da <span>Accqua Sports</span>
           </h1>
-          <p>Treinos, evolução, aulas e orientações<br />em um só lugar.</p>
+          <p aria-label={INTRO_COPY}>
+            <span aria-hidden="true">{typedIntro}</span>
+            <i className="login-typing-caret" aria-hidden="true" />
+          </p>
         </section>
 
         <section className="concept-access-banner">
@@ -344,8 +365,8 @@ export default function Login() {
             <LockIcon size={23} />
           </div>
           <div>
-            <strong>Acesso exclusivo para alunos matriculados</strong>
-            <span>Seu acesso é liberado de acordo com sua matrícula ativa na academia.</span>
+            <strong>Acesso exclusivo para alunos</strong>
+            <span>Entre com os dados da sua matrícula ativa.</span>
           </div>
         </section>
 
