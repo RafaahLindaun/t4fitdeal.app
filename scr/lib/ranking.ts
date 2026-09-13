@@ -158,13 +158,14 @@ export function rankingPeriodLabel(period: string) {
   return label.replace(/^./, (letter) => letter.toLocaleUpperCase("pt-BR"));
 }
 
-export async function loadRankingPrize(period = rankingPeriodKey()): Promise<RankingPrize | null> {
+export async function loadRankingPrize(period = rankingPeriodKey(), throwOnError = false): Promise<RankingPrize | null> {
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from("ranking_premios")
     .select("id,periodo,nome_premio,descricao,imagem_url")
     .eq("periodo", period)
     .maybeSingle();
+  if (error && throwOnError) throw error;
   if (error || !data) return null;
   const row = data as Row;
   return {

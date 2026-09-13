@@ -20,7 +20,7 @@ function AccessSummary() {
 export default function ClassesAdminV155() {
   return (
     <StaffPageLayout className="classes-admin-v155-page" header={<StaffSubPageHeader title="Gestão de aulas" subtitle="Horários, modalidades e acesso dos alunos em um só lugar." />}>
-      <div className="classes-admin-v155-wrap"><AccessSummary /><ClassesAdmin /></div>
+      <div className="classes-admin-v155-wrap"><AccessSummary /><ClassesAdmin embedded /></div>
     </StaffPageLayout>
   );
 }

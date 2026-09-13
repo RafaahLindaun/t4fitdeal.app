@@ -322,7 +322,9 @@ export default function TestMenu() {
                 <small>SEU RITMO</small>
                 <strong><span className="accqua-streak-flame" aria-hidden="true">🔥</span>{ritmoLoading ? "Atualizando sequência" : streakLabel}</strong>
               </div>
-              <span>{ritmoLoading ? "Atualizando..." : plannedBadge}</span>
+              {ritmoLoading || ritmo.plannedDays > 0 ? (
+                <span>{ritmoLoading ? "Atualizando..." : plannedBadge}</span>
+              ) : null}
             </div>
             <div className="accqua-streak-days">
               {ritmo.days.map((day) => {

@@ -9,10 +9,11 @@ import LoadingSplash from "../components/LoadingSplash";
 import ProfilePhotoViewer from "../components/ProfilePhotoViewer";
 import ResponsiveDialog from "../components/ResponsiveDialog";
 import ModalCloseButton from "../components/ModalCloseButton";
+import RankingInfoSheet from "../components/RankingInfoSheet";
+import { currentRankingPeriod } from "../lib/rankingPeriod";
 import {
   loadAccquaRanking,
   loadRankingPrize,
-  loadRankingPrizeName,
   type RankingEntry,
   type RankingPrize,
 } from "../lib/ranking";
@@ -92,14 +93,6 @@ function PodiumEntry({ entry, position, currentUserId, onSelect, reduceMotion }:
   </motion.button>;
 }
 
-function RankingInfoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const prizeQuery = useQuery({ queryKey: ["ranking-config", "nome-premio"], queryFn: loadRankingPrizeName, enabled: open, staleTime: 5 * 60_000 });
-  const prizeName = prizeQuery.data?.trim() || "um prêmio especial";
-  return <ResponsiveDialog open={open} onOpenChange={(next) => { if (!next) onClose(); }} title="Como funciona" description="Detalhes do Ranking ACCQUA." className="ranking-info-responsive-dialog" bodyClassName="ranking-info-dialog-body" closeButton={<button type="button" className="ranking-sheet-close" aria-label="Fechar">×</button>}>
-    <div className="ranking-info-list"><article><strong>Dias treinados do mês</strong><p>Cada dia válido conta no máximo uma vez, mesmo com mais de um treino no dia.</p></article><article><strong>Prêmio para o 1º lugar</strong><p>Quem terminar o mês em primeiro lugar ganha: {prizeName}.</p></article><article><strong>Novo mês, nova disputa</strong><p>No primeiro dia do mês o ranking recomeça.</p></article></div>
-  </ResponsiveDialog>;
-}
-
 function daysToMonthEnd() {
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -169,8 +162,15 @@ export default function Ranking() {
   const [photo, setPhoto] = useState<RankingEntry | null>(null);
   const rankingCelebratedRef = useRef(false);
   const reducedMotionPreference = useReducedMotion();
-  const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6"], queryFn: loadAccquaRanking, staleTime: 20_000 });
-  const prizeQuery = useQuery({ queryKey: ["ranking-prize", "current"], queryFn: () => loadRankingPrize(), staleTime: 60_000 });
+  const [now, setNow] = useState(() => new Date());
+  const period = currentRankingPeriod(now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const rankingQuery = useQuery({ queryKey: ["ranking", "monthly", "1.5.6", user?.id, period.key], queryFn: loadAccquaRanking, enabled: Boolean(user), staleTime: 20_000 });
+  const prizeQuery = useQuery({ queryKey: ["ranking-prize", "current", period.key], queryFn: () => loadRankingPrize(period.key, true), enabled: Boolean(user), staleTime: 60_000 });
+  const refreshRankingInfo = () => { setNow(new Date()); void rankingQuery.refetch(); void prizeQuery.refetch(); };
   const entries = rankingQuery.data ?? [];
   const podium = useMemo(() => entries.slice(0, 3), [entries]);
   const rest = useMemo(() => entries.slice(3), [entries]);
@@ -189,8 +189,8 @@ export default function Ranking() {
   if (landingPath !== "/menu-teste") return <Navigate to={landingPath} replace/>;
 
   return <div className="accqua-ranking-screen"><main className="accqua-ranking-shell">
-    <header className="ranking-header"><button type="button" className="ranking-header-action ranking-back-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar"><AppBackIcon size={24}/></button><div className="ranking-header-logo"><AccquaLogo compact/></div><div className="ranking-header-actions"><button type="button" className="ranking-prize-fab" onClick={() => setPrizeOpen(true)} aria-label="Ver prêmio deste mês"><GiftIcon/></button><button type="button" className="ranking-info-fab" onClick={() => setInfoOpen(true)} aria-label="Como funciona o ranking"><InfoIcon/></button></div></header>
+    <header className="ranking-header"><button type="button" className="ranking-header-action ranking-back-button" onClick={() => navigate("/menu-teste")} aria-label="Voltar"><AppBackIcon size={24}/></button><div className="ranking-header-logo"><AccquaLogo compact/></div><div className="ranking-header-actions"><button type="button" className="ranking-prize-fab" onClick={() => setPrizeOpen(true)} aria-label="Ver prêmio deste mês"><GiftIcon/></button><button type="button" className="ranking-info-fab" onClick={() => { setInfoOpen(true); refreshRankingInfo(); }} aria-label="Como funciona o ranking"><InfoIcon/></button></div></header>
     <section className="ranking-title"><h1>Ranking</h1><p>Cada dia treinado soma pontos.</p></section>
     <section className="ranking-content">{rankingQuery.isLoading ? <div className="ranking-loading"><span/><p>Carregando ranking...</p></div> : !entries.length ? <div className="ranking-empty"><strong>O ranking começa com o primeiro dia treinado do mês</strong><p>Conclua seu treino e acompanhe sua posição.</p></div> : <><section className="ranking-podium" aria-label="Pódio do ranking">{([2,1,3] as const).map((position) => { const entry = podiumByPosition.get(position) ?? podium[position - 1]; return entry ? <PodiumEntry key={entry.studentId} entry={entry} position={position} currentUserId={user.id} onSelect={setSelectedProfile} reduceMotion={Boolean(reducedMotionPreference)}/> : <span className={`ranking-podium-placeholder is-position-${position}`} key={position}/>; })}</section><div className="ranking-list">{rest.map((entry, index) => { const isMe = entry.studentId === user.id; return <motion.button type="button" key={entry.studentId} className={`ranking-row ${isMe ? "is-me" : ""}`} onClick={() => setSelectedProfile(entry)} initial={reducedMotionPreference ? false : { opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={reducedMotionPreference ? { duration: 0 } : { delay: .92 + index * .07, duration: .38, ease: [0.2, 0.8, 0.2, 1] }}><span className="ranking-row-position">{entry.position || index + 4}</span><span className={`ranking-row-avatar ${entry.avatarUrl ? "has-photo" : ""}`}>{entry.avatarUrl ? <img src={entry.avatarUrl} alt={`Foto de ${entry.firstName}`}/> : initials(entry.firstName)}</span><strong>{isMe ? "Você" : entry.firstName}{isMe ? <em className="ranking-you-badge">Você</em> : null}</strong><small>{entry.points} dia{entry.points === 1 ? "" : "s"}</small></motion.button>; })}</div></>}</section>
-  </main><RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)}/><PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/><RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => setSelectedProfile(null)} onPhoto={setPhoto}/><ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/></div>;
+  </main><RankingInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)} period={period} entry={myEntry} prize={prizeQuery.data} loading={rankingQuery.isLoading || prizeQuery.isLoading} rankingError={rankingQuery.isError} prizeError={prizeQuery.isError} refreshing={rankingQuery.isFetching || prizeQuery.isFetching} onRefresh={refreshRankingInfo}/><PrizeDialog open={prizeOpen} onClose={() => setPrizeOpen(false)} prize={prizeQuery.data} entry={myEntry}/><RankingProfileSheet entry={selectedProfile} currentUserId={user.id} onClose={() => setSelectedProfile(null)} onPhoto={setPhoto}/><ProfilePhotoViewer open={Boolean(photo)} imageUrl={photo?.avatarUrl ?? ""} name={photo?.firstName ?? "Perfil"} onClose={() => setPhoto(null)}/></div>;
 }

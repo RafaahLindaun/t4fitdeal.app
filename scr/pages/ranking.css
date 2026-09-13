@@ -689,3 +689,16 @@
   overscroll-behavior-y: contain;
   padding-bottom: calc(18px + env(safe-area-inset-bottom));
 }
+.ranking-rules { display: grid; gap: 12px; padding-block: 8px 4px; }
+.ranking-rules > :is(section, article, details) { padding: 16px; min-width: 0; border: 1px solid var(--border-subtle); border-radius: 16px; background: color-mix(in srgb, var(--surface-overlay) 60%, transparent); }
+.ranking-rules strong, .ranking-rules summary { font-size: 15px; line-height: 1.4; }
+.ranking-rules p { margin: 8px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.ranking-rules small { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
+.ranking-rules summary { cursor: pointer; font-weight: 700; min-height: 28px; }
+.ranking-rules summary:focus-visible, .ranking-rules-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.ranking-rules-numbers { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 12px; }
+.ranking-rules-numbers span { display: grid; gap: 3px; color: var(--text-secondary); font-size: 13px; }
+.ranking-rules-numbers strong { font-size: 30px; color: var(--accent); line-height: 1.1; }
+.ranking-rules-refresh { min-height: 46px; padding: 10px 14px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-overlay); color: var(--text-primary); font: inherit; font-weight: 700; cursor: pointer; }
+.ranking-rules-refresh:disabled { opacity: .6; cursor: wait; }
+.ranking-info-responsive-dialog .ranking-info-dialog-body { padding-inline: 0; scrollbar-width: thin; scrollbar-color: var(--border-subtle) transparent; }

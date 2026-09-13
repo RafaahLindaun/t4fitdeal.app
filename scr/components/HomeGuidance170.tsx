@@ -23,7 +23,6 @@ export default function HomeGuidance170() {
           const flame = title.querySelector(".accqua-streak-flame")?.outerHTML ?? '<span class="accqua-streak-flame" aria-hidden="true">🔥</span>';
           title.innerHTML = `${flame}<span class="accqua-streak-guided-copy-170">Comece hoje e inicie sua sequência</span>`;
         }
-        if (noPlan) badge.textContent = "Seu ritmo começa no primeiro treino";
       });
     };
 

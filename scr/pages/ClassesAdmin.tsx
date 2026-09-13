@@ -169,7 +169,7 @@ function ScheduleForm({ draft, setDraft, professors, editing, onSubmit, saving }
   );
 }
 
-export default function ClassesAdmin() {
+export default function ClassesAdmin({ embedded = false }: { embedded?: boolean }) {
   const queryClient = useQueryClient();
   const { profile, loading, landingPath } = useAuth();
   const isStaff = Boolean(profile && ["professor", "reception", "admin"].includes(profile.role));
@@ -290,7 +290,7 @@ export default function ClassesAdmin() {
     <div className="classes-admin-screen">
       <main className="classes-admin-shell">
         <div className="classes-admin-scroll">
-          <section className="classes-admin-hero"><span><AdminCalendarIcon size={27} /></span><div><small>ÁREA STAFF</small><h1>Gestão de aulas</h1><p>Horários, vagas, responsáveis e check-in em uma única fonte.</p></div></section>
+          {!embedded && <section className="classes-admin-hero"><span><AdminCalendarIcon size={27} /></span><div><small>ÁREA STAFF</small><h1>Gestão de aulas</h1><p>Horários, vagas, responsáveis e check-in em uma única fonte.</p></div></section>}
 
           <div className="classes-admin-summary"><article><strong>{data?.types.filter((item) => item.active).length ?? 0}</strong><span>modalidades ativas</span></article><article><strong>{data?.schedules.filter((item) => item.active).length ?? 0}</strong><span>horários ativos</span></article><article><strong>{data?.professors.length ?? 0}</strong><span>professores</span></article></div>
 
