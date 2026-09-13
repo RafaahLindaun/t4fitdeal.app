@@ -2,11 +2,13 @@
    Final regression layer. Keep after 1.5.4. */
 :root{--surface-active:#1e3a5f;--text-on-active:#fff;--border-active:#f2c230;--accent-selection:#3b82f6}
 
-/* Staff > Alunos: semantic selected/pressed contrast and independent scrolling. */
+/* Staff > Alunos: semantic selected/pressed contrast. */
 .admin-area-filters button[aria-pressed="true"],.admin-dashboard-stat[aria-pressed="true"],.admin-dashboard-stat.is-active{color:var(--text-on-active)!important;border-color:var(--border-active)!important;background:var(--surface-active)!important}
 .admin-dashboard-stat[aria-pressed="true"] small,.admin-dashboard-stat[aria-pressed="true"] b,.admin-dashboard-stat.is-active small,.admin-dashboard-stat.is-active b{color:#eaf3ff!important}
 .accqua-staff-content,.admin-area-content,.admin-dashboard-roster,.admin-dashboard-resource{min-height:0}
-.admin-area-list.admin-dashboard-roster,.admin-dashboard-resource{overflow-y:auto;overscroll-behavior-y:contain}
+/* The student roster flows inside .accqua-staff-content. Creating a scroll
+   boundary here traps wheel events even when the roster has no overflow. */
+.admin-dashboard-resource{overflow-y:auto;overscroll-behavior-y:contain}
 
 /* Canonical warning badge pair. */
 .accqua-status-badge.is-warning,.admin-student-flags i.is-no-workout{color:#07162d!important;background:#ffd128!important;border-color:#ffd128!important}
