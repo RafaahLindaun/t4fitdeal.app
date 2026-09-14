@@ -44,8 +44,9 @@ export default function ProfileHighlights() {
     return () => observer?.disconnect();
   }, [enabled, location.key]);
 
+  const profileObjective = String(profile?.objective ?? "").trim();
   const query = useQuery({
-    queryKey: ["profile-highlights", "1.6.5.7", user?.id],
+    queryKey: ["profile-highlights", "1.7.1", user?.id, profileObjective],
     queryFn: loadMyProfileHighlights,
     enabled,
     staleTime: 5 * 60_000,
@@ -54,6 +55,7 @@ export default function ProfileHighlights() {
 
   const achievement = useMemo(() => achievementFor(query.data?.daysInApp ?? 0), [query.data?.daysInApp]);
   if (!enabled || !target || !query.data) return null;
+  const displayedObjective = profileObjective || query.data.objective || "Não informado";
 
   return createPortal(
     <motion.article
@@ -69,7 +71,7 @@ export default function ProfileHighlights() {
       </div>
       <div className="profile-highlight-meta-v1657">
         <span><small>Divisão atual</small><strong title={query.data.currentSplit}>{query.data.currentSplit}</strong></span>
-        <span><small>Objetivo</small><strong title={query.data.objective}>{query.data.objective}</strong></span>
+        <span><small>Objetivo</small><strong title={displayedObjective}>{displayedObjective}</strong></span>
       </div>
     </motion.article>,
     target,
