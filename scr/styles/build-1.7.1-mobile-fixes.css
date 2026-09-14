@@ -256,7 +256,7 @@
     position: fixed !important;
     left: 0 !important;
     right: 0 !important;
-    bottom: calc(-1 * max(0px, calc(env(safe-area-inset-bottom, 0px) - 14px))) !important;
+    bottom: min(0px, calc(14px - env(safe-area-inset-bottom, 0px))) !important;
     width: 100% !important;
     height: 60px !important;
     min-height: 60px !important;
