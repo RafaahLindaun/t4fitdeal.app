@@ -248,29 +248,16 @@
   }
 }
 
-/* BottomNavigation mobile: corrige a causa do recorte no iOS/PWA. O AppShell
-   tinha altura/overflow que podiam cortar um elemento fixed quando ele era
-   empurrado para a safe-area. Mantemos a tab bar compacta, garantimos que o
-   root acompanhe 100dvh e posicionamos a pílula próxima ao home indicator,
-   sem usar bottom negativo. */
+/* BottomNavigation mobile: pílula compacta ancorada exatamente acima da
+   safe-area nativa. Não empurramos o componente para dentro da área do gesto
+   e não alteramos html/body/root; assim o iOS não recorta a parte inferior. */
 @media (max-width: 767.98px) {
-  html:has(.accqua-main-layout),
-  body:has(.accqua-main-layout),
-  #root:has(.accqua-main-layout) {
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-  }
-
-  #root:has(.accqua-main-layout) {
-    overflow: visible !important;
-  }
-
   .accqua-main-layout > .accqua-main-layout-nav {
     position: fixed !important;
     z-index: var(--z-bottomnav, 140) !important;
     left: 0 !important;
     right: 0 !important;
-    bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 16px)) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
     width: 100% !important;
     height: 58px !important;
     min-height: 58px !important;
@@ -282,6 +269,7 @@
     display: flex !important;
     align-items: flex-end !important;
     justify-content: center !important;
+    overflow: visible !important;
     background: transparent !important;
     box-shadow: none !important;
     transform: none !important;
