@@ -23,7 +23,8 @@ requireAll("163/reorder", "scr/pages/AdminWorkoutBuilder.tsx", [/Reorder\.Group/
 requireAll("163/grouping", "scr/pages/AdminWorkoutBuilder.tsx", [/setExerciseSeriesType/,/Bi-set/,/Tri-set/], "bi-set/tri-set ausentes");
 requireAll("163/rest", "scr/pages/Profile.tsx", [/Repouso obrigatório entre séries/,/restRequired/], "toggle de repouso ausente");
 requireAll("163/timer", "scr/pages/Treino.tsx", [/TimerOverlay/,/setGroupId/], "execução agrupada/timer não está ativa");
-requireAll("163/dialog", "scr/components/ResponsiveDialog.tsx", [/Drawer\.Root/,/responsive-dialog-handle/,/syncModalAccessibility/], "bottom sheet compartilhado perdeu drag/modal guard");
+requireAll("171/dialog-centered", "scr/components/ResponsiveDialog.tsx", [/Dialog\.Root/,/responsive-dialog-content/,/syncModalAccessibility/], "modal compartilhado perdeu centralização/modal guard");
+requireAbsent("171/dialog-no-drawer", "scr/components/ResponsiveDialog.tsx", /Drawer\.Root|responsive-dialog-handle/, "modal compartilhado voltou a bottom sheet/drag");
 requireAll("163/modal-gap", "scr/styles/build-1.6.3.css", [/responsive-dialog-header/,/gap:24px!important/], "X do modal continua encostado no título");
 requireAll("163/bottom-nav", "scr/components/MainLayout.tsx", [/<BottomNavigation/,/effectiveFocusMode/], "BottomNavigation canônica foi duplicada/removida");
 requireAll("163/reservations", "scr/components/ProfileReservations157.tsx", [/status === "reservado"/,/status === "cancelado"/,/deleteMyCancelledReservation/,/activeCount/], "cancelar/apagar reserva perdeu fluxo correto");
