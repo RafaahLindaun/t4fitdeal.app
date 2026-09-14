@@ -248,16 +248,17 @@
   }
 }
 
-/* BottomNavigation do aluno: mantém o visual atual e encosta a pílula
-   na borda física inferior em qualquer mobile. */
+/* BottomNavigation do aluno: a superfície termina na borda física da tela,
+   enquanto a safe-area fica dentro da própria barra para manter todos os
+   controles completamente visíveis acima da área de gesto. */
 @media (max-width: 767.98px) {
   .accqua-main-layout > .accqua-main-layout-nav {
     left: 0 !important;
     right: 0 !important;
-    bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
+    bottom: 0 !important;
     width: 100% !important;
     height: auto !important;
-    min-height: 68px !important;
+    min-height: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
     padding:
       0
       max(12px, env(safe-area-inset-right, 0px))
@@ -274,9 +275,13 @@
   .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
     width: min(520px, 100%) !important;
     max-width: 520px !important;
-    min-height: 68px !important;
+    min-height: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
     margin: 0 !important;
-    padding: 6px 8px !important;
+    padding:
+      6px
+      8px
+      calc(6px + env(safe-area-inset-bottom, 0px))
+      8px !important;
     border: 1px solid rgba(114, 152, 199, .22) !important;
     border-radius: 28px !important;
     overflow: hidden !important;
