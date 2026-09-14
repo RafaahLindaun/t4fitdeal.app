@@ -8,9 +8,14 @@
     --offset: max(52px, calc(env(safe-area-inset-top, 0px) + 10px)) !important;
   }
 
+  /* 5 — Toda a matemática de altura do Staff usa a altura real da barra + safe-area. */
+  .accqua-staff-layout {
+    --staff-mobile-nav-height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+  }
+
   /* 5 — Navegação Staff começa depois da safe-area e continua rolável na horizontal. */
   .accqua-staff-mobile-nav {
-    min-height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    min-height: var(--staff-mobile-nav-height) !important;
     padding:
       calc(8px + env(safe-area-inset-top, 0px))
       max(10px, env(safe-area-inset-right, 0px))
