@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import AccquaLogo from "../components/AccquaLogo";
 import { useAuth } from "../auth/AuthProvider";
+import { supabase } from "../lib/supabase";
 
-const AUTO_CHECK_MS = 30_000;
+const AUTO_CHECK_MS = 15_000;
 
 export default function Pending() {
   const {
@@ -15,6 +16,7 @@ export default function Pending() {
     refreshProfile,
   } = useAuth();
   const [checking, setChecking] = useState(false);
+  const [initialChecked, setInitialChecked] = useState(false);
   const inFlight = useRef(false);
 
   const checkRelease = useCallback(async (showBusy = true) => {
@@ -31,26 +33,53 @@ export default function Pending() {
   }, [refreshProfile]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+
+    const firstCheck = async () => {
+      await checkRelease(false);
+      if (alive) setInitialChecked(true);
+    };
+    void firstCheck();
+
     const runWhenVisible = () => {
       if (document.visibilityState !== "visible") return;
       void checkRelease(false);
     };
 
-    // Uma checagem inicial é suficiente. Antes eram chamadas a cada 2s e podiam
-    // se sobrepor quando o banco estava lento, criando uma tempestade de RPCs.
-    runWhenVisible();
     const interval = window.setInterval(runWhenVisible, AUTO_CHECK_MS);
     window.addEventListener("focus", runWhenVisible);
     document.addEventListener("visibilitychange", runWhenVisible);
 
+    const approvalChannel = supabase
+      .channel(`accqua-approval-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "accqua_app_approval", filter: `user_id=eq.${user.id}` },
+        () => void checkRelease(false),
+      )
+      .subscribe();
+
+    const accessChannel = supabase
+      .channel(`accqua-access-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "accqua_app_access", filter: `student_id=eq.${user.id}` },
+        () => void checkRelease(false),
+      )
+      .subscribe();
+
     return () => {
+      alive = false;
       window.clearInterval(interval);
       window.removeEventListener("focus", runWhenVisible);
       document.removeEventListener("visibilitychange", runWhenVisible);
+      void supabase.removeChannel(approvalChannel);
+      void supabase.removeChannel(accessChannel);
     };
-  }, [checkRelease]);
+  }, [checkRelease, user?.id]);
 
-  if (loading) return null;
+  if (loading || (user && !initialChecked)) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (landingPath !== "/aguardando") {
     return <Navigate to={landingPath} replace />;
