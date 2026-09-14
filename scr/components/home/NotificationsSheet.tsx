@@ -151,7 +151,7 @@ export default function NotificationsSheet({
       ) : (
         <div className="accqua-notifications-empty">
           <strong>Nenhuma notificação nova</strong>
-          <span>Quando algo importante acontecer, aparece aqui.</span>
+          <span>Quando algo importante acontecer, aparecerá aqui.</span>
         </div>
       )}
     </ResponsiveDialog>
