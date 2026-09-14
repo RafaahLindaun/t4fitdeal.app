@@ -53,6 +53,7 @@ import "./styles/tour-mobile-desktop-polish.css";
 import "./styles/calendar-classes-polish.css";
 import "./styles/cardio-assignment-polish.css";
 import "./styles/build-1.7.1-rounds-2-4.css";
+import "./styles/profile-tabs-1.7.1.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
