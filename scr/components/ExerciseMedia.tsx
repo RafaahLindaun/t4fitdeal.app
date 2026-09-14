@@ -23,9 +23,7 @@ function unique(values: string[]) {
 
 function compactImageCandidate(value: string) {
   const source = String(value ?? "").trim();
-  // O render/image do Storage é útil para imagens estáticas, mas não deve ser
-  // usado para GIF: a transformação pode remover a animação ou falhar no iOS.
-  if (!source || !/\.(?:png|jpe?g|webp)(?:\?|$)/i.test(source)) return "";
+  if (!source || !/\.(?:png|jpe?g|webp|gif)(?:\?|$)/i.test(source)) return "";
   const marker = "/storage/v1/object/public/";
   if (!source.includes(marker)) return "";
   const rendered = source.replace(marker, "/storage/v1/render/image/public/");
