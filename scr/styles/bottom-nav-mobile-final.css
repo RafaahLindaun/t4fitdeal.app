@@ -1,0 +1,96 @@
+/* ACCQUA Sports — correção final e isolada da BottomNavigation mobile.
+   Esta camada restaura o viewport padrão do AppShell e controla somente a
+   navegação inferior. Deve permanecer como o último CSS importado. */
+
+@media (max-width: 767.98px) {
+  /* Desfaz a tentativa anterior de forçar 100dvh no root. Em iOS standalone,
+     isso pode terminar o AppShell antes da região física inferior. */
+  html:has(.accqua-main-layout),
+  body:has(.accqua-main-layout),
+  #root:has(.accqua-main-layout) {
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  #root:has(.accqua-main-layout) {
+    overflow: hidden !important;
+  }
+
+  /* Reserva de conteúdo coerente com a barra compacta, sem criar faixa visual. */
+  :root {
+    --app-bottomnav-height: 58px;
+    --app-bottomnav-offset: calc(66px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav {
+    position: fixed !important;
+    z-index: var(--z-bottomnav, 140) !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    /* Fica entre 4 e 10px da borda útil. Em iPhones com home indicator,
+       o safe-area apenas protege os controles; não aumenta a altura da barra. */
+    bottom: clamp(4px, calc(env(safe-area-inset-bottom, 0px) - 24px), 10px) !important;
+    width: 100% !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    margin: 0 !important;
+    padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px)) !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+    pointer-events: none !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav::before,
+  .accqua-main-layout > .accqua-main-layout-nav::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
+    width: min(520px, 100%) !important;
+    max-width: 520px !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    margin: 0 !important;
+    padding: 4px 7px 3px !important;
+    border-radius: 23px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation::before {
+    border-radius: 21px !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav .accqua-bottom-item {
+    min-height: 46px !important;
+    height: 46px !important;
+    padding: 2px 2px 1px !important;
+    gap: 2px !important;
+    border-radius: 14px !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav .accqua-bottom-item::before {
+    inset: 2px 3px 1px !important;
+    border-radius: 13px !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav .accqua-bottom-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav .accqua-bottom-item strong {
+    font-size: 11.5px !important;
+    line-height: 1 !important;
+  }
+}
