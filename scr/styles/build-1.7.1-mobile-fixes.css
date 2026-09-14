@@ -248,46 +248,43 @@
   }
 }
 
-/* BottomNavigation do aluno: no telefone ela termina na borda inferior da tela,
-   usando a própria superfície para cobrir a safe-area. Não há mais “pílula” flutuante. */
+/* BottomNavigation do aluno: restaura a pílula anterior e apenas a posiciona
+   mais perto possível da borda inferior no mobile. */
 @media (max-width: 767.98px) {
-  :root {
-    --app-bottomnav-offset: calc(82px + env(safe-area-inset-bottom, 0px));
-  }
-
   .accqua-main-layout > .accqua-main-layout-nav {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
     width: 100% !important;
     height: auto !important;
-    min-height: 0 !important;
-    padding: 0 !important;
+    min-height: calc(72px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 20px))) !important;
+    padding:
+      0
+      max(12px, env(safe-area-inset-right, 0px))
+      max(4px, calc(env(safe-area-inset-bottom, 0px) - 20px))
+      max(12px, env(safe-area-inset-left, 0px)) !important;
     display: flex !important;
     align-items: flex-end !important;
-    justify-content: stretch !important;
+    justify-content: center !important;
     background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
   }
 
   .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
-    width: 100% !important;
-    max-width: none !important;
-    min-height: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    width: min(520px, 100%) !important;
+    max-width: 520px !important;
+    min-height: 68px !important;
     margin: 0 !important;
-    padding:
-      8px
-      max(8px, env(safe-area-inset-right, 0px))
-      calc(7px + env(safe-area-inset-bottom, 0px))
-      max(8px, env(safe-area-inset-left, 0px)) !important;
-    border-right: 0 !important;
-    border-bottom: 0 !important;
-    border-left: 0 !important;
-    border-radius: 24px 24px 0 0 !important;
+    padding: 6px 8px !important;
+    border: 1px solid rgba(114, 152, 199, .22) !important;
+    border-radius: 28px !important;
+    overflow: hidden !important;
     box-sizing: border-box !important;
   }
 
   .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation::before {
-    border-radius: 22px 22px 0 0 !important;
+    border-radius: 26px !important;
   }
 }
 
