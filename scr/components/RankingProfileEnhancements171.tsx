@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
-import { loadAccquaRanking, type RankingEntry } from "../lib/ranking";
+import { loadAccquaRanking } from "../lib/ranking";
 import { currentRankingPeriod } from "../lib/rankingPeriod";
 import { getTrainingPartnerStatus, requestTrainingPartner } from "../lib/trainingPartners";
 import { supabase } from "../lib/supabase";
