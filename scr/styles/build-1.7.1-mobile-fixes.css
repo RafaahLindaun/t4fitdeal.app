@@ -248,9 +248,10 @@
   }
 }
 
-/* BottomNavigation do aluno: a superfície termina na borda física da tela,
-   enquanto a safe-area fica dentro da própria barra para manter todos os
-   controles completamente visíveis acima da área de gesto. */
+/* BottomNavigation: mantém integralmente o tamanho/visual canônico anterior.
+   A única mudança é retirar a folga extra de 12px do wrapper e deixar apenas
+   a safe-area padrão do aparelho, posicionando a pílula mais abaixo sem
+   invadir a área de gesto. */
 @media (max-width: 767.98px) {
   .accqua-main-layout > .accqua-main-layout-nav {
     left: 0 !important;
@@ -258,11 +259,11 @@
     bottom: 0 !important;
     width: 100% !important;
     height: auto !important;
-    min-height: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+    min-height: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
     padding:
       0
       max(12px, env(safe-area-inset-right, 0px))
-      0
+      env(safe-area-inset-bottom, 0px)
       max(12px, env(safe-area-inset-left, 0px)) !important;
     display: flex !important;
     align-items: flex-end !important;
@@ -270,26 +271,6 @@
     background: transparent !important;
     box-shadow: none !important;
     transform: none !important;
-  }
-
-  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
-    width: min(520px, 100%) !important;
-    max-width: 520px !important;
-    min-height: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
-    margin: 0 !important;
-    padding:
-      6px
-      8px
-      calc(6px + env(safe-area-inset-bottom, 0px))
-      8px !important;
-    border: 1px solid rgba(114, 152, 199, .22) !important;
-    border-radius: 28px !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-  }
-
-  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation::before {
-    border-radius: 26px !important;
   }
 }
 
