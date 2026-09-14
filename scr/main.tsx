@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
 import ProfileHighlights from "./components/ProfileHighlights";
+import ProfileTabs171 from "./components/ProfileTabs171";
 import Round2RuntimeEnhancements from "./components/Round2RuntimeEnhancements";
 import Build1658Runtime from "./components/Build1658Runtime";
 import Build171Runtime from "./components/Build171Runtime";
@@ -80,6 +81,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <AuthProvider>
           <App />
           <ProfileHighlights />
+          <ProfileTabs171 />
           <Round2RuntimeEnhancements />
           <Build1658Runtime />
           <Build171Runtime />
