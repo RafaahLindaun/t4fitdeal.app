@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import AccquaLogo from "../components/AccquaLogo";
-import LoadingSplash from "../components/LoadingSplash";
 import { useAuth } from "../auth/AuthProvider";
 
-const AUTO_CHECK_MS = 10_000;
+const AUTO_CHECK_MS = 30_000;
 
 export default function Pending() {
   const {
@@ -16,7 +15,6 @@ export default function Pending() {
     refreshProfile,
   } = useAuth();
   const [checking, setChecking] = useState(false);
-  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
   const inFlight = useRef(false);
 
   const checkRelease = useCallback(async (showBusy = true) => {
@@ -28,7 +26,6 @@ export default function Pending() {
       await refreshProfile();
     } finally {
       inFlight.current = false;
-      setInitialCheckComplete(true);
       if (showBusy) setChecking(false);
     }
   }, [refreshProfile]);
@@ -39,9 +36,8 @@ export default function Pending() {
       void checkRelease(false);
     };
 
-    // Confirma o status atual antes de exibir a mensagem de pendência. Isso evita
-    // mostrar "Cadastro recebido" para uma conta que já foi autorizada enquanto
-    // a sessão ainda estava terminando de sincronizar.
+    // Uma checagem inicial é suficiente. Antes eram chamadas a cada 2s e podiam
+    // se sobrepor quando o banco estava lento, criando uma tempestade de RPCs.
     runWhenVisible();
     const interval = window.setInterval(runWhenVisible, AUTO_CHECK_MS);
     window.addEventListener("focus", runWhenVisible);
@@ -54,7 +50,7 @@ export default function Pending() {
     };
   }, [checkRelease]);
 
-  if (loading || !initialCheckComplete) return <LoadingSplash />;
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (landingPath !== "/aguardando") {
     return <Navigate to={landingPath} replace />;
