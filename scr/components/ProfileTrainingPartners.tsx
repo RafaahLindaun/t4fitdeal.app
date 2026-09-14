@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useAuth } from "../auth/AuthProvider";
+import { performHaptic } from "../lib/appFeedback";
 import {
   acceptTrainingPartner,
   callTrainingPartner,
@@ -23,6 +25,7 @@ function Avatar({ name, url }: { name: string; url: string }) {
 
 export default function ProfileTrainingPartners() {
   const client = useQueryClient();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"partners" | "find">("partners");
 
@@ -59,7 +62,10 @@ export default function ProfileTrainingPartners() {
       if (action.type === "request") toast.success("Convite de parceria enviado.");
       if (action.type === "accept") toast.success("Parceria aceita.");
       if (action.type === "decline") toast.success("Convite recusado.");
-      if (action.type === "call") toast.success("Chamado para treino enviado.");
+      if (action.type === "call") {
+        if (user?.id) void performHaptic(user.id, [18, 28, 18]);
+        toast.success("Chamado para treino enviado.");
+      }
       if (action.type === "remove") toast.success("Parceiro removido.");
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Não foi possível concluir a ação."),
