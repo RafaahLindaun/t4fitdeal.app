@@ -1,8 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Drawer } from "vaul";
 import clsx from "clsx";
-import { useMediaQuery } from "../hooks/useMediaQuery";
 import ModalCloseButton from "./ModalCloseButton";
 import "./responsive-dialog.css";
 
@@ -48,60 +46,28 @@ export default function ResponsiveDialog({
   className,
   bodyClassName,
   ariaDescriptionId,
-  presentation = "responsive",
 }: ResponsiveDialogProps) {
-  const desktop = useMediaQuery("(min-width: 768px)");
-  // Recipe AI predates the presentation prop; keep it centered without forcing
-  // a risky rewrite of the large StoreAdmin page. New callers should use the prop.
-  const legacyCentered = className?.split(/\s+/).includes("recipe-ai-dialog") ?? false;
-  const centered = desktop || presentation === "center" || legacyCentered;
-
   useEffect(() => syncModalAccessibility(open), [open]);
 
-  if (centered) {
-    return (
-      <Dialog.Root open={open} onOpenChange={onOpenChange}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="responsive-dialog-overlay" data-accqua-window-overlay />
-          <Dialog.Content
-            className={clsx("responsive-dialog-content", className)}
-            aria-describedby={description ? ariaDescriptionId : undefined}
-            data-accqua-window-surface="center"
-          >
-            <header className="responsive-dialog-header">
-              <div>
-                <Dialog.Title>{title}</Dialog.Title>
-                {description ? <Dialog.Description id={ariaDescriptionId}>{description}</Dialog.Description> : null}
-              </div>
-              <Dialog.Close asChild><ModalCloseButton /></Dialog.Close>
-            </header>
-            <div className={clsx("responsive-dialog-body", bodyClassName)}>{children}</div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    );
-  }
-
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="responsive-dialog-overlay" data-accqua-window-overlay />
-        <Drawer.Content
-          className={clsx("responsive-dialog-drawer", className)}
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="responsive-dialog-overlay" data-accqua-window-overlay />
+        <Dialog.Content
+          className={clsx("responsive-dialog-content", className)}
           aria-describedby={description ? ariaDescriptionId : undefined}
-          data-accqua-window-surface="sheet"
+          data-accqua-window-surface="center"
         >
-          <div className="responsive-dialog-handle" aria-hidden="true" />
           <header className="responsive-dialog-header">
             <div>
-              <Drawer.Title>{title}</Drawer.Title>
-              {description ? <Drawer.Description id={ariaDescriptionId}>{description}</Drawer.Description> : null}
+              <Dialog.Title>{title}</Dialog.Title>
+              {description ? <Dialog.Description id={ariaDescriptionId}>{description}</Dialog.Description> : null}
             </div>
-            <Drawer.Close asChild><ModalCloseButton /></Drawer.Close>
+            <Dialog.Close asChild><ModalCloseButton /></Dialog.Close>
           </header>
           <div className={clsx("responsive-dialog-body", bodyClassName)}>{children}</div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
