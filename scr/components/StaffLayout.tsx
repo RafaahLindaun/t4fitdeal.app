@@ -59,7 +59,7 @@ export default function StaffLayout() {
     const activeTab = mobileItemRefs.current[active];
     if (!activeTab) return;
     window.requestAnimationFrame(() => {
-      activeTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "auto" });
+      activeTab.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "auto" });
     });
   }, [active]);
 
