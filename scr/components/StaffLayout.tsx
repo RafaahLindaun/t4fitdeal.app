@@ -45,6 +45,7 @@ export default function StaffLayout() {
   );
   const isOwner = Boolean(user?.email && user.email.trim().toLowerCase() === OWNER_EMAIL);
   const isBuilder = location.pathname.startsWith("/area-accqua/montar");
+  const usesBuilderInternalScroll = location.pathname.startsWith("/area-accqua/montar/editor");
   const role = profile?.role === "admin"
     ? "ADMINISTRAÇÃO"
     : profile?.role === "reception"
@@ -73,7 +74,7 @@ export default function StaffLayout() {
 
   return (
     <div
-      className={`accqua-staff-layout uses-unified-mobile-scroll ${isBuilder ? "uses-builder-internal-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
+      className={`accqua-staff-layout uses-unified-mobile-scroll ${usesBuilderInternalScroll ? "uses-builder-internal-scroll" : ""} ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}
     >
       <aside
         className={`accqua-staff-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}
