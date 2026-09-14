@@ -248,20 +248,20 @@
   }
 }
 
-/* BottomNavigation do aluno: restaura a pílula anterior e apenas a posiciona
-   mais perto possível da borda inferior no mobile. */
+/* BottomNavigation do aluno: mantém o visual atual e encosta a pílula
+   na borda física inferior em qualquer mobile. */
 @media (max-width: 767.98px) {
   .accqua-main-layout > .accqua-main-layout-nav {
     left: 0 !important;
     right: 0 !important;
-    bottom: 0 !important;
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
     width: 100% !important;
     height: auto !important;
-    min-height: calc(72px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 20px))) !important;
+    min-height: 68px !important;
     padding:
       0
       max(12px, env(safe-area-inset-right, 0px))
-      max(4px, calc(env(safe-area-inset-bottom, 0px) - 20px))
+      0
       max(12px, env(safe-area-inset-left, 0px)) !important;
     display: flex !important;
     align-items: flex-end !important;
