@@ -55,6 +55,7 @@ import "./styles/cardio-assignment-polish.css";
 import "./styles/build-1.7.1-rounds-2-4.css";
 import "./styles/profile-tabs-1.7.1.css";
 import "./styles/build-1.7.1.css";
+import "./styles/build-1.7.2.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
