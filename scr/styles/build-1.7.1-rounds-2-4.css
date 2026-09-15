@@ -1,0 +1,506 @@
+/* ACCQUA Sports — Build 1.7.1 / Rodadas 2–4
+   Camada final: somente correções solicitadas, carregada depois da base Production. */
+
+/* --------------------------------------------------------------------------
+   BOTTOM NAVIGATION — ancorada à viewport, compacta e respeitando safe-area.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+  :root {
+    --app-bottomnav-offset: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding:
+      0
+      max(8px, env(safe-area-inset-right, 0px))
+      env(safe-area-inset-bottom, 0px)
+      max(8px, env(safe-area-inset-left, 0px)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    transform: none !important;
+    background: linear-gradient(180deg, rgba(2,12,31,0), rgba(2,12,31,.94) 38%, rgba(2,12,31,.98)) !important;
+    box-shadow: none !important;
+    z-index: var(--z-bottomnav, 140) !important;
+    pointer-events: none !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav::before,
+  .accqua-main-layout > .accqua-main-layout-nav::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
+    width: min(520px, 100%) !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    margin: 0 !important;
+    padding: 4px 6px !important;
+    gap: 3px !important;
+    box-sizing: border-box !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+    pointer-events: auto !important;
+  }
+
+  .accqua-bottom-navigation::before { border-radius: 20px !important; }
+  .accqua-bottom-slider {
+    left: 6px !important;
+    width: calc((100% - 12px - (var(--nav-count) - 1) * 3px) / var(--nav-count)) !important;
+    height: 3px !important;
+  }
+  .accqua-bottom-item {
+    min-height: 46px !important;
+    padding: 3px 2px 2px !important;
+    gap: 2px !important;
+    border-radius: 15px !important;
+  }
+  .accqua-bottom-item::before { inset: 3px 2px 1px !important; border-radius: 13px !important; }
+  .accqua-bottom-icon svg { width: 21px !important; height: 21px !important; }
+  .accqua-bottom-item strong { font-size: 11px !important; line-height: 1 !important; }
+
+  .accqua-main-layout:not(.is-focus-mode) > .accqua-main-layout-content {
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+  }
+  .accqua-main-layout-content :is(
+    .accqua-menu-scroll,
+    .diet-scroll-content,
+    .accqua-profile-content,
+    .ranking-scroll-area,
+    .store-scroll,
+    .classes-scroll
+  ) {
+    padding-bottom: calc(20px + var(--app-bottomnav-offset)) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TOAST — fica abaixo da área de status/cabeçalho, sem cortar títulos.
+   -------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  [data-sonner-toaster][data-y-position="top"] {
+    --width: calc(100vw - 16px) !important;
+    --offset: calc(env(safe-area-inset-top, 0px) + 68px) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   STAFF — safe-area superior + um único dono do scroll no mobile.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+  .accqua-staff-layout.uses-unified-mobile-scroll {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .accqua-staff-mobile-nav {
+    height: auto !important;
+    min-height: calc(var(--staff-mobile-nav-height, 62px) + env(safe-area-inset-top, 0px)) !important;
+    box-sizing: border-box !important;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    padding-left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(10px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  .accqua-staff-layout.uses-unified-mobile-scroll:not(.uses-builder-internal-scroll) .accqua-staff-content {
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  /* /montar é uma página normal e deve rolar no painel Staff; somente o editor
+     usa o scroll interno do builder. Corrige a classe legada compartilhada. */
+  .accqua-staff-layout.uses-builder-internal-scroll:has(.accqua-staff-route[data-staff-route="/area-accqua/montar"]) .accqua-staff-content {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  .accqua-staff-layout.uses-builder-internal-scroll:has(.accqua-staff-route[data-staff-route="/area-accqua/montar"]) :is(.accqua-staff-route,.workout-entry-screen,.workout-entry-shell) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .accqua-staff-content {
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MONTAR TREINO — entrada compacta e editor sem rodapé torto/cortado.
+   -------------------------------------------------------------------------- */
+@media (max-width: 620px) {
+  .workout-entry-shell { padding: 12px 11px 24px !important; }
+  .workout-entry-student {
+    margin-top: 16px !important;
+    padding: 11px !important;
+    gap: 10px !important;
+    border-radius: 16px !important;
+  }
+  .workout-entry-student-icon { width: 38px !important; height: 38px !important; border-radius: 12px !important; }
+  .workout-entry-student h1 { margin: 2px 0 3px !important; font-size: 16px !important; line-height: 1.18 !important; }
+  .workout-entry-student p { font-size: 11px !important; line-height: 1.35 !important; }
+  .workout-entry-student > span { padding: 5px 8px !important; font-size: 10px !important; }
+
+  .workout-entry-methods { margin-top: 12px !important; gap: 8px !important; }
+  .workout-entry-methods > button {
+    min-height: 116px !important;
+    padding: 10px !important;
+    grid-template-rows: 34px auto auto 1fr !important;
+    gap: 4px !important;
+    border-radius: 15px !important;
+  }
+  .workout-entry-methods > button > .staff-action-card-icon {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 11px !important;
+  }
+  .workout-entry-methods > button > .staff-action-card-icon svg { width: 17px !important; height: 17px !important; }
+  .workout-entry-methods strong { font-size: 13px !important; line-height: 1.15 !important; }
+  .workout-entry-methods p { font-size: 10px !important; line-height: 1.28 !important; }
+  .workout-entry-methods em { margin-top: 2px !important; padding: 3px 6px !important; font-size: 9px !important; }
+  .workout-entry-footnote { margin-top: 10px !important; }
+}
+
+/* Vínculo do professor é redundante dentro do step Programa. */
+.admin-builder-link-status { display: none !important; }
+
+/* Revisão: textos sempre usam a largura do card, nunca uma palavra por linha. */
+.admin-builder-stage-v163.is-revisao :is(
+  .admin-builder-readiness,
+  .admin-builder-readiness-summary,
+  .admin-builder-readiness-copy,
+  .admin-builder-cardio,
+  .admin-builder-cardio-toggle,
+  .admin-builder-cardio-toggle > div
+) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.admin-builder-stage-v163.is-revisao :is(small,strong,p,.admin-builder-cardio-state-label) {
+  max-width: 100% !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+@media (max-width: 767px) {
+  .admin-builder-screen {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  .admin-builder-shell {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 18px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .admin-builder-footer {
+    position: relative !important;
+    inset: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+  .admin-builder-footer.is-scroll-hidden-1658 { transform: none !important; opacity: 1 !important; }
+  .admin-builder-mobile-footer {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 1fr) !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+    background: #07162d !important;
+  }
+  .admin-builder-mobile-footer-copy { min-width: 0 !important; }
+  .admin-builder-mobile-primary,
+  .admin-builder-footer-actions > button {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 44px !important;
+    padding-inline: 12px !important;
+    box-sizing: border-box !important;
+  }
+  .admin-builder-footer-actions {
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  .admin-builder-footer-actions > button:first-child:not(:only-child) {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    padding: 0 !important;
+  }
+  .admin-builder-footer-actions > button:last-child { flex: 1 1 auto !important; }
+}
+
+/* Exercícios: segunda linha legível e controles previsíveis. */
+.admin-builder-mobile-search-results small,
+.admin-v11-library-results article > div > small,
+.admin-builder-library-list article > div > small,
+.admin-library-list article > div > small {
+  display: block !important;
+  margin-top: 4px !important;
+  line-height: 1.32 !important;
+  opacity: .72 !important;
+}
+
+/* --------------------------------------------------------------------------
+   EXERCISE MEDIA — GIF/preview real ao tocar na miniatura.
+   -------------------------------------------------------------------------- */
+.exercise-media-preview-trigger {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.exercise-media-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10080;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  background: rgba(1,8,20,.82);
+  backdrop-filter: blur(10px);
+}
+.exercise-media-preview {
+  position: relative;
+  width: min(520px, 94vw);
+  max-height: 84dvh;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  border: 1px solid rgba(190,218,255,.16);
+  border-radius: 22px;
+  color: #f7fbff;
+  background: #06172f;
+  box-shadow: 0 28px 80px rgba(0,0,0,.5);
+}
+.exercise-media-preview > strong { padding-right: 44px; font-size: 16px; }
+.exercise-media-preview :is(img,video,iframe) {
+  width: 100%;
+  max-height: 68dvh;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border: 0;
+  border-radius: 16px;
+  background: #020c1f;
+}
+.exercise-media-preview-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(255,255,255,.06);
+  font-size: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   HOME / HEADER — linha única no mobile; badge do sino preserva animação.
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .accqua-menu-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    min-height: 58px !important;
+    height: auto !important;
+    padding: 10px 12px !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+  .accqua-menu-header::before,
+  .accqua-menu-header::after { content: none !important; display: none !important; }
+  .accqua-menu-header-actions {
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+  }
+  .accqua-checkin-button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding-inline: 9px !important;
+    white-space: nowrap !important;
+  }
+  .accqua-checkin-button span { white-space: nowrap !important; line-height: 1 !important; }
+  .accqua-membership-shield,
+  .accqua-notification-button {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+  .accqua-membership-shield svg,
+  .accqua-notification-button > svg { transform: none !important; rotate: 0deg !important; margin: 0 !important; }
+}
+
+@media (min-width: 1024px) {
+  .accqua-main-layout-content .accqua-menu-header .accqua-menu-logo { display: none !important; }
+}
+
+/* Onboarding usa o logo real sem barras decorativas duplicadas. */
+.accqua-welcome-logo-170 .accqua-logo-line { display: none !important; }
+
+/* --------------------------------------------------------------------------
+   NOTIFICAÇÕES — status separado como badge.
+   -------------------------------------------------------------------------- */
+.accqua-notifications-toolbar small {
+  width: max-content !important;
+  max-width: 100% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 26px !important;
+  padding: 5px 9px !important;
+  border: 1px solid rgba(74,222,128,.2) !important;
+  border-radius: 999px !important;
+  color: #86efac !important;
+  background: rgba(34,197,94,.09) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+}
+
+/* --------------------------------------------------------------------------
+   PERFIL / PARCEIROS — reativa somente a funcionalidade explicitamente pedida.
+   -------------------------------------------------------------------------- */
+.profile-stat-partners { display: block !important; }
+.profile-stats-grid.has-partners { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+@media (max-width: 760px) {
+  .profile-stats-grid.has-partners { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .profile-stat-partners { grid-column: 1 / -1; }
+}
+
+/* --------------------------------------------------------------------------
+   RANKING — perfil compacto + ações e treino atual em popup central.
+   -------------------------------------------------------------------------- */
+.ranking-profile-social-actions,
+.ranking-profile-workout-button,
+.ranking-workout-modal-backdrop,
+.ranking-workout-modal {
+  display: initial !important;
+}
+.ranking-profile-social-actions-171 {
+  margin-top: 14px;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap: 8px !important;
+}
+.ranking-profile-social-actions-171 > button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+.ranking-profile-partner-state {
+  color: rgba(235,244,255,.7);
+  background: rgba(255,255,255,.05);
+}
+.ranking-profile-partner-state.is-added { display: flex !important; align-items: center; justify-content: center; gap: 5px; }
+.ranking-profile-partner-state svg { width: 15px; height: 15px; }
+.ranking-profile-workout-button {
+  color: #241c03 !important;
+  background: #ffd11e !important;
+  border-color: #ffd11e !important;
+}
+.ranking-workout-modal-backdrop { display: flex !important; }
+.ranking-workout-modal { display: block !important; }
+.ranking-workout-loading { display: grid !important; gap: 8px; }
+.ranking-workout-skeleton {
+  height: 58px;
+  border-radius: 13px;
+  background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.09), rgba(255,255,255,.04));
+  background-size: 220% 100%;
+  animation: ranking-workout-skeleton 1.2s linear infinite;
+}
+@keyframes ranking-workout-skeleton { to { background-position: -220% 0; } }
+.ranking-workout-modal-back svg { width: 17px; height: 17px; }
+
+/* --------------------------------------------------------------------------
+   MODAIS — todos os ResponsiveDialog são popups centrais, sem sheet mobile.
+   -------------------------------------------------------------------------- */
+.responsive-dialog-content {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: min(480px, calc(100vw - 28px)) !important;
+  max-height: min(86dvh, 760px) !important;
+  transform: translate(-50%, -50%) !important;
+  border-radius: 22px !important;
+  padding: 18px !important;
+  overflow: hidden !important;
+}
+.responsive-dialog-body { min-height: 0 !important; overflow-y: auto !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ranking-workout-skeleton { animation: none !important; }
+}

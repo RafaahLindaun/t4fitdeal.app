@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { AdminDumbbellIcon, AdminWarningIcon } from "./AdminIcons";
 import {
   inferExerciseMediaKind,
@@ -23,7 +24,9 @@ function unique(values: string[]) {
 
 function compactImageCandidate(value: string) {
   const source = String(value ?? "").trim();
-  if (!source || !/\.(?:png|jpe?g|webp|gif)(?:\?|$)/i.test(source)) return "";
+  // GIFs must use their original URL. Supabase's image renderer can turn an
+  // animated GIF into a static thumbnail, which made exercise previews look blank/frozen.
+  if (!source || !/\.(?:png|jpe?g|webp)(?:\?|$)/i.test(source)) return "";
   const marker = "/storage/v1/object/public/";
   if (!source.includes(marker)) return "";
   const rendered = source.replace(marker, "/storage/v1/render/image/public/");
@@ -45,8 +48,6 @@ export default function ExerciseMedia({
       slug,
       name,
     });
-    // Build 1.4.2: sem adivinhação de .gif/.GIF. Usamos a URL canônica do
-    // banco e, como ponte para o legado, somente nomes reais do manifest.
     const originals = unique([mediaUrl, ...exactManifestMatches]);
     if (!compact) return originals;
     return unique(originals.flatMap((candidate) => [compactImageCandidate(candidate), candidate]));
@@ -55,12 +56,28 @@ export default function ExerciseMedia({
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     setIndex(0);
     setFailed(false);
     setLoaded(false);
+    setPreviewOpen(false);
   }, [candidates.join("|")]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", close);
+    };
+  }, [previewOpen]);
 
   const source = candidates[index] ?? "";
   const kind = inferExerciseMediaKind(source);
@@ -84,8 +101,32 @@ export default function ExerciseMedia({
     );
   }
 
+  const openPreview = (event: React.MouseEvent | React.KeyboardEvent) => {
+    if (!compact) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setPreviewOpen(true);
+  };
+
+  const preview = previewOpen && typeof document !== "undefined" ? createPortal(
+    <div className="exercise-media-preview-backdrop" role="presentation" onClick={() => setPreviewOpen(false)}>
+      <section className="exercise-media-preview" role="dialog" aria-modal="true" aria-label={`Prévia de ${name}`} onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="exercise-media-preview-close" aria-label="Fechar prévia" onClick={() => setPreviewOpen(false)}>×</button>
+        <strong>{name}</strong>
+        {kind === "video" ? (
+          <video src={source} muted autoPlay loop playsInline controls />
+        ) : kind === "youtube" || kind === "vimeo" ? (
+          <iframe src={kind === "youtube" ? youtubeEmbedUrl(source) : vimeoEmbedUrl(source)} title={`Demonstração de ${name}`} allow="autoplay; encrypted-media; picture-in-picture" />
+        ) : (
+          <img src={source} alt={`Demonstração de ${name}`} draggable={false} />
+        )}
+      </section>
+    </div>,
+    document.body,
+  ) : null;
+
   if (kind === "video") {
-    return <video className={`exercise-media-asset ${loaded ? "is-loaded" : "is-loading"} ${className}`} src={source} muted autoPlay loop playsInline preload="metadata" onLoadedData={() => setLoaded(true)} onError={tryNext} aria-label={`Demonstração de ${name}`} />;
+    return <><span className={compact ? "exercise-media-preview-trigger" : ""} role={compact ? "button" : undefined} tabIndex={compact ? 0 : undefined} onClick={compact ? openPreview : undefined} onKeyDown={compact ? (event) => { if (event.key === "Enter" || event.key === " ") openPreview(event); } : undefined}><video className={`exercise-media-asset ${loaded ? "is-loaded" : "is-loading"} ${className}`} src={source} muted autoPlay loop playsInline preload="metadata" onLoadedData={() => setLoaded(true)} onError={tryNext} aria-label={`Demonstração de ${name}`} /></span>{preview}</>;
   }
 
   if (kind === "youtube" || kind === "vimeo") {
@@ -98,6 +139,9 @@ export default function ExerciseMedia({
         </span>
       );
     }
+    if (compact) {
+      return <><span className="exercise-media-preview-trigger" role="button" tabIndex={0} onClick={openPreview} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") openPreview(event); }}><span className={`exercise-media-fallback is-compact ${className}`}><AdminDumbbellIcon size={18}/></span></span>{preview}</>;
+    }
     return <iframe className={`exercise-media-asset ${className}`} src={embed} title={`Demonstração de ${name}`} loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" />;
   }
 
@@ -108,6 +152,10 @@ export default function ExerciseMedia({
         {!compact ? <small>Abrir mídia</small> : null}
       </a>
     );
+  }
+
+  if (compact) {
+    return <><span className="exercise-media-preview-trigger" role="button" tabIndex={0} onClick={openPreview} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") openPreview(event); }}><img className={`exercise-media-asset ${loaded ? "is-loaded" : "is-loading"} ${className}`} src={source} alt={`Demonstração de ${name}`} loading="lazy" decoding="async" draggable={false} onLoad={() => setLoaded(true)} onError={tryNext} /></span>{preview}</>;
   }
 
   return <img className={`exercise-media-asset ${loaded ? "is-loaded" : "is-loading"} ${className}`} src={source} alt={`Demonstração de ${name}`} loading="lazy" decoding="async" draggable={false} onLoad={() => setLoaded(true)} onError={tryNext} />;

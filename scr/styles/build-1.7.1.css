@@ -1,0 +1,191 @@
+/* ACCQUA Sports — Build 1.7.1
+   Camada final consolidada (Rodadas 2–5). Carregar por último. */
+
+/* --------------------------------------------------------------------------
+   NOTIFICAÇÕES — pilha única, compacta, no máximo 3 visíveis.
+   -------------------------------------------------------------------------- */
+[data-sonner-toaster][data-x-position="right"] {
+  right: max(12px, env(safe-area-inset-right, 0px)) !important;
+  left: auto !important;
+  width: min(368px, calc(100vw - 24px)) !important;
+  max-width: min(368px, calc(100vw - 24px)) !important;
+  z-index: 1700 !important;
+}
+
+[data-sonner-toaster][data-accqua-overflow-label]::after {
+  content: attr(data-accqua-overflow-label);
+  align-self: flex-end;
+  display: inline-flex;
+  width: fit-content;
+  margin: 2px 2px 0 auto;
+  padding: 5px 9px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 999px;
+  color: rgba(235,244,255,.78);
+  background: rgba(8,27,55,.94);
+  box-shadow: 0 8px 20px rgba(0,0,0,.22);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.accqua-sonner-toast {
+  max-height: 82px !important;
+}
+
+.accqua-sonner-toast [data-close-button] {
+  position: absolute !important;
+  top: 7px !important;
+  right: 7px !important;
+  left: auto !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid rgba(255,255,255,.1) !important;
+  border-radius: 8px !important;
+  color: rgba(235,244,255,.72) !important;
+  background: rgba(255,255,255,.055) !important;
+  transform: none !important;
+}
+
+.accqua-sonner-toast [data-content] {
+  padding-right: 22px !important;
+}
+
+@media (max-width: 560px) {
+  [data-sonner-toaster][data-x-position="right"] {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    --offset: calc(env(safe-area-inset-top, 0px) + 68px) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   RODADA 5 — Parceiros / Ver treino pausados, preservados apenas no histórico.
+   -------------------------------------------------------------------------- */
+.profile-tabs-host-171,
+.profile-tabs-171,
+.profile-stat-partners,
+.profile-partners-panel,
+.ranking-profile-social-actions,
+.ranking-profile-workout-button,
+.ranking-workout-modal-backdrop,
+.ranking-workout-modal {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   STAFF DESKTOP — o logo já vive na sidebar; subpáginas não duplicam marca.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .accqua-staff-layout .staff-subpage-logo {
+    display: none !important;
+  }
+
+  .accqua-staff-layout .staff-subpage-header {
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   WIZARD — tokens únicos e badges que nunca quebram letra por letra.
+   -------------------------------------------------------------------------- */
+.admin-builder-screen {
+  --wizard-card-pad: 14px;
+  --wizard-card-radius: 16px;
+  --wizard-title-size: 16px;
+  --wizard-body-size: 12px;
+  --wizard-control-height: 44px;
+  --wizard-section-gap: 12px;
+}
+
+.admin-builder-stage-v163 {
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: var(--wizard-section-gap) !important;
+}
+
+.admin-builder-stage-v163 > section,
+.admin-builder-stage-v163 .admin-builder-readiness,
+.admin-builder-stage-v163 .admin-builder-cardio {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: var(--wizard-card-radius) !important;
+}
+
+.admin-builder-stage-v163 > section {
+  padding: var(--wizard-card-pad) !important;
+}
+
+.admin-builder-stage-v163 :is(h2, h3) {
+  font-size: var(--wizard-title-size) !important;
+  line-height: 1.2 !important;
+}
+
+.admin-builder-stage-v163 :is(p, small) {
+  line-height: 1.4 !important;
+}
+
+.admin-builder-cardio-state-label,
+.admin-builder-cardio-state-label::after,
+.admin-builder-screen .badge-status {
+  width: fit-content !important;
+  max-width: none !important;
+  min-width: max-content !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+.admin-builder-stage-v163.is-revisao .admin-builder-cardio {
+  margin-top: 0 !important;
+  padding: var(--wizard-card-pad) !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  background: rgba(12,31,61,.86) !important;
+}
+
+.admin-builder-stage-v163.is-revisao .admin-builder-readiness {
+  padding: var(--wizard-card-pad) !important;
+  border: 1px solid rgba(255,209,30,.13) !important;
+  background: rgba(255,209,30,.035) !important;
+}
+
+.admin-builder-mobile-primary,
+.admin-builder-footer-actions > button {
+  min-height: var(--wizard-control-height) !important;
+}
+
+@media (max-width: 430px) {
+  .admin-builder-screen {
+    --wizard-card-pad: 12px;
+    --wizard-card-radius: 15px;
+    --wizard-title-size: 15px;
+    --wizard-body-size: 11.5px;
+    --wizard-section-gap: 10px;
+  }
+
+  .admin-builder-stage-v163 {
+    padding-inline: 0 !important;
+  }
+
+  .admin-builder-stage-v163 > section,
+  .admin-builder-stage-v163 .admin-builder-readiness,
+  .admin-builder-stage-v163 .admin-builder-cardio {
+    width: 100% !important;
+  }
+}
+
+/* Ranking: resumo principal curto; detalhes continuam fechados em accordions. */
+.ranking-info-dialog-body .ranking-rule-summary p {
+  margin-bottom: 0 !important;
+}

@@ -5,8 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
 import ProfileHighlights from "./components/ProfileHighlights";
+import ProfileTabs171 from "./components/ProfileTabs171";
 import Round2RuntimeEnhancements from "./components/Round2RuntimeEnhancements";
 import Build1658Runtime from "./components/Build1658Runtime";
+import Build171Runtime from "./components/Build171Runtime";
+import RankingProfileEnhancements171 from "./components/RankingProfileEnhancements171";
 import RealtimeNotificationBridge from "./components/RealtimeNotificationBridge";
 import EphemeralMessageBridge from "./components/EphemeralMessageBridge";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
@@ -49,6 +52,9 @@ import "./styles/login-mobile-polish.css";
 import "./styles/tour-mobile-desktop-polish.css";
 import "./styles/calendar-classes-polish.css";
 import "./styles/cardio-assignment-polish.css";
+import "./styles/build-1.7.1-rounds-2-4.css";
+import "./styles/profile-tabs-1.7.1.css";
+import "./styles/build-1.7.1.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
@@ -77,8 +83,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <AuthProvider>
           <App />
           <ProfileHighlights />
+          <ProfileTabs171 />
           <Round2RuntimeEnhancements />
           <Build1658Runtime />
+          <Build171Runtime />
+          <RankingProfileEnhancements171 />
           <RealtimeNotificationBridge />
           <EphemeralMessageBridge />
         </AuthProvider>
