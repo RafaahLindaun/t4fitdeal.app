@@ -1,0 +1,156 @@
+/* ACCQUA Sports — Build 1.7.2
+   Notificações motivacionais: preferências independentes e deep links. */
+
+.accqua-motivational-preferences {
+  margin-top: 14px;
+  padding-top: 14px;
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.accqua-motivational-preferences-heading {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 2px;
+}
+
+.accqua-motivational-preferences-heading > strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.accqua-motivational-preferences-heading > small,
+.accqua-motivational-master-note {
+  color: rgba(226,235,247,.62);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.accqua-motivational-preference-row {
+  position: relative;
+  min-width: 0;
+  min-height: 58px;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 14px;
+  background: rgba(255,255,255,.025);
+  cursor: pointer;
+}
+
+.accqua-motivational-preference-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(245,197,24,.11);
+  font-size: 18px;
+}
+
+.accqua-motivational-preference-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.accqua-motivational-preference-copy strong {
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.accqua-motivational-preference-copy small {
+  color: rgba(226,235,247,.58);
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+
+.accqua-motivational-preference-row > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.accqua-motivational-preference-row > i {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  justify-self: end;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  transition: background .18s ease, border-color .18s ease, opacity .18s ease;
+}
+
+.accqua-motivational-preference-row > i > b {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.74);
+  transition: transform .18s ease, background .18s ease;
+}
+
+.accqua-motivational-preference-row > input:checked + i {
+  border-color: rgba(245,197,24,.62);
+  background: #f5c518;
+}
+
+.accqua-motivational-preference-row > input:checked + i > b {
+  transform: translateX(16px);
+  background: #2c2205;
+}
+
+.accqua-motivational-preference-row:has(input:focus-visible) {
+  outline: 2px solid #f5c518;
+  outline-offset: 2px;
+}
+
+.accqua-motivational-preference-row:has(input:disabled) {
+  cursor: default;
+  opacity: .48;
+}
+
+.accqua-notification-icon.is-alimentacao,
+.accqua-notification-icon.is-hidratacao,
+.accqua-notification-icon.is-treino {
+  background: rgba(245,197,24,.12) !important;
+  border-color: rgba(245,197,24,.2) !important;
+}
+
+.accqua-notification-row.has-deep-link {
+  cursor: pointer;
+}
+
+.accqua-notification-row.has-deep-link:hover {
+  border-color: rgba(245,197,24,.18);
+}
+
+@media (max-width: 430px) {
+  .accqua-motivational-preference-row {
+    grid-template-columns: 36px minmax(0,1fr) 40px;
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .accqua-motivational-preference-copy small {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-motivational-preference-row > i,
+  .accqua-motivational-preference-row > i > b {
+    transition: none !important;
+  }
+}
