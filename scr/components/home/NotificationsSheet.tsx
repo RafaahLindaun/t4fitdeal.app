@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import ResponsiveDialog from "../ResponsiveDialog";
 import SwipeableListItem from "../SwipeableListItem";
 import type { WorkoutRequiredAlert } from "../../lib/admin";
@@ -9,6 +10,7 @@ import {
   loadAccquaNotifications,
   markAccquaNotificationRead,
   markAllAccquaNotificationsRead,
+  type AccquaNotification,
   type NotificationIcon,
 } from "../../lib/notifications";
 
@@ -24,6 +26,8 @@ function formatNotificationTime(value: string) {
 }
 
 function NotificationGlyph({ icon }: { icon: NotificationIcon }) {
+  if (icon === "alimentacao") return <span aria-hidden="true">🍽️</span>;
+  if (icon === "hidratacao") return <span aria-hidden="true">💧</span>;
   if (icon === "treino") return <span aria-hidden="true">🏋️</span>;
   if (icon === "pagamento") return <span aria-hidden="true">💳</span>;
   if (icon === "presente") return <span aria-hidden="true">🎁</span>;
@@ -48,6 +52,7 @@ export default function NotificationsSheet({
   onStaffAlertClick,
 }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [expandedId, setExpandedId] = useState("");
 
   const notificationsQuery = useQuery({
@@ -68,9 +73,15 @@ export default function NotificationsSheet({
     ]);
   };
 
-  const openNotification = async (receiptId: string, read: boolean) => {
-    setExpandedId((current) => current === receiptId ? "" : receiptId);
-    if (!read && await markAccquaNotificationRead(receiptId)) await invalidate();
+  const openNotification = async (notification: AccquaNotification) => {
+    if (!notification.read && await markAccquaNotificationRead(notification.receiptId)) await invalidate();
+    if (notification.url) {
+      setExpandedId("");
+      onOpenChange(false);
+      navigate(notification.url);
+      return;
+    }
+    setExpandedId((current) => current === notification.receiptId ? "" : notification.receiptId);
   };
 
   const removeNotification = async (receiptId: string) => {
@@ -137,9 +148,9 @@ export default function NotificationsSheet({
               >
                 <button
                   type="button"
-                  className={`accqua-notification-row ${notification.read ? "" : "is-unread"} ${expanded ? "is-expanded" : ""}`.trim()}
-                  aria-expanded={expanded}
-                  onClick={() => void openNotification(notification.receiptId, notification.read)}
+                  className={`accqua-notification-row ${notification.read ? "" : "is-unread"} ${expanded ? "is-expanded" : ""} ${notification.url ? "has-deep-link" : ""}`.trim()}
+                  aria-expanded={notification.url ? undefined : expanded}
+                  onClick={() => void openNotification(notification)}
                 >
                   <span className={`accqua-notification-icon is-${notification.icon}`}><NotificationGlyph icon={notification.icon} /></span>
                   <span><strong>{notification.title}</strong><p>{notification.body || "Toque para marcar como lida."}</p></span>
