@@ -55,6 +55,13 @@ requireAbsent("171/ranking-info-no-old-copy", "scr/components/RankingInfoSheet.t
 requireAll("171/wizard-badge", "scr/styles/build-1.7.1.css", [/admin-builder-cardio-state-label/,/white-space:\s*nowrap/,/flex-shrink:\s*0/,/width:\s*fit-content/], "badge Sem cardio pode voltar a quebrar letra por letra");
 requireAll("171/wizard-tokens", "scr/styles/build-1.7.1.css", [/--wizard-card-pad/,/--wizard-card-radius/,/--wizard-control-height/,/is-revisao \.admin-builder-cardio/], "wizard perdeu tokens/hierarquia uniforme");
 
+/* Build 1.7.1 — rail de navegação expansível fornecido pelo usuário. */
+requireAll("171/staff-icon-rail-component", "scr/components/StaffIconNavPill.tsx", [/accqua-staff-icon-nav-pill/,/accqua-staff-icon-nav-pill-label/,/aria-current/,/onPointerEnter=\{onPrefetch\}/], "componente do rail expansível não está conectado ao hover/foco/prefetch");
+requireAbsent("171/staff-icon-rail-no-next", "scr/components/StaffIconNavPill.tsx", /next\/link/, "rail usa Next.js em vez do stack React Router/Vite do app");
+requireAll("171/staff-icon-rail-wire", "scr/components/StaffLayout.tsx", [/StaffIconNavPill/,/className=\{sidebarCollapsed \? "is-icon-rail"/,/active=\{active === item\.key\}/,/onActivate=\{\(\) => navigate\(item\.href\)\}/], "rail recolhido não usa o componente expansível canônico");
+requireAll("171/staff-icon-rail-css", "scr/styles/build-1.7.1.css", [/nav\.is-icon-rail/,/width:\s*165px/,/#f5c518/,/#2c2205/,/#101d3a/,/is-active::before/,/max-width:\s*1023\.98px/], "rail expansível perdeu tokens, estado ativo ou exclusividade desktop");
+requireAbsent("171/staff-icon-rail-no-orange", "scr/styles/build-1.7.1.css", /#f97316/i, "rail reintroduziu a cor laranja do exemplo original");
+
 if (failures.length) {
   console.error("\nACCQUA Build 1.7.1 — contratos FALHARAM:\n");
   failures.forEach((failure) => console.error(` - ${failure}`));
