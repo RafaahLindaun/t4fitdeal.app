@@ -1,14 +1,24 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
 
+export type MotivationalCategory = "alimentacao" | "hidratacao" | "treino";
+
 export type NotificationIcon =
   | "megafone"
   | "treino"
+  | "alimentacao"
+  | "hidratacao"
   | "pagamento"
   | "presente"
   | "alerta"
   | "conquista";
 
 export type NotificationAudience = "todos" | "matriculados" | "gympass" | "totalpass";
+
+export type MotivationalNotificationPreferences = {
+  alimentacao: boolean;
+  hidratacao: boolean;
+  treino: boolean;
+};
 
 export type AccquaNotification = {
   id: string;
@@ -19,6 +29,8 @@ export type AccquaNotification = {
   read: boolean;
   createdAt: string;
   source?: "central" | "direct";
+  url?: string;
+  category?: MotivationalCategory;
 };
 
 export type StaffNotificationInput = {
@@ -38,14 +50,28 @@ export type StaffNotificationResult = {
 type Row = Record<string, unknown>;
 const t = (value: unknown) => String(value ?? "").trim();
 
+const motivationalPreferenceColumn: Record<MotivationalCategory, "meal_reminders" | "hydration_reminders" | "training_reminders"> = {
+  alimentacao: "meal_reminders",
+  hidratacao: "hydration_reminders",
+  treino: "training_reminders",
+};
+
+function motivationalCategory(value: unknown): MotivationalCategory | undefined {
+  const normalized = t(value) as MotivationalCategory;
+  return ["alimentacao", "hidratacao", "treino"].includes(normalized) ? normalized : undefined;
+}
+
 function icon(value: unknown): NotificationIcon {
   const normalized = t(value) as NotificationIcon;
-  return ["megafone", "treino", "pagamento", "presente", "alerta", "conquista"].includes(normalized)
+  return ["megafone", "treino", "alimentacao", "hidratacao", "pagamento", "presente", "alerta", "conquista"].includes(normalized)
     ? normalized
     : "megafone";
 }
 
-function directIcon(title: string): NotificationIcon {
+function directIcon(title: string, category?: MotivationalCategory): NotificationIcon {
+  if (category === "alimentacao") return "alimentacao";
+  if (category === "hidratacao") return "hidratacao";
+  if (category === "treino") return "treino";
   const normalized = title.toLowerCase();
   if (normalized.includes("treino") || normalized.includes("parceria") || normalized.includes("parceiro")) return "treino";
   if (normalized.includes("prêmio") || normalized.includes("premio")) return "presente";
@@ -54,15 +80,18 @@ function directIcon(title: string): NotificationIcon {
 
 function normalizeDirectNotification(raw: Row): AccquaNotification {
   const title = t(raw.title) || "Notificação ACCQUA";
+  const category = motivationalCategory(raw.category);
   return {
     id: t(raw.id),
     receiptId: `direct:${t(raw.id)}`,
     title,
     body: t(raw.body),
-    icon: directIcon(title),
+    icon: directIcon(title, category),
     read: Boolean(raw.lida),
     createdAt: t(raw.created_at),
     source: "direct",
+    url: t(raw.url) || undefined,
+    category,
   };
 }
 
@@ -109,7 +138,7 @@ async function loadCentralNotifications(userId: string): Promise<AccquaNotificat
 async function loadDirectNotifications(userId: string): Promise<AccquaNotification[]> {
   const direct = await supabase
     .from("notifications")
-    .select("id,title,body,lida,created_at")
+    .select("id,title,body,lida,created_at,url,category")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(80);
@@ -230,6 +259,36 @@ export async function setMyNotificationsEnabled(enabled: boolean) {
   });
   if (error) throw error;
   return Boolean(data);
+}
+
+export async function getMyMotivationalNotificationPreferences(userId: string): Promise<MotivationalNotificationPreferences> {
+  const fallback: MotivationalNotificationPreferences = { alimentacao: true, hidratacao: true, treino: true };
+  if (!isSupabaseConfigured || !userId) return fallback;
+  const { data, error } = await supabase
+    .from("accqua_profile_preferences")
+    .select("meal_reminders,hydration_reminders,training_reminders")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return fallback;
+  return {
+    alimentacao: data.meal_reminders !== false,
+    hidratacao: data.hydration_reminders !== false,
+    treino: data.training_reminders !== false,
+  };
+}
+
+export async function setMyMotivationalNotificationPreference(
+  userId: string,
+  category: MotivationalCategory,
+  enabled: boolean,
+) {
+  if (!isSupabaseConfigured || !userId) throw new Error("notifications_unavailable");
+  const column = motivationalPreferenceColumn[category];
+  const { error } = await supabase
+    .from("accqua_profile_preferences")
+    .upsert({ user_id: userId, [column]: enabled, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw error;
+  return enabled;
 }
 
 function urlBase64ToUint8Array(value: string) {
