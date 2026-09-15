@@ -10,10 +10,10 @@ const requireMatch = (id, file, pattern, note) => pattern.test(read(file)) ? pas
 const requireAll = (id, file, patterns, note) => patterns.every((p) => p.test(read(file))) ? passes.push(id) : failures.push(`${id} — ${note} (${file})`);
 const requireAbsent = (id, file, pattern, note) => !pattern.test(read(file)) ? passes.push(id) : failures.push(`${id} — ${note} (${file})`);
 
-requireMatch("171/version", "package.json", /"version":\s*"1\.7\.1"/, "package não está em 1.7.1");
+requireMatch("172/version", "package.json", /"version":\s*"1\.7\.2"/, "package não está em 1.7.2");
 requireMatch("163/contracts", "package.json", /verify-visual-contracts-1\.6\.3\.mjs/, "npm não executa contratos 1.6.3");
 requireMatch("163/css-last", "scr/main.tsx", /build-1\.6\.2\.css";\s*\nimport "\.\/styles\/build-1\.6\.3\.css";/, "camada 1.6.3 não preserva ordem histórica");
-requireMatch("171/final-css-last", "scr/main.tsx", /profile-tabs-1\.7\.1\.css";\s*\nimport "\.\/styles\/build-1\.7\.1\.css";/, "camada final 1.7.1 não é a última");
+requireMatch("172/final-css-last", "scr/main.tsx", /build-1\.7\.1\.css";\s*\nimport "\.\/styles\/build-1\.7\.2\.css";/, "camada final 1.7.2 não é a última");
 requireAll("163/staff-scroll", "scr/styles/build-1.6.3.css", [/\.staff-page-layout\{/,/min-height:0!important/,/staff-page-layout-scroll/,/overflow-y:auto!important/], "layout Staff voltou a travar scroll");
 requireAll("163/sidebar", "scr/components/StaffLayout.tsx", [/sidebarCollapsed/,/aria-expanded=\{!sidebarCollapsed\}/,/startsWith\("\/area-accqua\/montar"\)/], "sidebar não mantém estado/collapse canônico");
 requireAll("163/method-copy", "scr/styles/build-1.6.3.css", [/workout-entry-methods/,/staff-action-card-copy p/,/-webkit-line-clamp:unset/], "subtítulos dos métodos ainda podem sumir/truncar");
@@ -62,9 +62,32 @@ requireAll("171/staff-icon-rail-wire", "scr/components/StaffLayout.tsx", [/Staff
 requireAll("171/staff-icon-rail-css", "scr/styles/build-1.7.1.css", [/nav\.is-icon-rail/,/width:\s*165px/,/#f5c518/,/#2c2205/,/#101d3a/,/is-active::before/,/max-width:\s*1023\.98px/], "rail expansível perdeu tokens, estado ativo ou exclusividade desktop");
 requireAbsent("171/staff-icon-rail-no-orange", "scr/styles/build-1.7.1.css", /#f97316/i, "rail reintroduziu a cor laranja do exemplo original");
 
+/* Build 1.7.2 — notificações motivacionais. */
+const motivationalMigration = "supabase/migrations/20260915012000_build_1_7_2_motivational_notifications.sql";
+const motivationalEdge = "supabase/functions/enviar-notificacoes-motivacionais/index.ts";
+requireAll("172/motivational-schema", motivationalMigration, [/meal_reminders/,/hydration_reminders/,/training_reminders/,/accqua_motivational_notification_log/,/unique \(user_id, category, slot_key\)/], "schema das três categorias ou deduplicação por slot ausente");
+requireAll("172/motivational-cron", motivationalMigration, [/pg_cron/,/\*\/15 \* \* \* \*/,/run_accqua_motivational_cron_v1_7_2/,/x-accqua-cron-token/], "cron de 15 minutos ou autenticação privada ausente");
+requireAll("172/motivational-routes", motivationalEdge, [/\/dieta#registro-rapido/,/\/dieta#hidratacao/,/url: "\/treino"/,/times: \["10:00", "15:30"\]/], "horários/deep links motivacionais divergiram do pedido");
+requireAll("172/motivational-no-repeat", motivationalEdge, [/previousIndex/,/if \(index === previousIndex\)/,/latestMessage\.set/], "mensagem pode repetir duas vezes seguidas para o mesmo aluno");
+requireAll("172/motivational-push", motivationalEdge, [/webpush\.sendNotification/,/push_subscriptions/,/get_push_vapid_config_v1_5_3/,/categoria: config\.category/], "dispatcher deixou de usar Web Push real ou payload categorizado");
+requireAll("172/motivational-client-preferences", "scr/lib/notifications.ts", [/MotivationalNotificationPreferences/,/meal_reminders/,/hydration_reminders/,/training_reminders/,/setMyMotivationalNotificationPreference/], "preferências independentes não estão ligadas ao banco");
+requireAll("172/motivational-profile-ui", "scr/components/NotificationPreferenceBridge.tsx", [/Lembretes motivacionais/,/Alimentação/,/Hidratação/,/Às 10h e 15h30/,/toggleMotivational/], "Perfil não permite desligar categorias separadamente");
+requireAll("172/motivational-inapp-deeplink", "scr/components/home/NotificationsSheet.tsx", [/useNavigate/,/notification\.url/,/navigate\(notification\.url\)/,/is-alimentacao|alimentacao/], "central de notificações não abre a rota exata");
+requireAll("172/motivational-sw-deeplink", "public/accqua-notifications-sw.js", [/new URL\(targetPath, self\.location\.origin\)/,/navigate\(targetUrl\)/,/openWindow\(targetUrl\)/], "Service Worker não preserva deep link exato");
+requireAll("172/motivational-css", "scr/styles/build-1.7.2.css", [/accqua-motivational-preferences/,/accqua-motivational-preference-row/,/is-alimentacao/,/is-hidratacao/], "acabamento visual das preferências motivacionais ausente");
+
+const motivationalSource = read(motivationalEdge);
+const messageBlocks = [...motivationalSource.matchAll(/messages:\s*\[([\s\S]*?)\]/g)].map((match) => match[1]);
+const motivationalMessages = messageBlocks.flatMap((block) => [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1]));
+if (messageBlocks.length === 3 && motivationalMessages.length === 24 && motivationalMessages.every((message) => !message.includes("-"))) {
+  passes.push("172/motivational-copy-no-hyphen");
+} else {
+  failures.push(`172/motivational-copy-no-hyphen — banco precisa ter 24 mensagens e nenhuma pode usar hífen (${motivationalEdge})`);
+}
+
 if (failures.length) {
-  console.error("\nACCQUA Build 1.7.1 — contratos FALHARAM:\n");
+  console.error("\nACCQUA Build 1.7.2 — contratos FALHARAM:\n");
   failures.forEach((failure) => console.error(` - ${failure}`));
   process.exit(1);
 }
-console.log(`ACCQUA Build 1.7.1 — ${passes.length} contratos validados.`);
+console.log(`ACCQUA Build 1.7.2 — ${passes.length} contratos validados.`);
