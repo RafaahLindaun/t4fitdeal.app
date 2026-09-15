@@ -26,21 +26,28 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const targetUrl = event.notification?.data?.url || "/menu-teste";
+  const targetPath = event.notification?.data?.url || "/menu-teste";
+  const targetUrl = new URL(targetPath, self.location.origin).href;
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ("focus" in client) {
-          if ("navigate" in client) client.navigate(targetUrl);
-          return client.focus();
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windows) => {
+      const exactWindow = windows.find((client) => client.url === targetUrl);
+      if (exactWindow && "focus" in exactWindow) return exactWindow.focus();
+
+      const sameOriginWindow = windows.find((client) => {
+        try {
+          return new URL(client.url).origin === self.location.origin;
+        } catch {
+          return false;
         }
+      });
+
+      if (sameOriginWindow && "focus" in sameOriginWindow) {
+        if ("navigate" in sameOriginWindow) await sameOriginWindow.navigate(targetUrl);
+        return sameOriginWindow.focus();
       }
 
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
-      }
-
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
       return undefined;
     }),
   );
