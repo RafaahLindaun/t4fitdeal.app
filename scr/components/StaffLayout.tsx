@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthProvider";
 import Build158MotionBridge from "./Build158MotionBridge";
 import OwnerStaffManager from "./OwnerStaffManager";
 import RouteLoadingSkeleton170 from "./RouteLoadingSkeleton170";
+import StaffIconNavPill from "./StaffIconNavPill";
 import { prefetchStaffRoute } from "../lib/staffRoutePrefetch";
 import { getStaffNavItems, staffNavKeyForLocation, type StaffNavKey } from "../lib/staffNavigation";
 import { staffButtonVariants, staffMotionTransition } from "../lib/staffMotion";
@@ -140,15 +141,22 @@ export default function StaffLayout() {
             </button>
           ) : null}
         </div>
-        <nav>
-          {items.map((item) => (
+        <nav className={sidebarCollapsed ? "is-icon-rail" : undefined}>
+          {items.map((item) => sidebarCollapsed ? (
+            <StaffIconNavPill
+              key={item.key}
+              icon={item.icon}
+              label={item.label}
+              active={active === item.key}
+              onActivate={() => navigate(item.href)}
+              onPrefetch={() => prefetchStaffRoute(item.href)}
+            />
+          ) : (
             <motion.button
               key={item.key}
               type="button"
               className={active === item.key ? "is-active" : ""}
               aria-current={active === item.key ? "page" : undefined}
-              aria-label={sidebarCollapsed ? item.label : undefined}
-              title={sidebarCollapsed ? item.label : undefined}
               onClick={() => navigate(item.href)}
               onPointerEnter={() => prefetchStaffRoute(item.href)}
               onFocus={() => prefetchStaffRoute(item.href)}
