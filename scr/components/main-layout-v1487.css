@@ -1,20 +1,15 @@
-/* ACCQUA Sports — Build 1.4.8.7
-   J — BottomNavigation flutua sobre a própria página, sem faixa retangular. */
+/* ACCQUA Sports — BottomNavigation mobile
+   Build 1.7.2: barra ancorada na borda real da viewport, sem recorte flutuante. */
 
 @media (max-width: 1023.98px) {
-  /* O wrapper só posiciona e respeita safe-area. Ele nunca pinta uma superfície. */
   .accqua-main-layout > .accqua-main-layout-nav {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
     width: 100% !important;
-    min-height: calc(96px + env(safe-area-inset-bottom)) !important;
-    padding:
-      0
-      max(12px, env(safe-area-inset-right))
-      calc(12px + env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left)) !important;
-    justify-content: center !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    display: block !important;
     background: transparent !important;
     box-shadow: none !important;
     transform: none !important;
@@ -24,18 +19,33 @@
   .accqua-main-layout > .accqua-main-layout-nav::after {
     content: none !important;
     display: none !important;
-    background: transparent !important;
   }
 
   .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation {
-    width: min(520px, 100%) !important;
+    width: 100% !important;
+    min-height: calc(72px + env(safe-area-inset-bottom)) !important;
     margin: 0 !important;
-    border-radius: 28px !important;
+    padding:
+      8px
+      max(8px, env(safe-area-inset-right))
+      calc(7px + env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left)) !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 0 !important;
     overflow: hidden !important;
+    background: linear-gradient(180deg, rgba(18, 48, 86, .98), rgba(5, 22, 48, .995)) !important;
+    box-shadow:
+      0 -10px 28px rgba(0, 0, 0, .22),
+      inset 0 1px 0 rgba(255, 255, 255, .07) !important;
   }
 
-  /* A tela visual continua até o fim da viewport. O espaço de toque/scroll
-     é reservado dentro das áreas roláveis, não por uma faixa do AppShell. */
+  .accqua-main-layout > .accqua-main-layout-nav > .accqua-bottom-navigation::before {
+    inset: 0 !important;
+    border-radius: 0 !important;
+  }
+
   .accqua-main-layout:not(.is-focus-mode) > .accqua-main-layout-content {
     min-height: 100dvh !important;
     padding-bottom: 0 !important;
@@ -57,13 +67,12 @@
     min-height: 100dvh !important;
   }
 
-  /* Somente o conteúdo rolável termina antes dos controles. */
   .accqua-main-layout-content .accqua-menu-scroll,
   .accqua-main-layout-content .diet-scroll-content,
   .accqua-main-layout-content .accqua-profile-content,
   .accqua-main-layout-content .ranking-scroll-area,
   .accqua-main-layout-content .store-scroll,
   .accqua-main-layout-content .classes-scroll {
-    padding-bottom: calc(24px + var(--app-bottomnav-offset)) !important;
+    padding-bottom: calc(20px + var(--app-bottomnav-offset)) !important;
   }
 }
