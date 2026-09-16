@@ -1,0 +1,145 @@
+/* ACCQUA Sports — Build 1.7.2
+   Seu Ritmo: estados sólidos, hoje pulsante e fogo somente com sequência ativa. */
+
+.accqua-streak-days {
+  gap: 3px !important;
+}
+
+.accqua-streak-day {
+  gap: 6px !important;
+}
+
+.accqua-streak-day > span {
+  position: relative !important;
+  width: 38px !important;
+  height: 38px !important;
+  overflow: visible !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  transition: background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease !important;
+}
+
+.accqua-streak-day.is-completed > span {
+  color: #2c2205 !important;
+  border-color: #f5c518 !important;
+  background: #f5c518 !important;
+  box-shadow: 0 7px 18px rgba(245, 197, 24, .14) !important;
+}
+
+.accqua-streak-day.is-completed > span svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.accqua-streak-day.is-completed > span svg path {
+  stroke: #2c2205 !important;
+  stroke-width: 3 !important;
+}
+
+.accqua-streak-day.is-missed > span {
+  color: #fff !important;
+  border-color: #ef4444 !important;
+  background: #ef4444 !important;
+  box-shadow: 0 7px 18px rgba(239, 68, 68, .14) !important;
+}
+
+.accqua-streak-day.is-missed > span > i {
+  position: relative !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.accqua-streak-day.is-missed > span > i::before,
+.accqua-streak-day.is-missed > span > i::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 2px;
+  width: 14px;
+  height: 2.5px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.accqua-streak-day.is-missed > span > i::before { transform: rotate(45deg); }
+.accqua-streak-day.is-missed > span > i::after { transform: rotate(-45deg); }
+
+.accqua-streak-day.is-rest > span,
+.accqua-streak-day.is-today-pending > span,
+.accqua-streak-day.is-future > span {
+  color: rgba(255,255,255,.48) !important;
+  border-color: rgba(255,255,255,.10) !important;
+  background: #16213f !important;
+  box-shadow: none !important;
+}
+
+.accqua-streak-day.is-rest > span > i,
+.accqua-streak-day.is-today-pending > span > i,
+.accqua-streak-day.is-future > span > i {
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  background: transparent !important;
+}
+
+.accqua-streak-day.is-today > span::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 2px solid #f5c518;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: accquaStreakPulseRing 1.8s ease-out infinite;
+}
+
+.accqua-streak-flame {
+  display: inline-block;
+  transform-origin: 50% 70%;
+}
+
+.accqua-streak-flame.is-active {
+  animation: accquaStreakFlicker 1.6s ease-in-out infinite;
+}
+
+.accqua-streak-legend .is-done {
+  background: #f5c518 !important;
+  border-color: #f5c518 !important;
+}
+
+.accqua-streak-legend .is-missed {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.accqua-streak-legend .is-rest {
+  background: #16213f !important;
+  border: 1px solid rgba(255,255,255,.25) !important;
+}
+
+@keyframes accquaStreakPulseRing {
+  0% { transform: scale(.82); opacity: .9; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes accquaStreakFlicker {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  35% { transform: scale(1.08) rotate(-2deg); }
+  60% { transform: scale(1.1) rotate(2deg); }
+}
+
+@media (max-width: 390px) {
+  .accqua-streak-day > span {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-streak-day.is-today > span::after,
+  .accqua-streak-flame.is-active {
+    animation: none !important;
+  }
+}
