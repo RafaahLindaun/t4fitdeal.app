@@ -58,6 +58,7 @@ import "./styles/profile-tabs-1.7.1.css";
 import "./styles/build-1.7.1.css";
 import "./styles/build-1.7.2.css";
 import "./styles/not-allowed-1.7.2.css";
+import "./styles/home-streak-1.7.2.css";
 
 installInfrastructureToastGuard();
 installStaffDestructiveActionGuard();
