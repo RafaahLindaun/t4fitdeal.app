@@ -12,6 +12,7 @@ import Build171Runtime from "./components/Build171Runtime";
 import RankingProfileEnhancements171 from "./components/RankingProfileEnhancements171";
 import RealtimeNotificationBridge from "./components/RealtimeNotificationBridge";
 import EphemeralMessageBridge from "./components/EphemeralMessageBridge";
+import NotAllowedRuntime from "./components/NotAllowedRuntime";
 import { installInfrastructureToastGuard } from "./lib/staffErrors";
 import { installStaffDestructiveActionGuard } from "./lib/staffDestructiveActions";
 import "./index.css";
@@ -92,6 +93,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <RankingProfileEnhancements171 />
           <RealtimeNotificationBridge />
           <EphemeralMessageBridge />
+          <NotAllowedRuntime />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
