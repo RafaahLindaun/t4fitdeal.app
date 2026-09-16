@@ -106,10 +106,11 @@ export default function NotificationsSheet({
       className="accqua-notifications-dialog"
       bodyClassName="accqua-notifications-sheet"
     >
-      <div className="accqua-notifications-toolbar">
-        <small>{totalCount ? `${totalCount} ${totalCount === 1 ? "aviso" : "avisos"}` : "Tudo em dia"}</small>
-        {unreadCount ? <button type="button" onClick={() => void markAll()}>Marcar todas como lidas</button> : null}
-      </div>
+      {unreadCount ? (
+        <div className="accqua-notifications-toolbar">
+          <button type="button" onClick={() => void markAll()}>Marcar todas como lidas</button>
+        </div>
+      ) : null}
 
       {notificationsQuery.isLoading ? (
         <div className="accqua-notifications-empty"><strong>Carregando notificações...</strong></div>
@@ -143,6 +144,7 @@ export default function NotificationsSheet({
             return (
               <SwipeableListItem
                 key={notification.receiptId}
+                className="accqua-notification-swipe"
                 onDelete={() => void removeNotification(notification.receiptId)}
                 deleteLabel="Excluir notificação"
               >
