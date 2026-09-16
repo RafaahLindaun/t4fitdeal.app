@@ -1,0 +1,139 @@
+/* ACCQUA Sports — Build 1.7.2
+   Padrão visual para ações indisponíveis: adaptação da animação enviada pelo usuário.
+   Use somente em ações realmente bloqueadas/indisponíveis — não em estados temporários de loading. */
+
+.accqua-not-allowed-action {
+  --accqua-not-allowed-red: #f53844;
+  position: relative !important;
+  overflow: hidden !important;
+  isolation: isolate;
+  cursor: not-allowed !important;
+  transition:
+    color .3s cubic-bezier(.23,1,.32,1),
+    border-color .3s cubic-bezier(.23,1,.32,1),
+    background-color .3s cubic-bezier(.23,1,.32,1),
+    transform .3s cubic-bezier(.23,1,.32,1) !important;
+}
+
+.accqua-not-allowed-action::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  content: "";
+  background: var(--accqua-not-allowed-red);
+  transform: translateY(105%);
+  transition: transform .3s cubic-bezier(.23,1,.32,1);
+  pointer-events: none;
+}
+
+.accqua-not-allowed-action::after {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  content: "×";
+  transform: translateY(-50%);
+  border: 1.5px solid var(--accqua-not-allowed-red);
+  border-radius: 50%;
+  color: var(--accqua-not-allowed-red);
+  background: rgba(245,56,68,.08);
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 800;
+  transition:
+    color .3s cubic-bezier(.23,1,.32,1),
+    border-color .3s cubic-bezier(.23,1,.32,1),
+    background-color .3s cubic-bezier(.23,1,.32,1),
+    transform .3s cubic-bezier(.23,1,.32,1);
+  pointer-events: none;
+}
+
+.accqua-not-allowed-action > * {
+  position: relative;
+  z-index: 2;
+}
+
+.accqua-not-allowed-action > :last-child:not(:only-child) {
+  padding-right: 28px;
+}
+
+@keyframes accquaNotAllowedShake {
+  0% { rotate: 0deg; }
+  33% { rotate: 2deg; }
+  66% { rotate: -2deg; }
+  100% { rotate: 2deg; }
+}
+
+@media (hover:hover) and (pointer:fine) {
+  .accqua-not-allowed-action:hover {
+    animation: accquaNotAllowedShake .2s linear 1;
+  }
+
+  .accqua-not-allowed-action:hover::before {
+    transform: translateY(0);
+  }
+
+  .accqua-not-allowed-action:hover::after {
+    color: #fff;
+    border-color: rgba(255,255,255,.86);
+    background: rgba(255,255,255,.08);
+  }
+
+  .accqua-not-allowed-action:hover,
+  .accqua-not-allowed-action:hover > * {
+    color: #fff !important;
+  }
+}
+
+@media (hover:none), (pointer:coarse) {
+  .accqua-not-allowed-action:active,
+  .accqua-not-allowed-action.is-denied-feedback {
+    animation: accquaNotAllowedShake .2s linear 1;
+  }
+
+  .accqua-not-allowed-action:active::before,
+  .accqua-not-allowed-action.is-denied-feedback::before {
+    transform: translateY(0);
+  }
+
+  .accqua-not-allowed-action:active::after,
+  .accqua-not-allowed-action.is-denied-feedback::after {
+    color: #fff;
+    border-color: rgba(255,255,255,.86);
+    background: rgba(255,255,255,.08);
+  }
+}
+
+.class-card-action.accqua-not-allowed-action,
+.store-product-detail-reserve.accqua-not-allowed-action,
+.store-product-detail-pay.accqua-not-allowed-action {
+  padding-right: 48px !important;
+}
+
+@media (max-width: 430px) {
+  .accqua-not-allowed-action::after {
+    right: 10px;
+    width: 22px;
+    height: 22px;
+    font-size: 16px;
+  }
+
+  .class-card-action.accqua-not-allowed-action,
+  .store-product-detail-reserve.accqua-not-allowed-action,
+  .store-product-detail-pay.accqua-not-allowed-action {
+    padding-right: 43px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accqua-not-allowed-action,
+  .accqua-not-allowed-action::before,
+  .accqua-not-allowed-action::after {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}
