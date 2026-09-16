@@ -136,6 +136,28 @@
   border-color: rgba(245,197,24,.18);
 }
 
+/* Benefícios/check-in: mais respiro entre o título e as opções. */
+.checkin-provider-dialog .responsive-dialog-header {
+  padding-bottom: 4px !important;
+}
+
+.checkin-provider-dialog-body {
+  padding-top: 0 !important;
+}
+
+.checkin-provider-dialog-body .checkin-provider-list {
+  margin-top: 18px !important;
+  gap: 10px !important;
+}
+
+.checkin-provider-dialog-body .checkin-provider-list > button {
+  min-height: 74px !important;
+}
+
+.checkin-provider-dialog-body .checkin-provider-logo {
+  align-self: center !important;
+}
+
 @media (max-width: 430px) {
   .accqua-motivational-preference-row {
     grid-template-columns: 36px minmax(0,1fr) 40px;
@@ -145,6 +167,15 @@
 
   .accqua-motivational-preference-copy small {
     font-size: 10px;
+  }
+
+  .checkin-provider-dialog-body .checkin-provider-list {
+    margin-top: 16px !important;
+    gap: 9px !important;
+  }
+
+  .checkin-provider-dialog-body .checkin-provider-list > button {
+    min-height: 72px !important;
   }
 }
 
