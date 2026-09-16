@@ -104,5 +104,28 @@
   .accqua-swipe-content{transform:none!important;overflow:visible;background:transparent;box-shadow:none}
   .accqua-swipe-content:hover .accqua-swipe-desktop-delete,
   .accqua-swipe-content:focus-within .accqua-swipe-desktop-delete{display:grid}
+
+  .accqua-notification-swipe .accqua-swipe-content{
+    border-radius:16px;
+  }
+  .accqua-notification-swipe .accqua-swipe-desktop-delete{
+    top:50%;
+    right:10px;
+    width:34px;
+    height:34px;
+    transform:translateY(-50%);
+    border-radius:10px;
+    color:#ff9b9f;
+    border:1px solid rgba(255,120,126,.2);
+    background:rgba(92,24,32,.9);
+    box-shadow:0 8px 18px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.035);
+  }
+  .accqua-notification-swipe .accqua-swipe-desktop-delete svg{
+    width:17px;
+    height:17px;
+  }
+  .accqua-notification-swipe .accqua-notification-row{
+    padding-right:56px;
+  }
 }
 @media (prefers-reduced-motion:reduce){.accqua-swipe-content{transition:none!important}}
