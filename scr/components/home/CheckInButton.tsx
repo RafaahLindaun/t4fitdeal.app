@@ -76,7 +76,7 @@ export default function CheckInButton() {
         open={open}
         onOpenChange={setOpen}
         title="Escolha o seu tipo de benefício"
-        description="Selecione como você fará o check-in hoje."
+        description="Toque no seu benefício para abrir o aplicativo ou o acesso oficial."
         presentation="center"
         className="checkin-provider-dialog"
         bodyClassName="checkin-provider-dialog-body"
@@ -91,7 +91,7 @@ export default function CheckInButton() {
               </span>
               <span>
                 <strong>{provider.name}</strong>
-                <small>{provider.deepLinkScheme ? "Abrir aplicativo do benefício" : "Abrir canal oficial"}</small>
+                <small>{provider.deepLinkScheme ? "Abrir no aplicativo" : "Abrir acesso oficial"}</small>
               </span>
               {preferredId === provider.id ? <b>Preferido</b> : <i aria-hidden="true">›</i>}
             </button>
