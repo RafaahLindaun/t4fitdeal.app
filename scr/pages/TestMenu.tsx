@@ -63,7 +63,6 @@ const itemVariants: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.2, 0.8, 0.2, 1] } },
 };
 
-
 export default function TestMenu() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -320,7 +319,7 @@ export default function TestMenu() {
             <div className="accqua-streak-heading">
               <div>
                 <small>SEU RITMO</small>
-                <strong><span className="accqua-streak-flame" aria-hidden="true">🔥</span>{ritmoLoading ? "Atualizando sequência" : streakLabel}</strong>
+                <strong><span className={`accqua-streak-flame ${!ritmoLoading && ritmo.streakDays > 0 ? "is-active" : ""}`} aria-hidden="true">🔥</span>{ritmoLoading ? "Atualizando sequência" : streakLabel}</strong>
               </div>
               {ritmoLoading || ritmo.plannedDays > 0 ? (
                 <span>{ritmoLoading ? "Atualizando..." : plannedBadge}</span>
